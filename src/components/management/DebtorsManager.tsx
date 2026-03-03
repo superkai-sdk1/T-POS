@@ -1,0 +1,214 @@
+import { useEffect, useState, useCallback } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/auth';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Drawer } from '@/components/ui/Drawer';
+import { AlertTriangle, TrendingDown, TrendingUp, User, Wallet } from 'lucide-react';
+import { hapticNotification } from '@/lib/telegram';
+import type { Profile } from '@/types';
+
+export function DebtorsManager() {
+  const [debtors, setDebtors] = useState<Profile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selected, setSelected] = useState<Profile | null>(null);
+  const [showAdjust, setShowAdjust] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [adjustNote, setAdjustNote] = useState('');
+  const user = useAuthStore((s) => s.user);
+
+  const load = useCallback(async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .lt('balance', 0)
+      .order('balance', { ascending: true });
+    if (data) setDebtors(data as Profile[]);
+    setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const totalDebt = debtors.reduce((s, d) => s + d.balance, 0);
+
+  const openAdjust = (p: Profile) => {
+    setSelected(p);
+    setAmount('');
+    setAdjustNote('');
+    setShowAdjust(true);
+  };
+
+  const handleRepay = async () => {
+    if (!selected || !amount) return;
+    const val = Math.abs(Number(amount));
+    if (val <= 0) return;
+
+    const newBalance = selected.balance + val;
+    await supabase
+      .from('profiles')
+      .update({ balance: newBalance })
+      .eq('id', selected.id);
+
+    await supabase.from('transactions').insert({
+      type: 'sale',
+      amount: val,
+      description: `Погашение долга${adjustNote ? ': ' + adjustNote : ''} (было ${selected.balance}₽, стало ${newBalance}₽)`,
+      player_id: selected.id,
+      created_by: user?.id,
+    });
+
+    hapticNotification('success');
+    setShowAdjust(false);
+    load();
+  };
+
+  const handleIncrease = async () => {
+    if (!selected || !amount) return;
+    const val = Math.abs(Number(amount));
+    if (val <= 0) return;
+
+    const newBalance = selected.balance - val;
+    await supabase
+      .from('profiles')
+      .update({ balance: newBalance })
+      .eq('id', selected.id);
+
+    await supabase.from('transactions').insert({
+      type: 'sale',
+      amount: -val,
+      description: `Увеличение долга${adjustNote ? ': ' + adjustNote : ''} (было ${selected.balance}₽, стало ${newBalance}₽)`,
+      player_id: selected.id,
+      created_by: user?.id,
+    });
+
+    hapticNotification('warning');
+    setShowAdjust(false);
+    load();
+  };
+
+  const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-16">
+        <div className="w-8 h-8 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin mx-auto" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Summary */}
+      <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-white/40">Общий долг</p>
+            <p className="text-2xl font-black text-red-400">{fmtCur(totalDebt)}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-400/50" />
+            <span className="text-sm text-white/30">{debtors.length} чел.</span>
+          </div>
+        </div>
+      </div>
+
+      {debtors.length === 0 ? (
+        <div className="text-center py-12">
+          <Wallet className="w-16 h-16 text-white/5 mx-auto mb-4" />
+          <p className="text-[var(--tg-theme-hint-color,#888)]">Нет должников</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {debtors.map((d) => (
+            <button
+              key={d.id}
+              onClick={() => openAdjust(d)}
+              className="w-full flex items-center gap-3 p-4 rounded-xl bg-white/5 hover:bg-white/8 transition-all active:scale-[0.98]"
+            >
+              <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
+                <User className="w-5 h-5 text-red-400" />
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="font-semibold text-sm text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{d.nickname}</p>
+                {d.is_resident && <span className="text-[10px] text-emerald-400">Резидент</span>}
+              </div>
+              <span className="text-lg font-bold text-red-400 shrink-0">{fmtCur(d.balance)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Adjust debt drawer */}
+      <Drawer
+        open={showAdjust}
+        onClose={() => setShowAdjust(false)}
+        title={selected ? selected.nickname : 'Должник'}
+      >
+        {selected && (
+          <div className="space-y-4">
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-center">
+              <p className="text-xs text-white/40 mb-1">Текущий долг</p>
+              <p className="text-3xl font-black text-red-400">{fmtCur(selected.balance)}</p>
+            </div>
+
+            <Input
+              type="number"
+              label="Сумма"
+              placeholder="Введите сумму"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              min={1}
+              autoFocus
+            />
+
+            <Input
+              label="Примечание"
+              placeholder="Причина (необязательно)"
+              value={adjustNote}
+              onChange={(e) => setAdjustNote(e.target.value)}
+            />
+
+            {Number(amount) > 0 && (
+              <div className="p-3 rounded-xl bg-white/5 space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/40">При погашении</span>
+                  <span className={`font-semibold ${selected.balance + Number(amount) >= 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    {fmtCur(selected.balance + Number(amount))}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/40">При увеличении</span>
+                  <span className="font-semibold text-red-400">
+                    {fmtCur(selected.balance - Number(amount))}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                fullWidth
+                onClick={handleRepay}
+                disabled={!amount || Number(amount) <= 0}
+              >
+                <TrendingUp className="w-4 h-4" />
+                Погасить
+              </Button>
+              <Button
+                fullWidth
+                variant="danger"
+                onClick={handleIncrease}
+                disabled={!amount || Number(amount) <= 0}
+              >
+                <TrendingDown className="w-4 h-4" />
+                Увеличить
+              </Button>
+            </div>
+          </div>
+        )}
+      </Drawer>
+    </div>
+  );
+}

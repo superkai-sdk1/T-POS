@@ -1,0 +1,213 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import type { Shift, ShiftCheckDetail } from '@/types';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from './auth';
+import { sendToOwners, buildShiftOpenReport, buildShiftCloseReport, type CloseReportCheck } from '@/lib/bot';
+
+interface ShiftState {
+  activeShift: Shift | null;
+  isLoading: boolean;
+
+  loadActiveShift: () => Promise<void>;
+  openShift: (cashStart: number) => Promise<Shift | null>;
+  closeShift: (cashEnd: number, note?: string) => Promise<boolean>;
+  getShiftAnalytics: (shiftId: string) => Promise<ShiftAnalytics | null>;
+}
+
+export interface ShiftAnalytics {
+  shift: Shift;
+  checks: ShiftCheckDetail[];
+  totalRevenue: number;
+  totalChecks: number;
+  avgCheck: number;
+  paymentBreakdown: Record<string, { count: number; amount: number }>;
+  itemsSold: { name: string; category: string; quantity: number; revenue: number }[];
+  playerBreakdown: { nickname: string; checks: number; total: number }[];
+}
+
+export const useShiftStore = create<ShiftState>()(
+  persist(
+    (set, get) => ({
+      activeShift: null,
+      isLoading: false,
+
+      loadActiveShift: async () => {
+        set({ isLoading: true });
+        const { data } = await supabase
+          .from('shifts')
+          .select('*')
+          .eq('status', 'open')
+          .order('opened_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        set({ activeShift: data ? (data as Shift) : null, isLoading: false });
+      },
+
+      openShift: async (cashStart: number) => {
+        const user = useAuthStore.getState().user;
+        if (!user) return null;
+
+        const { data, error } = await supabase
+          .from('shifts')
+          .insert({ opened_by: user.id, cash_start: cashStart })
+          .select()
+          .single();
+
+        if (error || !data) return null;
+        const shift = data as Shift;
+        set({ activeShift: shift });
+
+        sendToOwners(buildShiftOpenReport(user.nickname, cashStart));
+
+        return shift;
+      },
+
+      closeShift: async (cashEnd: number, note?: string) => {
+        const { activeShift } = get();
+        if (!activeShift) return false;
+        const user = useAuthStore.getState().user;
+        const closedAt = new Date().toISOString();
+
+        const { error } = await supabase
+          .from('shifts')
+          .update({
+            status: 'closed',
+            closed_by: user?.id || null,
+            cash_end: cashEnd,
+            note: note || null,
+            closed_at: closedAt,
+          })
+          .eq('id', activeShift.id);
+
+        if (error) return false;
+
+        const { data: closedChecks } = await supabase
+          .from('checks')
+          .select('total_amount, payment_method, player:profiles!checks_player_id_fkey(nickname)')
+          .eq('shift_id', activeShift.id)
+          .eq('status', 'closed')
+          .order('closed_at');
+
+        const checks: CloseReportCheck[] = (closedChecks || []).map((c) => {
+          const player = Array.isArray(c.player) ? c.player[0] : c.player;
+          return {
+            playerNickname: (player as { nickname: string } | null)?.nickname || 'Гость',
+            totalAmount: c.total_amount as number,
+            paymentMethod: c.payment_method as string | null,
+          };
+        });
+        const totalRevenue = checks.reduce((s, c) => s + c.totalAmount, 0);
+
+        sendToOwners(buildShiftCloseReport({
+          staffClose: user?.nickname || '?',
+          openedAt: activeShift.opened_at,
+          closedAt,
+          cashEnd,
+          totalRevenue,
+          checks,
+        }));
+
+        set({ activeShift: null });
+        return true;
+      },
+
+      getShiftAnalytics: async (shiftId: string) => {
+        const { data: shiftData } = await supabase
+          .from('shifts')
+          .select('*')
+          .eq('id', shiftId)
+          .single();
+        if (!shiftData) return null;
+        const shift = shiftData as Shift;
+
+        const { data: checksData } = await supabase
+          .from('checks')
+          .select('*, player:profiles!checks_player_id_fkey(nickname)')
+          .eq('shift_id', shiftId)
+          .eq('status', 'closed')
+          .order('closed_at', { ascending: false });
+
+        const checks: ShiftCheckDetail[] = [];
+        const paymentBreakdown: Record<string, { count: number; amount: number }> = {};
+        const itemMap = new Map<string, { name: string; category: string; quantity: number; revenue: number }>();
+        const playerMap = new Map<string, { nickname: string; checks: number; total: number }>();
+
+        let totalRevenue = 0;
+
+        for (const c of checksData || []) {
+          const player = Array.isArray(c.player) ? c.player[0] : c.player;
+          const nickname = player?.nickname || 'Неизвестный';
+
+          const { data: items } = await supabase
+            .from('check_items')
+            .select('quantity, price_at_time, item:inventory(name, category)')
+            .eq('check_id', c.id);
+
+          const checkItems = (items || []).map((ci: Record<string, unknown>) => {
+            const item = Array.isArray(ci.item) ? ci.item[0] : ci.item;
+            return {
+              name: (item as Record<string, string>)?.name || '?',
+              category: (item as Record<string, string>)?.category || '',
+              quantity: ci.quantity as number,
+              price: ci.price_at_time as number,
+            };
+          });
+
+          checks.push({
+            id: c.id,
+            player_nickname: nickname,
+            total_amount: c.total_amount,
+            payment_method: c.payment_method,
+            closed_at: c.closed_at,
+            items: checkItems.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price })),
+          });
+
+          totalRevenue += c.total_amount;
+
+          const pm = c.payment_method || 'unknown';
+          if (!paymentBreakdown[pm]) paymentBreakdown[pm] = { count: 0, amount: 0 };
+          paymentBreakdown[pm].count++;
+          paymentBreakdown[pm].amount += c.total_amount;
+
+          for (const ci of checkItems) {
+            const key = ci.name;
+            const existing = itemMap.get(key);
+            if (existing) {
+              existing.quantity += ci.quantity;
+              existing.revenue += ci.quantity * ci.price;
+            } else {
+              itemMap.set(key, { name: ci.name, category: ci.category, quantity: ci.quantity, revenue: ci.quantity * ci.price });
+            }
+          }
+
+          const pe = playerMap.get(nickname);
+          if (pe) {
+            pe.checks++;
+            pe.total += c.total_amount;
+          } else {
+            playerMap.set(nickname, { nickname, checks: 1, total: c.total_amount });
+          }
+        }
+
+        const totalChecks = checks.length;
+        const avgCheck = totalChecks > 0 ? Math.round(totalRevenue / totalChecks) : 0;
+
+        return {
+          shift,
+          checks,
+          totalRevenue,
+          totalChecks,
+          avgCheck,
+          paymentBreakdown,
+          itemsSold: Array.from(itemMap.values()).sort((a, b) => b.revenue - a.revenue),
+          playerBreakdown: Array.from(playerMap.values()).sort((a, b) => b.total - a.total),
+        };
+      },
+    }),
+    {
+      name: 'tpos-shift',
+      partialize: (state) => ({ activeShift: state.activeShift }),
+    }
+  )
+);

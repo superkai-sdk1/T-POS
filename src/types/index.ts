@@ -1,0 +1,165 @@
+export type UserRole = 'owner' | 'staff' | 'client';
+export type ItemCategory = 'drinks' | 'food' | 'bar' | 'hookah' | 'services';
+export type CheckStatus = 'open' | 'closed';
+export type PaymentMethod = 'cash' | 'card' | 'debt' | 'bonus';
+export type TransactionType = 'supply' | 'write_off' | 'sale' | 'revision' | 'bonus_accrual' | 'bonus_spend' | 'cash_operation';
+
+export interface Profile {
+  id: string;
+  nickname: string;
+  is_resident: boolean;
+  balance: number;
+  bonus_points: number;
+  tg_id: string | null;
+  role: UserRole;
+  password_hash: string | null;
+  pin: string | null;
+  phone: string | null;
+  photo_url: string | null;
+  birthday: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  category: ItemCategory;
+  price: number;
+  stock_quantity: number;
+  min_threshold: number;
+  is_active: boolean;
+  image_url: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Check {
+  id: string;
+  player_id: string | null;
+  staff_id: string | null;
+  shift_id: string | null;
+  status: CheckStatus;
+  total_amount: number;
+  payment_method: PaymentMethod | null;
+  bonus_used: number;
+  note: string | null;
+  created_at: string;
+  closed_at: string | null;
+  player?: Profile;
+}
+
+export interface CheckItem {
+  id: string;
+  check_id: string;
+  item_id: string;
+  quantity: number;
+  price_at_time: number;
+  item?: InventoryItem;
+}
+
+export interface Transaction {
+  id: string;
+  type: TransactionType;
+  amount: number;
+  description: string | null;
+  item_id: string | null;
+  check_id: string | null;
+  player_id: string | null;
+  created_by: string | null;
+  created_at: string;
+  creator?: Profile;
+  player?: Profile;
+  item?: InventoryItem;
+}
+
+export type ShiftStatus = 'open' | 'closed';
+
+export interface Shift {
+  id: string;
+  opened_by: string;
+  closed_by: string | null;
+  status: ShiftStatus;
+  cash_start: number;
+  cash_end: number | null;
+  note: string | null;
+  opened_at: string;
+  closed_at: string | null;
+  opener?: Profile;
+  closer?: Profile;
+}
+
+export interface ShiftCheckDetail {
+  id: string;
+  player_nickname: string;
+  total_amount: number;
+  payment_method: PaymentMethod | null;
+  closed_at: string | null;
+  items: { name: string; quantity: number; price: number }[];
+}
+
+export interface CartItem {
+  item: InventoryItem;
+  quantity: number;
+}
+
+export interface Supply {
+  id: string;
+  note: string | null;
+  total_cost: number;
+  created_by: string | null;
+  created_at: string;
+  creator?: { nickname: string };
+  items?: SupplyItem[];
+}
+
+export interface SupplyItem {
+  id: string;
+  supply_id: string;
+  item_id: string;
+  quantity: number;
+  cost_per_unit: number;
+  total_cost: number;
+  item?: InventoryItem;
+}
+
+export interface Revision {
+  id: string;
+  note: string | null;
+  total_diff: number;
+  items_count: number;
+  created_by: string | null;
+  created_at: string;
+  creator?: { nickname: string };
+}
+
+export interface RevisionItem {
+  id: string;
+  revision_id: string;
+  item_id: string;
+  expected_qty: number;
+  actual_qty: number;
+  diff: number;
+  item?: InventoryItem;
+}
+
+export interface AppSettings {
+  bonus_accrual_rate: number;
+  bonus_min_purchase: number;
+  bonus_enabled: boolean;
+  bonus_accrual_on_debt: boolean;
+}
+
+export type CashOperationType = 'inkassation' | 'deposit';
+
+export interface CashOperation {
+  id: string;
+  shift_id: string | null;
+  type: CashOperationType;
+  amount: number;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+  creator?: { nickname: string };
+}
