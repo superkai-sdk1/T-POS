@@ -31,8 +31,8 @@ export function CheckView({ onBack }: CheckViewProps) {
   const [menuCategory, setMenuCategory] = useState<ItemCategory | null>(null);
   const [note, setNote] = useState(activeCheck?.note || '');
   const [showNote, setShowNote] = useState(false);
-  const noteTimer = useRef<ReturnType<typeof setTimeout>>();
-  const cartSaveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cartSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingNoteRef = useRef<string | null>(null);
 
   useEffect(() => {
