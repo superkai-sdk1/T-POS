@@ -8,8 +8,10 @@ import {
   Banknote, CreditCard, HandCoins, ShoppingBag,
   Crown, BarChart3, CalendarDays, Hash,
   ChevronDown, ChevronLeft, ChevronRight, Star,
+  Truck, ArrowDownRight, ArrowUpRight, Wallet, PieChart,
+  ArrowLeft,
 } from 'lucide-react';
-import type { Transaction, Profile, Shift } from '@/types';
+import type { Transaction, Profile, Shift, Supply, CashOperation } from '@/types';
 import type { ShiftAnalytics as SA } from '@/store/shift';
 
 interface ClosedCheck {
@@ -36,19 +38,29 @@ interface DailyRevenue {
 }
 
 type TabId = 'overview' | 'checks' | 'items' | 'players' | 'log';
+type DetailView = null | 'revenue' | 'expenses' | 'pnl' | 'today' | 'week' | 'avgcheck' | 'payments';
 
 const pmLabels: Record<string, string> = {
   cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы', split: 'Разделённая',
 };
 
-export function DashboardPage() {
+interface DashboardPageProps {
+  onNavigate?: (target: string) => void;
+}
+
+export function DashboardPage({ onNavigate }: DashboardPageProps) {
+  const nav = (target: string) => onNavigate?.(target);
   const [tab, setTab] = useState<TabId>('overview');
+  const [detail, setDetail] = useState<DetailView>(null);
   const [checks, setChecks] = useState<ClosedCheck[]>([]);
   const [checkItemStats, setCheckItemStats] = useState<CheckItemStat[]>([]);
   const [debtors, setDebtors] = useState<Profile[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [txLimit, setTxLimit] = useState(50);
   const [isLoading, setIsLoading] = useState(true);
+
+  const [supplies, setSupplies] = useState<Supply[]>([]);
+  const [cashOps, setCashOps] = useState<CashOperation[]>([]);
 
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [selectedShiftIdx, setSelectedShiftIdx] = useState(0);
@@ -105,7 +117,7 @@ export function DashboardPage() {
 
   const loadAll = async () => {
     setIsLoading(true);
-    await Promise.all([loadChecks(), loadCheckItems(), loadDebtors()]);
+    await Promise.all([loadChecks(), loadCheckItems(), loadDebtors(), loadSupplies(), loadCashOps()]);
     setIsLoading(false);
   };
 
@@ -142,6 +154,22 @@ export function DashboardPage() {
       .lt('balance', 0)
       .order('balance', { ascending: true });
     if (data) setDebtors(data as Profile[]);
+  };
+
+  const loadSupplies = async () => {
+    const { data } = await supabase
+      .from('supplies')
+      .select('id, total_cost, created_at')
+      .order('created_at', { ascending: false });
+    if (data) setSupplies(data as Supply[]);
+  };
+
+  const loadCashOps = async () => {
+    const { data } = await supabase
+      .from('cash_operations')
+      .select('id, type, amount, created_at')
+      .order('created_at', { ascending: false });
+    if (data) setCashOps(data as CashOperation[]);
   };
 
   const loadTransactions = async () => {
@@ -197,6 +225,49 @@ export function DashboardPage() {
       cash, card, debt, avgCheck, totalPayments,
     };
   }, [checks]);
+
+  const financials = useMemo(() => {
+    let monthExpenses = 0, prevMonthExpenses = 0;
+    let monthSupplyCost = 0, prevMonthSupplyCost = 0;
+    let monthInkassation = 0;
+
+    for (const s of supplies) {
+      const d = new Date(s.created_at);
+      const cost = s.total_cost || 0;
+      if (d >= monthStart) {
+        monthExpenses += cost;
+        monthSupplyCost += cost;
+      } else if (d >= prevMonthStart) {
+        prevMonthExpenses += cost;
+        prevMonthSupplyCost += cost;
+      }
+    }
+
+    for (const op of cashOps) {
+      const d = new Date(op.created_at);
+      if (d >= monthStart && op.type === 'inkassation') {
+        monthInkassation += op.amount || 0;
+      }
+    }
+
+    const monthNetIncome = stats.month - monthExpenses;
+    const prevMonthNetIncome = stats.prevMonth - prevMonthExpenses;
+    const marginPct = stats.month > 0 ? Math.round((monthNetIncome / stats.month) * 100) : 0;
+    const netGrowth = prevMonthNetIncome !== 0
+      ? Math.round(((monthNetIncome - prevMonthNetIncome) / Math.abs(prevMonthNetIncome)) * 100)
+      : 0;
+
+    return {
+      monthExpenses,
+      prevMonthExpenses,
+      monthSupplyCost,
+      monthInkassation,
+      monthNetIncome,
+      prevMonthNetIncome,
+      marginPct,
+      netGrowth,
+    };
+  }, [supplies, cashOps, stats, monthStart, prevMonthStart]);
 
   const dailyRevenue = useMemo((): DailyRevenue[] => {
     const days: Record<string, DailyRevenue> = {};
@@ -293,8 +364,8 @@ export function DashboardPage() {
 
   const tabIdx = tabs.findIndex((t) => t.id === tab);
   const tabSwipe = useSwipe({
-    onSwipeLeft: () => { if (tabIdx < tabs.length - 1) setTab(tabs[tabIdx + 1].id); },
-    onSwipeRight: () => { if (tabIdx > 0) setTab(tabs[tabIdx - 1].id); },
+    onSwipeLeft: () => { if (tabIdx < tabs.length - 1) { setTab(tabs[tabIdx + 1].id); setDetail(null); } },
+    onSwipeRight: () => { if (tabIdx > 0) { setTab(tabs[tabIdx - 1].id); setDetail(null); } },
     threshold: 50,
   });
 
@@ -349,9 +420,17 @@ export function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="text-center py-20">
-        <div className="w-8 h-8 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-sm text-[var(--tg-theme-hint-color,#888)]">Загрузка аналитики...</p>
+      <div className="space-y-4 animate-pulse">
+        <div className="flex gap-1 p-0.5 rounded-lg bg-white/3">
+          {[1, 2, 3, 4, 5].map((i) => <div key={i} className="flex-1 h-8 rounded-md bg-white/3" />)}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {[1, 2, 3, 4].map((i) => <div key={i} className="h-24 rounded-xl bg-white/3" />)}
+        </div>
+        <div className="h-40 rounded-xl bg-white/3" />
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => <div key={i} className="h-12 rounded-xl bg-white/3" style={{ opacity: 1 - i * 0.2 }} />)}
+        </div>
       </div>
     );
   }
@@ -363,7 +442,7 @@ export function DashboardPage() {
         {tabs.map((t) => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id)}
+            onClick={() => { setTab(t.id); setDetail(null); }}
             className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap min-w-0 ${
               tab === t.id
                 ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white shadow-sm'
@@ -376,43 +455,174 @@ export function DashboardPage() {
         ))}
       </div>
 
+      {/* DETAIL VIEWS */}
+      {tab === 'overview' && detail && (
+        <DetailScreen
+          detail={detail}
+          onBack={() => setDetail(null)}
+          checks={checks}
+          supplies={supplies}
+          cashOps={cashOps}
+          stats={stats}
+          financials={financials}
+          dailyRevenue={dailyRevenue}
+          categoryBreakdown={categoryBreakdown}
+          topItems={topItems}
+          fmtCur={fmtCur}
+          fmt={fmt}
+          todayStart={todayStart}
+          weekStart={weekStart}
+          monthStart={monthStart}
+          onNavigate={nav}
+        />
+      )}
+
       {/* OVERVIEW TAB */}
-      {tab === 'overview' && (
+      {tab === 'overview' && !detail && (
         <div className="space-y-5">
-          <div className="p-4 rounded-xl bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)]/12 to-purple-900/5 card">
-            <div className="flex items-center justify-between mb-0.5">
-              <span className="text-[11px] text-white/35 font-semibold">Выручка за месяц</span>
+          {/* Main financial cards */}
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => setDetail('revenue')}
+              className="p-3 rounded-xl bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)]/15 to-purple-900/5 card-interactive text-left col-span-1"
+            >
+              <div className="flex items-center gap-1 mb-1">
+                <ArrowUpRight className="w-3 h-3 text-emerald-400" />
+                <span className="text-[9px] text-white/30 font-semibold uppercase">Доход</span>
+              </div>
+              <p className="text-base font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums leading-tight">{fmtCur(stats.month)}</p>
               {stats.monthGrowth !== 0 && (
-                <Badge variant={stats.monthGrowth > 0 ? 'success' : 'danger'} size="sm">
+                <span className={`text-[9px] font-bold ${stats.monthGrowth > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                   {stats.monthGrowth > 0 ? '+' : ''}{stats.monthGrowth}%
-                </Badge>
+                </span>
               )}
-            </div>
-            <p className="text-2xl font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(stats.month)}</p>
-            <p className="text-[10px] text-white/20 mt-0.5">{stats.monthCount} чеков · средний {fmtCur(stats.avgCheck)}</p>
+            </button>
+            <button
+              onClick={() => setDetail('expenses')}
+              className="p-3 rounded-xl card-interactive text-left col-span-1"
+            >
+              <div className="flex items-center gap-1 mb-1">
+                <ArrowDownRight className="w-3 h-3 text-red-400" />
+                <span className="text-[9px] text-white/30 font-semibold uppercase">Расходы</span>
+              </div>
+              <p className="text-base font-black text-red-400 tabular-nums leading-tight">{fmtCur(financials.monthExpenses)}</p>
+              <span className="text-[9px] text-white/20">подробнее →</span>
+            </button>
+            <button
+              onClick={() => setDetail('pnl')}
+              className={`p-3 rounded-xl card-interactive text-left col-span-1 ${financials.monthNetIncome >= 0 ? 'bg-emerald-500/5' : 'bg-red-500/5'}`}
+            >
+              <div className="flex items-center gap-1 mb-1">
+                <Wallet className="w-3 h-3 text-[var(--tg-theme-button-color,#6c5ce7)]" />
+                <span className="text-[9px] text-white/30 font-semibold uppercase">Чистый</span>
+              </div>
+              <p className={`text-base font-black tabular-nums leading-tight ${financials.monthNetIncome >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                {fmtCur(financials.monthNetIncome)}
+              </p>
+              {financials.marginPct !== 0 && (
+                <span className="text-[9px] text-white/25">маржа {financials.marginPct}%</span>
+              )}
+            </button>
           </div>
 
+          {/* Revenue / Expense / Profit bar */}
+          {stats.month > 0 && (
+            <button onClick={() => setDetail('pnl')} className="w-full p-3 rounded-xl card-interactive space-y-2 text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-white/30 font-semibold uppercase tracking-wider">Структура за месяц</span>
+                <PieChart className="w-3 h-3 text-white/15" />
+              </div>
+              <div className="flex h-3 rounded-full overflow-hidden bg-white/5">
+                {financials.monthExpenses > 0 && (
+                  <div
+                    className="bg-red-500/70 transition-all duration-700"
+                    style={{ width: `${(financials.monthExpenses / stats.month) * 100}%` }}
+                    title="Расходы"
+                  />
+                )}
+                <div
+                  className="bg-emerald-500 transition-all duration-700"
+                  style={{ width: `${Math.max(0, (financials.monthNetIncome / stats.month) * 100)}%` }}
+                  title="Чистый доход"
+                />
+              </div>
+              <div className="flex gap-4 text-[10px]">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="text-white/40">Прибыль {financials.marginPct}%</span>
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-red-500/70" />
+                  <span className="text-white/40">Расходы {stats.month > 0 ? 100 - financials.marginPct : 0}%</span>
+                </span>
+              </div>
+            </button>
+          )}
+
+          {/* Quick stats grid */}
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: 'Сегодня', value: stats.today, sub: `${stats.todayCount} чек.`, icon: CalendarDays, color: 'text-emerald-400' },
-              { label: 'Неделя', value: stats.week, sub: `${stats.weekCount} чек.`, icon: TrendingUp, color: 'text-blue-400' },
-              { label: 'Ср. чек', value: stats.avgCheck, sub: 'за месяц', icon: Receipt, color: 'text-amber-400' },
-              { label: 'Должники', value: debtors.reduce((s, d) => s + Math.abs(d.balance), 0), sub: `${debtors.length} чел.`, icon: AlertCircle, color: 'text-red-400' },
+              { label: 'Сегодня', value: stats.today, sub: `${stats.todayCount} чек.`, icon: CalendarDays, color: 'text-emerald-400', action: () => setDetail('today') },
+              { label: 'Неделя', value: stats.week, sub: `${stats.weekCount} чек.`, icon: TrendingUp, color: 'text-blue-400', action: () => setDetail('week') },
+              { label: 'Ср. чек', value: stats.avgCheck, sub: 'за месяц', icon: Receipt, color: 'text-amber-400', action: () => setDetail('avgcheck') },
+              { label: 'Должники', value: debtors.reduce((s, d) => s + Math.abs(d.balance), 0), sub: `${debtors.length} чел.`, icon: AlertCircle, color: 'text-red-400', action: () => nav('management:debtors') },
             ].map((s) => (
-              <div key={s.label} className="p-2.5 rounded-xl card flex items-center gap-2.5">
+              <button key={s.label} onClick={s.action} className="p-2.5 rounded-xl card-interactive flex items-center gap-2.5 text-left">
                 <div className="w-8 h-8 rounded-lg bg-white/4 flex items-center justify-center shrink-0">
                   <s.icon className={`w-4 h-4 ${s.color}`} />
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums leading-tight">{fmtCur(s.value)}</p>
                   <p className="text-[9px] text-white/20">{s.sub}</p>
                 </div>
-              </div>
+                <ChevronRight className="w-3 h-3 text-white/10 shrink-0" />
+              </button>
             ))}
           </div>
 
+          {/* Expense breakdown */}
+          {financials.monthExpenses > 0 && (
+            <div>
+              <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Расходы за месяц</h3>
+              <div className="space-y-2">
+                <button
+                  onClick={() => nav('management:supplies')}
+                  className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
+                >
+                  <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+                    <Truck className="w-4 h-4 text-red-400" />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <p className="text-xs text-white/50">Поставки</p>
+                  </div>
+                  <span className="font-bold text-sm text-red-400">{fmtCur(financials.monthSupplyCost)}</span>
+                  <ChevronRight className="w-3 h-3 text-white/10 shrink-0" />
+                </button>
+                {financials.monthInkassation > 0 && (
+                  <button
+                    onClick={() => nav('management:cash')}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+                      <Banknote className="w-4 h-4 text-amber-400" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="text-xs text-white/50">Инкассация</p>
+                    </div>
+                    <span className="font-bold text-sm text-amber-400">{fmtCur(financials.monthInkassation)}</span>
+                    <ChevronRight className="w-3 h-3 text-white/10 shrink-0" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Revenue chart */}
           <div>
-            <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Выручка за 7 дней</h3>
+            <button onClick={() => setDetail('revenue')} className="flex items-center gap-1 mb-2 group">
+              <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Выручка за 7 дней</h3>
+              <ChevronRight className="w-3 h-3 text-white/15 group-hover:text-white/30 transition-colors" />
+            </button>
             <div className="flex items-end gap-1 h-28">
               {dailyRevenue.map((day) => (
                 <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
@@ -431,8 +641,12 @@ export function DashboardPage() {
             </div>
           </div>
 
+          {/* Payment methods */}
           <div>
-            <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Способы оплаты</h3>
+            <button onClick={() => setDetail('payments')} className="flex items-center gap-1 mb-2 group">
+              <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Способы оплаты</h3>
+              <ChevronRight className="w-3 h-3 text-white/15 group-hover:text-white/30 transition-colors" />
+            </button>
             <div className="space-y-2.5">
               {[
                 { label: 'Наличные', value: stats.cash, icon: Banknote, color: 'bg-emerald-500' },
@@ -460,6 +674,7 @@ export function DashboardPage() {
             </div>
           </div>
 
+          {/* Peak hours */}
           {peakHours.length > 0 && (
             <div>
               <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Популярные часы</h3>
@@ -479,16 +694,24 @@ export function DashboardPage() {
             </div>
           )}
 
+          {/* Category breakdown */}
           {categoryBreakdown.length > 0 && (
             <div>
-              <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">По категориям</h3>
+              <button onClick={() => setTab('items')} className="flex items-center gap-1 mb-2 group">
+                <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">По категориям</h3>
+                <ChevronRight className="w-3 h-3 text-white/15 group-hover:text-white/30 transition-colors" />
+              </button>
               <div className="space-y-2">
                 {categoryBreakdown.map((cat, i) => {
                   const maxRev = categoryBreakdown[0]?.revenue || 1;
                   const colors = ['bg-violet-500', 'bg-blue-500', 'bg-orange-500', 'bg-emerald-500', 'bg-pink-500'];
                   return (
-                    <div key={cat.label} className="flex items-center gap-3">
-                      <span className="text-xs text-white/50 w-16 shrink-0">{cat.label}</span>
+                    <button
+                      key={cat.label}
+                      onClick={() => setTab('items')}
+                      className="w-full flex items-center gap-3 active:scale-[0.99] transition-transform"
+                    >
+                      <span className="text-xs text-white/50 w-16 shrink-0 text-left">{cat.label}</span>
                       <div className="flex-1 h-5 rounded-md bg-white/5 overflow-hidden">
                         <div
                           className={`h-full rounded-md ${colors[i % colors.length]} flex items-center px-2 transition-all duration-700`}
@@ -498,15 +721,19 @@ export function DashboardPage() {
                         </div>
                       </div>
                       <span className="text-[10px] text-white/30 w-10 text-right">{cat.count} шт</span>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
             </div>
           )}
 
+          {/* Debtors */}
           <div>
-            <div className="flex items-center gap-2 mb-3">
+            <button
+              onClick={() => nav('management:debtors')}
+              className="w-full flex items-center gap-2 mb-3 group"
+            >
               <AlertCircle className="w-4 h-4 text-red-400" />
               <h3 className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">
                 Должники ({debtors.length})
@@ -514,17 +741,30 @@ export function DashboardPage() {
               <span className="ml-auto text-xs font-bold text-red-400">
                 {fmtCur(debtors.reduce((s, d) => s + Math.abs(d.balance), 0))}
               </span>
-            </div>
+              <ChevronRight className="w-3.5 h-3.5 text-white/15 group-hover:text-white/30 transition-colors shrink-0" />
+            </button>
             {debtors.length === 0 ? (
               <p className="text-xs text-[var(--tg-theme-hint-color,#888)] py-4 text-center">Нет должников</p>
             ) : (
               <div className="space-y-1.5">
-                {debtors.map((d) => (
-                  <div key={d.id} className="flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+                {debtors.slice(0, 5).map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() => nav('management:debtors')}
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/10 active:scale-[0.99] transition-transform"
+                  >
                     <span className="font-medium text-sm text-[var(--tg-theme-text-color,#e0e0e0)]">{d.nickname}</span>
                     <span className="font-bold text-sm text-red-400">{fmtCur(d.balance)}</span>
-                  </div>
+                  </button>
                 ))}
+                {debtors.length > 5 && (
+                  <button
+                    onClick={() => nav('management:debtors')}
+                    className="w-full py-2 text-xs text-[var(--tg-theme-link-color,#6c5ce7)] font-medium"
+                  >
+                    Все должники ({debtors.length}) →
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -843,4 +1083,440 @@ export function DashboardPage() {
       )}
     </div>
   );
+}
+
+/* ─── Detail screens ─── */
+
+interface StatsData {
+  today: number; week: number; month: number; prevMonth: number; monthGrowth: number;
+  todayCount: number; weekCount: number; monthCount: number;
+  cash: number; card: number; debt: number; avgCheck: number; totalPayments: number;
+}
+interface FinData {
+  monthExpenses: number; prevMonthExpenses: number; monthSupplyCost: number;
+  monthInkassation: number; monthNetIncome: number; prevMonthNetIncome: number;
+  marginPct: number; netGrowth: number;
+}
+interface DetailProps {
+  detail: DetailView;
+  onBack: () => void;
+  checks: ClosedCheck[];
+  supplies: Supply[];
+  cashOps: CashOperation[];
+  stats: StatsData;
+  financials: FinData;
+  dailyRevenue: DailyRevenue[];
+  categoryBreakdown: { label: string; revenue: number; count: number }[];
+  topItems: { name: string; category: string; qty: number; revenue: number }[];
+  fmtCur: (n: number) => string;
+  fmt: (n: number) => string;
+  todayStart: Date;
+  weekStart: Date;
+  monthStart: Date;
+  onNavigate: (t: string) => void;
+}
+
+function DetailScreen(props: DetailProps) {
+  const { detail, onBack, checks, supplies, cashOps, fmtCur, fmt, todayStart, weekStart, monthStart, onNavigate } = props;
+  const s = props.stats;
+  const f = props.financials;
+
+  const titleMap: Record<string, string> = {
+    revenue: 'Доход за месяц',
+    expenses: 'Расходы за месяц',
+    pnl: 'Финансовый отчёт',
+    today: 'Сегодня',
+    week: 'Неделя',
+    avgcheck: 'Средний чек',
+    payments: 'Способы оплаты',
+  };
+
+  const header = (
+    <div className="flex items-center gap-2 mb-4">
+      <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center active:scale-90 transition-transform shrink-0">
+        <ArrowLeft className="w-4 h-4 text-[var(--tg-theme-text-color,#e0e0e0)]" />
+      </button>
+      <h2 className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{titleMap[detail || ''] || ''}</h2>
+    </div>
+  );
+
+  const monthChecks = checks.filter((c) => new Date(c.closed_at) >= monthStart);
+  const todayChecks = checks.filter((c) => new Date(c.closed_at) >= todayStart);
+  const weekChecks = checks.filter((c) => new Date(c.closed_at) >= weekStart);
+  const monthSupplies = supplies.filter((sup) => new Date(sup.created_at) >= monthStart);
+  const monthCashOps = cashOps.filter((op) => new Date(op.created_at) >= monthStart);
+
+  const pmIcons: Record<string, { icon: typeof Banknote; color: string; bg: string }> = {
+    cash: { icon: Banknote, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+    card: { icon: CreditCard, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+    debt: { icon: HandCoins, color: 'text-red-400', bg: 'bg-red-500/10' },
+    bonus: { icon: Star, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+    split: { icon: Receipt, color: 'text-violet-400', bg: 'bg-violet-500/10' },
+  };
+
+  const fmtDateTime = (d: string) => new Date(d).toLocaleString('ru-RU', {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+  });
+
+  const checkList = (list: ClosedCheck[], showDate = false) => (
+    <div className="space-y-1.5">
+      {list.length === 0 ? (
+        <p className="text-xs text-[var(--tg-theme-hint-color,#888)] text-center py-8">Нет чеков</p>
+      ) : list.map((c) => {
+        const pm = pmIcons[c.payment_method || ''] || pmIcons.cash;
+        return (
+          <div key={c.id} className="flex items-center gap-2.5 p-2.5 rounded-xl card">
+            <div className={`w-8 h-8 rounded-lg ${pm.bg} flex items-center justify-center shrink-0`}>
+              <pm.icon className={`w-3.5 h-3.5 ${pm.color}`} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
+                {c.player?.nickname || 'Гость'}
+              </p>
+              <p className="text-[10px] text-white/25">
+                {showDate ? fmtDateTime(c.closed_at) : new Date(c.closed_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                {c.payment_method && ` · ${pmLabels[c.payment_method] || c.payment_method}`}
+              </p>
+            </div>
+            <span className="font-bold text-sm text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums shrink-0">
+              {fmtCur(c.total_amount)}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  const statRow = (label: string, value: number, color = 'text-[var(--tg-theme-text-color,#e0e0e0)]') => (
+    <div className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
+      <span className="text-xs text-white/50">{label}</span>
+      <span className={`text-sm font-bold tabular-nums ${color}`}>{fmtCur(value)}</span>
+    </div>
+  );
+
+  if (detail === 'revenue') {
+    const pmBreakdown: Record<string, number> = {};
+    for (const c of monthChecks) {
+      const m = c.payment_method || 'other';
+      pmBreakdown[m] = (pmBreakdown[m] || 0) + c.total_amount;
+    }
+    return (
+      <div className="space-y-4">
+        {header}
+        <div className="p-4 rounded-xl bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)]/12 to-purple-900/5 card text-center">
+          <p className="text-3xl font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(s.month)}</p>
+          <p className="text-[11px] text-white/30 mt-1">{s.monthCount} чеков · ср. {fmtCur(s.avgCheck)}</p>
+          {s.monthGrowth !== 0 && (
+            <Badge variant={s.monthGrowth > 0 ? 'success' : 'danger'} size="sm" className="mt-2">
+              {s.monthGrowth > 0 ? '+' : ''}{s.monthGrowth}% к прошлому месяцу
+            </Badge>
+          )}
+        </div>
+        <div className="p-3 rounded-xl card">
+          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">По дням (7 дней)</h3>
+          <div className="flex items-end gap-1 h-24">
+            {props.dailyRevenue.map((day) => {
+              const maxD = Math.max(...props.dailyRevenue.map((d) => d.total), 1);
+              return (
+                <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
+                  <span className="text-[8px] text-white/30">{day.total > 0 ? fmt(day.total) : ''}</span>
+                  <div className="w-full flex-1 flex items-end">
+                    <div className="w-full rounded-t-md bg-[var(--tg-theme-button-color,#6c5ce7)] min-h-[2px]" style={{ height: `${Math.max(2, (day.total / maxD) * 100)}%` }} />
+                  </div>
+                  <span className="text-[9px] text-white/40 font-semibold">{day.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="p-3 rounded-xl card">
+          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">По способам оплаты</h3>
+          {Object.entries(pmBreakdown).sort((a, b) => b[1] - a[1]).map(([method, val]) => statRow(pmLabels[method] || method, val))}
+        </div>
+        <div>
+          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Чеки за месяц ({monthChecks.length})</h3>
+          {checkList(monthChecks.slice(0, 30), true)}
+          {monthChecks.length > 30 && <p className="text-[10px] text-white/20 text-center pt-2">и ещё {monthChecks.length - 30}...</p>}
+        </div>
+      </div>
+    );
+  }
+
+  if (detail === 'expenses') {
+    const totalSupplyCost = monthSupplies.reduce((a, s2) => a + (s2.total_cost || 0), 0);
+    const totalInkassation = monthCashOps.filter((o) => o.type === 'inkassation').reduce((a, o) => a + o.amount, 0);
+    return (
+      <div className="space-y-4">
+        {header}
+        <div className="p-4 rounded-xl bg-red-500/6 border border-red-500/10 text-center">
+          <p className="text-3xl font-black text-red-400 tabular-nums">{fmtCur(f.monthExpenses)}</p>
+          <p className="text-[11px] text-white/30 mt-1">{monthSupplies.length} поставок за месяц</p>
+        </div>
+        <div className="p-3 rounded-xl card">
+          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">Структура расходов</h3>
+          {statRow('Поставки', totalSupplyCost, 'text-red-400')}
+          {totalInkassation > 0 && statRow('Инкассация', totalInkassation, 'text-amber-400')}
+          <div className="border-t border-white/5 mt-1 pt-1">
+            {statRow('Итого', f.monthExpenses, 'text-red-400')}
+          </div>
+        </div>
+        <div>
+          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Поставки</h3>
+          <div className="space-y-1.5">
+            {monthSupplies.length === 0 ? (
+              <p className="text-xs text-[var(--tg-theme-hint-color,#888)] text-center py-6">Нет поставок</p>
+            ) : monthSupplies.map((sup) => (
+              <button key={sup.id} onClick={() => onNavigate('management:supplies')} className="w-full flex items-center gap-2.5 p-2.5 rounded-xl card-interactive">
+                <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+                  <Truck className="w-3.5 h-3.5 text-red-400" />
+                </div>
+                <div className="flex-1 text-left min-w-0">
+                  <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">
+                    {new Date(sup.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+                <span className="font-bold text-sm text-red-400 tabular-nums shrink-0">{fmtCur(sup.total_cost)}</span>
+                <ChevronRight className="w-3 h-3 text-white/10 shrink-0" />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (detail === 'pnl') {
+    return (
+      <div className="space-y-4">
+        {header}
+        <div className={`p-4 rounded-xl text-center ${f.monthNetIncome >= 0 ? 'bg-emerald-500/6 border border-emerald-500/10' : 'bg-red-500/6 border border-red-500/10'}`}>
+          <p className="text-[11px] text-white/30 mb-1">Чистый доход</p>
+          <p className={`text-3xl font-black tabular-nums ${f.monthNetIncome >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmtCur(f.monthNetIncome)}</p>
+          <p className="text-[11px] text-white/25 mt-1">маржа {f.marginPct}%</p>
+        </div>
+        <div className="p-3 rounded-xl card">
+          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">P&L</h3>
+          {statRow('Выручка (доход)', s.month, 'text-emerald-400')}
+          {statRow('Поставки', -f.monthSupplyCost, 'text-red-400')}
+          {f.monthInkassation > 0 && statRow('Инкассация', -f.monthInkassation, 'text-amber-400')}
+          <div className="border-t-2 border-white/10 mt-1 pt-1">
+            {statRow('Чистый доход', f.monthNetIncome, f.monthNetIncome >= 0 ? 'text-emerald-400' : 'text-red-400')}
+          </div>
+        </div>
+        {s.month > 0 && (
+          <div className="p-3 rounded-xl card space-y-2">
+            <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Визуализация</h3>
+            <div className="flex h-4 rounded-full overflow-hidden bg-white/5">
+              {f.monthExpenses > 0 && <div className="bg-red-500/70" style={{ width: `${(f.monthExpenses / s.month) * 100}%` }} />}
+              <div className="bg-emerald-500" style={{ width: `${Math.max(0, (f.monthNetIncome / s.month) * 100)}%` }} />
+            </div>
+            <div className="flex justify-between text-[10px] text-white/30">
+              <span>Расходы {100 - f.marginPct}%</span>
+              <span>Прибыль {f.marginPct}%</span>
+            </div>
+          </div>
+        )}
+        <div className="p-3 rounded-xl card">
+          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">Сравнение с прошлым месяцем</h3>
+          {statRow('Выручка (этот)', s.month)}
+          {statRow('Выручка (прошлый)', s.prevMonth, 'text-white/40')}
+          {statRow('Расходы (этот)', f.monthExpenses, 'text-red-400')}
+          {statRow('Расходы (прошлый)', f.prevMonthExpenses, 'text-white/40')}
+          {statRow('Чистый (этот)', f.monthNetIncome, f.monthNetIncome >= 0 ? 'text-emerald-400' : 'text-red-400')}
+          {statRow('Чистый (прошлый)', f.prevMonthNetIncome, 'text-white/40')}
+        </div>
+      </div>
+    );
+  }
+
+  if (detail === 'today') {
+    const todayTotal = todayChecks.reduce((a, c) => a + c.total_amount, 0);
+    const todayCash = todayChecks.filter((c) => c.payment_method === 'cash').reduce((a, c) => a + c.total_amount, 0);
+    const todayCard = todayChecks.filter((c) => c.payment_method === 'card').reduce((a, c) => a + c.total_amount, 0);
+    const todayDebt = todayChecks.filter((c) => c.payment_method === 'debt').reduce((a, c) => a + c.total_amount, 0);
+    return (
+      <div className="space-y-4">
+        {header}
+        <div className="p-4 rounded-xl bg-emerald-500/6 border border-emerald-500/10 text-center">
+          <p className="text-3xl font-black text-emerald-400 tabular-nums">{fmtCur(todayTotal)}</p>
+          <p className="text-[11px] text-white/30 mt-1">{todayChecks.length} чеков сегодня</p>
+        </div>
+        {todayChecks.length > 0 && (
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: 'Нал', value: todayCash, color: 'text-emerald-400' },
+              { label: 'Карта', value: todayCard, color: 'text-blue-400' },
+              { label: 'Долг', value: todayDebt, color: 'text-red-400' },
+            ].map((p) => (
+              <div key={p.label} className="p-2.5 rounded-xl card text-center">
+                <p className={`text-sm font-black tabular-nums ${p.color}`}>{fmtCur(p.value)}</p>
+                <p className="text-[9px] text-white/20">{p.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        <div>
+          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Чеки сегодня</h3>
+          {checkList(todayChecks)}
+        </div>
+      </div>
+    );
+  }
+
+  if (detail === 'week') {
+    const weekTotal = weekChecks.reduce((a, c) => a + c.total_amount, 0);
+    const weekAvg = weekChecks.length > 0 ? Math.round(weekTotal / weekChecks.length) : 0;
+    return (
+      <div className="space-y-4">
+        {header}
+        <div className="p-4 rounded-xl bg-blue-500/6 border border-blue-500/10 text-center">
+          <p className="text-3xl font-black text-blue-400 tabular-nums">{fmtCur(weekTotal)}</p>
+          <p className="text-[11px] text-white/30 mt-1">{weekChecks.length} чеков · ср. {fmtCur(weekAvg)}</p>
+        </div>
+        <div className="p-3 rounded-xl card">
+          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">По дням</h3>
+          <div className="flex items-end gap-1 h-24">
+            {props.dailyRevenue.map((day) => {
+              const maxD = Math.max(...props.dailyRevenue.map((d) => d.total), 1);
+              return (
+                <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
+                  <span className="text-[8px] text-white/30">{day.total > 0 ? fmt(day.total) : ''}</span>
+                  <div className="w-full flex-1 flex items-end">
+                    <div className="w-full rounded-t-md bg-blue-500 min-h-[2px]" style={{ height: `${Math.max(2, (day.total / maxD) * 100)}%` }} />
+                  </div>
+                  <span className="text-[9px] text-white/40 font-semibold">{day.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div>
+          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Чеки за неделю ({weekChecks.length})</h3>
+          {checkList(weekChecks.slice(0, 30), true)}
+          {weekChecks.length > 30 && <p className="text-[10px] text-white/20 text-center pt-2">и ещё {weekChecks.length - 30}...</p>}
+        </div>
+      </div>
+    );
+  }
+
+  if (detail === 'avgcheck') {
+    const amounts = monthChecks.map((c) => c.total_amount).filter((a) => a > 0).sort((a, b) => a - b);
+    const avg = amounts.length > 0 ? Math.round(amounts.reduce((a, v) => a + v, 0) / amounts.length) : 0;
+    const median = amounts.length > 0 ? amounts[Math.floor(amounts.length / 2)] : 0;
+    const minCheck = amounts.length > 0 ? amounts[0] : 0;
+    const maxCheck = amounts.length > 0 ? amounts[amounts.length - 1] : 0;
+
+    const buckets = [0, 300, 500, 1000, 2000, 5000, Infinity];
+    const bucketLabels = ['<300', '300-500', '500-1K', '1K-2K', '2K-5K', '5K+'];
+    const histogram = bucketLabels.map((_, i) => ({
+      label: bucketLabels[i],
+      count: amounts.filter((a) => a >= buckets[i] && a < buckets[i + 1]).length,
+    }));
+    const maxBucket = Math.max(...histogram.map((h) => h.count), 1);
+
+    return (
+      <div className="space-y-4">
+        {header}
+        <div className="p-4 rounded-xl bg-amber-500/6 border border-amber-500/10 text-center">
+          <p className="text-3xl font-black text-amber-400 tabular-nums">{fmtCur(avg)}</p>
+          <p className="text-[11px] text-white/30 mt-1">средний чек за месяц</p>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="p-2.5 rounded-xl card text-center">
+            <p className="text-sm font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(minCheck)}</p>
+            <p className="text-[9px] text-white/20">Мин.</p>
+          </div>
+          <div className="p-2.5 rounded-xl card text-center">
+            <p className="text-sm font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(median)}</p>
+            <p className="text-[9px] text-white/20">Медиана</p>
+          </div>
+          <div className="p-2.5 rounded-xl card text-center">
+            <p className="text-sm font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(maxCheck)}</p>
+            <p className="text-[9px] text-white/20">Макс.</p>
+          </div>
+        </div>
+        <div className="p-3 rounded-xl card">
+          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-3">Распределение чеков</h3>
+          <div className="flex items-end gap-1.5 h-24">
+            {histogram.map((b) => (
+              <div key={b.label} className="flex-1 flex flex-col items-center gap-1">
+                <span className="text-[8px] text-white/30">{b.count > 0 ? b.count : ''}</span>
+                <div className="w-full flex-1 flex items-end">
+                  <div className="w-full rounded-t-md bg-amber-500/70 min-h-[2px]" style={{ height: `${Math.max(2, (b.count / maxBucket) * 100)}%` }} />
+                </div>
+                <span className="text-[8px] text-white/30">{b.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="p-3 rounded-xl card">
+          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">Статистика</h3>
+          {statRow('Всего чеков', s.monthCount)}
+          {statRow('Общая выручка', s.month)}
+          {statRow('Средний чек', avg, 'text-amber-400')}
+          {statRow('Медианный чек', median)}
+          {statRow('Мин. чек', minCheck)}
+          {statRow('Макс. чек', maxCheck)}
+        </div>
+      </div>
+    );
+  }
+
+  if (detail === 'payments') {
+    const pmData: Record<string, { count: number; total: number }> = {};
+    for (const c of monthChecks) {
+      const m = c.payment_method || 'other';
+      if (!pmData[m]) pmData[m] = { count: 0, total: 0 };
+      pmData[m].count++;
+      pmData[m].total += c.total_amount;
+    }
+    const totalPm = Object.values(pmData).reduce((a, v) => a + v.total, 0);
+    const sorted = Object.entries(pmData).sort((a, b) => b[1].total - a[1].total);
+
+    const pmColors: Record<string, string> = {
+      cash: 'bg-emerald-500', card: 'bg-blue-500', debt: 'bg-red-500', bonus: 'bg-amber-500', split: 'bg-violet-500',
+    };
+
+    return (
+      <div className="space-y-4">
+        {header}
+        <div className="p-4 rounded-xl card text-center">
+          <p className="text-3xl font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(totalPm)}</p>
+          <p className="text-[11px] text-white/30 mt-1">{monthChecks.length} чеков за месяц</p>
+        </div>
+        {totalPm > 0 && (
+          <div className="flex h-4 rounded-full overflow-hidden bg-white/5">
+            {sorted.map(([method, val]) => (
+              <div key={method} className={pmColors[method] || 'bg-white/20'} style={{ width: `${(val.total / totalPm) * 100}%` }} />
+            ))}
+          </div>
+        )}
+        <div className="space-y-3">
+          {sorted.map(([method, val]) => {
+            const pm = pmIcons[method] || pmIcons.cash;
+            const pct = totalPm > 0 ? Math.round((val.total / totalPm) * 100) : 0;
+            return (
+              <div key={method} className="p-3 rounded-xl card">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className={`w-9 h-9 rounded-lg ${pm.bg} flex items-center justify-center shrink-0`}>
+                    <pm.icon className={`w-4 h-4 ${pm.color}`} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">{pmLabels[method] || method}</p>
+                    <p className="text-[10px] text-white/25">{val.count} чеков · {pct}%</p>
+                  </div>
+                  <span className="text-lg font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(val.total)}</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                  <div className={`h-full rounded-full ${pmColors[method] || 'bg-white/20'}`} style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  return <div>{header}<p className="text-white/30 text-sm text-center py-8">Раздел в разработке</p></div>;
 }

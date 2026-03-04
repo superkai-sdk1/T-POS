@@ -1,4 +1,6 @@
 export type UserRole = 'owner' | 'staff' | 'client';
+export type ClientTier = 'regular' | 'resident' | 'student';
+export type VisitTariff = 'regular' | 'resident' | 'student' | 'single_game';
 export type ItemCategory = string;
 export type CheckStatus = 'open' | 'closed';
 export type PaymentMethod = 'cash' | 'card' | 'debt' | 'bonus' | 'split';
@@ -11,12 +13,14 @@ export interface Profile {
   balance: number;
   bonus_points: number;
   tg_id: string | null;
+  tg_username: string | null;
   role: UserRole;
   password_hash: string | null;
   pin: string | null;
   phone: string | null;
   photo_url: string | null;
   birthday: string | null;
+  client_tier: ClientTier;
   created_at: string;
   updated_at: string;
 }
@@ -57,6 +61,7 @@ export interface Check {
   bonus_used: number;
   discount_total: number;
   space_id: string | null;
+  guest_names: string | null;
   note: string | null;
   created_at: string;
   closed_at: string | null;
@@ -188,6 +193,9 @@ export interface Discount {
   type: DiscountType;
   value: number;
   is_active: boolean;
+  min_quantity: number | null;
+  item_id: string | null;
+  item?: InventoryItem;
   created_at: string;
 }
 

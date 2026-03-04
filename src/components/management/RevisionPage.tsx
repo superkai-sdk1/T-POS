@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/Button';
@@ -10,6 +10,7 @@ import {
   CalendarDays, User, TrendingDown, TrendingUp, Search,
 } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
+import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import type { InventoryItem } from '@/types';
 
 interface Revision {
@@ -97,6 +98,9 @@ export function RevisionPage() {
       .order('name');
     if (data) setItems(data as InventoryItem[]);
   }, []);
+
+  const revisionsTables = useMemo(() => ['revisions'], []);
+  useOnTableChange(revisionsTables, loadRevisions);
 
   useEffect(() => {
     Promise.all([loadRevisions(), loadItems()]).then(() => setIsLoading(false));

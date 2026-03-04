@@ -51,6 +51,15 @@ server {
         try_files \$uri \$uri/ /index.html;
     }
 
+    location /api/system/ {
+        proxy_pass http://127.0.0.1:3100;
+        proxy_http_version 1.1;
+        proxy_set_header Connection '';
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+    }
+
     location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot)$ {
         expires 30d;
         add_header Cache-Control "public, immutable";
@@ -69,6 +78,51 @@ NGINXEOF
   success "Конфигурация nginx создана"
 
   fix_and_reload_nginx
+}
+
+setup_update_server() {
+  local dir="$1"
+
+  info "Настройка сервера обновлений..."
+
+  cat > /etc/systemd/system/tpos-update.service <<SVCEOF
+[Unit]
+Description=T-POS Update Server
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=${dir}
+ExecStart=$(which node) ${dir}/server/update-server.js
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
+SVCEOF
+
+  systemctl daemon-reload
+  systemctl enable tpos-update --quiet
+  systemctl restart tpos-update
+  success "Сервер обновлений запущен (порт 3100)"
+}
+
+ensure_nginx_proxy() {
+  local conf="$1"
+  if [ -f "$conf" ] && ! grep -q 'api/system' "$conf" 2>/dev/null; then
+    info "Добавление proxy для update-server в nginx..."
+    sed -i '/location \/ {/i \
+    location /api/system/ {\
+        proxy_pass http://127.0.0.1:3100;\
+        proxy_http_version 1.1;\
+        proxy_set_header Connection "";\
+        proxy_buffering off;\
+        proxy_cache off;\
+        proxy_read_timeout 300s;\
+    }' "$conf"
+    success "Proxy для update-server добавлен"
+  fi
 }
 
 fix_and_reload_nginx() {
@@ -152,6 +206,9 @@ if [ "$MODE" = "update" ]; then
   chown -R www-data:www-data dist 2>/dev/null || true
 
   success "Проект обновлён"
+
+  setup_update_server "$INSTALL_DIR"
+  ensure_nginx_proxy "$NGINX_CONF"
 
   # ── Check nginx config, set up if missing ──
 
@@ -378,6 +435,8 @@ fi
 
 success "Проект собран"
 chown -R www-data:www-data "$INSTALL_DIR/dist"
+
+setup_update_server "$INSTALL_DIR"
 
 # ── Step 4: Nginx ────────────────────────────
 

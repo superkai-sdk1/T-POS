@@ -5,14 +5,30 @@ import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/ui/Drawer';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import {
-  ArrowLeft, CreditCard, Plus, Zap, Minus, X,
+  ArrowLeft, CreditCard, Plus, Minus, X,
   ShoppingBag,
   MessageSquare, Percent, Trash2, Timer, Search,
+  UserPlus, User, Star, GraduationCap, Gamepad2,
 } from 'lucide-react';
 import { hapticFeedback } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase';
 import { useMenuCategories, getIconComponent, getCategoryColor } from '@/hooks/useMenuCategories';
-import type { InventoryItem, Discount } from '@/types';
+import { Input } from '@/components/ui/Input';
+import { Button } from '@/components/ui/Button';
+import type { InventoryItem, Discount, Profile, VisitTariff, ClientTier } from '@/types';
+
+const VISIT_ITEMS: Record<VisitTariff, { label: string; price: number; dbName: string }> = {
+  regular: { label: 'Гость', price: 700, dbName: 'Игровой вечер Гость' },
+  resident: { label: 'Резидент', price: 500, dbName: 'Игровой вечер Резидент' },
+  student: { label: 'Студент', price: 300, dbName: 'Игровой вечер Студент' },
+  single_game: { label: 'Одна игра', price: 150, dbName: 'Игровой вечер Одна игра' },
+};
+
+function tierToTariff(tier: ClientTier | undefined): VisitTariff {
+  if (tier === 'resident') return 'resident';
+  if (tier === 'student') return 'student';
+  return 'regular';
+}
 
 interface CheckViewProps {
   onBack: () => void;
@@ -30,6 +46,16 @@ export function CheckView({ onBack }: CheckViewProps) {
   const { categories: menuCategories } = useMenuCategories();
   const [note, setNote] = useState(activeCheck?.note || '');
   const [showNote, setShowNote] = useState(false);
+
+  // Add player flow
+  const [showAddPlayer, setShowAddPlayer] = useState(false);
+  const [playerSearch, setPlayerSearch] = useState('');
+  const [playerResults, setPlayerResults] = useState<Profile[]>([]);
+  const [isPlayerSearching, setIsPlayerSearching] = useState(false);
+  const [showPlayerTariff, setShowPlayerTariff] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Profile | null>(null);
+  const [selectedTariff, setSelectedTariff] = useState<VisitTariff>('regular');
+  const playerSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cartSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingNoteRef = useRef<string | null>(null);
@@ -101,10 +127,59 @@ export function CheckView({ onBack }: CheckViewProps) {
   const subtotal = cartSubtotal + spaceRental;
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
 
+  const [quantityDiscounts, setQuantityDiscounts] = useState<Discount[]>([]);
+  const autoApplyingRef = useRef(false);
+
   const loadDiscountsList = useCallback(async () => {
     const { data } = await supabase.from('discounts').select('*').eq('is_active', true).order('name');
-    if (data) setDiscountsList(data as Discount[]);
+    if (data) {
+      const all = data as Discount[];
+      setDiscountsList(all);
+      setQuantityDiscounts(all.filter((d) => d.min_quantity != null && d.min_quantity > 0));
+    }
   }, []);
+
+  useEffect(() => { loadDiscountsList(); }, [loadDiscountsList]);
+
+  // Auto-apply / remove quantity-based discounts when cart changes
+  useEffect(() => {
+    if (!activeCheck || quantityDiscounts.length === 0 || autoApplyingRef.current) return;
+
+    const run = async () => {
+      autoApplyingRef.current = true;
+      try {
+        const currentDiscounts = usePOSStore.getState().appliedDiscounts;
+
+        for (const qd of quantityDiscounts) {
+          const minQty = qd.min_quantity!;
+          const alreadyApplied = currentDiscounts.find((ad) => ad.discount_id === qd.id);
+
+          if (qd.item_id) {
+            const ci = cart.find((c) => c.item.id === qd.item_id);
+            const qty = ci?.quantity || 0;
+            if (qty >= minQty && !alreadyApplied) {
+              await applyDiscount(qd.id, qd.name, qd.type, qd.value, 'item', qd.item_id);
+            } else if (qty < minQty && alreadyApplied) {
+              await removeDiscount(alreadyApplied.id);
+            }
+          } else {
+            const anyMatch = cart.some((c) => c.quantity >= minQty);
+            if (anyMatch && !alreadyApplied) {
+              await applyDiscount(qd.id, qd.name, qd.type, qd.value, 'check');
+            } else if (!anyMatch && alreadyApplied) {
+              await removeDiscount(alreadyApplied.id);
+            }
+          }
+        }
+      } finally {
+        autoApplyingRef.current = false;
+      }
+    };
+
+    const timer = setTimeout(run, 300);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart, quantityDiscounts, activeCheck?.id]);
 
   const handleApplyDiscount = async (d: Discount) => {
     hapticFeedback('medium');
@@ -134,6 +209,55 @@ export function CheckView({ onBack }: CheckViewProps) {
     return counts;
   }, [inventory]);
 
+  const searchPlayersForAdd = useCallback((query: string) => {
+    setPlayerSearch(query);
+    if (playerSearchTimer.current) clearTimeout(playerSearchTimer.current);
+    if (query.length < 1) { setPlayerResults([]); setIsPlayerSearching(false); return; }
+    setIsPlayerSearching(true);
+    playerSearchTimer.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .ilike('nickname', `%${query}%`)
+        .limit(20);
+      setPlayerResults((data as Profile[]) || []);
+      setIsPlayerSearching(false);
+    }, 300);
+  }, []);
+
+  const handlePlayerForTariff = (player: Profile) => {
+    hapticFeedback('light');
+    setSelectedPlayer(player);
+    setSelectedTariff(tierToTariff(player.client_tier));
+    setShowAddPlayer(false);
+    setShowPlayerTariff(true);
+  };
+
+  const handleConfirmAddPlayer = async () => {
+    if (!activeCheck || !selectedPlayer) return;
+    hapticFeedback('medium');
+    const info = VISIT_ITEMS[selectedTariff];
+    const visitItem = inventory.find((i) => i.name === info.dbName);
+    if (visitItem) addToCart(visitItem);
+
+    const currentGuests = activeCheck.guest_names ? activeCheck.guest_names.split(', ') : [];
+    if (!currentGuests.includes(selectedPlayer.nickname)) {
+      currentGuests.push(selectedPlayer.nickname);
+    }
+    const newGuestNames = currentGuests.join(', ');
+    await supabase.from('checks').update({ guest_names: newGuestNames }).eq('id', activeCheck.id);
+    usePOSStore.setState((s) => ({
+      activeCheck: s.activeCheck ? { ...s.activeCheck, guest_names: newGuestNames } : null,
+    }));
+
+    await saveCartToDb();
+
+    setShowPlayerTariff(false);
+    setSelectedPlayer(null);
+    setPlayerSearch('');
+    setPlayerResults([]);
+  };
+
   if (!activeCheck) return null;
 
   const handleAdd = (item: InventoryItem) => {
@@ -161,8 +285,6 @@ export function CheckView({ onBack }: CheckViewProps) {
     }
   };
 
-  const gameEvening = inventory.find((i) => i.name === 'Игровой вечер Резидент');
-
   const openMenu = () => {
     setMenuCategory(null);
     setMenuSearch('');
@@ -184,10 +306,18 @@ export function CheckView({ onBack }: CheckViewProps) {
           </button>
           <div className="flex-1 min-w-0">
             <h2 className="text-[13px] font-bold text-[var(--tg-theme-text-color,#e0e0e0)] truncate leading-tight">
-              {activeCheck.space ? activeCheck.space.name : activeCheck.player?.nickname || 'Без клиента'}
+              {activeCheck.space
+                ? activeCheck.space.name
+                : (() => {
+                    const names: string[] = [];
+                    if (activeCheck.player?.nickname) names.push(activeCheck.player.nickname);
+                    if (activeCheck.guest_names) names.push(...activeCheck.guest_names.split(', '));
+                    return names.length > 0 ? names.join(', ') : 'Без клиента';
+                  })()
+              }
             </h2>
             <p className="text-[10px] text-[var(--tg-theme-hint-color,#888)] leading-tight">
-              {activeCheck.space && activeCheck.player && <>{activeCheck.player.nickname} · </>}
+              {activeCheck.space && activeCheck.player && <>{activeCheck.player.nickname}{activeCheck.guest_names ? `, ${activeCheck.guest_names}` : ''} · </>}
               {new Date(activeCheck.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
               {cartCount > 0 && <> · {cartCount} поз.</>}
             </p>
@@ -248,17 +378,6 @@ export function CheckView({ onBack }: CheckViewProps) {
             className="w-full px-3 py-2 rounded-xl bg-white/4 border border-white/6 text-sm text-[var(--tg-theme-text-color,#e0e0e0)] placeholder:text-white/15 focus:border-[var(--tg-theme-button-color,#6c5ce7)]/30 focus:outline-none resize-none transition-all"
           />
         </div>
-      )}
-
-      {/* Quick add */}
-      {gameEvening && (
-        <button
-          onClick={() => { hapticFeedback('medium'); addToCart(gameEvening); }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600/10 border border-violet-500/15 text-violet-300 text-xs font-semibold active:scale-95 transition-all mb-3 w-fit"
-        >
-          <Zap className="w-3 h-3" />
-          Резидент
-        </button>
       )}
 
       {/* Cart */}
@@ -364,6 +483,13 @@ export function CheckView({ onBack }: CheckViewProps) {
             className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center active:scale-90 transition-transform shrink-0"
           >
             <Plus className="w-5 h-5 text-white/40" />
+          </button>
+          <button
+            onClick={() => { setShowAddPlayer(true); setPlayerSearch(''); setPlayerResults([]); }}
+            className="w-10 h-10 rounded-xl bg-emerald-500/8 border border-emerald-500/10 flex items-center justify-center active:scale-90 transition-transform shrink-0"
+            title="Добавить игрока"
+          >
+            <UserPlus className="w-4.5 h-4.5 text-emerald-400/70" />
           </button>
           <div className="flex-1 min-w-0">
             {cartCount > 0 && (
@@ -490,59 +616,234 @@ export function CheckView({ onBack }: CheckViewProps) {
         size="md"
       >
         <div className="space-y-3">
-          {discountsList.length === 0 ? (
-            <p className="text-xs text-[var(--tg-theme-hint-color,#888)] text-center py-6">Нет активных скидок</p>
-          ) : (
-            <>
-              <p className="text-[10px] text-white/25 font-semibold uppercase tracking-wider">На весь чек</p>
-              <div className="space-y-1">
-                {discountsList.map((d) => (
-                  <button
-                    key={d.id}
-                    onClick={() => { handleApplyDiscount(d); setShowDiscounts(false); }}
-                    className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/5 transition-colors active:scale-[0.98]"
-                  >
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${d.type === 'percentage' ? 'bg-violet-500/12' : 'bg-emerald-500/12'}`}>
-                      <Percent className={`w-3.5 h-3.5 ${d.type === 'percentage' ? 'text-violet-400' : 'text-emerald-400'}`} />
+          {(() => {
+            const manualDiscounts = discountsList.filter((d) => !d.min_quantity);
+            const qtyDiscounts = discountsList.filter((d) => d.min_quantity && d.min_quantity > 0);
+
+            return manualDiscounts.length === 0 && qtyDiscounts.length === 0 ? (
+              <p className="text-xs text-[var(--tg-theme-hint-color,#888)] text-center py-6">Нет активных скидок</p>
+            ) : (
+              <>
+                {manualDiscounts.length > 0 && (
+                  <>
+                    <p className="text-[10px] text-white/25 font-semibold uppercase tracking-wider">На весь чек</p>
+                    <div className="space-y-1">
+                      {manualDiscounts.map((d) => (
+                        <button
+                          key={d.id}
+                          onClick={() => { handleApplyDiscount(d); setShowDiscounts(false); }}
+                          className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/5 transition-colors active:scale-[0.98]"
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${d.type === 'percentage' ? 'bg-violet-500/12' : 'bg-emerald-500/12'}`}>
+                            <Percent className={`w-3.5 h-3.5 ${d.type === 'percentage' ? 'text-violet-400' : 'text-emerald-400'}`} />
+                          </div>
+                          <div className="flex-1 text-left">
+                            <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">{d.name}</p>
+                            <p className="text-[11px] text-white/25">
+                              {d.type === 'percentage' ? `-${d.value}%` : `-${d.value}₽`}
+                              {d.type === 'percentage' && subtotal > 0 && (
+                                <> ≈ -{fmtCur(Math.round(subtotal * d.value / 100))}</>
+                              )}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
                     </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">{d.name}</p>
-                      <p className="text-[11px] text-white/25">
-                        {d.type === 'percentage' ? `-${d.value}%` : `-${d.value}₽`}
-                        {d.type === 'percentage' && subtotal > 0 && (
-                          <> ≈ -{fmtCur(Math.round(subtotal * d.value / 100))}</>
-                        )}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-              {cart.length > 0 && (
-                <>
-                  <p className="text-[10px] text-white/25 font-semibold uppercase tracking-wider pt-2">На позицию</p>
-                  <div className="space-y-1 max-h-[30vh] overflow-y-auto">
-                    {cart.map((ci) => (
-                      <div key={ci.item.id} className="p-2 rounded-xl bg-white/3">
-                        <p className="text-[11px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] mb-1.5">{ci.item.name} ({fmtCur(ci.item.price * ci.quantity)})</p>
-                        <div className="flex gap-1 flex-wrap">
-                          {discountsList.map((d) => (
-                            <button
-                              key={d.id}
-                              onClick={() => { handleApplyItemDiscount(d, ci.item.id); setShowDiscounts(false); }}
-                              className="px-2 py-1 rounded-md bg-white/5 text-[10px] font-medium text-white/40 active:scale-95 transition-transform"
-                            >
-                              {d.name} ({d.type === 'percentage' ? `-${d.value}%` : `-${d.value}₽`})
-                            </button>
+                    {cart.length > 0 && (
+                      <>
+                        <p className="text-[10px] text-white/25 font-semibold uppercase tracking-wider pt-2">На позицию</p>
+                        <div className="space-y-1 max-h-[30vh] overflow-y-auto">
+                          {cart.map((ci) => (
+                            <div key={ci.item.id} className="p-2 rounded-xl bg-white/3">
+                              <p className="text-[11px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] mb-1.5">{ci.item.name} ({fmtCur(ci.item.price * ci.quantity)})</p>
+                              <div className="flex gap-1 flex-wrap">
+                                {manualDiscounts.map((d) => (
+                                  <button
+                                    key={d.id}
+                                    onClick={() => { handleApplyItemDiscount(d, ci.item.id); setShowDiscounts(false); }}
+                                    className="px-2 py-1 rounded-md bg-white/5 text-[10px] font-medium text-white/40 active:scale-95 transition-transform"
+                                  >
+                                    {d.name} ({d.type === 'percentage' ? `-${d.value}%` : `-${d.value}₽`})
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           ))}
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
-          )}
+                      </>
+                    )}
+                  </>
+                )}
+                {qtyDiscounts.length > 0 && (
+                  <>
+                    <p className="text-[10px] text-amber-400/50 font-semibold uppercase tracking-wider pt-2">Авто-скидки по количеству</p>
+                    <div className="space-y-1">
+                      {qtyDiscounts.map((d) => {
+                        const isApplied = appliedDiscounts.some((ad) => ad.discount_id === d.id);
+                        return (
+                          <div
+                            key={d.id}
+                            className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all ${
+                              isApplied ? 'bg-emerald-500/8 border-emerald-500/15' : 'bg-white/2 border-white/5'
+                            }`}
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-amber-500/12 flex items-center justify-center">
+                              <Percent className="w-3.5 h-3.5 text-amber-400" />
+                            </div>
+                            <div className="flex-1 text-left min-w-0">
+                              <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{d.name}</p>
+                              <p className="text-[10px] text-white/25">
+                                от {d.min_quantity} шт · {d.type === 'percentage' ? `-${d.value}%` : `-${d.value}₽`}
+                              </p>
+                            </div>
+                            <Badge variant={isApplied ? 'success' : 'default'} size="sm">
+                              {isApplied ? 'Активна' : 'Ожидает'}
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </>
+            );
+          })()}
         </div>
+      </Drawer>
+
+      {/* Add player search */}
+      <Drawer
+        open={showAddPlayer}
+        onClose={() => { setShowAddPlayer(false); setPlayerSearch(''); setPlayerResults([]); }}
+        title="Добавить игрока"
+        size="md"
+      >
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+            <Input
+              placeholder="Поиск по нику..."
+              value={playerSearch}
+              onChange={(e) => searchPlayersForAdd(e.target.value)}
+              className="pl-9"
+              compact
+              autoFocus
+            />
+          </div>
+
+          {isPlayerSearching && (
+            <div className="flex justify-center py-3">
+              <div className="w-5 h-5 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+
+          <div className="space-y-1 max-h-[40vh] overflow-y-auto">
+            {playerResults.map((player) => (
+              <button
+                key={player.id}
+                onClick={() => handlePlayerForTariff(player)}
+                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/5 transition-colors active:scale-[0.98]"
+              >
+                <div className="w-8 h-8 rounded-lg bg-[var(--tg-theme-button-color,#6c5ce7)]/10 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">
+                    {player.nickname?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="text-left flex-1 min-w-0">
+                  <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{player.nickname}</p>
+                  <div className="flex gap-1 mt-0.5">
+                    {player.client_tier === 'resident' && <span className="text-[10px] text-emerald-400 font-medium">Резидент</span>}
+                    {player.client_tier === 'student' && <span className="text-[10px] text-blue-400 font-medium">Студент</span>}
+                  </div>
+                </div>
+                <span className="text-xs text-white/20 tabular-nums shrink-0">
+                  {VISIT_ITEMS[tierToTariff(player.client_tier)].price}₽
+                </span>
+              </button>
+            ))}
+            {playerSearch.length > 0 && !isPlayerSearching && playerResults.length === 0 && (
+              <p className="text-xs text-center text-[var(--tg-theme-hint-color,#888)] py-6">Никого не найдено</p>
+            )}
+            {playerSearch.length === 0 && (
+              <p className="text-xs text-center text-white/20 py-6">Введите ник игрока</p>
+            )}
+          </div>
+        </div>
+      </Drawer>
+
+      {/* Player tariff selection */}
+      <Drawer
+        open={showPlayerTariff}
+        onClose={() => { setShowPlayerTariff(false); setSelectedPlayer(null); }}
+        title="Тариф игрока"
+        size="sm"
+      >
+        {selectedPlayer && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-3 rounded-xl card">
+              <div className="w-10 h-10 rounded-xl bg-[var(--tg-theme-button-color,#6c5ce7)]/10 flex items-center justify-center shrink-0">
+                <span className="text-sm font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">
+                  {selectedPlayer.nickname?.charAt(0).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-bold text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{selectedPlayer.nickname}</p>
+                {selectedPlayer.client_tier === 'resident' && <span className="text-[10px] text-emerald-400">Резидент</span>}
+                {selectedPlayer.client_tier === 'student' && <span className="text-[10px] text-blue-400">Студент</span>}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {(Object.entries(VISIT_ITEMS) as [VisitTariff, typeof VISIT_ITEMS['regular']][]).map(([key, info]) => {
+                const isSelected = selectedTariff === key;
+                const isDefault = tierToTariff(selectedPlayer.client_tier) === key;
+                return (
+                  <button
+                    key={key}
+                    onClick={() => { setSelectedTariff(key); hapticFeedback('light'); }}
+                    className={`relative flex flex-col items-center gap-1 p-3 rounded-xl border transition-all active:scale-[0.97] ${
+                      isSelected
+                        ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/10 border-[var(--tg-theme-button-color,#6c5ce7)]/30'
+                        : 'card border-white/6'
+                    }`}
+                  >
+                    {isDefault && (
+                      <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
+                        <Star className="w-2.5 h-2.5 text-white fill-white" />
+                      </div>
+                    )}
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      key === 'resident' ? 'bg-emerald-500/12' :
+                      key === 'student' ? 'bg-blue-500/12' :
+                      key === 'single_game' ? 'bg-amber-500/12' :
+                      'bg-white/6'
+                    }`}>
+                      {key === 'resident' ? <Star className="w-4 h-4 text-emerald-400" /> :
+                       key === 'student' ? <GraduationCap className="w-4 h-4 text-blue-400" /> :
+                       key === 'single_game' ? <Gamepad2 className="w-4 h-4 text-amber-400" /> :
+                       <User className="w-4 h-4 text-white/40" />}
+                    </div>
+                    <span className={`text-xs font-semibold ${
+                      isSelected ? 'text-[var(--tg-theme-button-color,#6c5ce7)]' : 'text-[var(--tg-theme-text-color,#e0e0e0)]'
+                    }`}>
+                      {info.label}
+                    </span>
+                    <span className={`text-sm font-black tabular-nums ${
+                      isSelected ? 'text-[var(--tg-theme-button-color,#6c5ce7)]' : 'text-white/50'
+                    }`}>
+                      {info.price}₽
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <Button fullWidth size="lg" onClick={handleConfirmAddPlayer}>
+              <UserPlus className="w-4 h-4" />
+              Добавить · {VISIT_ITEMS[selectedTariff].price}₽
+            </Button>
+          </div>
+        )}
       </Drawer>
 
       {/* Cancel confirmation */}

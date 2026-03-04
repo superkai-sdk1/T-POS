@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { useShiftStore } from '@/store/shift';
@@ -11,6 +11,7 @@ import {
   CalendarDays, User, Trash2,
 } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
+import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import type { CashOperation } from '@/types';
 
 export function InkassationPage() {
@@ -38,6 +39,9 @@ export function InkassationPage() {
       })) as CashOperation[]);
     }
   }, []);
+
+  const cashOperationsTables = useMemo(() => ['cash_operations'], []);
+  useOnTableChange(cashOperationsTables, loadOperations);
 
   useEffect(() => {
     loadOperations().then(() => setIsLoading(false));

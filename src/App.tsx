@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { useAuthStore } from '@/store/auth';
 import { usePOSStore } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
@@ -8,19 +8,42 @@ import { LoginPage } from '@/components/auth/LoginPage';
 import { Layout } from '@/components/Layout';
 import { OpenChecks } from '@/components/pos/OpenChecks';
 import { CheckView } from '@/components/pos/CheckView';
-import { InventoryPage } from '@/components/inventory/InventoryPage';
-import { ManagementPage } from '@/components/management/ManagementPage';
-import { DashboardPage } from '@/components/dashboard/DashboardPage';
-import { SchedulePage } from '@/components/schedule/SchedulePage';
+import { TabPanel } from '@/components/ui/TabPanel';
+
+const InventoryPage = lazy(() => import('@/components/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })));
+const ManagementPage = lazy(() => import('@/components/management/ManagementPage').then((m) => ({ default: m.ManagementPage })));
+const DashboardPage = lazy(() => import('@/components/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const SchedulePage = lazy(() => import('@/components/schedule/SchedulePage').then((m) => ({ default: m.SchedulePage })));
+
+function TabFallback() {
+  return (
+    <div className="space-y-3 animate-pulse">
+      <div className="h-8 w-40 rounded-lg bg-white/5" />
+      <div className="h-4 w-24 rounded bg-white/3" />
+      <div className="grid grid-cols-2 gap-2">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-24 rounded-xl bg-white/3" />
+        ))}
+      </div>
+      <div className="space-y-2">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-14 rounded-xl bg-white/3" />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   const user = useAuthStore((s) => s.user);
   const loadInventory = usePOSStore((s) => s.loadInventory);
+  const loadOpenChecks = usePOSStore((s) => s.loadOpenChecks);
   const loadActiveShift = useShiftStore((s) => s.loadActiveShift);
   const leaveCheck = usePOSStore((s) => s.leaveCheck);
   const activeCheck = usePOSStore((s) => s.activeCheck);
   const [activeTab, setActiveTab] = useState('pos');
   const [showCheckView, setShowCheckView] = useState(false);
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(['pos']));
 
   useRealtimeSync();
 
@@ -35,21 +58,29 @@ export default function App() {
         state.saveCartToDb();
       }
     };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', () => {
+    const handleVisibilityChange = () => {
       if (document.visibilityState === 'hidden') handleBeforeUnload();
-    });
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
+
+  const refreshProfile = useAuthStore((s) => s.refreshProfile);
 
   useEffect(() => {
     if (user) {
       loadInventory();
+      loadOpenChecks();
       loadActiveShift();
+      refreshProfile();
     }
-  }, [user, loadInventory, loadActiveShift]);
+  }, [user, loadInventory, loadOpenChecks, loadActiveShift, refreshProfile]);
+
+  const [managementScreen, setManagementScreen] = useState<string | undefined>();
 
   const handleTabChange = useCallback(async (tab: string) => {
     if (showCheckView && activeCheck) {
@@ -57,7 +88,18 @@ export default function App() {
     }
     setActiveTab(tab);
     setShowCheckView(false);
+    setVisitedTabs((prev) => new Set(prev).add(tab));
+    if (tab !== 'management') setManagementScreen(undefined);
   }, [showCheckView, activeCheck, leaveCheck]);
+
+  const handleDashboardNavigate = useCallback((target: string) => {
+    if (target.startsWith('management:')) {
+      const screen = target.split(':')[1];
+      setManagementScreen(screen);
+      setActiveTab('management');
+      setVisitedTabs((prev) => new Set(prev).add('management'));
+    }
+  }, []);
 
   const needsPinSetup = useAuthStore((s) => s.needsPinSetup);
 
@@ -67,19 +109,45 @@ export default function App() {
 
   return (
     <Layout activeTab={activeTab} onTabChange={handleTabChange}>
-      {activeTab === 'pos' && (
-        showCheckView ? (
+      <TabPanel id="pos" activeTab={activeTab}>
+        {showCheckView ? (
           <CheckView onBack={() => setShowCheckView(false)} />
         ) : (
           <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
-        )
+        )}
+      </TabPanel>
+
+      {visitedTabs.has('inventory') && (
+        <TabPanel id="inventory" activeTab={activeTab}>
+          <Suspense fallback={<TabFallback />}>
+            <InventoryPage />
+          </Suspense>
+        </TabPanel>
       )}
-      {activeTab === 'inventory' && <InventoryPage />}
-      {activeTab === 'schedule' && (
-        <SchedulePage onOpenCheck={() => { setActiveTab('pos'); setShowCheckView(true); }} />
+
+      {visitedTabs.has('schedule') && (
+        <TabPanel id="schedule" activeTab={activeTab}>
+          <Suspense fallback={<TabFallback />}>
+            <SchedulePage onOpenCheck={() => { setActiveTab('pos'); setShowCheckView(true); }} />
+          </Suspense>
+        </TabPanel>
       )}
-      {activeTab === 'management' && <ManagementPage />}
-      {activeTab === 'dashboard' && <DashboardPage />}
+
+      {visitedTabs.has('management') && (
+        <TabPanel id="management" activeTab={activeTab}>
+          <Suspense fallback={<TabFallback />}>
+            <ManagementPage initialScreen={managementScreen} />
+          </Suspense>
+        </TabPanel>
+      )}
+
+      {visitedTabs.has('dashboard') && (
+        <TabPanel id="dashboard" activeTab={activeTab}>
+          <Suspense fallback={<TabFallback />}>
+            <DashboardPage onNavigate={handleDashboardNavigate} />
+          </Suspense>
+        </TabPanel>
+      )}
     </Layout>
   );
 }

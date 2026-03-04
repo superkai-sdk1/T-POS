@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { Badge } from '@/components/ui/Badge';
 import {
   Package, Truck, ClipboardList, Users, AlertTriangle, Wallet, Star, Banknote, UtensilsCrossed, UserCircle,
-  ChevronRight, ArrowLeft, Percent,
+  ChevronRight, ArrowLeft, Percent, Info,
 } from 'lucide-react';
 import type { InventoryItem } from '@/types';
 import { SupplyPage } from '@/components/supply/SupplyPage';
@@ -15,8 +15,9 @@ import { ClientsManager } from './ClientsManager';
 import { StaffManager } from './StaffManager';
 import { DebtorsManager } from './DebtorsManager';
 import { DiscountsManager } from './DiscountsManager';
+import { AboutSystem } from './AboutSystem';
 
-type Screen = 'menu' | 'inventory' | 'supplies' | 'revision' | 'debtors' | 'staff' | 'bonus' | 'cash' | 'menuEditor' | 'clients' | 'discounts';
+type Screen = 'menu' | 'inventory' | 'supplies' | 'revision' | 'debtors' | 'staff' | 'bonus' | 'cash' | 'menuEditor' | 'clients' | 'discounts' | 'about';
 
 const categoryLabels: Record<string, string> = {
   drinks: 'Напитки', food: 'Еда', bar: 'Снеки', hookah: 'Кальяны', services: 'Услуги',
@@ -33,10 +34,22 @@ const menuItems: { id: Screen; label: string; desc: string; icon: typeof Package
   { id: 'cash', label: 'Инкассация', desc: 'Операции с наличными', icon: Banknote, color: 'bg-cyan-500/10 text-cyan-400' },
   { id: 'debtors', label: 'Должники', desc: 'Управление долгами', icon: Wallet, color: 'bg-red-500/10 text-red-400' },
   { id: 'staff', label: 'Персонал', desc: 'Сотрудники и доступы', icon: Users, color: 'bg-violet-500/10 text-violet-400' },
+  { id: 'about', label: 'О системе', desc: 'Версия, обновление', icon: Info, color: 'bg-gray-500/10 text-gray-400' },
 ];
 
-export function ManagementPage() {
-  const [screen, setScreen] = useState<Screen>('menu');
+interface ManagementPageProps {
+  initialScreen?: string;
+}
+
+export function ManagementPage({ initialScreen }: ManagementPageProps) {
+  const [screen, setScreen] = useState<Screen>((initialScreen as Screen) || 'menu');
+
+  useEffect(() => {
+    if (initialScreen && initialScreen !== screen) {
+      setScreen(initialScreen as Screen);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialScreen]);
 
   const screenLabel = menuItems.find((m) => m.id === screen)?.label || 'Управление';
 
@@ -88,6 +101,7 @@ export function ManagementPage() {
       {screen === 'discounts' && <DiscountsManager />}
       {screen === 'debtors' && <DebtorsManager />}
       {screen === 'staff' && <StaffManager />}
+      {screen === 'about' && <AboutSystem />}
     </div>
   );
 }

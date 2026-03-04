@@ -25,8 +25,6 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
       ],
   [isOwner]);
 
-  const animClass = 'tab-content-enter';
-
   return (
     <div className="min-h-screen bg-[var(--tg-theme-bg-color,#0f0f23)] flex flex-col lg:flex-row">
       {/* Desktop sidebar */}
@@ -108,12 +106,8 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           </div>
         </header>
 
-        <main
-          className="flex-1 px-4 py-3 lg:px-6 lg:py-5 max-w-5xl mx-auto w-full pb-mobile-nav"
-        >
-          <div key={activeTab} className={animClass}>
-            {children}
-          </div>
+        <main className="flex-1 px-4 py-3 lg:px-6 lg:py-5 max-w-5xl mx-auto w-full pb-mobile-nav">
+          {children}
         </main>
 
         {/* Mobile bottom nav */}

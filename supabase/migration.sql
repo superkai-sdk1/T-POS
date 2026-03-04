@@ -21,9 +21,11 @@ create table profiles (
   id uuid primary key default gen_random_uuid(),
   nickname text not null unique,
   is_resident boolean not null default false,
+  client_tier text not null default 'regular' check (client_tier in ('regular', 'resident', 'student')),
   balance numeric not null default 0,
   bonus_points numeric not null default 0,
   tg_id text unique,
+  tg_username text,
   role user_role not null default 'client',
   password_hash text,
   pin text,
@@ -541,6 +543,8 @@ create table discounts (
   type discount_type not null,
   value numeric not null,
   is_active boolean not null default true,
+  min_quantity integer default null,
+  item_id uuid references inventory(id) on delete set null default null,
   created_at timestamptz not null default now()
 );
 
@@ -576,6 +580,7 @@ create table spaces (
 );
 
 alter table checks add column space_id uuid references spaces(id);
+alter table checks add column guest_names text default null;
 
 create table bookings (
   id uuid primary key default gen_random_uuid(),
@@ -663,10 +668,16 @@ insert into menu_categories (name, slug, sort_order, icon_name) values
 -- ==============================
 -- Realtime
 -- ==============================
-alter publication supabase_realtime add table checks, check_items, inventory, shifts, cash_operations, bookings;
+alter publication supabase_realtime add table checks, check_items, check_discounts, inventory, shifts, cash_operations, bookings, profiles, events, discounts, supplies, revisions;
 alter table checks replica identity full;
 alter table check_items replica identity full;
+alter table check_discounts replica identity full;
 alter table inventory replica identity full;
 alter table shifts replica identity full;
 alter table cash_operations replica identity full;
 alter table bookings replica identity full;
+alter table profiles replica identity full;
+alter table events replica identity full;
+alter table discounts replica identity full;
+alter table supplies replica identity full;
+alter table revisions replica identity full;

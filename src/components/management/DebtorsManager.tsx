@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/Button';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
 import { AlertTriangle, TrendingDown, TrendingUp, User, Wallet } from 'lucide-react';
 import { hapticNotification } from '@/lib/telegram';
+import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import type { Profile } from '@/types';
 
 export function DebtorsManager() {
@@ -26,6 +27,9 @@ export function DebtorsManager() {
     if (data) setDebtors(data as Profile[]);
     setIsLoading(false);
   }, []);
+
+  const profilesTables = useMemo(() => ['profiles'], []);
+  useOnTableChange(profilesTables, load);
 
   useEffect(() => {
     load();

@@ -25,6 +25,8 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'checks' },
         () => debounced('checks', () => {
           usePOSStore.getState().loadOpenChecks();
+          const active = usePOSStore.getState().activeCheck;
+          if (active) usePOSStore.getState().refreshActiveCheck();
           emitTableChange('checks');
         }),
       )
@@ -33,7 +35,18 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'check_items' },
         () => debounced('check_items', () => {
           usePOSStore.getState().loadOpenChecks();
+          const active = usePOSStore.getState().activeCheck;
+          if (active) usePOSStore.getState().refreshActiveCheck();
           emitTableChange('check_items');
+        }),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'check_discounts' },
+        () => debounced('check_discounts', () => {
+          const active = usePOSStore.getState().activeCheck;
+          if (active) usePOSStore.getState().refreshActiveCheck();
+          emitTableChange('check_discounts');
         }),
       )
       .on(
@@ -64,6 +77,41 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'bookings' },
         () => debounced('bookings', () => {
           emitTableChange('bookings');
+        }),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        () => debounced('profiles', () => {
+          emitTableChange('profiles');
+        }),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'events' },
+        () => debounced('events', () => {
+          emitTableChange('events');
+        }),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'discounts' },
+        () => debounced('discounts', () => {
+          emitTableChange('discounts');
+        }),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'supplies' },
+        () => debounced('supplies', () => {
+          emitTableChange('supplies');
+        }),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'revisions' },
+        () => debounced('revisions', () => {
+          emitTableChange('revisions');
         }),
       )
       .subscribe();

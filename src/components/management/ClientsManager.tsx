@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -6,10 +6,11 @@ import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
 import {
   Search, Plus, Pencil, Trash2, Upload, X, Check, User,
-  Phone, Calendar, Star, CreditCard, UserPlus, Cake,
+  Phone, Calendar, Star, CreditCard, UserPlus, Cake, GraduationCap, Send,
 } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
-import type { Profile } from '@/types';
+import { useOnTableChange } from '@/hooks/useRealtimeSync';
+import type { Profile, ClientTier } from '@/types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
@@ -17,23 +18,25 @@ interface ClientForm {
   nickname: string;
   phone: string;
   birthday: string;
-  is_resident: boolean;
+  client_tier: ClientTier;
   photo_url: string;
+  tg_username: string;
 }
 
 const emptyForm: ClientForm = {
   nickname: '',
   phone: '',
   birthday: '',
-  is_resident: false,
+  client_tier: 'regular',
   photo_url: '',
+  tg_username: '',
 };
 
 export function ClientsManager() {
   const [clients, setClients] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'residents' | 'guests'>('all');
+  const [filter, setFilter] = useState<'all' | 'residents' | 'students' | 'guests'>('all');
 
   const [showEditor, setShowEditor] = useState(false);
   const [editingClient, setEditingClient] = useState<Profile | null>(null);
@@ -54,6 +57,9 @@ export function ClientsManager() {
     if (data) setClients(data as Profile[]);
   }, []);
 
+  const profilesTables = useMemo(() => ['profiles'], []);
+  useOnTableChange(profilesTables, loadClients);
+
   useEffect(() => {
     loadClients().then(() => setIsLoading(false));
   }, [loadClients]);
@@ -61,14 +67,16 @@ export function ClientsManager() {
   const filtered = clients.filter((c) => {
     if (search) {
       const q = search.toLowerCase();
-      return c.nickname.toLowerCase().includes(q) || (c.phone && c.phone.includes(q));
+      return c.nickname.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)) || (c.tg_username && c.tg_username.toLowerCase().includes(q));
     }
-    if (filter === 'residents') return c.is_resident;
-    if (filter === 'guests') return !c.is_resident;
+    if (filter === 'residents') return c.client_tier === 'resident';
+    if (filter === 'students') return c.client_tier === 'student';
+    if (filter === 'guests') return c.client_tier === 'regular';
     return true;
   });
 
-  const totalResidents = clients.filter((c) => c.is_resident).length;
+  const totalResidents = clients.filter((c) => c.client_tier === 'resident').length;
+  const totalStudents = clients.filter((c) => c.client_tier === 'student').length;
 
   const updateField = <K extends keyof ClientForm>(key: K, value: ClientForm[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -86,8 +94,9 @@ export function ClientsManager() {
       nickname: client.nickname,
       phone: client.phone || '',
       birthday: client.birthday || '',
-      is_resident: client.is_resident,
+      client_tier: client.client_tier || 'regular',
       photo_url: client.photo_url || '',
+      tg_username: client.tg_username || '',
     });
     setShowEditor(true);
     hapticFeedback();
@@ -117,12 +126,15 @@ export function ClientsManager() {
 
   const handleSave = async () => {
     if (!form.nickname.trim()) return;
+    const rawTg = form.tg_username.trim().replace(/^@/, '');
     const payload = {
       nickname: form.nickname.trim(),
       phone: form.phone.trim() || null,
       birthday: form.birthday || null,
-      is_resident: form.is_resident,
+      is_resident: form.client_tier === 'resident',
+      client_tier: form.client_tier,
       photo_url: form.photo_url || null,
+      tg_username: rawTg || null,
     };
 
     if (editingClient) {
@@ -211,7 +223,7 @@ export function ClientsManager() {
       {/* Filter tabs */}
       {!search && (
         <div className="flex gap-1 p-1 card rounded-xl">
-          {([['all', 'Все'], ['residents', 'Резиденты'], ['guests', 'Гости']] as const).map(([key, label]) => (
+          {([['all', 'Все'], ['residents', 'Резиденты'], ['students', 'Студенты'], ['guests', 'Гости']] as const).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setFilter(key)}
@@ -250,7 +262,11 @@ export function ClientsManager() {
                 )}
               </div>
               <div className="flex items-center gap-2 mt-0.5">
-                {client.is_resident && <Badge variant="success" size="sm">Резидент</Badge>}
+                {client.client_tier === 'resident' && <Badge variant="success" size="sm">Резидент</Badge>}
+                {client.client_tier === 'student' && <Badge variant="accent" size="sm">Студент</Badge>}
+                {client.tg_username && (
+                  <span className="text-[10px] text-sky-400/50">@{client.tg_username}</span>
+                )}
                 {client.phone && (
                   <span className="text-[10px] text-white/30">{client.phone}</span>
                 )}
@@ -301,12 +317,22 @@ export function ClientsManager() {
               </div>
               <div className="text-center">
                 <p className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{detailClient.nickname}</p>
-                {detailClient.is_resident && <Badge variant="success" size="sm">Резидент клуба</Badge>}
+                {detailClient.client_tier === 'resident' && <Badge variant="success" size="sm">Резидент</Badge>}
+                {detailClient.client_tier === 'student' && <Badge variant="accent" size="sm">Студент</Badge>}
               </div>
             </div>
 
             {/* Info cards */}
             <div className="space-y-2">
+              {detailClient.tg_username && (
+                <div className="flex items-center gap-3 p-2.5 rounded-xl card">
+                  <Send className="w-4 h-4 text-sky-400/60" />
+                  <div className="flex-1">
+                    <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">Telegram</p>
+                    <p className="text-[13px] text-sky-400">@{detailClient.tg_username}</p>
+                  </div>
+                </div>
+              )}
               {detailClient.phone && (
                 <div className="flex items-center gap-3 p-2.5 rounded-xl card">
                   <Phone className="w-4 h-4 text-white/40" />
@@ -417,6 +443,13 @@ export function ClientsManager() {
           />
 
           <Input
+            label="Telegram"
+            placeholder="@username"
+            value={form.tg_username}
+            onChange={(e) => updateField('tg_username', e.target.value)}
+          />
+
+          <Input
             label="Телефон"
             placeholder="+7 999 123-45-67"
             value={form.phone}
@@ -431,24 +464,30 @@ export function ClientsManager() {
             onChange={(e) => updateField('birthday', e.target.value)}
           />
 
-          {/* Resident toggle */}
-          <button
-            onClick={() => updateField('is_resident', !form.is_resident)}
-            className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all active:scale-[0.98] ${
-              form.is_resident
-                ? 'bg-emerald-500/10 border-emerald-500/30'
-                : 'card border-white/10'
-            }`}
-          >
-            <span className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">Резидент клуба</span>
-            <div className={`w-10 h-6 rounded-full transition-colors relative ${
-              form.is_resident ? 'bg-emerald-500' : 'bg-white/20'
-            }`}>
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
-                form.is_resident ? 'left-5' : 'left-1'
-              }`} />
+          {/* Tier selector */}
+          <div>
+            <p className="text-xs font-medium text-white/50 mb-2">Статус клиента</p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {([
+                { key: 'regular' as ClientTier, label: 'Гость', icon: User },
+                { key: 'resident' as ClientTier, label: 'Резидент', icon: Star },
+                { key: 'student' as ClientTier, label: 'Студент', icon: GraduationCap },
+              ]).map(({ key, label, icon: Icon }) => (
+                <button
+                  key={key}
+                  onClick={() => updateField('client_tier', key)}
+                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${
+                    form.client_tier === key
+                      ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/10 border border-[var(--tg-theme-button-color,#6c5ce7)]/30 text-[var(--tg-theme-button-color,#6c5ce7)]'
+                      : 'card border border-white/6 text-white/50'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {label}
+                </button>
+              ))}
             </div>
-          </button>
+          </div>
 
           <Button fullWidth size="lg" onClick={handleSave} disabled={!form.nickname.trim()}>
             <Check className="w-5 h-5" />

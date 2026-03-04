@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { TimeInput } from '@/components/ui/TimeInput';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
+import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import { useAuthStore } from '@/store/auth';
 import { usePOSStore } from '@/store/pos';
 import type { Space, Booking, BookingStatus, OffsiteEvent, EventStatus, Profile } from '@/types';
@@ -124,6 +125,9 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
       }
     }
   }, []);
+
+  const scheduleTables = useMemo(() => ['bookings', 'events'], []);
+  useOnTableChange(scheduleTables, load);
 
   useEffect(() => { load(); }, [load]);
 

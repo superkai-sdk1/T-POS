@@ -17,6 +17,8 @@ interface POSState {
   inventory: InventoryItem[];
   appliedDiscounts: CheckDiscount[];
   isLoading: boolean;
+  checksLoaded: boolean;
+  inventoryLoaded: boolean;
 
   loadInventory: () => Promise<void>;
   loadOpenChecks: () => Promise<void>;
@@ -32,6 +34,7 @@ interface POSState {
   applyDiscount: (discountId: string, discountName: string, discountType: 'percentage' | 'fixed', discountValue: number, target: 'check' | 'item', itemId?: string) => Promise<void>;
   removeDiscount: (checkDiscountId: string) => Promise<void>;
   saveCartToDb: () => Promise<void>;
+  refreshActiveCheck: () => Promise<void>;
   closeCheck: (payments: PaymentPortion[], bonusUsed?: number, spaceRental?: number) => Promise<boolean>;
   cancelCheck: () => Promise<boolean>;
   leaveCheck: () => Promise<void>;
@@ -45,6 +48,8 @@ export const usePOSStore = create<POSState>((set, get) => ({
   inventory: [],
   appliedDiscounts: [],
   isLoading: false,
+  checksLoaded: false,
+  inventoryLoaded: false,
 
   loadInventory: async () => {
     const { data } = await supabase
@@ -54,7 +59,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       .order('category')
       .order('sort_order')
       .order('name');
-    if (data) set({ inventory: data as InventoryItem[] });
+    if (data) set({ inventory: data as InventoryItem[], inventoryLoaded: true });
   },
 
   loadOpenChecks: async () => {
@@ -71,21 +76,31 @@ export const usePOSStore = create<POSState>((set, get) => ({
       space: Array.isArray(c.space) ? c.space[0] : c.space,
     })) as Check[];
 
-    const checksWithTotals = await Promise.all(
-      checks.map(async (check) => {
-        const { data: items } = await supabase
-          .from('check_items')
-          .select('quantity, price_at_time')
-          .eq('check_id', check.id);
-        const runningTotal = (items || []).reduce(
-          (sum, ci) => sum + ci.quantity * ci.price_at_time,
-          0
-        );
-        return { ...check, total_amount: runningTotal };
-      })
-    );
+    if (checks.length === 0) {
+      set({ openChecks: [], checksLoaded: true });
+      return;
+    }
 
-    set({ openChecks: checksWithTotals });
+    const checkIds = checks.map((c) => c.id);
+    const { data: allItems } = await supabase
+      .from('check_items')
+      .select('check_id, quantity, price_at_time')
+      .in('check_id', checkIds);
+
+    const totalsMap = new Map<string, number>();
+    for (const ci of allItems || []) {
+      totalsMap.set(
+        ci.check_id,
+        (totalsMap.get(ci.check_id) || 0) + ci.quantity * ci.price_at_time,
+      );
+    }
+
+    const checksWithTotals = checks.map((check) => ({
+      ...check,
+      total_amount: totalsMap.get(check.id) || 0,
+    }));
+
+    set({ openChecks: checksWithTotals, checksLoaded: true });
   },
 
   createCheck: async (playerId: string | null, spaceId?: string | null) => {
@@ -231,19 +246,62 @@ export const usePOSStore = create<POSState>((set, get) => ({
     set({ appliedDiscounts: get().appliedDiscounts.filter((d) => d.id !== checkDiscountId) });
   },
 
+  refreshActiveCheck: async () => {
+    const { activeCheck } = get();
+    if (!activeCheck) return;
+
+    const { data: checkData } = await supabase
+      .from('checks')
+      .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*)')
+      .eq('id', activeCheck.id)
+      .single();
+
+    if (!checkData) {
+      set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
+      return;
+    }
+
+    if (checkData.status === 'closed') {
+      set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
+      return;
+    }
+
+    const updatedCheck = {
+      ...checkData,
+      player: Array.isArray(checkData.player) ? checkData.player[0] : checkData.player,
+      space: Array.isArray(checkData.space) ? checkData.space[0] : checkData.space,
+    } as Check;
+
+    set({ activeCheck: updatedCheck });
+  },
+
   saveCartToDb: async () => {
     const { activeCheck, cart } = get();
     if (!activeCheck) return;
-    await supabase.from('check_items').delete().eq('check_id', activeCheck.id);
+    if (cart.length === 0) {
+      await supabase.from('check_items').delete().eq('check_id', activeCheck.id);
+      return;
+    }
     const rows = cart.map((c) => ({
       check_id: activeCheck.id,
       item_id: c.item.id,
       quantity: c.quantity,
       price_at_time: c.item.price,
     }));
-    if (rows.length > 0) {
-      await supabase.from('check_items').insert(rows);
+    const { data: inserted, error: insertError } = await supabase
+      .from('check_items')
+      .insert(rows)
+      .select('id');
+    if (insertError || !inserted) {
+      console.error('saveCartToDb insert failed, keeping old data:', insertError);
+      return;
     }
+    const newIds = inserted.map((r) => r.id);
+    await supabase
+      .from('check_items')
+      .delete()
+      .eq('check_id', activeCheck.id)
+      .not('id', 'in', `(${newIds.join(',')})`);
   },
 
   cancelCheck: async () => {
@@ -307,20 +365,6 @@ export const usePOSStore = create<POSState>((set, get) => ({
         .filter((p) => p.method === 'debt')
         .reduce((s, p) => s + p.amount, 0);
 
-      if (debtAmount > 0) {
-        const { data: player } = await supabase
-          .from('profiles')
-          .select('balance')
-          .eq('id', activeCheck.player_id)
-          .single();
-        if (player) {
-          await supabase
-            .from('profiles')
-            .update({ balance: player.balance - debtAmount })
-            .eq('id', activeCheck.player_id);
-        }
-      }
-
       const { data: settingsRows } = await supabase.from('app_settings').select('*');
       const cfg: Record<string, string> = {};
       if (settingsRows) for (const r of settingsRows) cfg[r.key] = r.value;
@@ -335,16 +379,25 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
       const { data: player } = await supabase
         .from('profiles')
-        .select('bonus_points')
+        .select('balance, bonus_points')
         .eq('id', activeCheck.player_id)
         .single();
 
       if (player) {
+        const updates: Record<string, number> = {};
+        if (debtAmount > 0) {
+          updates.balance = player.balance - debtAmount;
+        }
         const newPoints = Math.max(0, player.bonus_points - bonusUsed) + bonusAccrual;
-        await supabase
-          .from('profiles')
-          .update({ bonus_points: newPoints })
-          .eq('id', activeCheck.player_id);
+        if (bonusUsed > 0 || bonusAccrual > 0) {
+          updates.bonus_points = newPoints;
+        }
+        if (Object.keys(updates).length > 0) {
+          await supabase
+            .from('profiles')
+            .update(updates)
+            .eq('id', activeCheck.player_id);
+        }
       }
 
       if (bonusUsed > 0) {
@@ -382,18 +435,25 @@ export const usePOSStore = create<POSState>((set, get) => ({
       created_by: user?.id,
     });
 
-    for (const c of cart) {
-      const { data: fresh } = await supabase
-        .from('inventory')
-        .select('stock_quantity')
-        .eq('id', c.item.id)
-        .single();
-      if (fresh && fresh.stock_quantity > 0) {
-        await supabase
-          .from('inventory')
-          .update({ stock_quantity: Math.max(0, fresh.stock_quantity - c.quantity) })
-          .eq('id', c.item.id);
-      }
+    const itemIds = cart.map((c) => c.item.id);
+    const { data: freshItems } = await supabase
+      .from('inventory')
+      .select('id, stock_quantity')
+      .in('id', itemIds);
+    if (freshItems) {
+      const stockMap = new Map(freshItems.map((i) => [i.id, i.stock_quantity as number]));
+      await Promise.all(
+        cart.map((c) => {
+          const current = stockMap.get(c.item.id) ?? 0;
+          if (current > 0) {
+            return supabase
+              .from('inventory')
+              .update({ stock_quantity: Math.max(0, current - c.quantity) })
+              .eq('id', c.item.id);
+          }
+          return Promise.resolve();
+        }),
+      );
     }
 
     if (activeCheck.space_id) {

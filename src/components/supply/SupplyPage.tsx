@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/Button';
@@ -10,6 +10,7 @@ import {
   Pencil, CalendarDays, User, ChevronRight, AlertTriangle,
 } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
+import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import type { Supply, SupplyItem, InventoryItem } from '@/types';
 
 interface DraftItem {
@@ -67,6 +68,9 @@ export function SupplyPage() {
       .order('name');
     if (data) setInventory(data as InventoryItem[]);
   }, []);
+
+  const suppliesTables = useMemo(() => ['supplies'], []);
+  useOnTableChange(suppliesTables, loadSupplies);
 
   useEffect(() => {
     Promise.all([loadSupplies(), loadInventory()]).then(() => setIsLoading(false));

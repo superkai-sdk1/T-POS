@@ -1,11 +1,12 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
-import { UserPlus, Users, Pencil, Trash2, Eye, EyeOff, Search } from 'lucide-react';
+import { UserPlus, Users, Pencil, Trash2, Eye, EyeOff, Search, Crown } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
+import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import type { Profile } from '@/types';
 
 export function StaffManager() {
@@ -25,12 +26,15 @@ export function StaffManager() {
     const { data } = await supabase
       .from('profiles')
       .select('*')
-      .eq('role', 'staff')
-      .not('password_hash', 'is', null)
+      .in('role', ['staff', 'owner'])
+      .order('role')
       .order('nickname');
     if (data) setStaff(data as Profile[]);
     setIsLoading(false);
   }, []);
+
+  const profilesTables = useMemo(() => ['profiles'], []);
+  useOnTableChange(profilesTables, loadStaff);
 
   useEffect(() => {
     loadStaff();
@@ -147,7 +151,9 @@ export function StaffManager() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">{staff.length} сотрудников</p>
+        <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">
+          {staff.filter((s) => s.role === 'owner').length} владельцев · {staff.filter((s) => s.role === 'staff').length} сотрудников
+        </p>
         <Button size="sm" onClick={() => { resetForm(); setShowAdd(true); }}>
           <UserPlus className="w-4 h-4" />
           Добавить
@@ -176,27 +182,41 @@ export function StaffManager() {
       )}
 
       <div className="space-y-2">
-        {filtered.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => openEdit(p)}
-            className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
-          >
-            <div className="w-10 h-10 rounded-xl bg-[var(--tg-theme-button-color,#6c5ce7)]/15 flex items-center justify-center shrink-0">
-              <span className="text-sm font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">
-                {p.nickname.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div className="text-left flex-1 min-w-0">
-              <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{p.nickname}</p>
-              <div className="flex gap-1.5 mt-0.5">
-                <Badge size="sm">Сотрудник</Badge>
-                {p.password_hash && <Badge variant="success" size="sm">Пароль задан</Badge>}
+        {filtered.map((p) => {
+          const isOwner = p.role === 'owner';
+          return (
+            <button
+              key={p.id}
+              onClick={() => openEdit(p)}
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                isOwner ? 'bg-amber-500/15' : 'bg-[var(--tg-theme-button-color,#6c5ce7)]/15'
+              }`}>
+                {isOwner ? (
+                  <Crown className="w-4.5 h-4.5 text-amber-400" />
+                ) : (
+                  <span className="text-sm font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">
+                    {p.nickname.charAt(0).toUpperCase()}
+                  </span>
+                )}
               </div>
-            </div>
-            <Pencil className="w-4 h-4 text-white/20 shrink-0" />
-          </button>
-        ))}
+              <div className="text-left flex-1 min-w-0">
+                <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{p.nickname}</p>
+                <div className="flex gap-1.5 mt-0.5">
+                  {isOwner ? (
+                    <Badge variant="warning" size="sm">Владелец</Badge>
+                  ) : (
+                    <Badge size="sm">Сотрудник</Badge>
+                  )}
+                  {p.tg_id && <Badge variant="accent" size="sm">TG</Badge>}
+                  {p.password_hash && <Badge variant="success" size="sm">Пароль</Badge>}
+                </div>
+              </div>
+              <Pencil className="w-4 h-4 text-white/20 shrink-0" />
+            </button>
+          );
+        })}
       </div>
 
       {/* Add staff drawer */}
@@ -238,6 +258,12 @@ export function StaffManager() {
       {/* Edit staff drawer */}
       <Drawer open={showEdit} onClose={() => { setShowEdit(false); resetForm(); }} title="Редактирование" size="sm">
         <div className="space-y-4">
+          {selected?.role === 'owner' && (
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/8 border border-amber-500/12">
+              <Crown className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="text-xs font-semibold text-amber-400">Владелец системы</span>
+            </div>
+          )}
           <Input
             label="Никнейм"
             value={nickname}
@@ -267,9 +293,11 @@ export function StaffManager() {
             <Button fullWidth onClick={handleSaveEdit}>
               Сохранить
             </Button>
-            <Button variant="danger" onClick={handleDelete}>
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            {selected?.role !== 'owner' && (
+              <Button variant="danger" onClick={handleDelete}>
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            )}
           </div>
         </div>
       </Drawer>

@@ -19,6 +19,7 @@ interface AuthState {
   logout: () => void;
   forgetUser: () => void;
   isOwner: () => boolean;
+  refreshProfile: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -154,6 +155,19 @@ export const useAuthStore = create<AuthState>()(
       }),
 
       isOwner: () => get().user?.role === 'owner',
+
+      refreshProfile: async () => {
+        const { user } = get();
+        if (!user) return;
+        const { data } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        if (data) {
+          set({ user: data as Profile });
+        }
+      },
     }),
     {
       name: 'tpos-auth',
