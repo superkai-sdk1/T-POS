@@ -27,9 +27,13 @@ export function Drawer({ open, onClose, title, children }: DrawerProps) {
   }, [open]);
 
   const handleClose = useCallback(() => {
+    if (closing) return;
     setClosing(true);
-    setTimeout(onClose, 250);
-  }, [onClose]);
+    setTimeout(() => {
+      onClose();
+      setClosing(false);
+    }, 250);
+  }, [onClose, closing]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const el = contentRef.current;
@@ -66,6 +70,7 @@ export function Drawer({ open, onClose, title, children }: DrawerProps) {
         onClick={handleClose}
       />
       <div
+        onClick={(e) => e.stopPropagation()}
         className={`relative w-full max-h-[85vh] lg:max-h-[80vh] lg:max-w-lg lg:rounded-2xl rounded-t-3xl overflow-hidden flex flex-col ${
           closing ? 'animate-slide-down' : 'lg:animate-pop-in animate-slide-up'
         }`}

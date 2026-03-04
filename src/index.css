@@ -137,6 +137,10 @@ input[type="number"] {
   animation: slide-up 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.animate-slide-down {
+  animation: slide-down 0.25s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
 .animate-pop-in {
   animation: pop-in 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
