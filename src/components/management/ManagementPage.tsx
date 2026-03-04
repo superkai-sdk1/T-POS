@@ -59,21 +59,17 @@ export function ManagementPage({ initialScreen }: ManagementPageProps) {
     return (
       <div className="space-y-3">
         <h2 className="text-lg font-bold text-[var(--c-text)]">Управление</h2>
-        <div className="space-y-1 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-2 lg:space-y-0 stagger-children">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 stagger-children">
           {menuItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setScreen(item.id)}
-              className="w-full flex items-center gap-2.5 p-3 rounded-xl card-interactive"
+              className="flex flex-col items-center gap-1.5 p-3 rounded-xl card-interactive aspect-square justify-center"
             >
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${item.color.split(' ')[0]}`}>
-                <item.icon className={`w-4 h-4 ${item.color.split(' ')[1]}`} />
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${item.color.split(' ')[0]}`}>
+                <item.icon className={`w-5 h-5 ${item.color.split(' ')[1]}`} />
               </div>
-              <div className="flex-1 text-left min-w-0">
-                <p className="font-semibold text-[13px] text-[var(--c-text)]">{item.label}</p>
-                <p className="text-[10px] text-white/25">{item.desc}</p>
-              </div>
-              <ChevronRight className="w-3.5 h-3.5 text-white/12 shrink-0" />
+              <p className="font-semibold text-[11px] text-[var(--c-text)] text-center leading-tight">{item.label}</p>
             </button>
           ))}
         </div>
