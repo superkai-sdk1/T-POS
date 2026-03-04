@@ -12,7 +12,7 @@ create type user_role as enum ('owner', 'staff', 'client');
 create type item_category as enum ('drinks', 'food', 'bar', 'hookah', 'services');
 create type check_status as enum ('open', 'closed');
 create type payment_method as enum ('cash', 'card', 'debt', 'bonus');
-create type transaction_type as enum ('supply', 'write_off', 'sale', 'revision', 'bonus_accrual', 'bonus_spend', 'cash_operation');
+create type transaction_type as enum ('supply', 'write_off', 'sale', 'revision', 'bonus_accrual', 'bonus_spend', 'cash_operation', 'debt_adjustment');
 
 -- ==================
 -- profiles
@@ -191,6 +191,7 @@ create policy "inventory_update" on inventory for update to anon, authenticated 
 create policy "checks_select" on checks for select to anon, authenticated using (true);
 create policy "checks_insert" on checks for insert to anon, authenticated with check (true);
 create policy "checks_update" on checks for update to anon, authenticated using (true);
+create policy "checks_delete" on checks for delete to anon, authenticated using (true);
 
 create policy "check_items_select" on check_items for select to anon, authenticated using (true);
 create policy "check_items_insert" on check_items for insert to anon, authenticated with check (true);

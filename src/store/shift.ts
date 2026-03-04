@@ -159,6 +159,7 @@ export const useShiftStore = create<ShiftState>()(
             player_nickname: nickname,
             total_amount: c.total_amount,
             payment_method: c.payment_method,
+            bonus_used: c.bonus_used || 0,
             closed_at: c.closed_at,
             items: checkItems.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price })),
           });

@@ -1,12 +1,16 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useShiftStore } from '@/store/shift';
+import { useSwipe } from '@/hooks/useSwipe';
 import { Badge } from '@/components/ui/Badge';
 import {
   TrendingUp, Users, AlertCircle, Clock, Receipt,
   Banknote, CreditCard, HandCoins, ShoppingBag,
   Crown, BarChart3, CalendarDays, Hash,
+  ChevronDown, ChevronLeft, ChevronRight, Star,
 } from 'lucide-react';
-import type { Transaction, Profile } from '@/types';
+import type { Transaction, Profile, Shift } from '@/types';
+import type { ShiftAnalytics as SA } from '@/store/shift';
 
 interface ClosedCheck {
   id: string;
@@ -31,7 +35,11 @@ interface DailyRevenue {
   count: number;
 }
 
-type TabId = 'overview' | 'items' | 'players' | 'log';
+type TabId = 'overview' | 'checks' | 'items' | 'players' | 'log';
+
+const pmLabels: Record<string, string> = {
+  cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы',
+};
 
 export function DashboardPage() {
   const [tab, setTab] = useState<TabId>('overview');
@@ -42,6 +50,14 @@ export function DashboardPage() {
   const [txLimit, setTxLimit] = useState(50);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [selectedShiftIdx, setSelectedShiftIdx] = useState(0);
+  const [shiftAnalytics, setShiftAnalytics] = useState<SA | null>(null);
+  const [shiftsLoading, setShiftsLoading] = useState(false);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [expandedCheckId, setExpandedCheckId] = useState<string | null>(null);
+  const { getShiftAnalytics } = useShiftStore();
+
   useEffect(() => {
     loadAll();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -51,6 +67,41 @@ export function DashboardPage() {
     if (tab === 'log') loadTransactions();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, txLimit]);
+
+  useEffect(() => {
+    if (tab === 'checks' && shifts.length === 0) loadShifts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
+  const loadShifts = useCallback(async () => {
+    setShiftsLoading(true);
+    const { data } = await supabase
+      .from('shifts')
+      .select('*')
+      .eq('status', 'closed')
+      .order('closed_at', { ascending: false })
+      .limit(100);
+    if (data && data.length > 0) {
+      setShifts(data as Shift[]);
+      setSelectedShiftIdx(0);
+    }
+    setShiftsLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (shifts.length > 0 && tab === 'checks') {
+      loadShiftAnalytics(shifts[selectedShiftIdx].id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedShiftIdx, shifts]);
+
+  const loadShiftAnalytics = async (shiftId: string) => {
+    setAnalyticsLoading(true);
+    setExpandedCheckId(null);
+    const data = await getShiftAnalytics(shiftId);
+    setShiftAnalytics(data);
+    setAnalyticsLoading(false);
+  };
 
   const loadAll = async () => {
     setIsLoading(true);
@@ -234,10 +285,40 @@ export function DashboardPage() {
 
   const tabs: { id: TabId; label: string; icon: typeof BarChart3 }[] = [
     { id: 'overview', label: 'Обзор', icon: BarChart3 },
+    { id: 'checks', label: 'Чеки', icon: Receipt },
     { id: 'items', label: 'Товары', icon: ShoppingBag },
     { id: 'players', label: 'Игроки', icon: Users },
     { id: 'log', label: 'Лог', icon: Clock },
   ];
+
+  const tabIdx = tabs.findIndex((t) => t.id === tab);
+  const tabSwipe = useSwipe({
+    onSwipeLeft: () => { if (tabIdx < tabs.length - 1) setTab(tabs[tabIdx + 1].id); },
+    onSwipeRight: () => { if (tabIdx > 0) setTab(tabs[tabIdx - 1].id); },
+    threshold: 50,
+  });
+
+  const selectedShift = shifts[selectedShiftIdx] || null;
+
+  const shiftSummary = useMemo(() => {
+    if (!shiftAnalytics) return null;
+    let cash = 0, card = 0, debt = 0, bonus = 0;
+    for (const c of shiftAnalytics.checks) {
+      const amt = c.total_amount || 0;
+      bonus += c.bonus_used || 0;
+      if (c.payment_method === 'cash') cash += amt;
+      else if (c.payment_method === 'card') card += amt;
+      else if (c.payment_method === 'debt') debt += amt;
+      else if (c.payment_method === 'bonus') cash += amt;
+    }
+    const total = cash + card + debt + bonus;
+    return { total, cash, card, debt, bonus };
+  }, [shiftAnalytics]);
+
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  const fmtTime = (d: string | null) =>
+    d ? new Date(d).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '-';
 
   if (isLoading) {
     return (
@@ -249,20 +330,20 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" {...tabSwipe}>
       {/* Tab switcher */}
-      <div className="flex gap-1 p-1 rounded-xl bg-white/5">
+      <div className="flex gap-1 p-1 rounded-2xl bg-white/4 border border-white/5 overflow-x-auto scrollbar-none">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-[11px] font-semibold transition-all duration-200 whitespace-nowrap min-w-0 ${
               tab === t.id
-                ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white'
-                : 'text-[var(--tg-theme-hint-color,#888)]'
+                ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white shadow-md shadow-[var(--tg-theme-button-color,#6c5ce7)]/20'
+                : 'text-[var(--tg-theme-hint-color,#888)] hover:text-white/60'
             }`}
           >
-            <t.icon className="w-3.5 h-3.5" />
+            <t.icon className="w-3.5 h-3.5 shrink-0" />
             {t.label}
           </button>
         ))}
@@ -271,7 +352,6 @@ export function DashboardPage() {
       {/* OVERVIEW TAB */}
       {tab === 'overview' && (
         <div className="space-y-5">
-          {/* Hero stat */}
           <div className="p-5 rounded-2xl bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)]/20 to-purple-900/10 border border-[var(--tg-theme-button-color,#6c5ce7)]/20">
             <div className="flex items-center justify-between mb-1">
               <span className="text-sm text-white/50">Выручка за месяц</span>
@@ -285,7 +365,6 @@ export function DashboardPage() {
             <p className="text-xs text-white/30 mt-1">{stats.monthCount} чеков · средний {fmtCur(stats.avgCheck)}</p>
           </div>
 
-          {/* Quick stats */}
           <div className="grid grid-cols-3 gap-2">
             {[
               { label: 'Сегодня', value: stats.today, sub: `${stats.todayCount} чек.`, icon: CalendarDays, color: 'text-emerald-400' },
@@ -300,7 +379,6 @@ export function DashboardPage() {
             ))}
           </div>
 
-          {/* 7-day chart */}
           <div>
             <h3 className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] mb-3">Выручка за 7 дней</h3>
             <div className="flex items-end gap-1.5 h-32">
@@ -321,7 +399,6 @@ export function DashboardPage() {
             </div>
           </div>
 
-          {/* Payment methods */}
           <div>
             <h3 className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] mb-3">Способы оплаты</h3>
             <div className="space-y-2.5">
@@ -351,7 +428,6 @@ export function DashboardPage() {
             </div>
           </div>
 
-          {/* Peak hours */}
           {peakHours.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] mb-3">Популярные часы</h3>
@@ -371,7 +447,6 @@ export function DashboardPage() {
             </div>
           )}
 
-          {/* Category breakdown */}
           {categoryBreakdown.length > 0 && (
             <div>
               <h3 className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] mb-3">По категориям</h3>
@@ -398,7 +473,6 @@ export function DashboardPage() {
             </div>
           )}
 
-          {/* Debtors */}
           <div>
             <div className="flex items-center gap-2 mb-3">
               <AlertCircle className="w-4 h-4 text-red-400" />
@@ -422,6 +496,165 @@ export function DashboardPage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* CHECKS TAB */}
+      {tab === 'checks' && (
+        <div className="space-y-4">
+          {shiftsLoading ? (
+            <div className="text-center py-12">
+              <div className="w-6 h-6 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin mx-auto" />
+            </div>
+          ) : shifts.length === 0 ? (
+            <p className="text-sm text-[var(--tg-theme-hint-color,#888)] text-center py-12">Нет закрытых смен</p>
+          ) : (
+            <>
+              {/* Shift selector */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSelectedShiftIdx((i) => Math.min(i + 1, shifts.length - 1))}
+                  disabled={selectedShiftIdx >= shifts.length - 1}
+                  className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all"
+                >
+                  <ChevronLeft className="w-4 h-4 text-[var(--tg-theme-text-color,#e0e0e0)]" />
+                </button>
+                <div className="flex-1 text-center">
+                  {selectedShift && (
+                    <>
+                      <p className="text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
+                        {fmtDate(selectedShift.opened_at)}
+                      </p>
+                      <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">
+                        {fmtTime(selectedShift.opened_at)} — {fmtTime(selectedShift.closed_at)}
+                      </p>
+                    </>
+                  )}
+                </div>
+                <button
+                  onClick={() => setSelectedShiftIdx((i) => Math.max(i - 1, 0))}
+                  disabled={selectedShiftIdx <= 0}
+                  className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all"
+                >
+                  <ChevronRight className="w-4 h-4 text-[var(--tg-theme-text-color,#e0e0e0)]" />
+                </button>
+              </div>
+
+              {analyticsLoading ? (
+                <div className="text-center py-10">
+                  <div className="w-6 h-6 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin mx-auto" />
+                </div>
+              ) : shiftAnalytics ? (
+                <>
+                  {/* Summary bar */}
+                  {shiftSummary && (
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)]/15 to-emerald-500/5 border border-white/5">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs text-white/40">Итого за смену</span>
+                        <span className="text-xl font-black text-[var(--tg-theme-text-color,#e0e0e0)]">
+                          {fmtCur(shiftSummary.total)}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { label: 'Наличные', value: shiftSummary.cash, icon: Banknote, color: 'text-emerald-400' },
+                          { label: 'Карта', value: shiftSummary.card, icon: CreditCard, color: 'text-blue-400' },
+                          { label: 'В долг', value: shiftSummary.debt, icon: HandCoins, color: 'text-red-400' },
+                          { label: 'Бонусы', value: shiftSummary.bonus, icon: Star, color: 'text-amber-400' },
+                        ].filter((s) => s.value > 0).map((s) => (
+                          <div key={s.label} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                            <s.icon className={`w-3.5 h-3.5 ${s.color} shrink-0`} />
+                            <span className="text-xs text-white/50">{s.label}</span>
+                            <span className="ml-auto text-xs font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{fmtCur(s.value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-white/25 mt-2 text-center">
+                        {shiftAnalytics.totalChecks} чеков · ср. {fmtCur(shiftAnalytics.avgCheck)}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Check cards */}
+                  <div className="space-y-2">
+                    {shiftAnalytics.checks.length === 0 ? (
+                      <p className="text-sm text-white/30 text-center py-8">Нет чеков за эту смену</p>
+                    ) : (
+                      shiftAnalytics.checks.map((c) => {
+                        const isExpanded = expandedCheckId === c.id;
+                        const originalTotal = c.total_amount + (c.bonus_used || 0);
+                        return (
+                          <button
+                            key={c.id}
+                            onClick={() => setExpandedCheckId(isExpanded ? null : c.id)}
+                            className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/8 transition-all active:scale-[0.99]"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span className="font-medium text-sm text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
+                                  {c.player_nickname}
+                                </span>
+                                <span className="text-[10px] text-white/30">{fmtTime(c.closed_at)}</span>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {c.payment_method && (
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                                    c.payment_method === 'cash' ? 'bg-emerald-500/15 text-emerald-400' :
+                                    c.payment_method === 'card' ? 'bg-blue-500/15 text-blue-400' :
+                                    c.payment_method === 'debt' ? 'bg-red-500/15 text-red-400' :
+                                    'bg-amber-500/15 text-amber-400'
+                                  }`}>
+                                    {pmLabels[c.payment_method] || c.payment_method}
+                                  </span>
+                                )}
+                                <span className="font-bold text-sm text-[var(--tg-theme-button-color,#6c5ce7)]">
+                                  {fmtCur(c.bonus_used > 0 ? originalTotal : c.total_amount)}
+                                </span>
+                                <ChevronDown className={`w-4 h-4 text-white/20 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                              </div>
+                            </div>
+
+                            {isExpanded && (
+                              <div className="mt-3 pt-3 border-t border-white/5 space-y-1.5">
+                                {c.items.map((item, idx) => (
+                                  <div key={idx} className="flex justify-between text-xs">
+                                    <span className="text-white/50">{item.name} × {item.quantity}</span>
+                                    <span className="text-white/40">{fmtCur(item.quantity * item.price)}</span>
+                                  </div>
+                                ))}
+                                <div className="pt-2 border-t border-white/5 space-y-1">
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-white/40">Сумма</span>
+                                    <span className="font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">{fmtCur(originalTotal)}</span>
+                                  </div>
+                                  {c.bonus_used > 0 && (
+                                    <>
+                                      <div className="flex justify-between text-xs">
+                                        <span className="text-amber-400/70">Оплачено бонусами</span>
+                                        <span className="font-semibold text-amber-400">-{fmtCur(c.bonus_used)}</span>
+                                      </div>
+                                      <div className="flex justify-between text-xs">
+                                        <span className="text-white/40">К оплате ({pmLabels[c.payment_method || ''] || ''})</span>
+                                        <span className="font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">{fmtCur(c.total_amount)}</span>
+                                      </div>
+                                    </>
+                                  )}
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-white/40">Способ оплаты</span>
+                                    <span className="text-[var(--tg-theme-text-color,#e0e0e0)]">{pmLabels[c.payment_method || ''] || c.payment_method || '-'}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </>
+              ) : null}
+            </>
+          )}
         </div>
       )}
 
@@ -534,6 +767,7 @@ export function DashboardPage() {
                   bonus_accrual: { label: 'Бонус+', variant: 'success' },
                   bonus_spend: { label: 'Бонус−', variant: 'warning' },
                   cash_operation: { label: 'Касса', variant: 'default' },
+                  debt_adjustment: { label: 'Долг', variant: 'warning' },
                 };
                 const meta = typeMap[tx.type] || { label: tx.type, variant: 'default' as const };
                 return (

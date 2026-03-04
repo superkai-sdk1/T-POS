@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { usePOSStore } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
 import { Button } from '@/components/ui/Button';
@@ -26,7 +26,6 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const [players, setPlayers] = useState<Profile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // New client form
   const [newNickname, setNewNickname] = useState('');
   const [newIsResident, setNewIsResident] = useState(false);
   const [createError, setCreateError] = useState('');
@@ -35,21 +34,27 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     loadOpenChecks();
   }, [loadOpenChecks]);
 
-  const searchPlayers = async (query: string) => {
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchPlayers = useCallback((query: string) => {
     setSearchQuery(query);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     if (query.length < 1) {
       setPlayers([]);
+      setIsSearching(false);
       return;
     }
     setIsSearching(true);
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .ilike('nickname', `%${query}%`)
-      .limit(20);
-    setPlayers((data as Profile[]) || []);
-    setIsSearching(false);
-  };
+    searchTimerRef.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .ilike('nickname', `%${query}%`)
+        .limit(20);
+      setPlayers((data as Profile[]) || []);
+      setIsSearching(false);
+    }, 300);
+  }, []);
 
   const handleCreateCheck = async (playerId: string | null) => {
     hapticFeedback('medium');
@@ -59,6 +64,8 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
       setSearchQuery('');
       setPlayers([]);
       onSelectCheck();
+    } else {
+      hapticNotification('error');
     }
   };
 
@@ -102,13 +109,14 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     setShowCreateClient(false);
     setNewNickname('');
     setNewIsResident(false);
-
-    // Open check for the new client right away
     await handleCreateCheck(data.id);
   };
 
   const formatTime = (dateStr: string) =>
     new Date(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+  const fmtCur = (n: number) =>
+    new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
 
   return (
     <div className="space-y-4">
@@ -124,49 +132,53 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         <div className="flex gap-2">
           <button
             onClick={() => setShowHistory(true)}
-            className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors active:scale-95"
+            className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-white/10 transition-all active:scale-90"
           >
             <History className="w-4 h-4 text-[var(--tg-theme-hint-color,#888)]" />
           </button>
-          <Button size="lg" onClick={() => setShowNewCheck(true)} disabled={!activeShift}>
-            <Plus className="w-5 h-5" />
+          <Button size="md" onClick={() => setShowNewCheck(true)} disabled={!activeShift}>
+            <Plus className="w-4 h-4" />
             Новый чек
           </Button>
         </div>
       </div>
 
       {openChecks.length === 0 ? (
-        <div className="text-center py-16">
-          <Receipt className="w-20 h-20 text-white/5 mx-auto mb-4" />
-          <p className="text-[var(--tg-theme-hint-color,#888)] text-lg">Нет открытых чеков</p>
+        <div className="text-center py-16 animate-fade-in">
+          <div className="w-20 h-20 rounded-3xl bg-white/3 flex items-center justify-center mx-auto mb-4">
+            <Receipt className="w-10 h-10 text-white/8" />
+          </div>
+          <p className="text-[var(--tg-theme-hint-color,#888)] text-base font-medium">Нет открытых чеков</p>
           <p className="text-sm text-white/20 mt-1">
-            {activeShift ? 'Нажмите «Новый чек» чтобы начать' : 'Откройте смену чтобы начать работу'}
+            {activeShift ? 'Нажмите «Новый чек» чтобы начать' : 'Откройте смену чтобы начать'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 stagger-children">
           {openChecks.map((check) => (
             <button
               key={check.id}
               onClick={() => handleSelectCheck(check)}
-              className="text-left p-4 rounded-2xl bg-white/5 hover:bg-white/10 transition-all active:scale-[0.97] border border-white/5 flex flex-col gap-3"
+              className="text-left p-3.5 rounded-2xl glass hover:bg-white/6 transition-all duration-200 active:scale-[0.97] flex flex-col gap-2.5"
             >
-              <div className="flex items-center gap-2">
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                  check.player ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/20' : 'bg-white/10'
+              <div className="flex items-center gap-2.5">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                  check.player
+                    ? 'bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)]/25 to-purple-600/10'
+                    : 'bg-white/8'
                 }`}>
                   {check.player ? (
                     <User className="w-4 h-4 text-[var(--tg-theme-button-color,#6c5ce7)]" />
                   ) : (
-                    <UserX className="w-4 h-4 text-white/40" />
+                    <UserX className="w-4 h-4 text-white/30" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-sm text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
+                  <p className="font-semibold text-sm text-[var(--tg-theme-text-color,#e0e0e0)] truncate leading-tight">
                     {check.player?.nickname || 'Без клиента'}
                   </p>
                   {check.note && (
-                    <p className="text-[10px] text-white/30 truncate">{check.note}</p>
+                    <p className="text-[10px] text-white/25 truncate mt-0.5">{check.note}</p>
                   )}
                 </div>
               </div>
@@ -174,11 +186,11 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               <div className="flex items-end justify-between">
                 <div className="flex items-center gap-1 text-[var(--tg-theme-hint-color,#888)]">
                   <Clock className="w-3 h-3" />
-                  <span className="text-xs">{formatTime(check.created_at)}</span>
+                  <span className="text-[11px]">{formatTime(check.created_at)}</span>
                 </div>
                 {check.total_amount > 0 ? (
-                  <span className="text-lg font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">
-                    {check.total_amount}₽
+                  <span className="text-lg font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">
+                    {fmtCur(check.total_amount)}
                   </span>
                 ) : (
                   <Badge variant="warning">Пусто</Badge>
@@ -189,7 +201,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         </div>
       )}
 
-      {/* Shift history drawer */}
+      {/* Shift history */}
       <Drawer
         open={showHistory}
         onClose={() => setShowHistory(false)}
@@ -198,39 +210,42 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         <ShiftHistory />
       </Drawer>
 
-      {/* New check drawer */}
+      {/* New check */}
       <Drawer
         open={showNewCheck}
         onClose={() => { setShowNewCheck(false); setSearchQuery(''); setPlayers([]); }}
         title="Новый чек"
       >
         <div className="space-y-4">
-          {/* Quick actions */}
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => handleCreateCheck(null)}
-              className="flex items-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all active:scale-[0.98]"
+              className="flex items-center gap-2.5 p-3.5 rounded-2xl glass hover:bg-white/8 transition-all active:scale-[0.97]"
             >
-              <UserX className="w-5 h-5 text-white/40" />
-              <span className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">Без клиента</span>
+              <div className="w-10 h-10 rounded-xl bg-white/8 flex items-center justify-center">
+                <UserX className="w-5 h-5 text-white/40" />
+              </div>
+              <span className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">Без клиента</span>
             </button>
             <button
               onClick={() => { setShowNewCheck(false); setShowCreateClient(true); }}
-              className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 transition-all active:scale-[0.98]"
+              className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-emerald-500/8 border border-emerald-500/15 hover:bg-emerald-500/12 transition-all active:scale-[0.97]"
             >
-              <UserPlus className="w-5 h-5 text-emerald-400" />
-              <span className="text-sm font-medium text-emerald-400">Новый клиент</span>
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+                <UserPlus className="w-5 h-5 text-emerald-400" />
+              </div>
+              <span className="text-sm font-semibold text-emerald-400">Новый</span>
             </button>
           </div>
 
           <div className="relative flex items-center">
-            <div className="flex-1 h-px bg-white/10" />
-            <span className="px-3 text-[10px] text-white/30 font-medium">ИЛИ ВЫБЕРИТЕ</span>
-            <div className="flex-1 h-px bg-white/10" />
+            <div className="flex-1 h-px bg-white/8" />
+            <span className="px-3 text-[10px] text-white/25 font-semibold tracking-wider">ИЛИ ВЫБЕРИТЕ</span>
+            <div className="flex-1 h-px bg-white/8" />
           </div>
 
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25" />
             <Input
               placeholder="Поиск по нику..."
               value={searchQuery}
@@ -241,27 +256,29 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           </div>
 
           {isSearching && (
-            <p className="text-sm text-center text-[var(--tg-theme-hint-color,#888)]">Поиск...</p>
+            <div className="flex justify-center py-4">
+              <div className="w-5 h-5 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin" />
+            </div>
           )}
 
-          <div className="space-y-2 max-h-[40vh] overflow-y-auto">
+          <div className="space-y-1.5 max-h-[40vh] overflow-y-auto">
             {players.map((player) => (
               <button
                 key={player.id}
                 onClick={() => handleCreateCheck(player.id)}
-                className="w-full flex items-center gap-3 p-4 rounded-xl bg-white/5 hover:bg-white/10 transition-all active:scale-[0.98]"
+                className="w-full flex items-center gap-3 p-3 rounded-xl glass hover:bg-white/8 transition-all active:scale-[0.98]"
               >
-                <div className="w-11 h-11 rounded-full bg-[var(--tg-theme-button-color,#6c5ce7)]/20 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)]/20 to-purple-600/5 flex items-center justify-center shrink-0">
                   <User className="w-5 h-5 text-[var(--tg-theme-button-color,#6c5ce7)]" />
                 </div>
                 <div className="text-left flex-1 min-w-0">
-                  <p className="font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
+                  <p className="font-semibold text-sm text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
                     {player.nickname}
                   </p>
-                  <div className="flex gap-2 mt-0.5">
+                  <div className="flex gap-1.5 mt-1">
                     {player.is_resident && <Badge variant="success">Резидент</Badge>}
-                    {player.balance < 0 && <Badge variant="danger">{player.balance}₽</Badge>}
-                    {player.bonus_points > 0 && <Badge variant="default">{player.bonus_points} бон.</Badge>}
+                    {(player.balance ?? 0) < 0 && <Badge variant="danger">{player.balance}₽</Badge>}
+                    {(player.bonus_points ?? 0) > 0 && <Badge variant="accent">{player.bonus_points} бон.</Badge>}
                   </div>
                 </div>
               </button>
@@ -275,7 +292,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         </div>
       </Drawer>
 
-      {/* Create new client drawer */}
+      {/* Create client */}
       <Drawer
         open={showCreateClient}
         onClose={() => { setShowCreateClient(false); setNewNickname(''); setNewIsResident(false); setCreateError(''); }}
@@ -291,23 +308,23 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           />
           <button
             onClick={() => setNewIsResident(!newIsResident)}
-            className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all active:scale-[0.98] ${
+            className={`w-full flex items-center justify-between p-3.5 rounded-xl border transition-all active:scale-[0.98] ${
               newIsResident
-                ? 'bg-emerald-500/10 border-emerald-500/30'
-                : 'bg-white/5 border-white/10'
+                ? 'bg-emerald-500/8 border-emerald-500/25'
+                : 'bg-white/3 border-white/8'
             }`}
           >
             <span className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">Резидент клуба</span>
-            <div className={`w-10 h-6 rounded-full transition-colors relative ${
-              newIsResident ? 'bg-emerald-500' : 'bg-white/20'
+            <div className={`w-11 h-6 rounded-full transition-colors relative ${
+              newIsResident ? 'bg-emerald-500' : 'bg-white/15'
             }`}>
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
-                newIsResident ? 'left-5' : 'left-1'
+              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-200 shadow ${
+                newIsResident ? 'left-6' : 'left-1'
               }`} />
             </div>
           </button>
           {createError && (
-            <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{createError}</p>
+            <p className="text-sm text-red-400 bg-red-500/8 rounded-xl px-3 py-2 border border-red-500/10">{createError}</p>
           )}
           <Button fullWidth size="lg" onClick={handleCreateClient}>
             <UserPlus className="w-5 h-5" />

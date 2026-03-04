@@ -86,7 +86,14 @@ export const useAuthStore = create<AuthState>()(
             return false;
           }
 
-          set({ user: data as Profile, isLoading: false });
+          const profile = data as Profile;
+          set({
+            user: profile,
+            rememberedUserId: profile.id,
+            rememberedNickname: profile.nickname,
+            needsPinSetup: !profile.pin,
+            isLoading: false,
+          });
           return true;
         } catch {
           set({ error: 'Ошибка авторизации через Telegram', isLoading: false });

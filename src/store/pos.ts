@@ -180,7 +180,11 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const { activeCheck } = get();
     if (!activeCheck) return false;
     await supabase.from('check_items').delete().eq('check_id', activeCheck.id);
-    await supabase.from('checks').delete().eq('id', activeCheck.id);
+    const { error } = await supabase.from('checks').delete().eq('id', activeCheck.id);
+    if (error) {
+      console.error('cancelCheck error:', error);
+      return false;
+    }
     set({ activeCheck: null, cart: [], checkItems: [] });
     await get().loadOpenChecks();
     return true;

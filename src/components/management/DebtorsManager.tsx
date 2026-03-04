@@ -52,7 +52,7 @@ export function DebtorsManager() {
       .eq('id', selected.id);
 
     await supabase.from('transactions').insert({
-      type: 'sale',
+      type: 'debt_adjustment',
       amount: val,
       description: `Погашение долга${adjustNote ? ': ' + adjustNote : ''} (было ${selected.balance}₽, стало ${newBalance}₽)`,
       player_id: selected.id,
@@ -76,7 +76,7 @@ export function DebtorsManager() {
       .eq('id', selected.id);
 
     await supabase.from('transactions').insert({
-      type: 'sale',
+      type: 'debt_adjustment',
       amount: -val,
       description: `Увеличение долга${adjustNote ? ': ' + adjustNote : ''} (было ${selected.balance}₽, стало ${newBalance}₽)`,
       player_id: selected.id,

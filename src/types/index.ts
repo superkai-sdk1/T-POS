@@ -2,7 +2,7 @@ export type UserRole = 'owner' | 'staff' | 'client';
 export type ItemCategory = 'drinks' | 'food' | 'bar' | 'hookah' | 'services';
 export type CheckStatus = 'open' | 'closed';
 export type PaymentMethod = 'cash' | 'card' | 'debt' | 'bonus';
-export type TransactionType = 'supply' | 'write_off' | 'sale' | 'revision' | 'bonus_accrual' | 'bonus_spend' | 'cash_operation';
+export type TransactionType = 'supply' | 'write_off' | 'sale' | 'revision' | 'bonus_accrual' | 'bonus_spend' | 'cash_operation' | 'debt_adjustment';
 
 export interface Profile {
   id: string;
@@ -95,6 +95,7 @@ export interface ShiftCheckDetail {
   player_nickname: string;
   total_amount: number;
   payment_method: PaymentMethod | null;
+  bonus_used: number;
   closed_at: string | null;
   items: { name: string; quantity: number; price: number }[];
 }
