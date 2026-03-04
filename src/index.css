@@ -39,6 +39,13 @@ html {
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
+  font-size: 17px;
+}
+
+@media (min-width: 1024px) {
+  html {
+    font-size: 16px;
+  }
 }
 
 body {
