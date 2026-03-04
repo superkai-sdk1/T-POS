@@ -221,7 +221,7 @@ export function RevisionPage() {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <button onClick={handleTryExit} className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors active:scale-95 shrink-0">
+          <button onClick={handleTryExit} className="w-10 h-10 rounded-xl card flex items-center justify-center hover:bg-white/10 transition-colors active:scale-95 shrink-0">
             <ArrowLeft className="w-5 h-5 text-[var(--tg-theme-text-color,#e0e0e0)]" />
           </button>
           <div className="flex-1">
@@ -267,7 +267,7 @@ export function RevisionPage() {
           <input
             type="text"
             placeholder="Поиск позиции..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-[var(--tg-theme-text-color,#e0e0e0)] placeholder:text-white/30"
+            className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] placeholder:text-white/30"
             value={createSearch}
             onChange={(e) => setCreateSearch(e.target.value)}
           />
@@ -284,9 +284,9 @@ export function RevisionPage() {
             const diff = hasChange ? Number(val) - item.stock_quantity : 0;
             const costImpact = Math.abs(diff) * item.price;
             return (
-              <div key={item.id} className={`flex items-center gap-3 p-3 rounded-xl ${hasChange ? (diff < 0 ? 'bg-red-500/5 border border-red-500/20' : 'bg-emerald-500/5 border border-emerald-500/20') : 'bg-white/5'}`}>
+              <div key={item.id} className={`flex items-center gap-3 p-2.5 rounded-xl ${hasChange ? (diff < 0 ? 'bg-red-500/5 border border-red-500/20' : 'bg-emerald-500/5 border border-emerald-500/20') : 'card'}`}>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{item.name}</p>
+                  <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{item.name}</p>
                   <div className="flex items-center gap-2">
                     <p className="text-[10px] text-white/30">Система: {item.stock_quantity}</p>
                     {hasChange && (
@@ -305,7 +305,7 @@ export function RevisionPage() {
                   />
                 </div>
                 {hasChange && (
-                  <span className={`text-sm font-bold min-w-[40px] text-right ${diff < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                  <span className={`text-[13px] font-bold min-w-[40px] text-right ${diff < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                     {diff > 0 ? '+' : ''}{diff}
                   </span>
                 )}
@@ -317,11 +317,11 @@ export function RevisionPage() {
         {changes.length > 0 && (
           <>
             <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-1">
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-[13px]">
                 <span className="text-white/50">Всего расхождений</span>
                 <span className="font-bold text-amber-400">{changes.length} поз.</span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-[13px]">
                 <span className="text-white/50">На сумму</span>
                 <span className="font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{fmtCur(draftSummary.shortageCost + draftSummary.surplusCost)}</span>
               </div>
@@ -333,12 +333,12 @@ export function RevisionPage() {
           </>
         )}
 
-        <Drawer open={showExitWarning} onClose={() => setShowExitWarning(false)} title="Выйти из ревизии?">
+        <Drawer open={showExitWarning} onClose={() => setShowExitWarning(false)} title="Выйти из ревизии?" size="sm">
           <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-amber-400">Ревизия не сохранена</p>
+                <p className="text-[13px] font-semibold text-amber-400">Ревизия не сохранена</p>
                 <p className="text-xs text-white/40 mt-1">Все введённые данные будут потеряны</p>
               </div>
             </div>
@@ -376,7 +376,7 @@ export function RevisionPage() {
             <button
               key={r.id}
               onClick={() => openDetail(r)}
-              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/8 border border-white/5 transition-all active:scale-[0.98]"
+              className="w-full text-left p-3 rounded-xl card-interactive"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -385,7 +385,7 @@ export function RevisionPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-[var(--tg-theme-text-color,#e0e0e0)]">{formatDate(r.created_at)}</span>
+                      <span className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">{formatDate(r.created_at)}</span>
                       <span className="text-xs text-[var(--tg-theme-hint-color,#888)]">{formatTime(r.created_at)}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
@@ -407,23 +407,24 @@ export function RevisionPage() {
         open={showDetail}
         onClose={() => setShowDetail(false)}
         title={selectedRevision ? `Ревизия · ${formatDate(selectedRevision.created_at)}` : 'Ревизия'}
+        size="md"
       >
         {selectedRevision && (
           <div className="space-y-4">
             {/* Meta */}
-            <div className="p-3 rounded-xl bg-white/5 space-y-2">
-              <div className="flex items-center justify-between text-sm">
+            <div className="p-2.5 rounded-xl card space-y-2">
+              <div className="flex items-center justify-between text-[13px]">
                 <span className="text-white/50 flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Дата</span>
                 <span className="text-[var(--tg-theme-text-color,#e0e0e0)]">{new Date(selectedRevision.created_at).toLocaleString('ru-RU')}</span>
               </div>
               {selectedRevision.creator && (
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-[13px]">
                   <span className="text-white/50 flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Кто проводил</span>
                   <span className="text-[var(--tg-theme-text-color,#e0e0e0)]">{selectedRevision.creator.nickname}</span>
                 </div>
               )}
               {selectedRevision.note && (
-                <div className="text-sm">
+                <div className="text-[13px]">
                   <span className="text-white/50">Примечание:</span>
                   <span className="text-[var(--tg-theme-text-color,#e0e0e0)] ml-2">{selectedRevision.note}</span>
                 </div>
@@ -451,8 +452,8 @@ export function RevisionPage() {
             </div>
 
             {/* Total impact */}
-            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
-              <div className="flex justify-between text-sm">
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <div className="flex justify-between text-[13px]">
                 <span className="text-white/50">Общее расхождение</span>
                 <span className="font-bold text-amber-400">{fmtCur(detailSummary.shortageCost + detailSummary.surplusCost)}</span>
               </div>
@@ -461,16 +462,16 @@ export function RevisionPage() {
             {/* Items — shortages first */}
             {detailItems.filter((ri) => ri.diff < 0).length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-red-400 mb-2">Недостача</p>
+                <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-2">Недостача</p>
                 <div className="space-y-1.5">
                   {detailItems.filter((ri) => ri.diff < 0).map((ri) => (
                     <div key={ri.id} className="flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/10">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{ri.item?.name}</p>
+                        <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{ri.item?.name}</p>
                         <p className="text-[10px] text-white/30">Было: {ri.expected_qty} → Факт: {ri.actual_qty}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-bold text-sm text-red-400">{ri.diff}</p>
+                        <p className="font-bold text-[13px] text-red-400">{ri.diff}</p>
                         <p className="text-[10px] text-red-400/60">{fmtCur(Math.abs(ri.diff) * (ri.item?.price || 0))}</p>
                       </div>
                     </div>
@@ -481,16 +482,16 @@ export function RevisionPage() {
 
             {detailItems.filter((ri) => ri.diff > 0).length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-emerald-400 mb-2">Излишки</p>
+                <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider mb-2">Излишки</p>
                 <div className="space-y-1.5">
                   {detailItems.filter((ri) => ri.diff > 0).map((ri) => (
                     <div key={ri.id} className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{ri.item?.name}</p>
+                        <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{ri.item?.name}</p>
                         <p className="text-[10px] text-white/30">Было: {ri.expected_qty} → Факт: {ri.actual_qty}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-bold text-sm text-emerald-400">+{ri.diff}</p>
+                        <p className="font-bold text-[13px] text-emerald-400">+{ri.diff}</p>
                         <p className="text-[10px] text-emerald-400/60">{fmtCur(ri.diff * (ri.item?.price || 0))}</p>
                       </div>
                     </div>

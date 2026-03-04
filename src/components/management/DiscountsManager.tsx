@@ -94,9 +94,9 @@ export function DiscountsManager() {
           {discounts.map((d) => (
             <div
               key={d.id}
-              className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all ${
+              className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${
                 d.is_active
-                  ? 'bg-white/5 border-white/5'
+                  ? 'card'
                   : 'bg-white/2 border-white/3 opacity-50'
               }`}
             >
@@ -110,10 +110,10 @@ export function DiscountsManager() {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
+                <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
                   {d.name}
                 </p>
-                <Badge variant={d.type === 'percentage' ? 'default' : 'success'}>
+                <Badge variant={d.type === 'percentage' ? 'default' : 'success'} size="sm">
                   {d.type === 'percentage' ? `-${d.value}%` : `-${d.value}₽`}
                 </Badge>
               </div>
@@ -150,6 +150,7 @@ export function DiscountsManager() {
         open={showForm}
         onClose={() => setShowForm(false)}
         title={editing ? 'Редактировать скидку' : 'Новая скидка'}
+        size="sm"
       >
         <div className="space-y-4">
           <Input
@@ -160,20 +161,20 @@ export function DiscountsManager() {
             autoFocus
           />
           <div>
-            <p className="text-xs font-medium text-[var(--tg-theme-hint-color,#888)] mb-2">Тип скидки</p>
+            <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider mb-2">Тип скидки</p>
             <div className="grid grid-cols-2 gap-2">
               {([['percentage', 'Процент', Percent], ['fixed', 'Фиксированная', Banknote]] as const).map(([t, label, Icon]) => (
                 <button
                   key={t}
                   onClick={() => setType(t)}
-                  className={`flex items-center gap-2 p-3 rounded-xl border transition-all active:scale-[0.97] ${
+                  className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all active:scale-[0.97] ${
                     type === t
                       ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/15 border-[var(--tg-theme-button-color,#6c5ce7)]/30'
                       : 'bg-white/3 border-white/8'
                   }`}
                 >
                   <Icon className={`w-4 h-4 ${type === t ? 'text-[var(--tg-theme-button-color,#6c5ce7)]' : 'text-white/30'}`} />
-                  <span className={`text-sm font-medium ${type === t ? 'text-[var(--tg-theme-text-color,#e0e0e0)]' : 'text-white/40'}`}>
+                  <span className={`text-[13px] font-medium ${type === t ? 'text-[var(--tg-theme-text-color,#e0e0e0)]' : 'text-white/40'}`}>
                     {label}
                   </span>
                 </button>

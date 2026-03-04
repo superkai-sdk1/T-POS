@@ -101,15 +101,15 @@ export function DebtorsManager() {
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20">
+      <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-white/40">Общий долг</p>
-            <p className="text-2xl font-black text-red-400">{fmtCur(totalDebt)}</p>
+            <p className="text-lg font-black text-red-400">{fmtCur(totalDebt)}</p>
           </div>
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-red-400/50" />
-            <span className="text-sm text-white/30">{debtors.length} чел.</span>
+            <span className="text-[13px] text-white/30">{debtors.length} чел.</span>
           </div>
         </div>
       </div>
@@ -125,13 +125,13 @@ export function DebtorsManager() {
             <button
               key={d.id}
               onClick={() => openAdjust(d)}
-              className="w-full flex items-center gap-3 p-4 rounded-xl bg-white/5 hover:bg-white/8 transition-all active:scale-[0.98]"
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
             >
               <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
                 <User className="w-5 h-5 text-red-400" />
               </div>
               <div className="flex-1 min-w-0 text-left">
-                <p className="font-semibold text-sm text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{d.nickname}</p>
+                <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{d.nickname}</p>
                 {d.is_resident && <span className="text-[10px] text-emerald-400">Резидент</span>}
               </div>
               <span className="text-lg font-bold text-red-400 shrink-0">{fmtCur(d.balance)}</span>
@@ -145,12 +145,13 @@ export function DebtorsManager() {
         open={showAdjust}
         onClose={() => setShowAdjust(false)}
         title={selected ? selected.nickname : 'Должник'}
+        size="md"
       >
         {selected && (
           <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-center">
+            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-center">
               <p className="text-xs text-white/40 mb-1">Текущий долг</p>
-              <p className="text-3xl font-black text-red-400">{fmtCur(selected.balance)}</p>
+              <p className="text-lg font-black text-red-400">{fmtCur(selected.balance)}</p>
             </div>
 
             <Input
@@ -171,14 +172,14 @@ export function DebtorsManager() {
             />
 
             {Number(amount) > 0 && (
-              <div className="p-3 rounded-xl bg-white/5 space-y-1.5">
-                <div className="flex justify-between text-sm">
+              <div className="p-2.5 rounded-xl card space-y-1.5">
+                <div className="flex justify-between text-[13px]">
                   <span className="text-white/40">При погашении</span>
                   <span className={`font-semibold ${selected.balance + Number(amount) >= 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
                     {fmtCur(selected.balance + Number(amount))}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm">
+                <div className="flex justify-between text-[13px]">
                   <span className="text-white/40">При увеличении</span>
                   <span className="font-semibold text-red-400">
                     {fmtCur(selected.balance - Number(amount))}

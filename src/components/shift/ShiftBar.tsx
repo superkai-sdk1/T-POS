@@ -95,14 +95,14 @@ export function ShiftBar() {
   };
 
   const birthdayBanner = birthdayNames.length > 0 ? (
-    <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-gradient-to-r from-pink-500/10 to-amber-500/5 border border-pink-500/15 animate-fade-in-up mb-3">
-      <Cake className="w-5 h-5 text-pink-400 shrink-0" />
+    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-pink-500/6 border border-pink-500/10 animate-fade-in mb-3">
+      <Cake className="w-4 h-4 text-pink-400 shrink-0" />
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-bold text-pink-400">День рождения!</p>
-        <p className="text-[11px] text-white/50 truncate">{birthdayNames.join(', ')}</p>
+        <p className="text-[11px] font-bold text-pink-400">День рождения!</p>
+        <p className="text-[10px] text-white/40 truncate">{birthdayNames.join(', ')}</p>
       </div>
-      <button onClick={dismissBirthdays} className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 transition-transform shrink-0">
-        <X className="w-3.5 h-3.5 text-white/30" />
+      <button onClick={dismissBirthdays} className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center active:scale-90 transition-transform shrink-0">
+        <X className="w-3 h-3 text-white/25" />
       </button>
     </div>
   ) : null;
@@ -113,30 +113,31 @@ export function ShiftBar() {
         {birthdayBanner}
         <button
           onClick={() => setShowOpen(true)}
-          className="w-full flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-emerald-600/5 border border-emerald-500/15 hover:from-emerald-500/15 hover:to-emerald-600/10 transition-all active:scale-[0.98]"
+          className="w-full flex items-center gap-2.5 p-3 rounded-xl bg-emerald-500/6 border border-emerald-500/10 active:scale-[0.98] transition-transform"
         >
-          <div className="w-11 h-11 rounded-xl bg-emerald-500/15 flex items-center justify-center">
-            <PlayCircle className="w-5 h-5 text-emerald-400" />
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/12 flex items-center justify-center">
+            <PlayCircle className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-left flex-1">
-            <p className="font-bold text-sm text-emerald-400">Смена не открыта</p>
-            <p className="text-[11px] text-white/35">Нажмите чтобы открыть смену</p>
+            <p className="font-semibold text-[13px] text-emerald-400">Открыть смену</p>
+            <p className="text-[10px] text-white/25">Нажмите для начала работы</p>
           </div>
         </button>
 
-        <Drawer open={showOpen} onClose={() => setShowOpen(false)} title="Открыть смену">
-          <div className="space-y-4">
+        <Drawer open={showOpen} onClose={() => setShowOpen(false)} title="Открыть смену" size="sm">
+          <div className="space-y-3">
             <Input
               type="number"
               label="Наличные в кассе"
-              placeholder="Сумма на начало смены"
+              placeholder="Сумма на начало"
               value={cashStart}
               onChange={(e) => setCashStart(e.target.value)}
+              compact
               min={0}
               autoFocus
             />
-            <Button fullWidth size="lg" onClick={handleOpen}>
-              <PlayCircle className="w-5 h-5" />
+            <Button fullWidth onClick={handleOpen}>
+              <PlayCircle className="w-4 h-4" />
               Открыть смену
             </Button>
           </div>
@@ -148,72 +149,64 @@ export function ShiftBar() {
   return (
     <>
       {birthdayBanner}
-      <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/8 to-emerald-600/4 border border-emerald-500/12">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-            <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping opacity-60" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-emerald-400">Смена открыта</span>
-              <span className="text-[10px] text-white/30 flex items-center gap-0.5">
-                <Clock className="w-3 h-3" />
-                {shiftDuration()}
-              </span>
-            </div>
-          </div>
-          <button
-            onClick={handleStartClose}
-            disabled={isClosing}
-            className="px-3 py-1.5 rounded-xl bg-red-500/10 border border-red-500/10 text-red-400 text-xs font-bold hover:bg-red-500/20 transition-all active:scale-90 disabled:opacity-50 flex items-center gap-1.5"
-          >
-            {isClosing ? (
-              <div className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <StopCircle className="w-3.5 h-3.5" />
-            )}
-            Закрыть
-          </button>
+      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/8">
+        <div className="relative shrink-0">
+          <div className="w-2 h-2 rounded-full bg-emerald-400" />
+          <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-400 animate-ping opacity-50" />
         </div>
-        {cashInRegister !== null && (
-          <div className="flex items-center gap-2 mt-2 px-1">
-            <Banknote className="w-3.5 h-3.5 text-emerald-400/50" />
-            <span className="text-[11px] text-white/40">В кассе</span>
-            <span className="text-sm font-black text-emerald-400 tabular-nums ml-auto">{fmtCur(cashInRegister)}</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="text-[11px] font-semibold text-emerald-400">Смена</span>
+          <span className="text-[10px] text-white/25 flex items-center gap-0.5">
+            <Clock className="w-2.5 h-2.5" />{shiftDuration()}
+          </span>
+          {cashInRegister !== null && (
+            <>
+              <span className="text-white/10">·</span>
+              <span className="text-[10px] text-white/25 flex items-center gap-0.5">
+                <Banknote className="w-2.5 h-2.5" />{fmtCur(cashInRegister)}
+              </span>
+            </>
+          )}
+        </div>
+        <button
+          onClick={handleStartClose}
+          disabled={isClosing}
+          className="px-2.5 py-1 rounded-lg bg-red-500/8 text-red-400 text-[11px] font-bold active:scale-90 transition-transform disabled:opacity-40 flex items-center gap-1"
+        >
+          {isClosing ? (
+            <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <StopCircle className="w-3 h-3" />
+          )}
+          Закрыть
+        </button>
       </div>
 
-      <Drawer
-        open={showClose}
-        onClose={() => setShowClose(false)}
-        title="Закрытие смены"
-      >
-        <div className="space-y-4">
+      <Drawer open={showClose} onClose={() => setShowClose(false)} title="Закрытие смены" size="md">
+        <div className="space-y-3">
           {analytics && (
-            <div className="space-y-3 stagger-children">
-              <div className="grid grid-cols-3 gap-2">
-                <div className="p-3 rounded-xl glass text-center">
-                  <p className="text-lg font-black text-[var(--tg-theme-button-color,#6c5ce7)] tabular-nums">{analytics.totalChecks}</p>
-                  <p className="text-[10px] text-white/35 font-medium">Чеков</p>
+            <div className="space-y-2 stagger-children">
+              <div className="grid grid-cols-3 gap-1.5">
+                <div className="p-2.5 rounded-xl card text-center">
+                  <p className="text-base font-black text-[var(--tg-theme-button-color,#6c5ce7)] tabular-nums">{analytics.totalChecks}</p>
+                  <p className="text-[9px] text-white/25 font-semibold">Чеков</p>
                 </div>
-                <div className="p-3 rounded-xl glass text-center">
-                  <p className="text-lg font-black text-emerald-400 tabular-nums">{fmtCur(analytics.totalRevenue)}</p>
-                  <p className="text-[10px] text-white/35 font-medium">Выручка</p>
+                <div className="p-2.5 rounded-xl card text-center">
+                  <p className="text-base font-black text-emerald-400 tabular-nums">{fmtCur(analytics.totalRevenue)}</p>
+                  <p className="text-[9px] text-white/25 font-semibold">Выручка</p>
                 </div>
-                <div className="p-3 rounded-xl glass text-center">
-                  <p className="text-lg font-black text-amber-400 tabular-nums">{fmtCur(analytics.avgCheck)}</p>
-                  <p className="text-[10px] text-white/35 font-medium">Ср. чек</p>
+                <div className="p-2.5 rounded-xl card text-center">
+                  <p className="text-base font-black text-amber-400 tabular-nums">{fmtCur(analytics.avgCheck)}</p>
+                  <p className="text-[9px] text-white/25 font-semibold">Ср. чек</p>
                 </div>
               </div>
 
               {Object.keys(analytics.paymentBreakdown).length > 0 && (
-                <div className="p-3 rounded-xl glass space-y-1.5">
-                  <p className="text-xs font-bold text-white/40 mb-2">Способы оплаты</p>
+                <div className="p-2.5 rounded-xl card space-y-1">
+                  <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider mb-1">Оплата</p>
                   {Object.entries(analytics.paymentBreakdown).map(([method, val]) => (
-                    <div key={method} className="flex justify-between text-sm">
-                      <span className="text-white/40">{pmLabel(method)} ({val.count})</span>
+                    <div key={method} className="flex justify-between text-[13px]">
+                      <span className="text-white/35">{pmLabel(method)} ({val.count})</span>
                       <span className="font-bold text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(val.amount)}</span>
                     </div>
                   ))}
@@ -228,6 +221,7 @@ export function ShiftBar() {
             placeholder="Пересчитайте наличные"
             value={cashEnd}
             onChange={(e) => setCashEnd(e.target.value)}
+            compact
             min={0}
           />
           <Input
@@ -235,9 +229,10 @@ export function ShiftBar() {
             placeholder="Комментарий к смене"
             value={closeNote}
             onChange={(e) => setCloseNote(e.target.value)}
+            compact
           />
-          <Button fullWidth size="lg" variant="danger" onClick={handleConfirmClose}>
-            <StopCircle className="w-5 h-5" />
+          <Button fullWidth variant="danger" onClick={handleConfirmClose}>
+            <StopCircle className="w-4 h-4" />
             Закрыть смену
           </Button>
         </div>

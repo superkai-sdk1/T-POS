@@ -158,7 +158,7 @@ export function BonusManager() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-white/5 rounded-xl">
+      <div className="flex gap-1 p-1 card rounded-xl">
         <button onClick={() => setTab('players')} className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${tab === 'players' ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white shadow' : 'text-white/50 hover:text-white/70'}`}>
           <User className="w-4 h-4 inline mr-1.5" />Клиенты
         </button>
@@ -174,7 +174,7 @@ export function BonusManager() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
             <input
               type="text" placeholder="Поиск клиента..."
-              className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-[var(--tg-theme-text-color,#e0e0e0)] placeholder:text-white/30"
+              className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] placeholder:text-white/30"
               value={search} onChange={(e) => setSearch(e.target.value)}
             />
           </div>
@@ -184,18 +184,18 @@ export function BonusManager() {
               <button
                 key={p.id}
                 onClick={() => openPlayerDrawer(p)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/8 border border-white/5 transition-all active:scale-[0.98]"
+                className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
               >
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-yellow-500/20 flex items-center justify-center shrink-0">
                   <Star className="w-4 h-4 text-amber-400" />
                 </div>
                 <div className="flex-1 text-left min-w-0">
-                  <p className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{p.nickname}</p>
+                  <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{p.nickname}</p>
                   {p.balance < 0 && (
                     <p className="text-[10px] text-red-400">Долг: {Math.abs(p.balance)}₽</p>
                   )}
                 </div>
-                <Badge variant={p.bonus_points > 0 ? 'success' : 'default'}>
+                <Badge variant={p.bonus_points > 0 ? 'success' : 'default'} size="sm">
                   <Star className="w-3 h-3 inline mr-0.5" />{p.bonus_points}
                 </Badge>
               </button>
@@ -208,9 +208,9 @@ export function BonusManager() {
       {tab === 'settings' && (
         <div className="space-y-4">
           {/* Enable/disable */}
-          <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
+          <div className="flex items-center justify-between p-3 rounded-xl card">
             <div>
-              <p className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">Бонусная система</p>
+              <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">Бонусная система</p>
               <p className="text-xs text-white/40">Начисление при закрытии чеков</p>
             </div>
             <button onClick={() => updateSetting('bonus_enabled', !settings.bonus_enabled)} className="text-[var(--tg-theme-button-color,#6c5ce7)]">
@@ -223,8 +223,8 @@ export function BonusManager() {
           {settings.bonus_enabled && (
             <>
               {/* Accrual rate */}
-              <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-2">
-                <p className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">Процент начисления</p>
+              <div className="p-3 rounded-xl card space-y-2">
+                <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">Процент начисления</p>
                 <p className="text-xs text-white/40">Сколько % от суммы чека начисляется в виде баллов</p>
                 <div className="flex items-center gap-3">
                   <input
@@ -243,8 +243,8 @@ export function BonusManager() {
               </div>
 
               {/* Min purchase */}
-              <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-2">
-                <p className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">Мин. сумма для начисления</p>
+              <div className="p-3 rounded-xl card space-y-2">
+                <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">Мин. сумма для начисления</p>
                 <p className="text-xs text-white/40">Не начислять баллы если сумма ниже</p>
                 <Input
                   type="number" placeholder="0₽ (без ограничений)"
@@ -255,9 +255,9 @@ export function BonusManager() {
               </div>
 
               {/* Accrue on debt */}
-              <div className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5">
+              <div className="flex items-center justify-between p-3 rounded-xl card">
                 <div>
-                  <p className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">Начисление при долге</p>
+                  <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">Начисление при долге</p>
                   <p className="text-xs text-white/40">Начислять баллы при оплате «В долг»</p>
                 </div>
                 <button onClick={() => updateSetting('bonus_accrual_on_debt', !settings.bonus_accrual_on_debt)} className="text-[var(--tg-theme-button-color,#6c5ce7)]">
@@ -283,6 +283,7 @@ export function BonusManager() {
         open={showPlayerDrawer}
         onClose={() => setShowPlayerDrawer(false)}
         title={selectedPlayer?.nickname || 'Баллы'}
+        size="md"
       >
         {selectedPlayer && (
           <div className="space-y-4">
@@ -293,7 +294,7 @@ export function BonusManager() {
             </div>
 
             {/* Action toggle */}
-            <div className="flex gap-1 p-1 bg-white/5 rounded-xl">
+            <div className="flex gap-1 p-1 card rounded-xl">
               <button
                 onClick={() => setBonusAction('add')}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${bonusAction === 'add' ? 'bg-emerald-500/20 text-emerald-400' : 'text-white/50'}`}
@@ -324,7 +325,7 @@ export function BonusManager() {
             />
 
             {bonusAmount && Number(bonusAmount) > 0 && (
-              <div className="p-3 rounded-xl bg-white/5 text-center">
+              <div className="p-2.5 rounded-xl card text-center">
                 <p className="text-xs text-white/40">Баланс после</p>
                 <p className="text-xl font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
                   {bonusAction === 'add'

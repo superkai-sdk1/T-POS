@@ -637,6 +637,30 @@ alter table check_payments enable row level security;
 create policy "check_payments_all" on check_payments for all to anon, authenticated using (true) with check (true);
 
 -- ==============================
+-- Menu Categories (dynamic)
+-- ==============================
+create table menu_categories (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  slug text not null unique,
+  parent_id uuid references menu_categories(id) on delete set null,
+  icon_name text not null default 'Package',
+  sort_order integer not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+alter table menu_categories enable row level security;
+create policy "menu_categories_all" on menu_categories for all to anon, authenticated using (true) with check (true);
+
+insert into menu_categories (name, slug, sort_order, icon_name) values
+  ('Услуги', 'services', 10, 'Ticket'),
+  ('Напитки', 'drinks', 20, 'Coffee'),
+  ('Еда', 'food', 30, 'UtensilsCrossed'),
+  ('Снеки', 'bar', 40, 'Cookie'),
+  ('Кальяны', 'hookah', 50, 'Wind');
+
+-- ==============================
 -- Realtime
 -- ==============================
 alter publication supabase_realtime add table checks, check_items, inventory, shifts, cash_operations, bookings;

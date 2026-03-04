@@ -185,7 +185,7 @@ export function ClientsManager() {
           <p className="text-lg font-bold text-emerald-400">{totalResidents}</p>
           <p className="text-[10px] text-white/40">Резиденты</p>
         </div>
-        <div className="p-3 rounded-xl bg-white/5 text-center">
+        <div className="p-3 rounded-xl card text-center">
           <p className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{clients.length - totalResidents}</p>
           <p className="text-[10px] text-white/40">Гости</p>
         </div>
@@ -198,7 +198,7 @@ export function ClientsManager() {
           <input
             type="text"
             placeholder="Имя или телефон..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-[var(--tg-theme-text-color,#e0e0e0)] placeholder:text-white/30"
+            className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] placeholder:text-white/30"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -210,7 +210,7 @@ export function ClientsManager() {
 
       {/* Filter tabs */}
       {!search && (
-        <div className="flex gap-1 p-1 bg-white/5 rounded-xl">
+        <div className="flex gap-1 p-1 card rounded-xl">
           {([['all', 'Все'], ['residents', 'Резиденты'], ['guests', 'Гости']] as const).map(([key, label]) => (
             <button
               key={key}
@@ -231,7 +231,7 @@ export function ClientsManager() {
           <button
             key={client.id}
             onClick={() => openDetail(client)}
-            className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/8 border border-white/5 transition-all active:scale-[0.98] text-left"
+            className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive text-left"
           >
             {/* Avatar */}
             <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 bg-white/10 flex items-center justify-center">
@@ -244,13 +244,13 @@ export function ClientsManager() {
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <p className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{client.nickname}</p>
+                <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{client.nickname}</p>
                 {client.birthday && isBirthdaySoon(client.birthday) && (
                   <Cake className="w-3.5 h-3.5 text-pink-400 shrink-0" />
                 )}
               </div>
               <div className="flex items-center gap-2 mt-0.5">
-                {client.is_resident && <Badge variant="success">Резидент</Badge>}
+                {client.is_resident && <Badge variant="success" size="sm">Резидент</Badge>}
                 {client.phone && (
                   <span className="text-[10px] text-white/30">{client.phone}</span>
                 )}
@@ -286,6 +286,7 @@ export function ClientsManager() {
         open={showDetail}
         onClose={() => setShowDetail(false)}
         title={detailClient?.nickname || 'Клиент'}
+        size="md"
       >
         {detailClient && (
           <div className="space-y-4">
@@ -300,27 +301,27 @@ export function ClientsManager() {
               </div>
               <div className="text-center">
                 <p className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{detailClient.nickname}</p>
-                {detailClient.is_resident && <Badge variant="success">Резидент клуба</Badge>}
+                {detailClient.is_resident && <Badge variant="success" size="sm">Резидент клуба</Badge>}
               </div>
             </div>
 
             {/* Info cards */}
             <div className="space-y-2">
               {detailClient.phone && (
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                <div className="flex items-center gap-3 p-2.5 rounded-xl card">
                   <Phone className="w-4 h-4 text-white/40" />
                   <div className="flex-1">
-                    <p className="text-[10px] text-white/40">Телефон</p>
-                    <p className="text-sm text-[var(--tg-theme-text-color,#e0e0e0)]">{detailClient.phone}</p>
+                    <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">Телефон</p>
+                    <p className="text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">{detailClient.phone}</p>
                   </div>
                 </div>
               )}
               {detailClient.birthday && (
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                <div className="flex items-center gap-3 p-2.5 rounded-xl card">
                   <Calendar className="w-4 h-4 text-white/40" />
                   <div className="flex-1">
-                    <p className="text-[10px] text-white/40">День рождения</p>
-                    <p className="text-sm text-[var(--tg-theme-text-color,#e0e0e0)]">
+                    <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">День рождения</p>
+                    <p className="text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">
                       {formatBirthday(detailClient.birthday)}
                       <span className="text-white/30 ml-2">({getAge(detailClient.birthday)} лет)</span>
                     </p>
@@ -333,7 +334,7 @@ export function ClientsManager() {
                   <p className="text-lg font-bold text-amber-400">{detailClient.bonus_points}</p>
                   <p className="text-[10px] text-white/40">Баллов</p>
                 </div>
-                <div className="p-3 rounded-xl bg-white/5 text-center">
+                <div className="p-2.5 rounded-xl card text-center">
                   <CreditCard className="w-4 h-4 text-white/40 mx-auto mb-1" />
                   <p className={`text-lg font-bold ${detailClient.balance < 0 ? 'text-red-400' : 'text-[var(--tg-theme-text-color,#e0e0e0)]'}`}>
                     {detailClient.balance}₽
@@ -370,6 +371,7 @@ export function ClientsManager() {
         open={showEditor}
         onClose={() => setShowEditor(false)}
         title={editingClient ? 'Редактирование' : 'Новый клиент'}
+        size="md"
       >
         <div className="space-y-4">
           {/* Photo */}
@@ -435,10 +437,10 @@ export function ClientsManager() {
             className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all active:scale-[0.98] ${
               form.is_resident
                 ? 'bg-emerald-500/10 border-emerald-500/30'
-                : 'bg-white/5 border-white/10'
+                : 'card border-white/10'
             }`}
           >
-            <span className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">Резидент клуба</span>
+            <span className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">Резидент клуба</span>
             <div className={`w-10 h-6 rounded-full transition-colors relative ${
               form.is_resident ? 'bg-emerald-500' : 'bg-white/20'
             }`}>
@@ -460,10 +462,11 @@ export function ClientsManager() {
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         title="Удалить клиента?"
+        size="sm"
       >
         {deleteTarget && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20">
               <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 flex items-center justify-center shrink-0">
                 {deleteTarget.photo_url ? (
                   <img src={deleteTarget.photo_url} className="w-full h-full object-cover" />
@@ -472,7 +475,7 @@ export function ClientsManager() {
                 )}
               </div>
               <div>
-                <p className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">{deleteTarget.nickname}</p>
+                <p className="text-[13px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">{deleteTarget.nickname}</p>
                 <p className="text-xs text-red-400">Все данные будут утеряны</p>
               </div>
             </div>

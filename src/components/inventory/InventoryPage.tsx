@@ -42,7 +42,7 @@ export function InventoryPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">Остатки</h2>
+          <h2 className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">Остатки</h2>
           <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">{items.length} позиций</p>
         </div>
       </div>
@@ -51,11 +51,11 @@ export function InventoryPage() {
         <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="w-4 h-4 text-red-400" />
-            <span className="text-sm font-semibold text-red-400">Критический остаток</span>
+            <span className="text-[13px] font-semibold text-red-400">Критический остаток</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {criticalItems.map((item) => (
-              <Badge key={item.id} variant="danger">
+              <Badge key={item.id} variant="danger" size="sm">
                 {item.name}: {item.stock_quantity}/{item.min_threshold}
               </Badge>
             ))}
@@ -80,7 +80,7 @@ export function InventoryPage() {
             <div
               key={item.id}
               className={`flex items-center justify-between p-3 rounded-xl ${
-                isCritical ? 'bg-red-500/10 border border-red-500/20' : 'bg-white/5'
+                isCritical ? 'bg-red-500/10 border border-red-500/20' : 'card'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -90,12 +90,12 @@ export function InventoryPage() {
                   <Package className={`w-5 h-5 ${isCritical ? 'text-red-400' : 'text-white/50'}`} />
                 </div>
                 <div>
-                  <p className="font-medium text-sm text-[var(--tg-theme-text-color,#e0e0e0)]">
+                  <p className="font-medium text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">
                     {item.name}
                   </p>
                   <div className="flex gap-2 mt-0.5">
-                    <Badge>{categoryLabels[item.category] || item.category}</Badge>
-                    <Badge>{item.price}₽</Badge>
+                    <Badge size="sm">{categoryLabels[item.category] || item.category}</Badge>
+                    <Badge size="sm">{item.price}₽</Badge>
                   </div>
                 </div>
               </div>

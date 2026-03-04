@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useAuthStore } from '@/store/auth';
 import { usePOSStore } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
@@ -13,6 +13,8 @@ import { ManagementPage } from '@/components/management/ManagementPage';
 import { DashboardPage } from '@/components/dashboard/DashboardPage';
 import { SchedulePage } from '@/components/schedule/SchedulePage';
 
+const TAB_ORDER = ['pos', 'schedule', 'inventory', 'dashboard', 'management'];
+
 export default function App() {
   const user = useAuthStore((s) => s.user);
   const loadInventory = usePOSStore((s) => s.loadInventory);
@@ -21,6 +23,8 @@ export default function App() {
   const activeCheck = usePOSStore((s) => s.activeCheck);
   const [activeTab, setActiveTab] = useState('pos');
   const [showCheckView, setShowCheckView] = useState(false);
+  const [tabDirection, setTabDirection] = useState<'left' | 'right' | null>(null);
+  const prevTabRef = useRef('pos');
 
   useRealtimeSync();
 
@@ -55,6 +59,10 @@ export default function App() {
     if (showCheckView && activeCheck) {
       await leaveCheck();
     }
+    const prevIdx = TAB_ORDER.indexOf(prevTabRef.current);
+    const nextIdx = TAB_ORDER.indexOf(tab);
+    setTabDirection(nextIdx > prevIdx ? 'right' : nextIdx < prevIdx ? 'left' : null);
+    prevTabRef.current = tab;
     setActiveTab(tab);
     setShowCheckView(false);
   }, [showCheckView, activeCheck, leaveCheck]);
@@ -66,7 +74,7 @@ export default function App() {
   }
 
   return (
-    <Layout activeTab={activeTab} onTabChange={handleTabChange}>
+    <Layout activeTab={activeTab} onTabChange={handleTabChange} tabDirection={tabDirection}>
       {activeTab === 'pos' && (
         showCheckView ? (
           <CheckView onBack={() => setShowCheckView(false)} />

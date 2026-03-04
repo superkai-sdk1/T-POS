@@ -6,14 +6,17 @@ interface DrawerProps {
   onClose: () => void;
   title?: string;
   children: ReactNode;
+  size?: 'sm' | 'md' | 'lg';
 }
 
-export function Drawer({ open, onClose, title, children }: DrawerProps) {
+export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [closing, setClosing] = useState(false);
+
+  const maxH = size === 'sm' ? 'max-h-[60vh]' : size === 'md' ? 'max-h-[70vh]' : 'max-h-[85vh]';
 
   useEffect(() => {
     if (open) {
@@ -32,7 +35,7 @@ export function Drawer({ open, onClose, title, children }: DrawerProps) {
     setTimeout(() => {
       onClose();
       setClosing(false);
-    }, 250);
+    }, 200);
   }, [onClose, closing]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -51,7 +54,7 @@ export function Drawer({ open, onClose, title, children }: DrawerProps) {
   const handleTouchEnd = useCallback(() => {
     if (!dragging) return;
     setDragging(false);
-    if (dragY > 100) {
+    if (dragY > 80) {
       handleClose();
     } else {
       setDragY(0);
@@ -60,41 +63,39 @@ export function Drawer({ open, onClose, title, children }: DrawerProps) {
 
   if (!open && !closing) return null;
 
-  const opacity = closing ? 0 : dragY > 0 ? Math.max(0, 1 - dragY / 300) : 1;
+  const opacity = closing ? 0 : dragY > 0 ? Math.max(0, 1 - dragY / 250) : 1;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end lg:items-center lg:justify-center">
       <div
-        className={`absolute inset-0 bg-black/60 ${closing ? '' : 'animate-fade-in'}`}
-        style={{ opacity }}
+        className={`absolute inset-0 bg-black/50 ${closing ? '' : 'animate-fade-in'}`}
+        style={{ opacity, transition: closing ? 'opacity 0.2s' : undefined }}
         onClick={handleClose}
       />
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative w-full max-h-[85vh] lg:max-h-[80vh] lg:max-w-lg lg:rounded-2xl rounded-t-3xl overflow-hidden flex flex-col ${
+        className={`relative w-full ${maxH} lg:max-h-[80vh] lg:max-w-lg lg:rounded-2xl rounded-t-2xl overflow-hidden flex flex-col ${
           closing ? 'animate-slide-down' : 'lg:animate-pop-in animate-slide-up'
         }`}
         style={{
           transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
-          transition: dragging ? 'none' : 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1)',
+          transition: dragging ? 'none' : 'transform 0.25s var(--ease-spring)',
           paddingBottom: 'var(--safe-bottom)',
           background: 'var(--tg-theme-bg-color, #0f0f23)',
         }}
       >
-        {/* Drag handle */}
         <div
-          className="flex flex-col items-center pt-2 pb-0 lg:hidden cursor-grab"
+          className="flex flex-col items-center pt-2 pb-1 lg:hidden cursor-grab"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <div className="w-9 h-1 bg-white/20 rounded-full" />
+          <div className="w-10 h-1 bg-white/15 rounded-full" />
         </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3">
+        <div className="flex items-center justify-between px-5 py-2">
           {title && (
-            <h3 className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
+            <h3 className="text-base font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
               {title}
             </h3>
           )}
@@ -106,7 +107,6 @@ export function Drawer({ open, onClose, title, children }: DrawerProps) {
           </button>
         </div>
 
-        {/* Content */}
         <div
           ref={contentRef}
           className="overflow-y-auto px-5 pb-5 flex-1"

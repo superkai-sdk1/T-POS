@@ -128,7 +128,7 @@ export function InkassationPage() {
           {operations.map((op) => (
             <div
               key={op.id}
-              className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5"
+              className="flex items-center gap-3 p-2.5 rounded-xl card"
             >
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                 op.type === 'inkassation' ? 'bg-red-500/15' : 'bg-emerald-500/15'
@@ -140,10 +140,10 @@ export function InkassationPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-[var(--tg-theme-text-color,#e0e0e0)]">
+                  <span className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">
                     {op.type === 'inkassation' ? 'Инкассация' : 'Внесение'}
                   </span>
-                  <Badge variant={op.type === 'inkassation' ? 'danger' : 'success'}>
+                  <Badge variant={op.type === 'inkassation' ? 'danger' : 'success'} size="sm">
                     {op.type === 'inkassation' ? '-' : '+'}{new Intl.NumberFormat('ru-RU').format(op.amount)}₽
                   </Badge>
                 </div>
@@ -165,9 +165,9 @@ export function InkassationPage() {
       )}
 
       {/* Create drawer */}
-      <Drawer open={showCreate} onClose={() => setShowCreate(false)} title="Операция с наличными">
+      <Drawer open={showCreate} onClose={() => setShowCreate(false)} title="Операция с наличными" size="md">
         <div className="space-y-4">
-          <div className="flex gap-1 p-1 bg-white/5 rounded-xl">
+          <div className="flex gap-1 p-1 card rounded-xl">
             <button
               onClick={() => setOpType('inkassation')}
               className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
@@ -228,12 +228,13 @@ export function InkassationPage() {
         open={!!showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(null)}
         title="Удалить операцию?"
+        size="sm"
       >
         {showDeleteConfirm && (
           <div className="space-y-4">
-            <div className="p-3 rounded-xl bg-white/5 text-center">
-              <p className="text-sm text-white/50">{showDeleteConfirm.type === 'inkassation' ? 'Инкассация' : 'Внесение'}</p>
-              <p className="text-xl font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{new Intl.NumberFormat('ru-RU').format(showDeleteConfirm.amount)}₽</p>
+            <div className="p-2.5 rounded-xl card text-center">
+              <p className="text-[13px] text-white/50">{showDeleteConfirm.type === 'inkassation' ? 'Инкассация' : 'Внесение'}</p>
+              <p className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{new Intl.NumberFormat('ru-RU').format(showDeleteConfirm.amount)}₽</p>
               <p className="text-[10px] text-white/30 mt-1">{new Date(showDeleteConfirm.created_at).toLocaleString('ru-RU')}</p>
             </div>
             <div className="flex gap-2">

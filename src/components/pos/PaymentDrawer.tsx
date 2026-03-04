@@ -7,7 +7,7 @@ import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import { usePOSStore, type PaymentPortion } from '@/store/pos';
 import { supabase } from '@/lib/supabase';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
-import { Banknote, CreditCard, Clock, Star, Split, Plus, Trash2 } from 'lucide-react';
+import { Banknote, CreditCard, Clock, Star, Split, Plus } from 'lucide-react';
 import type { PaymentMethod, Profile } from '@/types';
 
 interface PaymentDrawerProps {
@@ -17,11 +17,11 @@ interface PaymentDrawerProps {
   spaceRental?: number;
 }
 
-const methodConfig: { method: PaymentMethod; label: string; icon: typeof Banknote; color: string }[] = [
-  { method: 'cash', label: 'Наличные', icon: Banknote, color: 'bg-emerald-500/12 text-emerald-400 border-emerald-500/20' },
-  { method: 'card', label: 'Карта', icon: CreditCard, color: 'bg-blue-500/12 text-blue-400 border-blue-500/20' },
-  { method: 'bonus', label: 'Бонусы', icon: Star, color: 'bg-amber-500/12 text-amber-400 border-amber-500/20' },
-  { method: 'debt', label: 'В долг', icon: Clock, color: 'bg-red-500/12 text-red-400 border-red-500/20' },
+const methodConfig: { method: PaymentMethod; label: string; icon: typeof Banknote; color: string; bg: string }[] = [
+  { method: 'cash', label: 'Наличные', icon: Banknote, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/15' },
+  { method: 'card', label: 'Карта', icon: CreditCard, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/15' },
+  { method: 'bonus', label: 'Бонусы', icon: Star, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/15' },
+  { method: 'debt', label: 'В долг', icon: Clock, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/15' },
 ];
 
 export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: PaymentDrawerProps) {
@@ -135,26 +135,30 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
 
   return (
     <Drawer open={open} onClose={onClose} title="Оплата">
-      <div className="space-y-5">
+      <div className="space-y-4">
+        {/* Player info */}
         {playerInfo && (
-          <div className="p-3.5 rounded-2xl glass space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-[var(--tg-theme-hint-color,#888)] font-medium">Игрок</span>
-              <span className="font-bold text-sm text-[var(--tg-theme-text-color,#e0e0e0)]">{playerInfo.nickname}</span>
+          <div className="flex items-center gap-3 p-3 rounded-xl card">
+            <div className="w-9 h-9 rounded-lg bg-[var(--tg-theme-button-color,#6c5ce7)]/10 flex items-center justify-center">
+              <span className="text-sm font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">
+                {playerInfo.nickname?.charAt(0).toUpperCase()}
+              </span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-[var(--tg-theme-hint-color,#888)] font-medium">Баланс</span>
-              <Badge variant={playerInfo.balance < 0 ? 'danger' : 'default'}>{playerInfo.balance}₽</Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-[var(--tg-theme-hint-color,#888)] font-medium">Бонусы</span>
-              <Badge variant="success"><Star className="w-3 h-3 mr-1" />{playerInfo.bonus_points}</Badge>
+            <div className="flex-1">
+              <p className="text-[13px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">{playerInfo.nickname}</p>
+              <div className="flex gap-1.5 mt-0.5">
+                <Badge variant={playerInfo.balance < 0 ? 'danger' : 'default'} size="sm">{playerInfo.balance}₽</Badge>
+                {playerInfo.bonus_points > 0 && (
+                  <Badge variant="success" size="sm" icon={<Star className="w-2.5 h-2.5" />}>{playerInfo.bonus_points}</Badge>
+                )}
+              </div>
             </div>
           </div>
         )}
 
-        <div className="text-center py-2">
-          <p className="text-xs text-[var(--tg-theme-hint-color,#888)] font-medium mb-1">К оплате</p>
+        {/* Total */}
+        <div className="text-center py-1">
+          <p className="text-[10px] text-white/25 font-semibold uppercase tracking-wider mb-0.5">К оплате</p>
           <p className="text-4xl font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums animate-count-up">
             {fmtCur(total)}
           </p>
@@ -162,66 +166,102 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
 
         {!splitMode ? (
           <>
-            <div className="space-y-2.5">
-              <Button size="lg" fullWidth onClick={() => handleSimplePay('cash')} loading={isProcessing} disabled={isProcessing}>
-                <Banknote className="w-5 h-5" />Наличные
-              </Button>
-              <Button size="lg" fullWidth variant="secondary" onClick={() => handleSimplePay('card')} loading={isProcessing} disabled={isProcessing}>
-                <CreditCard className="w-5 h-5" />Карта
-              </Button>
-              {activeCheck?.player_id && maxBonus > 0 && (
-                <Button
-                  size="lg" fullWidth variant="secondary" onClick={handleBonusPay}
-                  loading={isProcessing} disabled={isProcessing}
-                  className="!bg-amber-500/10 !border-amber-500/20 !text-amber-400 hover:!bg-amber-500/20"
-                >
-                  <Star className="w-5 h-5" />
-                  Бонусы -{fmtCur(maxBonus)} (ост. {fmtCur(total - maxBonus)})
-                </Button>
-              )}
-              {activeCheck?.player_id && (
-                <Button size="lg" fullWidth variant="danger" onClick={() => handleSimplePay('debt')} loading={isProcessing} disabled={isProcessing}>
-                  <Clock className="w-5 h-5" />В долг
-                </Button>
-              )}
+            {/* Quick pay buttons */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => handleSimplePay('cash')}
+                disabled={isProcessing}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl bg-emerald-500/6 border border-emerald-500/10 active:scale-[0.96] transition-transform disabled:opacity-30"
+              >
+                <Banknote className="w-6 h-6 text-emerald-400" />
+                <span className="text-[13px] font-bold text-emerald-400">Наличные</span>
+                <span className="text-[10px] text-emerald-400/40 tabular-nums">{fmtCur(total)}</span>
+              </button>
+              <button
+                onClick={() => handleSimplePay('card')}
+                disabled={isProcessing}
+                className="flex flex-col items-center gap-2 p-4 rounded-xl bg-blue-500/6 border border-blue-500/10 active:scale-[0.96] transition-transform disabled:opacity-30"
+              >
+                <CreditCard className="w-6 h-6 text-blue-400" />
+                <span className="text-[13px] font-bold text-blue-400">Карта</span>
+                <span className="text-[10px] text-blue-400/40 tabular-nums">{fmtCur(total)}</span>
+              </button>
             </div>
+
+            {activeCheck?.player_id && maxBonus > 0 && (
+              <button
+                onClick={handleBonusPay}
+                disabled={isProcessing}
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-amber-500/6 border border-amber-500/10 active:scale-[0.97] transition-transform disabled:opacity-30"
+              >
+                <Star className="w-5 h-5 text-amber-400" />
+                <div className="flex-1 text-left">
+                  <p className="text-[13px] font-semibold text-amber-400">Списать бонусы</p>
+                  <p className="text-[10px] text-amber-400/40">-{fmtCur(maxBonus)}, остаток {fmtCur(total - maxBonus)} наличными</p>
+                </div>
+              </button>
+            )}
+
+            {activeCheck?.player_id && (
+              <button
+                onClick={() => handleSimplePay('debt')}
+                disabled={isProcessing}
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-red-500/6 border border-red-500/8 active:scale-[0.97] transition-transform disabled:opacity-30"
+              >
+                <Clock className="w-5 h-5 text-red-400" />
+                <div className="flex-1 text-left">
+                  <p className="text-[13px] font-semibold text-red-400">В долг</p>
+                  <p className="text-[10px] text-red-400/40">{fmtCur(total)} на баланс</p>
+                </div>
+              </button>
+            )}
 
             <button
               onClick={() => { hapticFeedback('light'); setSplitMode(true); }}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white/5 border border-white/5 text-sm font-semibold text-[var(--tg-theme-hint-color,#888)] hover:bg-white/8 transition-all active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/4 text-xs font-semibold text-white/30 active:scale-[0.98] transition-transform"
             >
-              <Split className="w-4 h-4" />
+              <Split className="w-3.5 h-3.5" />
               Разделить оплату
             </button>
           </>
         ) : (
           <>
-            {/* Split mode */}
-            <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-500/8 to-pink-500/5 border border-white/8">
+            {/* Split progress */}
+            <div className="p-3 rounded-xl card">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-white/40 font-medium">Осталось</span>
-                <span className={`text-xl font-black tabular-nums ${splitRemaining === 0 ? 'text-emerald-400' : 'text-[var(--tg-theme-text-color,#e0e0e0)]'}`}>
+                <span className="text-[10px] text-white/30 font-semibold uppercase tracking-wider">Осталось</span>
+                <span className={`text-lg font-black tabular-nums ${splitRemaining === 0 ? 'text-emerald-400' : 'text-[var(--tg-theme-text-color,#e0e0e0)]'}`}>
                   {fmtCur(splitRemaining)}
                 </span>
               </div>
-              <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-[var(--tg-theme-button-color,#6c5ce7)] transition-all duration-300"
-                  style={{ width: `${total > 0 ? ((splitPaid / total) * 100) : 0}%` }}
-                />
+              {/* Stacked bar */}
+              <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden flex">
+                {splitPayments.map((sp, idx) => {
+                  const conf = getMethodConf(sp.method);
+                  const pct = total > 0 ? (sp.amount / total) * 100 : 0;
+                  return (
+                    <div
+                      key={idx}
+                      className={`h-full transition-all duration-300 first:rounded-l-full last:rounded-r-full ${
+                        sp.method === 'cash' ? 'bg-emerald-500' : sp.method === 'card' ? 'bg-blue-500' : sp.method === 'bonus' ? 'bg-amber-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  );
+                })}
               </div>
             </div>
 
             {splitPayments.length > 0 && (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {splitPayments.map((sp, idx) => {
                   const conf = getMethodConf(sp.method);
                   return (
                     <SwipeableRow key={idx} onDelete={() => removeSplitPayment(idx)}>
-                      <div className={`flex items-center gap-3 p-3 rounded-xl border ${conf.color}`}>
-                        <conf.icon className="w-4 h-4 shrink-0" />
-                        <span className="flex-1 text-sm font-medium">{conf.label}</span>
-                        <span className="font-bold text-sm tabular-nums">{fmtCur(sp.amount)}</span>
+                      <div className={`flex items-center gap-2.5 p-2.5 rounded-xl border ${conf.bg}`}>
+                        <conf.icon className={`w-4 h-4 shrink-0 ${conf.color}`} />
+                        <span className={`flex-1 text-[13px] font-medium ${conf.color}`}>{conf.label}</span>
+                        <span className={`font-bold text-[13px] tabular-nums ${conf.color}`}>{fmtCur(sp.amount)}</span>
                       </div>
                     </SwipeableRow>
                   );
@@ -230,7 +270,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
             )}
 
             {splitRemaining > 0 && (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 <div className="flex gap-1.5 flex-wrap">
                   {methodConfig
                     .filter((mc) => {
@@ -242,13 +282,13 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                     <button
                       key={mc.method}
                       onClick={() => setSplitMethod(mc.method)}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition-all active:scale-95 ${
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-all active:scale-95 ${
                         splitMethod === mc.method
-                          ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/15 border-[var(--tg-theme-button-color,#6c5ce7)]/30 text-[var(--tg-theme-button-color,#6c5ce7)]'
-                          : 'bg-white/5 border-white/8 text-white/40'
+                          ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/12 border-[var(--tg-theme-button-color,#6c5ce7)]/20 text-[var(--tg-theme-button-color,#6c5ce7)]'
+                          : 'bg-white/4 border-white/6 text-white/30'
                       }`}
                     >
-                      <mc.icon className="w-3.5 h-3.5" />
+                      <mc.icon className="w-3 h-3" />
                       {mc.label}
                     </button>
                   ))}
@@ -257,19 +297,20 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                 <div className="flex gap-2">
                   <Input
                     type="number"
-                    placeholder={`Сумма (макс ${fmtCur(splitMethod === 'bonus' ? Math.min(splitRemaining, splitBonusAvailable) : splitRemaining)})`}
+                    compact
+                    placeholder={`Макс ${fmtCur(splitMethod === 'bonus' ? Math.min(splitRemaining, splitBonusAvailable) : splitRemaining)}`}
                     value={splitAmount}
                     onChange={(e) => setSplitAmount(e.target.value)}
                     min={0}
                     max={splitMethod === 'bonus' ? Math.min(splitRemaining, splitBonusAvailable) : splitRemaining}
                     className="flex-1"
                   />
-                  <Button onClick={addSplitPayment} disabled={!splitAmount || Number(splitAmount) <= 0}>
-                    <Plus className="w-4 h-4" />
+                  <Button size="sm" onClick={addSplitPayment} disabled={!splitAmount || Number(splitAmount) <= 0}>
+                    <Plus className="w-3.5 h-3.5" />
                   </Button>
                 </div>
 
-                <div className="flex gap-1.5">
+                <div className="flex gap-1">
                   {methodConfig
                     .filter((mc) => {
                       if (mc.method === 'debt' && !activeCheck?.player_id) return false;
@@ -280,7 +321,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                     <button
                       key={mc.method}
                       onClick={() => addSplitRemainder(mc.method)}
-                      className="flex-1 py-2 rounded-lg bg-white/5 text-[10px] font-semibold text-white/30 hover:bg-white/8 transition-all active:scale-95"
+                      className="flex-1 py-1.5 rounded-lg bg-white/4 text-[10px] font-semibold text-white/20 active:scale-95 transition-transform"
                     >
                       Всё {mc.label.toLowerCase()}
                     </button>
@@ -292,12 +333,11 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
             <div className="flex gap-2">
               <button
                 onClick={() => { setSplitMode(false); setSplitPayments([]); setSplitAmount(''); }}
-                className="flex-1 py-3 rounded-xl bg-white/5 text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] active:scale-[0.97] transition-all"
+                className="flex-1 py-2.5 rounded-xl bg-white/5 text-[13px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] active:scale-[0.97] transition-transform"
               >
                 Назад
               </button>
               <Button
-                size="lg"
                 className="flex-1"
                 onClick={handleSplitConfirm}
                 loading={isProcessing}
@@ -310,7 +350,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
         )}
 
         {!splitMode && activeCheck?.player_id && (
-          <p className="text-[11px] text-center text-white/25 font-medium">
+          <p className="text-[10px] text-center text-white/15 font-medium">
             Бонусы будут начислены автоматически
           </p>
         )}

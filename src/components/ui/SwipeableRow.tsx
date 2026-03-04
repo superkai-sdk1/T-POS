@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, type ReactNode } from 'react';
 import { Trash2 } from 'lucide-react';
+import { hapticFeedback } from '@/lib/telegram';
 
 interface SwipeableRowProps {
   children: ReactNode;
@@ -12,12 +13,13 @@ export function SwipeableRow({ children, onDelete, disabled }: SwipeableRowProps
   const [offsetX, setOffsetX] = useState(0);
   const [swiping, setSwiping] = useState(false);
   const [removing, setRemoving] = useState(false);
-  const rowRef = useRef<HTMLDivElement>(null);
+  const crossedThreshold = useRef(false);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     if (disabled) return;
     startX.current = e.touches[0].clientX;
     setSwiping(true);
+    crossedThreshold.current = false;
   }, [disabled]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
@@ -25,6 +27,13 @@ export function SwipeableRow({ children, onDelete, disabled }: SwipeableRowProps
     const dx = e.touches[0].clientX - startX.current;
     const clamped = Math.max(-80, Math.min(0, dx));
     setOffsetX(clamped);
+    if (clamped < -50 && !crossedThreshold.current) {
+      crossedThreshold.current = true;
+      hapticFeedback('light');
+    }
+    if (clamped > -50 && crossedThreshold.current) {
+      crossedThreshold.current = false;
+    }
   }, [swiping, disabled]);
 
   const handleTouchEnd = useCallback(() => {
@@ -32,25 +41,23 @@ export function SwipeableRow({ children, onDelete, disabled }: SwipeableRowProps
     setSwiping(false);
     if (offsetX < -50) {
       setRemoving(true);
-      setTimeout(onDelete, 250);
+      hapticFeedback('medium');
+      setTimeout(onDelete, 200);
     } else {
       setOffsetX(0);
     }
   }, [swiping, offsetX, onDelete]);
 
   return (
-    <div
-      ref={rowRef}
-      className={`relative overflow-hidden rounded-xl ${removing ? 'animate-swipe-out' : ''}`}
-    >
-      <div className="absolute inset-y-0 right-0 w-20 bg-red-500/20 flex items-center justify-center">
-        <Trash2 className="w-5 h-5 text-red-400" />
+    <div className={`relative overflow-hidden rounded-xl ${removing ? 'animate-swipe-out' : ''}`}>
+      <div className="absolute inset-y-0 right-0 w-20 bg-red-500/15 flex items-center justify-center rounded-r-xl">
+        <Trash2 className="w-4 h-4 text-red-400" />
       </div>
       <div
-        className="relative z-10 transition-transform"
+        className="relative z-10"
         style={{
           transform: `translateX(${offsetX}px)`,
-          transitionDuration: swiping ? '0ms' : '200ms',
+          transition: swiping ? 'none' : 'transform 0.2s var(--ease-spring)',
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}

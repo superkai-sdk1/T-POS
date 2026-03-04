@@ -16,6 +16,22 @@ interface OpenChecksProps {
   onSelectCheck: () => void;
 }
 
+function ElapsedTime({ since }: { since: string }) {
+  const [text, setText] = useState('');
+  useEffect(() => {
+    const tick = () => {
+      const ms = Date.now() - new Date(since).getTime();
+      const mins = Math.floor(ms / 60000);
+      if (mins < 60) setText(`${mins} мин`);
+      else setText(`${Math.floor(mins / 60)}ч ${mins % 60}м`);
+    };
+    tick();
+    const iv = setInterval(tick, 30000);
+    return () => clearInterval(iv);
+  }, [since]);
+  return <>{text}</>;
+}
+
 export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const { openChecks, loadOpenChecks, createCheck, selectCheck } = usePOSStore();
   const activeShift = useShiftStore((s) => s.activeShift);
@@ -139,183 +155,182 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
 
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">Касса</h2>
-          <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">
+          <h2 className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">Касса</h2>
+          <p className="text-[11px] text-[var(--tg-theme-hint-color,#888)]">
             {openChecks.length > 0 ? `${openChecks.length} открыт${openChecks.length === 1 ? '' : 'о'}` : 'Нет открытых чеков'}
           </p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setShowHistory(true)}
-            className="w-10 h-10 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-white/10 transition-all active:scale-90"
+            className="w-9 h-9 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-white/10 transition-all active:scale-90"
           >
             <History className="w-4 h-4 text-[var(--tg-theme-hint-color,#888)]" />
           </button>
-          <Button size="md" onClick={() => setShowNewCheck(true)} disabled={!activeShift}>
-            <Plus className="w-4 h-4" />
-            Новый чек
+          <Button size="sm" onClick={() => setShowNewCheck(true)} disabled={!activeShift}>
+            <Plus className="w-3.5 h-3.5" />
+            Новый
           </Button>
         </div>
       </div>
 
       {openChecks.length === 0 ? (
-        <div className="text-center py-16 animate-fade-in">
-          <div className="w-20 h-20 rounded-3xl bg-white/3 flex items-center justify-center mx-auto mb-4">
-            <Receipt className="w-10 h-10 text-white/8" />
-          </div>
-          <p className="text-[var(--tg-theme-hint-color,#888)] text-base font-medium">Нет открытых чеков</p>
-          <p className="text-sm text-white/20 mt-1">
-            {activeShift ? 'Нажмите «Новый чек» чтобы начать' : 'Откройте смену чтобы начать'}
+        <div className="text-center py-20 animate-fade-in">
+          <button
+            onClick={() => activeShift && setShowNewCheck(true)}
+            disabled={!activeShift}
+            className="w-16 h-16 rounded-2xl bg-[var(--tg-theme-button-color,#6c5ce7)]/10 border border-[var(--tg-theme-button-color,#6c5ce7)]/15 flex items-center justify-center mx-auto mb-4 active:scale-90 transition-transform disabled:opacity-30"
+          >
+            <Plus className="w-7 h-7 text-[var(--tg-theme-button-color,#6c5ce7)] animate-pulse" />
+          </button>
+          <p className="text-[var(--tg-theme-hint-color,#888)] text-sm font-medium">Нет открытых чеков</p>
+          <p className="text-xs text-white/20 mt-1">
+            {activeShift ? 'Нажмите чтобы создать' : 'Откройте смену для начала'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 stagger-children">
-          {openChecks.map((check) => (
-            <button
-              key={check.id}
-              onClick={() => handleSelectCheck(check)}
-              className="text-left p-3.5 rounded-2xl glass hover:bg-white/6 transition-all duration-200 active:scale-[0.97] flex flex-col gap-2.5"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  check.space
-                    ? 'bg-indigo-500/15'
-                    : check.player
-                    ? 'bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)]/25 to-purple-600/10'
-                    : 'bg-white/8'
-                }`}>
-                  {check.space ? (
-                    <DoorOpen className="w-4 h-4 text-indigo-400" />
-                  ) : check.player ? (
-                    <User className="w-4 h-4 text-[var(--tg-theme-button-color,#6c5ce7)]" />
-                  ) : (
-                    <UserX className="w-4 h-4 text-white/30" />
-                  )}
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 stagger-children">
+          {openChecks.map((check) => {
+            const hasSpace = !!check.space;
+            return (
+              <button
+                key={check.id}
+                onClick={() => handleSelectCheck(check)}
+                className="card-interactive text-left p-3 flex flex-col gap-2"
+              >
+                <div className="flex items-center gap-2">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                    hasSpace
+                      ? 'bg-indigo-500/12'
+                      : check.player
+                      ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/10'
+                      : 'bg-white/5'
+                  }`}>
+                    {hasSpace ? (() => { const Icon = spaceIconMap[check.space!.type] || DoorOpen; return <Icon className="w-3.5 h-3.5 text-indigo-400" />; })()
+                      : check.player
+                      ? <span className="text-xs font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">{check.player.nickname?.charAt(0).toUpperCase()}</span>
+                      : <UserX className="w-3.5 h-3.5 text-white/25" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] truncate leading-tight">
+                      {hasSpace ? check.space!.name : check.player?.nickname || 'Без клиента'}
+                    </p>
+                    {hasSpace && check.player && (
+                      <p className="text-[10px] text-indigo-400/50 truncate">{check.player.nickname}</p>
+                    )}
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-sm text-[var(--tg-theme-text-color,#e0e0e0)] truncate leading-tight">
-                    {check.space ? check.space.name : check.player?.nickname || 'Без клиента'}
-                  </p>
-                  {check.space && check.player && (
-                    <p className="text-[10px] text-indigo-400/60 truncate mt-0.5">{check.player.nickname}</p>
-                  )}
-                  {!check.space && check.note && (
-                    <p className="text-[10px] text-white/25 truncate mt-0.5">{check.note}</p>
-                  )}
-                </div>
-              </div>
 
-              <div className="flex items-end justify-between">
-                <div className="flex items-center gap-1 text-[var(--tg-theme-hint-color,#888)]">
-                  <Clock className="w-3 h-3" />
-                  <span className="text-[11px]">{formatTime(check.created_at)}</span>
+                <div className="flex items-end justify-between mt-auto">
+                  <div className="flex items-center gap-1 text-white/25">
+                    <Clock className="w-3 h-3" />
+                    <span className="text-[10px] tabular-nums"><ElapsedTime since={check.created_at} /></span>
+                  </div>
+                  {check.total_amount > 0 ? (
+                    <span className="text-base font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums leading-none">
+                      {fmtCur(check.total_amount)}
+                    </span>
+                  ) : (
+                    <Badge variant="default" size="sm">Пусто</Badge>
+                  )}
                 </div>
-                {check.total_amount > 0 ? (
-                  <span className="text-lg font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">
-                    {fmtCur(check.total_amount)}
-                  </span>
-                ) : (
-                  <Badge variant="warning">Пусто</Badge>
-                )}
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       )}
 
-      {/* Shift history */}
-      <Drawer
-        open={showHistory}
-        onClose={() => setShowHistory(false)}
-        title="История смен"
-      >
+      <Drawer open={showHistory} onClose={() => setShowHistory(false)} title="История смен">
         <ShiftHistory />
       </Drawer>
 
-      {/* New check */}
       <Drawer
         open={showNewCheck}
         onClose={() => { setShowNewCheck(false); setSearchQuery(''); setPlayers([]); }}
         title="Новый чек"
+        size="md"
       >
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="grid grid-cols-3 gap-2">
             <button
               onClick={() => handleCreateCheck(null)}
-              className="flex flex-col items-center gap-2 p-3.5 rounded-2xl glass hover:bg-white/8 transition-all active:scale-[0.97]"
+              className="flex flex-col items-center gap-1.5 p-3 rounded-xl card-interactive"
             >
-              <div className="w-10 h-10 rounded-xl bg-white/8 flex items-center justify-center">
-                <UserX className="w-5 h-5 text-white/40" />
+              <div className="w-9 h-9 rounded-lg bg-white/6 flex items-center justify-center">
+                <UserX className="w-4 h-4 text-white/35" />
               </div>
-              <span className="text-xs font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">Без клиента</span>
+              <span className="text-[11px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">Без клиента</span>
             </button>
             <button
               onClick={() => { setShowNewCheck(false); setShowCreateClient(true); }}
-              className="flex flex-col items-center gap-2 p-3.5 rounded-2xl bg-emerald-500/8 border border-emerald-500/15 hover:bg-emerald-500/12 transition-all active:scale-[0.97]"
+              className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-emerald-500/6 border border-emerald-500/10 active:scale-[0.97] transition-transform"
             >
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
-                <UserPlus className="w-5 h-5 text-emerald-400" />
+              <div className="w-9 h-9 rounded-lg bg-emerald-500/12 flex items-center justify-center">
+                <UserPlus className="w-4 h-4 text-emerald-400" />
               </div>
-              <span className="text-xs font-semibold text-emerald-400">Новый</span>
+              <span className="text-[11px] font-semibold text-emerald-400">Новый</span>
             </button>
             <button
               onClick={() => { setShowNewCheck(false); loadSpaces(); }}
-              className="flex flex-col items-center gap-2 p-3.5 rounded-2xl bg-indigo-500/8 border border-indigo-500/15 hover:bg-indigo-500/12 transition-all active:scale-[0.97]"
+              className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-indigo-500/6 border border-indigo-500/10 active:scale-[0.97] transition-transform"
             >
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center">
-                <DoorOpen className="w-5 h-5 text-indigo-400" />
+              <div className="w-9 h-9 rounded-lg bg-indigo-500/12 flex items-center justify-center">
+                <DoorOpen className="w-4 h-4 text-indigo-400" />
               </div>
-              <span className="text-xs font-semibold text-indigo-400">Кабинка</span>
+              <span className="text-[11px] font-semibold text-indigo-400">Кабинка</span>
             </button>
           </div>
 
-          <div className="relative flex items-center">
-            <div className="flex-1 h-px bg-white/8" />
-            <span className="px-3 text-[10px] text-white/25 font-semibold tracking-wider">ИЛИ ВЫБЕРИТЕ</span>
-            <div className="flex-1 h-px bg-white/8" />
+          <div className="flex items-center gap-2 py-1">
+            <div className="flex-1 h-px bg-white/6" />
+            <span className="text-[9px] text-white/20 font-semibold tracking-widest">ИЛИ ВЫБЕРИТЕ</span>
+            <div className="flex-1 h-px bg-white/6" />
           </div>
 
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
             <Input
               placeholder="Поиск по нику..."
               value={searchQuery}
               onChange={(e) => searchPlayers(e.target.value)}
-              className="pl-10"
+              className="pl-9"
+              compact
               autoFocus
             />
           </div>
 
           {isSearching && (
-            <div className="flex justify-center py-4">
+            <div className="flex justify-center py-3">
               <div className="w-5 h-5 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin" />
             </div>
           )}
 
-          <div className="space-y-1.5 max-h-[40vh] overflow-y-auto">
+          <div className="space-y-1 max-h-[35vh] overflow-y-auto">
             {players.map((player) => (
               <button
                 key={player.id}
                 onClick={() => handleCreateCheck(player.id)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl glass hover:bg-white/8 transition-all active:scale-[0.98]"
+                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/5 transition-colors active:scale-[0.98]"
               >
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)]/20 to-purple-600/5 flex items-center justify-center shrink-0">
-                  <User className="w-5 h-5 text-[var(--tg-theme-button-color,#6c5ce7)]" />
+                <div className="w-8 h-8 rounded-lg bg-[var(--tg-theme-button-color,#6c5ce7)]/10 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">
+                    {player.nickname?.charAt(0).toUpperCase()}
+                  </span>
                 </div>
                 <div className="text-left flex-1 min-w-0">
-                  <p className="font-semibold text-sm text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
+                  <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
                     {player.nickname}
                   </p>
-                  <div className="flex gap-1.5 mt-1">
-                    {player.is_resident && <Badge variant="success">Резидент</Badge>}
-                    {(player.balance ?? 0) < 0 && <Badge variant="danger">{player.balance}₽</Badge>}
-                    {(player.bonus_points ?? 0) > 0 && <Badge variant="accent">{player.bonus_points} бон.</Badge>}
+                  <div className="flex gap-1 mt-0.5">
+                    {player.is_resident && <Badge variant="success" size="sm">Резидент</Badge>}
+                    {(player.balance ?? 0) < 0 && <Badge variant="danger" size="sm">{player.balance}₽</Badge>}
+                    {(player.bonus_points ?? 0) > 0 && <Badge variant="accent" size="sm">{player.bonus_points} бон.</Badge>}
                   </div>
                 </div>
               </button>
             ))}
             {searchQuery.length > 0 && !isSearching && players.length === 0 && (
-              <p className="text-sm text-center text-[var(--tg-theme-hint-color,#888)] py-8">
+              <p className="text-xs text-center text-[var(--tg-theme-hint-color,#888)] py-6">
                 Никого не найдено
               </p>
             )}
@@ -323,70 +338,75 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         </div>
       </Drawer>
 
-      {/* Create client */}
       <Drawer
         open={showCreateClient}
         onClose={() => { setShowCreateClient(false); setNewNickname(''); setNewIsResident(false); setCreateError(''); }}
         title="Новый клиент"
+        size="sm"
       >
-        <div className="space-y-4">
+        <div className="space-y-3">
           <Input
             label="Никнейм"
             placeholder="Имя клиента"
             value={newNickname}
             onChange={(e) => setNewNickname(e.target.value)}
+            compact
             autoFocus
           />
           <button
             onClick={() => setNewIsResident(!newIsResident)}
-            className={`w-full flex items-center justify-between p-3.5 rounded-xl border transition-all active:scale-[0.98] ${
+            className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all active:scale-[0.98] ${
               newIsResident
-                ? 'bg-emerald-500/8 border-emerald-500/25'
-                : 'bg-white/3 border-white/8'
+                ? 'bg-emerald-500/6 border-emerald-500/20'
+                : 'bg-white/3 border-white/6'
             }`}
           >
-            <span className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">Резидент клуба</span>
-            <div className={`w-11 h-6 rounded-full transition-colors relative ${
-              newIsResident ? 'bg-emerald-500' : 'bg-white/15'
+            <span className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">Резидент клуба</span>
+            <div className={`w-10 h-5.5 rounded-full transition-colors relative ${
+              newIsResident ? 'bg-emerald-500' : 'bg-white/12'
             }`}>
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-200 shadow ${
-                newIsResident ? 'left-6' : 'left-1'
+              <div className={`absolute top-0.5 w-4.5 h-4.5 rounded-full bg-white transition-all duration-150 shadow ${
+                newIsResident ? 'left-5' : 'left-0.5'
               }`} />
             </div>
           </button>
           {createError && (
-            <p className="text-sm text-red-400 bg-red-500/8 rounded-xl px-3 py-2 border border-red-500/10">{createError}</p>
+            <p className="text-xs text-red-400 bg-red-500/6 rounded-lg px-3 py-2 border border-red-500/8">{createError}</p>
           )}
-          <Button fullWidth size="lg" onClick={handleCreateClient}>
-            <UserPlus className="w-5 h-5" />
+          <Button fullWidth onClick={handleCreateClient}>
+            <UserPlus className="w-4 h-4" />
             Создать и открыть чек
           </Button>
         </div>
       </Drawer>
 
-      {/* Space selection */}
       <Drawer
         open={showSpaces}
         onClose={() => setShowSpaces(false)}
         title="Чек на кабинку / зал"
+        size="sm"
       >
-        <div className="space-y-3">
-          <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">Выберите пространство для открытия чека</p>
-          {spacesList.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => handleCreateCheck(null, s.id)}
-              className="w-full flex items-center gap-3 p-4 rounded-2xl glass hover:bg-white/8 transition-all active:scale-[0.97]"
-            >
-              {(() => { const Icon = spaceIconMap[s.type] || DoorOpen; return <div className="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center shrink-0"><Icon className="w-5 h-5 text-indigo-400" /></div>; })()}
-              <div className="flex-1 text-left">
-                <p className="font-bold text-sm text-[var(--tg-theme-text-color,#e0e0e0)]">{s.name}</p>
-                <p className="text-xs text-white/30">
-                  {s.hourly_rate ? `${s.hourly_rate}₽/час` : 'Ручная цена'}
-                </p>
-              </div>
-            </button>
-          ))}
+        <div className="space-y-2">
+          {spacesList.map((s) => {
+            const Icon = spaceIconMap[s.type] || DoorOpen;
+            return (
+              <button
+                key={s.id}
+                onClick={() => handleCreateCheck(null, s.id)}
+                className="w-full flex items-center gap-3 p-3 rounded-xl card-interactive"
+              >
+                <div className="w-9 h-9 rounded-lg bg-indigo-500/12 flex items-center justify-center shrink-0">
+                  <Icon className="w-4 h-4 text-indigo-400" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">{s.name}</p>
+                  <p className="text-[11px] text-white/25">
+                    {s.hourly_rate ? `${s.hourly_rate}₽/час` : 'Ручная цена'}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </Drawer>
     </div>

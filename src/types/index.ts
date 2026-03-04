@@ -1,5 +1,5 @@
 export type UserRole = 'owner' | 'staff' | 'client';
-export type ItemCategory = 'drinks' | 'food' | 'bar' | 'hookah' | 'services';
+export type ItemCategory = string;
 export type CheckStatus = 'open' | 'closed';
 export type PaymentMethod = 'cash' | 'card' | 'debt' | 'bonus' | 'split';
 export type TransactionType = 'supply' | 'write_off' | 'sale' | 'revision' | 'bonus_accrual' | 'bonus_spend' | 'cash_operation' | 'debt_adjustment';
@@ -33,6 +33,17 @@ export interface InventoryItem {
   sort_order: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface MenuCategory {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  icon_name: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
 }
 
 export interface Check {

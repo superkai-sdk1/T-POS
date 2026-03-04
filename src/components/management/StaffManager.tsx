@@ -180,7 +180,7 @@ export function StaffManager() {
           <button
             key={p.id}
             onClick={() => openEdit(p)}
-            className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/8 transition-all active:scale-[0.98]"
+            className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
           >
             <div className="w-10 h-10 rounded-xl bg-[var(--tg-theme-button-color,#6c5ce7)]/15 flex items-center justify-center shrink-0">
               <span className="text-sm font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">
@@ -188,10 +188,10 @@ export function StaffManager() {
               </span>
             </div>
             <div className="text-left flex-1 min-w-0">
-              <p className="font-semibold text-sm text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{p.nickname}</p>
+              <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{p.nickname}</p>
               <div className="flex gap-1.5 mt-0.5">
-                <Badge>Сотрудник</Badge>
-                {p.password_hash && <Badge variant="success">Пароль задан</Badge>}
+                <Badge size="sm">Сотрудник</Badge>
+                {p.password_hash && <Badge variant="success" size="sm">Пароль задан</Badge>}
               </div>
             </div>
             <Pencil className="w-4 h-4 text-white/20 shrink-0" />
@@ -200,7 +200,7 @@ export function StaffManager() {
       </div>
 
       {/* Add staff drawer */}
-      <Drawer open={showAdd} onClose={() => { setShowAdd(false); resetForm(); }} title="Новый сотрудник">
+      <Drawer open={showAdd} onClose={() => { setShowAdd(false); resetForm(); }} title="Новый сотрудник" size="sm">
         <div className="space-y-4">
           <Input
             label="Никнейм"
@@ -226,7 +226,7 @@ export function StaffManager() {
             </button>
           </div>
           {error && (
-            <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>
+            <p className="text-[13px] text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>
           )}
           <Button fullWidth size="lg" onClick={handleAdd}>
             <UserPlus className="w-5 h-5" />
@@ -236,7 +236,7 @@ export function StaffManager() {
       </Drawer>
 
       {/* Edit staff drawer */}
-      <Drawer open={showEdit} onClose={() => { setShowEdit(false); resetForm(); }} title="Редактирование">
+      <Drawer open={showEdit} onClose={() => { setShowEdit(false); resetForm(); }} title="Редактирование" size="sm">
         <div className="space-y-4">
           <Input
             label="Никнейм"
@@ -261,7 +261,7 @@ export function StaffManager() {
             </button>
           </div>
           {error && (
-            <p className="text-sm text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>
+            <p className="text-[13px] text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>
           )}
           <div className="flex gap-2">
             <Button fullWidth onClick={handleSaveEdit}>

@@ -359,18 +359,18 @@ export function DashboardPage() {
   return (
     <div className="space-y-5" {...tabSwipe}>
       {/* Tab switcher */}
-      <div className="flex gap-1 p-1 rounded-2xl bg-white/4 border border-white/5 overflow-x-auto scrollbar-none">
+      <div className="flex gap-1 p-0.5 rounded-lg bg-white/3 overflow-x-auto scrollbar-none">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-xl text-[11px] font-semibold transition-all duration-200 whitespace-nowrap min-w-0 ${
+            className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap min-w-0 ${
               tab === t.id
-                ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white shadow-md shadow-[var(--tg-theme-button-color,#6c5ce7)]/20'
-                : 'text-[var(--tg-theme-hint-color,#888)] hover:text-white/60'
+                ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white shadow-sm'
+                : 'text-white/30'
             }`}
           >
-            <t.icon className="w-3.5 h-3.5 shrink-0" />
+            <t.icon className="w-3 h-3 shrink-0" />
             {t.label}
           </button>
         ))}
@@ -379,36 +379,41 @@ export function DashboardPage() {
       {/* OVERVIEW TAB */}
       {tab === 'overview' && (
         <div className="space-y-5">
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)]/20 to-purple-900/10 border border-[var(--tg-theme-button-color,#6c5ce7)]/20">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-sm text-white/50">Выручка за месяц</span>
+          <div className="p-4 rounded-xl bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)]/12 to-purple-900/5 card">
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-[11px] text-white/35 font-semibold">Выручка за месяц</span>
               {stats.monthGrowth !== 0 && (
-                <Badge variant={stats.monthGrowth > 0 ? 'success' : 'danger'}>
+                <Badge variant={stats.monthGrowth > 0 ? 'success' : 'danger'} size="sm">
                   {stats.monthGrowth > 0 ? '+' : ''}{stats.monthGrowth}%
                 </Badge>
               )}
             </div>
-            <p className="text-3xl font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{fmtCur(stats.month)}</p>
-            <p className="text-xs text-white/30 mt-1">{stats.monthCount} чеков · средний {fmtCur(stats.avgCheck)}</p>
+            <p className="text-2xl font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(stats.month)}</p>
+            <p className="text-[10px] text-white/20 mt-0.5">{stats.monthCount} чеков · средний {fmtCur(stats.avgCheck)}</p>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             {[
               { label: 'Сегодня', value: stats.today, sub: `${stats.todayCount} чек.`, icon: CalendarDays, color: 'text-emerald-400' },
               { label: 'Неделя', value: stats.week, sub: `${stats.weekCount} чек.`, icon: TrendingUp, color: 'text-blue-400' },
               { label: 'Ср. чек', value: stats.avgCheck, sub: 'за месяц', icon: Receipt, color: 'text-amber-400' },
+              { label: 'Должники', value: debtors.reduce((s, d) => s + Math.abs(d.balance), 0), sub: `${debtors.length} чел.`, icon: AlertCircle, color: 'text-red-400' },
             ].map((s) => (
-              <div key={s.label} className="p-3 rounded-xl bg-white/5 border border-white/5">
-                <s.icon className={`w-4 h-4 ${s.color} mb-1.5`} />
-                <p className="text-base font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{fmtCur(s.value)}</p>
-                <p className="text-[10px] text-white/30">{s.sub}</p>
+              <div key={s.label} className="p-2.5 rounded-xl card flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-white/4 flex items-center justify-center shrink-0">
+                  <s.icon className={`w-4 h-4 ${s.color}`} />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums leading-tight">{fmtCur(s.value)}</p>
+                  <p className="text-[9px] text-white/20">{s.sub}</p>
+                </div>
               </div>
             ))}
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] mb-3">Выручка за 7 дней</h3>
-            <div className="flex items-end gap-1.5 h-32">
+            <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Выручка за 7 дней</h3>
+            <div className="flex items-end gap-1 h-28">
               {dailyRevenue.map((day) => (
                 <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
                   <span className="text-[9px] text-white/30 font-medium">
@@ -427,7 +432,7 @@ export function DashboardPage() {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] mb-3">Способы оплаты</h3>
+            <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Способы оплаты</h3>
             <div className="space-y-2.5">
               {[
                 { label: 'Наличные', value: stats.cash, icon: Banknote, color: 'bg-emerald-500' },
@@ -457,7 +462,7 @@ export function DashboardPage() {
 
           {peakHours.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] mb-3">Популярные часы</h3>
+              <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Популярные часы</h3>
               <div className="flex items-end gap-px h-20">
                 {peakHours.map((h) => (
                   <div key={h.hour} className="flex-1 flex flex-col items-center gap-0.5">
@@ -476,7 +481,7 @@ export function DashboardPage() {
 
           {categoryBreakdown.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] mb-3">По категориям</h3>
+              <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">По категориям</h3>
               <div className="space-y-2">
                 {categoryBreakdown.map((cat, i) => {
                   const maxRev = categoryBreakdown[0]?.revenue || 1;
@@ -614,7 +619,7 @@ export function DashboardPage() {
                           <button
                             key={c.id}
                             onClick={() => setExpandedCheckId(isExpanded ? null : c.id)}
-                            className="w-full text-left p-3 rounded-xl bg-white/5 hover:bg-white/8 transition-all active:scale-[0.99]"
+                            className="w-full text-left p-2.5 rounded-xl card active:scale-[0.99] transition-transform"
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -700,8 +705,8 @@ export function DashboardPage() {
       {/* ITEMS TAB */}
       {tab === 'items' && (
         <div className="space-y-5">
-          <h3 className="text-base font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
-            Топ товаров по выручке
+          <h3 className="text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
+            Топ товаров
           </h3>
           {topItems.length === 0 ? (
             <p className="text-sm text-[var(--tg-theme-hint-color,#888)] text-center py-10">Нет данных о продажах</p>
@@ -710,7 +715,7 @@ export function DashboardPage() {
               {topItems.map((item, i) => {
                 const maxRev = topItems[0]?.revenue || 1;
                 return (
-                  <div key={item.name} className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                  <div key={item.name} className="flex items-center gap-2.5 p-2.5 rounded-xl card">
                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
                       i === 0 ? 'bg-amber-500/20 text-amber-400' :
                       i === 1 ? 'bg-gray-400/20 text-gray-300' :
@@ -745,8 +750,8 @@ export function DashboardPage() {
       {/* PLAYERS TAB */}
       {tab === 'players' && (
         <div className="space-y-5">
-          <h3 className="text-base font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
-            Топ игроков по тратам
+          <h3 className="text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
+            Топ игроков
           </h3>
           {topPlayers.length === 0 ? (
             <p className="text-sm text-[var(--tg-theme-hint-color,#888)] text-center py-10">Нет данных</p>
@@ -755,7 +760,7 @@ export function DashboardPage() {
               {topPlayers.map((player, i) => {
                 const maxTotal = topPlayers[0]?.total || 1;
                 return (
-                  <div key={player.nickname + i} className="flex items-center gap-3 p-3 rounded-xl bg-white/5">
+                  <div key={player.nickname + i} className="flex items-center gap-2.5 p-2.5 rounded-xl card">
                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
                       i === 0 ? 'bg-amber-500/20 text-amber-400' :
                       i === 1 ? 'bg-gray-400/20 text-gray-300' :
@@ -810,7 +815,7 @@ export function DashboardPage() {
                 };
                 const meta = typeMap[tx.type] || { label: tx.type, variant: 'default' as const };
                 return (
-                  <div key={tx.id} className="flex items-start gap-3 p-3 rounded-xl bg-white/5">
+                  <div key={tx.id} className="flex items-start gap-2.5 p-2.5 rounded-xl card">
                     <Badge variant={meta.variant}>{meta.label}</Badge>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{tx.description}</p>
