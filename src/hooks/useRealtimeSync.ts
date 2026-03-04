@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { usePOSStore } from '@/store/pos';
+import { usePOSStore, isSavingCart } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
 
 function emitTableChange(table: string) {
@@ -34,6 +34,7 @@ export function useRealtimeSync() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'check_items' },
         () => debounced('check_items', () => {
+          if (isSavingCart()) return;
           usePOSStore.getState().loadOpenChecks();
           const active = usePOSStore.getState().activeCheck;
           if (active) usePOSStore.getState().refreshActiveCheck();

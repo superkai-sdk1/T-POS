@@ -40,6 +40,11 @@ interface POSState {
   leaveCheck: () => Promise<void>;
 }
 
+let _savingCart = false;
+export function isSavingCart() { return _savingCart; }
+
+let _lastCartFingerprint = '';
+
 export const usePOSStore = create<POSState>((set, get) => ({
   openChecks: [],
   activeCheck: null,
@@ -100,7 +105,24 @@ export const usePOSStore = create<POSState>((set, get) => ({
       total_amount: totalsMap.get(check.id) || 0,
     }));
 
-    set({ openChecks: checksWithTotals, checksLoaded: true });
+    const prev = get().openChecks;
+    const changed =
+      checksWithTotals.length !== prev.length ||
+      checksWithTotals.some((c, i) =>
+        c.id !== prev[i]?.id ||
+        c.total_amount !== prev[i]?.total_amount ||
+        c.note !== prev[i]?.note ||
+        c.guest_names !== prev[i]?.guest_names ||
+        c.player_id !== prev[i]?.player_id ||
+        c.space_id !== prev[i]?.space_id ||
+        c.status !== prev[i]?.status
+      );
+
+    if (changed) {
+      set({ openChecks: checksWithTotals, checksLoaded: true });
+    } else if (!get().checksLoaded) {
+      set({ checksLoaded: true });
+    }
   },
 
   createCheck: async (playerId: string | null, spaceId?: string | null) => {
@@ -125,6 +147,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       player: Array.isArray(data.player) ? data.player[0] : data.player,
       space: Array.isArray(data.space) ? data.space[0] : data.space,
     } as Check;
+    _lastCartFingerprint = '';
     set({ activeCheck: check, cart: [], checkItems: [], appliedDiscounts: [] });
     return check;
   },
@@ -160,6 +183,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       discount: Array.isArray(cd.discount) ? cd.discount[0] : cd.discount,
     })) as CheckDiscount[];
 
+    _lastCartFingerprint = cart.map((c) => `${c.item.id}:${c.quantity}`).sort().join('|');
     set({ checkItems: items, cart, appliedDiscounts: discounts, isLoading: false });
   },
 
@@ -273,41 +297,66 @@ export const usePOSStore = create<POSState>((set, get) => ({
       space: Array.isArray(checkData.space) ? checkData.space[0] : checkData.space,
     } as Check;
 
+    const prev = get().activeCheck;
+    if (
+      prev &&
+      prev.id === updatedCheck.id &&
+      prev.note === updatedCheck.note &&
+      prev.guest_names === updatedCheck.guest_names &&
+      prev.player_id === updatedCheck.player_id &&
+      prev.space_id === updatedCheck.space_id &&
+      prev.status === updatedCheck.status
+    ) {
+      return;
+    }
+
     set({ activeCheck: updatedCheck });
   },
 
   saveCartToDb: async () => {
     const { activeCheck, cart } = get();
     if (!activeCheck) return;
-    if (cart.length === 0) {
-      await supabase.from('check_items').delete().eq('check_id', activeCheck.id);
-      return;
+
+    const fp = cart.map((c) => `${c.item.id}:${c.quantity}`).sort().join('|');
+    if (fp === _lastCartFingerprint) return;
+
+    _savingCart = true;
+    try {
+      if (cart.length === 0) {
+        await supabase.from('check_items').delete().eq('check_id', activeCheck.id);
+        _lastCartFingerprint = fp;
+        return;
+      }
+      const rows = cart.map((c) => ({
+        check_id: activeCheck.id,
+        item_id: c.item.id,
+        quantity: c.quantity,
+        price_at_time: c.item.price,
+      }));
+      const { data: inserted, error: insertError } = await supabase
+        .from('check_items')
+        .insert(rows)
+        .select('id');
+      if (insertError || !inserted) {
+        console.error('saveCartToDb insert failed, keeping old data:', insertError);
+        return;
+      }
+      const newIds = inserted.map((r) => r.id);
+      await supabase
+        .from('check_items')
+        .delete()
+        .eq('check_id', activeCheck.id)
+        .not('id', 'in', `(${newIds.join(',')})`);
+      _lastCartFingerprint = fp;
+    } finally {
+      setTimeout(() => { _savingCart = false; }, 600);
     }
-    const rows = cart.map((c) => ({
-      check_id: activeCheck.id,
-      item_id: c.item.id,
-      quantity: c.quantity,
-      price_at_time: c.item.price,
-    }));
-    const { data: inserted, error: insertError } = await supabase
-      .from('check_items')
-      .insert(rows)
-      .select('id');
-    if (insertError || !inserted) {
-      console.error('saveCartToDb insert failed, keeping old data:', insertError);
-      return;
-    }
-    const newIds = inserted.map((r) => r.id);
-    await supabase
-      .from('check_items')
-      .delete()
-      .eq('check_id', activeCheck.id)
-      .not('id', 'in', `(${newIds.join(',')})`);
   },
 
   cancelCheck: async () => {
     const { activeCheck } = get();
     if (!activeCheck) return false;
+    _lastCartFingerprint = '';
     await supabase.from('check_discounts').delete().eq('check_id', activeCheck.id);
     await supabase.from('check_items').delete().eq('check_id', activeCheck.id);
     const { error } = await supabase.from('checks').delete().eq('id', activeCheck.id);
@@ -322,6 +371,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
   leaveCheck: async () => {
     await get().saveCartToDb();
+    _lastCartFingerprint = '';
     set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
     await get().loadOpenChecks();
   },

@@ -71,14 +71,16 @@ export function CheckView({ onBack }: CheckViewProps) {
     }, 1500);
   }, [saveCartToDb]);
 
+  const activeCheckId = activeCheck?.id;
   useEffect(() => {
-    if (activeCheck && cart.length > 0) {
+    if (activeCheckId && cart.length > 0) {
       debouncedSaveCart();
     }
     return () => {
       if (cartSaveTimer.current) clearTimeout(cartSaveTimer.current);
     };
-  }, [cart, activeCheck, debouncedSaveCart]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart, activeCheckId, debouncedSaveCart]);
 
   useEffect(() => {
     return () => {

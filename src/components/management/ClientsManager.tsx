@@ -80,6 +80,9 @@ export function ClientsManager() {
   }, []);
 
   const handleApproveLink = async (req: LinkRequest) => {
+    const updates: Record<string, string | null> = { tg_id: req.tg_id };
+    if (req.tg_username) updates.tg_username = req.tg_username;
+    await supabase.from('profiles').update(updates).eq('id', req.profile_id);
     await supabase.from('tg_link_requests').update({ status: 'approved' }).eq('id', req.id);
     hapticNotification('success');
     loadLinkRequests();

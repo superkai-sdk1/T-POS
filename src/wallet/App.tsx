@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { getTelegramWebApp, initTelegramApp } from '@/lib/telegram';
 
@@ -29,6 +29,12 @@ interface Transaction {
   created_at: string;
 }
 
+interface NicknameOption {
+  id: string;
+  nickname: string;
+  client_tier: string;
+}
+
 const fmt = (n: number) =>
   new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n);
 
@@ -44,15 +50,35 @@ const tierColor: Record<string, string> = {
   student: 'text-violet-400',
 };
 
+type AppScreen = 'loading' | 'wallet' | 'picker' | 'pending' | 'error';
+
 export function WalletApp() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [screen, setScreen] = useState<AppScreen>('loading');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  const [nicknames, setNicknames] = useState<NicknameOption[]>([]);
+  const [nicknameSearch, setNicknameSearch] = useState('');
+  const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
+  const [selectedNickname, setSelectedNickname] = useState('');
+
+  const tgIdRef = useRef('');
+  const tgUsernameRef = useRef('');
+  const tgFirstNameRef = useRef('');
+
+  const loadTransactions = useCallback(async (profileId: string) => {
+    const { data } = await supabase
+      .from('transactions')
+      .select('id, type, amount, description, created_at')
+      .eq('player_id', profileId)
+      .in('type', ['bonus_accrual', 'bonus_spend'])
+      .order('created_at', { ascending: false })
+      .limit(50);
+    setTransactions((data || []) as Transaction[]);
+  }, []);
 
   const loadProfile = useCallback(async (tgId: string, tgUsername?: string) => {
-    let data: Profile | null = null;
-
     const { data: byId } = await supabase
       .from('profiles')
       .select('id, nickname, bonus_points, balance, client_tier, photo_url, created_at')
@@ -60,8 +86,13 @@ export function WalletApp() {
       .single();
 
     if (byId) {
-      data = byId as Profile;
-    } else if (tgUsername) {
+      setProfile(byId as Profile);
+      await loadTransactions(byId.id);
+      setScreen('wallet');
+      return;
+    }
+
+    if (tgUsername) {
       const clean = tgUsername.replace(/^@/, '').toLowerCase();
       const { data: byUsername } = await supabase
         .from('profiles')
@@ -69,77 +100,125 @@ export function WalletApp() {
         .ilike('tg_username', clean)
         .single();
       if (byUsername) {
-        data = byUsername as Profile;
         await supabase.from('profiles').update({ tg_id: tgId }).eq('id', byUsername.id);
+        setProfile(byUsername as Profile);
+        await loadTransactions(byUsername.id);
+        setScreen('wallet');
+        return;
       }
     }
 
-    if (!data) {
-      setError('Профиль не найден. Обратитесь к администратору клуба.');
-      setLoading(false);
+    const { data: pending } = await supabase
+      .from('tg_link_requests')
+      .select('id, profile_id, status')
+      .eq('tg_id', tgId)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (pending) {
+      setPendingRequestId(pending.id);
+      const { data: p } = await supabase
+        .from('profiles')
+        .select('nickname')
+        .eq('id', pending.profile_id)
+        .single();
+      setSelectedNickname(p?.nickname || '');
+      setScreen('pending');
       return;
     }
 
-    setProfile(data);
-
-    const { data: txData } = await supabase
-      .from('transactions')
-      .select('id, type, amount, description, created_at')
-      .eq('player_id', data.id)
-      .in('type', ['bonus_accrual', 'bonus_spend'])
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    setTransactions((txData || []) as Transaction[]);
-    setLoading(false);
-  }, []);
+    const { data: clients } = await supabase
+      .from('profiles')
+      .select('id, nickname, client_tier')
+      .eq('role', 'client')
+      .is('tg_id', null)
+      .order('nickname');
+    setNicknames((clients || []) as NicknameOption[]);
+    setScreen('picker');
+  }, [loadTransactions]);
 
   useEffect(() => {
     initTelegramApp();
-
     const tg = getTelegramWebApp();
     const tgUser = tg?.initDataUnsafe?.user;
 
     if (tgUser) {
-      loadProfile(String(tgUser.id), tgUser.username);
+      tgIdRef.current = String(tgUser.id);
+      tgUsernameRef.current = tgUser.username || '';
+      tgFirstNameRef.current = tgUser.first_name || '';
+      loadProfile(tgIdRef.current, tgUser.username);
     } else {
-      setError('Откройте через Telegram');
-      setLoading(false);
+      setErrorMsg('Откройте через Telegram');
+      setScreen('error');
     }
   }, [loadProfile]);
 
   useEffect(() => {
     if (!profile) return;
-
     const channel = supabase
       .channel('wallet-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${profile.id}` },
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${profile.id}` },
         (payload) => {
           if (payload.new && typeof payload.new === 'object' && 'id' in payload.new) {
             setProfile(payload.new as Profile);
           }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'transactions', filter: `player_id=eq.${profile.id}` },
+        })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions', filter: `player_id=eq.${profile.id}` },
         (payload) => {
           const tx = payload.new as Transaction;
           if (tx.type === 'bonus_accrual' || tx.type === 'bonus_spend') {
             setTransactions((prev) => [tx, ...prev]);
           }
-        }
-      )
+        })
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [profile?.id]);
 
-  if (loading) return <LoadingSkeleton />;
+  useEffect(() => {
+    if (screen !== 'pending' || !pendingRequestId) return;
+    const channel = supabase
+      .channel('link-request-watch')
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'tg_link_requests',
+        filter: `id=eq.${pendingRequestId}`,
+      }, (payload) => {
+        const updated = payload.new as { status: string };
+        if (updated.status === 'approved') {
+          loadProfile(tgIdRef.current, tgUsernameRef.current);
+        } else if (updated.status === 'rejected') {
+          setPendingRequestId(null);
+          setScreen('picker');
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [screen, pendingRequestId, loadProfile]);
 
-  if (error) {
+  const handleSelectNickname = async (option: NicknameOption) => {
+    const { data, error } = await supabase
+      .from('tg_link_requests')
+      .insert({
+        tg_id: tgIdRef.current,
+        tg_username: tgUsernameRef.current || null,
+        tg_first_name: tgFirstNameRef.current || null,
+        profile_id: option.id,
+      })
+      .select('id')
+      .single();
+
+    if (error) {
+      setErrorMsg('Ошибка отправки заявки');
+      setScreen('error');
+      return;
+    }
+    setPendingRequestId(data.id);
+    setSelectedNickname(option.nickname);
+    setScreen('pending');
+  };
+
+  if (screen === 'loading') return <LoadingSkeleton />;
+
+  if (screen === 'error') {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="text-center space-y-3">
@@ -148,7 +227,114 @@ export function WalletApp() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>
           </div>
-          <p className="text-white/40 text-sm">{error}</p>
+          <p className="text-white/40 text-sm">{errorMsg}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === 'pending') {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6"
+        style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)' }}>
+        <div className="text-center space-y-4 max-w-sm animate-fade-in-up">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto"
+            style={{ background: 'linear-gradient(135deg, rgba(108,92,231,0.15), rgba(162,155,254,0.08))', border: '1px solid rgba(108,92,231,0.2)' }}>
+            <svg className="w-8 h-8 text-[#6c5ce7] animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-lg font-bold text-white/90">Ожидание подтверждения</p>
+            <p className="text-sm text-white/40 mt-1">
+              Вы выбрали профиль <span className="text-[#a29bfe] font-semibold">{selectedNickname}</span>
+            </p>
+          </div>
+          <div className="p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <p className="text-[13px] text-white/50 leading-relaxed">
+              Заявка отправлена администратору клуба. Как только он подтвердит — карта откроется автоматически.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#6c5ce7] animate-bounce" style={{ animationDelay: '0ms' }} />
+            <div className="w-1.5 h-1.5 rounded-full bg-[#6c5ce7] animate-bounce" style={{ animationDelay: '150ms' }} />
+            <div className="w-1.5 h-1.5 rounded-full bg-[#6c5ce7] animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === 'picker') {
+    const filtered = nicknameSearch
+      ? nicknames.filter((n) => n.nickname.toLowerCase().includes(nicknameSearch.toLowerCase()))
+      : nicknames;
+
+    return (
+      <div className="min-h-screen" style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)' }}>
+        <div className="px-4 pt-4 pb-8 space-y-4 max-w-md mx-auto">
+          <div className="text-center animate-fade-in-up">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
+              style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)' }}>
+              <span className="text-lg font-black text-white">T</span>
+            </div>
+            <p className="text-lg font-bold text-white/90">Привязка профиля</p>
+            <p className="text-[13px] text-white/40 mt-1">Выберите свой никнейм в клубе «Титан»</p>
+          </div>
+
+          <div className="relative animate-fade-in-up" style={{ animationDelay: '50ms' }}>
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Поиск по никнейму..."
+              className="w-full pl-10 pr-4 py-3 rounded-xl text-[14px] text-white/90 placeholder:text-white/25"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+              value={nicknameSearch}
+              onChange={(e) => setNicknameSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
+
+          <div className="space-y-1.5 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+            {filtered.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-white/30">
+                  {nicknames.length === 0 ? 'Нет доступных профилей' : 'Ничего не найдено'}
+                </p>
+              </div>
+            ) : (
+              filtered.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => handleSelectNickname(option)}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-left transition-all active:scale-[0.98]"
+                  style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}
+                >
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                    style={{ background: 'rgba(108,92,231,0.12)' }}>
+                    <span className="text-sm font-bold text-[#a29bfe]">
+                      {option.nickname.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[14px] font-semibold text-white/85 truncate">{option.nickname}</p>
+                    <p className={`text-[11px] font-medium ${tierColor[option.client_tier] || 'text-white/40'}`}>
+                      {tierLabel[option.client_tier] || 'Гость'}
+                    </p>
+                  </div>
+                  <svg className="w-4 h-4 text-white/15 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+              ))
+            )}
+          </div>
+
+          <p className="text-[11px] text-white/20 text-center pt-2">
+            Нет вашего никнейма? Попросите администратора добавить вас.
+          </p>
         </div>
       </div>
     );
@@ -177,18 +363,13 @@ function WalletCard({ profile }: { profile: Profile }) {
           animation: 'card-glow 4s ease-in-out infinite',
         }}
       >
-        {/* Decorative elements */}
         <div className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-[0.07]"
-          style={{ background: 'radial-gradient(circle, #6c5ce7, transparent 70%)', transform: 'translate(20%, -30%)' }}
-        />
+          style={{ background: 'radial-gradient(circle, #6c5ce7, transparent 70%)', transform: 'translate(20%, -30%)' }} />
         <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full opacity-[0.05]"
-          style={{ background: 'radial-gradient(circle, #a29bfe, transparent 70%)', transform: 'translate(-20%, 30%)' }}
-        />
+          style={{ background: 'radial-gradient(circle, #a29bfe, transparent 70%)', transform: 'translate(-20%, 30%)' }} />
         <div className="absolute inset-0 opacity-[0.03]"
-          style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255,255,255,0.05) 20px, rgba(255,255,255,0.05) 21px)' }}
-        />
+          style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255,255,255,0.05) 20px, rgba(255,255,255,0.05) 21px)' }} />
 
-        {/* Header */}
         <div className="relative flex items-center justify-between mb-6">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center"
@@ -207,7 +388,6 @@ function WalletCard({ profile }: { profile: Profile }) {
           </div>
         </div>
 
-        {/* Balance */}
         <div className="relative mb-5">
           <p className="text-[10px] font-medium text-white/30 uppercase tracking-wider mb-1">Бонусный баланс</p>
           <div className="flex items-baseline gap-2">
@@ -218,19 +398,17 @@ function WalletCard({ profile }: { profile: Profile }) {
           </div>
         </div>
 
-        {/* Footer info */}
         <div className="relative flex items-end justify-between">
           <div>
             <p className="text-[10px] text-white/25 uppercase tracking-wider mb-0.5">Владелец</p>
             <p className="text-sm font-semibold text-white/80">{profile.nickname}</p>
           </div>
-          {profile.balance < 0 && (
+          {profile.balance < 0 ? (
             <div className="text-right">
               <p className="text-[10px] text-red-400/60 uppercase tracking-wider mb-0.5">Долг</p>
               <p className="text-sm font-bold text-red-400">{fmt(Math.abs(profile.balance))}₽</p>
             </div>
-          )}
-          {profile.balance >= 0 && (
+          ) : (
             <div className="text-right">
               <p className="text-[10px] text-white/25 uppercase tracking-wider mb-0.5">Баланс</p>
               <p className="text-sm font-semibold text-white/60">{fmt(profile.balance)}₽</p>
@@ -238,7 +416,6 @@ function WalletCard({ profile }: { profile: Profile }) {
           )}
         </div>
 
-        {/* Card chip */}
         <div className="absolute right-5 top-[52%] -translate-y-1/2 opacity-[0.06]">
           <svg width="60" height="60" viewBox="0 0 24 24" fill="currentColor" className="text-white">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1" fill="none"/>
@@ -324,15 +501,12 @@ function groupByDate(transactions: Transaction[]): [string, Transaction[]][] {
     const d = new Date(tx.created_at);
     const ds = d.toDateString();
     let label: string;
-
     if (ds === today) label = 'Сегодня';
     else if (ds === yesterday) label = 'Вчера';
     else label = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-
     if (!map.has(label)) map.set(label, []);
     map.get(label)!.push(tx);
   }
-
   return Array.from(map.entries());
 }
 
