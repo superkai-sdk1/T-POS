@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { useAuthStore } from '@/store/auth';
+import { usePOSStore } from '@/store/pos';
 import type { Space, Booking, BookingStatus, OffsiteEvent, EventStatus, Profile } from '@/types';
 
 type ScheduleItem =
@@ -47,8 +48,14 @@ const spaceIconMap: Record<string, typeof Home> = {
   hall: Warehouse,
 };
 
-export function SchedulePage() {
+interface SchedulePageProps {
+  onOpenCheck?: () => void;
+}
+
+export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
   const user = useAuthStore((s) => s.user);
+  const createCheck = usePOSStore((s) => s.createCheck);
+  const selectCheck = usePOSStore((s) => s.selectCheck);
 
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -258,6 +265,30 @@ export function SchedulePage() {
     load();
   };
 
+  const startBooking = async (booking: Booking) => {
+    hapticFeedback('medium');
+    await supabase.from('bookings').update({ status: 'active' as BookingStatus }).eq('id', booking.id);
+
+    await usePOSStore.getState().loadOpenChecks();
+    const existingChecks = usePOSStore.getState().openChecks;
+    const existing = existingChecks.find((c) => c.space_id === booking.space_id && c.status === 'open');
+
+    if (existing) {
+      await selectCheck(existing);
+    } else {
+      const check = await createCheck(booking.client_id || null, booking.space_id);
+      if (!check) {
+        hapticNotification('error');
+        load();
+        return;
+      }
+    }
+
+    hapticNotification('success');
+    load();
+    onOpenCheck?.();
+  };
+
   const updateEventStatus = async (id: string, status: EventStatus) => {
     hapticFeedback('medium');
     await supabase.from('events').update({ status }).eq('id', id);
@@ -379,7 +410,7 @@ export function SchedulePage() {
                   {(b.status === 'booked' || b.status === 'active') && (
                     <div className="flex gap-1.5 pt-1">
                       {b.status === 'booked' && (
-                        <button onClick={() => updateBookingStatus(b.id, 'active')} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-[10px] font-semibold text-emerald-400 active:scale-95 transition-all">
+                        <button onClick={() => startBooking(b)} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-[10px] font-semibold text-emerald-400 active:scale-95 transition-all">
                           <Check className="w-3 h-3" />Начать
                         </button>
                       )}

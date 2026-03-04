@@ -75,7 +75,9 @@ export default function App() {
         )
       )}
       {activeTab === 'inventory' && <InventoryPage />}
-      {activeTab === 'schedule' && <SchedulePage />}
+      {activeTab === 'schedule' && (
+        <SchedulePage onOpenCheck={() => { setActiveTab('pos'); setShowCheckView(true); }} />
+      )}
       {activeTab === 'management' && <ManagementPage />}
       {activeTab === 'dashboard' && <DashboardPage />}
     </Layout>
