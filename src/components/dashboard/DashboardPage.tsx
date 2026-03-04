@@ -1,6 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useShiftStore } from '@/store/shift';
 import { useSwipe } from '@/hooks/useSwipe';
 import { Badge } from '@/components/ui/Badge';
 import {
@@ -11,8 +10,7 @@ import {
   Truck, ArrowDownRight, ArrowUpRight, Wallet, PieChart,
   ArrowLeft,
 } from 'lucide-react';
-import type { Transaction, Profile, Shift, Supply, CashOperation } from '@/types';
-import type { ShiftAnalytics as SA } from '@/store/shift';
+import type { Transaction, Profile, Supply, CashOperation } from '@/types';
 
 interface ClosedCheck {
   id: string;
@@ -44,6 +42,41 @@ const pmLabels: Record<string, string> = {
   cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы', split: 'Разделённая',
 };
 
+const REPORT_DAY_HOUR = 10;
+
+function getReportingDayStart(date: Date): Date {
+  const d = new Date(date);
+  if (d.getHours() < REPORT_DAY_HOUR) {
+    d.setDate(d.getDate() - 1);
+  }
+  d.setHours(REPORT_DAY_HOUR, 0, 0, 0);
+  return d;
+}
+
+interface ReportDay {
+  start: Date;
+  end: Date;
+  label: string;
+  checkCount: number;
+}
+
+interface ReportDayCheckDetail {
+  id: string;
+  player_nickname: string;
+  total_amount: number;
+  payment_method: string | null;
+  bonus_used: number;
+  closed_at: string;
+  items: { name: string; quantity: number; price: number }[];
+}
+
+interface ReportDayAnalytics {
+  checks: ReportDayCheckDetail[];
+  totalRevenue: number;
+  totalChecks: number;
+  avgCheck: number;
+}
+
 interface DashboardPageProps {
   onNavigate?: (target: string) => void;
 }
@@ -62,13 +95,11 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   const [supplies, setSupplies] = useState<Supply[]>([]);
   const [cashOps, setCashOps] = useState<CashOperation[]>([]);
 
-  const [shifts, setShifts] = useState<Shift[]>([]);
-  const [selectedShiftIdx, setSelectedShiftIdx] = useState(0);
-  const [shiftAnalytics, setShiftAnalytics] = useState<SA | null>(null);
-  const [shiftsLoading, setShiftsLoading] = useState(false);
+  const [reportDays, setReportDays] = useState<ReportDay[]>([]);
+  const [selectedDayIdx, setSelectedDayIdx] = useState(0);
+  const [dayAnalytics, setDayAnalytics] = useState<ReportDayAnalytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [expandedCheckId, setExpandedCheckId] = useState<string | null>(null);
-  const { getShiftAnalytics } = useShiftStore();
 
   useEffect(() => {
     loadAll();
@@ -81,37 +112,85 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   }, [tab, txLimit]);
 
   useEffect(() => {
-    if (tab === 'checks' && shifts.length === 0) loadShifts();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
-
-  const loadShifts = useCallback(async () => {
-    setShiftsLoading(true);
-    const { data } = await supabase
-      .from('shifts')
-      .select('*')
-      .eq('status', 'closed')
-      .order('closed_at', { ascending: false })
-      .limit(100);
-    if (data && data.length > 0) {
-      setShifts(data as Shift[]);
-      setSelectedShiftIdx(0);
+    if (tab === 'checks' && checks.length > 0 && reportDays.length === 0) {
+      computeReportDays();
     }
-    setShiftsLoading(false);
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab, checks]);
+
+  const computeReportDays = useCallback(() => {
+    const dayMap = new Map<number, { start: Date; count: number }>();
+    for (const c of checks) {
+      if (!c.closed_at) continue;
+      const start = getReportingDayStart(new Date(c.closed_at));
+      const key = start.getTime();
+      const existing = dayMap.get(key);
+      if (existing) existing.count++;
+      else dayMap.set(key, { start, count: 1 });
+    }
+    const days: ReportDay[] = Array.from(dayMap.values())
+      .sort((a, b) => b.start.getTime() - a.start.getTime())
+      .map((d) => ({
+        start: d.start,
+        end: new Date(d.start.getTime() + 86400000),
+        label: d.start.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }),
+        checkCount: d.count,
+      }));
+    setReportDays(days);
+    setSelectedDayIdx(0);
+  }, [checks]);
 
   useEffect(() => {
-    if (shifts.length > 0 && tab === 'checks') {
-      loadShiftAnalytics(shifts[selectedShiftIdx].id);
+    if (reportDays.length > 0 && tab === 'checks') {
+      loadDayAnalytics(reportDays[selectedDayIdx]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedShiftIdx, shifts]);
+  }, [selectedDayIdx, reportDays]);
 
-  const loadShiftAnalytics = async (shiftId: string) => {
+  const loadDayAnalytics = async (day: ReportDay) => {
     setAnalyticsLoading(true);
     setExpandedCheckId(null);
-    const data = await getShiftAnalytics(shiftId);
-    setShiftAnalytics(data);
+    const { data: checksData } = await supabase
+      .from('checks')
+      .select('*, player:profiles!checks_player_id_fkey(nickname)')
+      .eq('status', 'closed')
+      .gte('closed_at', day.start.toISOString())
+      .lt('closed_at', day.end.toISOString())
+      .order('closed_at', { ascending: false });
+
+    const dayChecks: ReportDayCheckDetail[] = [];
+    let totalRevenue = 0;
+
+    for (const c of checksData || []) {
+      const player = Array.isArray(c.player) ? c.player[0] : c.player;
+      const nickname = player?.nickname || 'Неизвестный';
+      const { data: items } = await supabase
+        .from('check_items')
+        .select('quantity, price_at_time, item:inventory(name, category)')
+        .eq('check_id', c.id);
+      const checkItems = (items || []).map((ci: Record<string, unknown>) => {
+        const item = Array.isArray(ci.item) ? ci.item[0] : ci.item;
+        return {
+          name: (item as Record<string, string>)?.name || '?',
+          quantity: ci.quantity as number,
+          price: ci.price_at_time as number,
+        };
+      });
+      dayChecks.push({
+        id: c.id,
+        player_nickname: nickname,
+        total_amount: c.total_amount,
+        payment_method: c.payment_method,
+        bonus_used: c.bonus_used || 0,
+        closed_at: c.closed_at,
+        items: checkItems,
+      });
+      totalRevenue += c.total_amount;
+    }
+
+    const totalChecks = dayChecks.length;
+    const avgCheck = totalChecks > 0 ? Math.round(totalRevenue / totalChecks) : 0;
+    setDayAnalytics({ checks: dayChecks, totalRevenue, totalChecks, avgCheck });
     setAnalyticsLoading(false);
   };
 
@@ -209,8 +288,8 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   };
 
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekStart = new Date(now.getTime() - 7 * 86400000);
+  const todayStart = getReportingDayStart(now);
+  const weekStart = new Date(todayStart.getTime() - 6 * 86400000);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
@@ -303,31 +382,32 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   }, [supplies, cashOps, stats, monthStart, prevMonthStart]);
 
   const dailyRevenue = useMemo((): DailyRevenue[] => {
-    const days: Record<string, DailyRevenue> = {};
+    const days: DailyRevenue[] = [];
     const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
     for (let i = 6; i >= 0; i--) {
-      const d = new Date(now.getTime() - i * 86400000);
-      const key = d.toISOString().slice(0, 10);
-      days[key] = {
-        date: key,
-        label: i === 0 ? 'Сег' : i === 1 ? 'Вч' : dayNames[d.getDay()],
-        total: 0,
-        count: 0,
-      };
-    }
-
-    for (const c of checks) {
-      if (!c.closed_at) continue;
-      const key = c.closed_at.slice(0, 10);
-      if (days[key]) {
-        days[key].total += c.total_amount || 0;
-        days[key].count++;
+      const dayStart = new Date(todayStart.getTime() - i * 86400000);
+      const dayEnd = new Date(dayStart.getTime() + 86400000);
+      const key = dayStart.toISOString().slice(0, 10);
+      let total = 0, count = 0;
+      for (const c of checks) {
+        if (!c.closed_at) continue;
+        const d = new Date(c.closed_at);
+        if (d >= dayStart && d < dayEnd) {
+          total += c.total_amount || 0;
+          count++;
+        }
       }
+      days.push({
+        date: key,
+        label: i === 0 ? 'Сег' : i === 1 ? 'Вч' : dayNames[dayStart.getDay()],
+        total,
+        count,
+      });
     }
 
-    return Object.values(days);
-  }, [checks]);
+    return days;
+  }, [checks, todayStart]);
 
   const topItems = useMemo(() => {
     const map: Record<string, { name: string; category: string; qty: number; revenue: number }> = {};
@@ -402,13 +482,13 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
     threshold: 50,
   });
 
-  const selectedShift = shifts[selectedShiftIdx] || null;
+  const selectedDay = reportDays[selectedDayIdx] || null;
 
   const [splitBreakdowns, setSplitBreakdowns] = useState<Record<string, { method: string; amount: number }[]>>({});
 
   useEffect(() => {
-    if (!shiftAnalytics) return;
-    const splitChecks = shiftAnalytics.checks.filter((c) => c.payment_method === 'split');
+    if (!dayAnalytics) return;
+    const splitChecks = dayAnalytics.checks.filter((c) => c.payment_method === 'split');
     if (splitChecks.length === 0) { setSplitBreakdowns({}); return; }
 
     (async () => {
@@ -421,12 +501,12 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       }
       setSplitBreakdowns(map);
     })();
-  }, [shiftAnalytics]);
+  }, [dayAnalytics]);
 
-  const shiftSummary = useMemo(() => {
-    if (!shiftAnalytics) return null;
+  const daySummary = useMemo(() => {
+    if (!dayAnalytics) return null;
     let cash = 0, card = 0, debt = 0, bonus = 0;
-    for (const c of shiftAnalytics.checks) {
+    for (const c of dayAnalytics.checks) {
       const amt = c.total_amount || 0;
       bonus += c.bonus_used || 0;
       if (c.payment_method === 'split') {
@@ -444,10 +524,8 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
     }
     const total = cash + card + debt + bonus;
     return { total, cash, card, debt, bonus };
-  }, [shiftAnalytics, splitBreakdowns]);
+  }, [dayAnalytics, splitBreakdowns]);
 
-  const fmtDate = (d: string) =>
-    new Date(d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
   const fmtTime = (d: string | null) =>
     d ? new Date(d).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '-';
 
@@ -596,7 +674,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           {/* Quick stats grid */}
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: 'Сегодня', value: stats.today, sub: `${stats.todayCount} чек.`, icon: CalendarDays, color: 'text-emerald-400', action: () => setDetail('today') },
+              { label: 'Смена', value: stats.today, sub: `${stats.todayCount} чек.`, icon: CalendarDays, color: 'text-emerald-400', action: () => setDetail('today') },
               { label: 'Неделя', value: stats.week, sub: `${stats.weekCount} чек.`, icon: TrendingUp, color: 'text-blue-400', action: () => setDetail('week') },
               { label: 'Ср. чек', value: stats.avgCheck, sub: 'за месяц', icon: Receipt, color: 'text-amber-400', action: () => setDetail('avgcheck') },
               { label: 'Должники', value: debtors.reduce((s, d) => s + Math.abs(d.balance), 0), sub: `${debtors.length} чел.`, icon: AlertCircle, color: 'text-red-400', action: () => nav('management:debtors') },
@@ -809,38 +887,34 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       {/* CHECKS TAB */}
       {tab === 'checks' && (
         <div className="space-y-4">
-          {shiftsLoading ? (
-            <div className="text-center py-12">
-              <div className="w-6 h-6 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
-            </div>
-          ) : shifts.length === 0 ? (
-            <p className="text-sm text-[var(--c-hint)] text-center py-12">Нет закрытых смен</p>
+          {reportDays.length === 0 ? (
+            <p className="text-sm text-[var(--c-hint)] text-center py-12">Нет закрытых чеков</p>
           ) : (
             <>
-              {/* Shift selector */}
+              {/* Reporting day selector */}
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setSelectedShiftIdx((i) => Math.min(i + 1, shifts.length - 1))}
-                  disabled={selectedShiftIdx >= shifts.length - 1}
+                  onClick={() => setSelectedDayIdx((i) => Math.min(i + 1, reportDays.length - 1))}
+                  disabled={selectedDayIdx >= reportDays.length - 1}
                   className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all"
                 >
                   <ChevronLeft className="w-4 h-4 text-[var(--c-text)]" />
                 </button>
                 <div className="flex-1 text-center">
-                  {selectedShift && (
+                  {selectedDay && (
                     <>
                       <p className="text-sm font-bold text-[var(--c-text)]">
-                        {fmtDate(selectedShift.opened_at)}
+                        {selectedDay.label}
                       </p>
                       <p className="text-xs text-[var(--c-hint)]">
-                        {fmtTime(selectedShift.opened_at)} — {fmtTime(selectedShift.closed_at)}
+                        {selectedDay.checkCount} чеков · {REPORT_DAY_HOUR}:00 — {REPORT_DAY_HOUR}:00
                       </p>
                     </>
                   )}
                 </div>
                 <button
-                  onClick={() => setSelectedShiftIdx((i) => Math.max(i - 1, 0))}
-                  disabled={selectedShiftIdx <= 0}
+                  onClick={() => setSelectedDayIdx((i) => Math.max(i - 1, 0))}
+                  disabled={selectedDayIdx <= 0}
                   className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all"
                 >
                   <ChevronRight className="w-4 h-4 text-[var(--c-text)]" />
@@ -851,23 +925,23 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                 <div className="text-center py-10">
                   <div className="w-6 h-6 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
                 </div>
-              ) : shiftAnalytics ? (
+              ) : dayAnalytics ? (
                 <>
                   {/* Summary bar */}
-                  {shiftSummary && (
+                  {daySummary && (
                     <div className="p-4 rounded-2xl bg-gradient-to-br from-[var(--c-accent)]/15 to-emerald-500/5 border border-white/5">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs text-white/40">Итого за смену</span>
                         <span className="text-xl font-black text-[var(--c-text)]">
-                          {fmtCur(shiftSummary.total)}
+                          {fmtCur(daySummary.total)}
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         {[
-                          { label: 'Наличные', value: shiftSummary.cash, icon: Banknote, color: 'text-emerald-400' },
-                          { label: 'Карта', value: shiftSummary.card, icon: CreditCard, color: 'text-blue-400' },
-                          { label: 'В долг', value: shiftSummary.debt, icon: HandCoins, color: 'text-red-400' },
-                          { label: 'Бонусы', value: shiftSummary.bonus, icon: Star, color: 'text-amber-400' },
+                          { label: 'Наличные', value: daySummary.cash, icon: Banknote, color: 'text-emerald-400' },
+                          { label: 'Карта', value: daySummary.card, icon: CreditCard, color: 'text-blue-400' },
+                          { label: 'В долг', value: daySummary.debt, icon: HandCoins, color: 'text-red-400' },
+                          { label: 'Бонусы', value: daySummary.bonus, icon: Star, color: 'text-amber-400' },
                         ].filter((s) => s.value > 0).map((s) => (
                           <div key={s.label} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
                             <s.icon className={`w-3.5 h-3.5 ${s.color} shrink-0`} />
@@ -877,17 +951,17 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                         ))}
                       </div>
                       <p className="text-[10px] text-white/25 mt-2 text-center">
-                        {shiftAnalytics.totalChecks} чеков · ср. {fmtCur(shiftAnalytics.avgCheck)}
+                        {dayAnalytics.totalChecks} чеков · ср. {fmtCur(dayAnalytics.avgCheck)}
                       </p>
                     </div>
                   )}
 
                   {/* Check cards */}
                   <div className="space-y-2">
-                    {shiftAnalytics.checks.length === 0 ? (
+                    {dayAnalytics.checks.length === 0 ? (
                       <p className="text-sm text-white/30 text-center py-8">Нет чеков за эту смену</p>
                     ) : (
-                      shiftAnalytics.checks.map((c) => {
+                      dayAnalytics.checks.map((c) => {
                         const isExpanded = expandedCheckId === c.id;
                         const originalTotal = c.total_amount + (c.bonus_used || 0);
                         return (
@@ -1162,7 +1236,7 @@ function DetailScreen(props: DetailProps) {
     revenue: 'Доход за месяц',
     expenses: 'Расходы за месяц',
     pnl: 'Финансовый отчёт',
-    today: 'Сегодня',
+    today: 'Текущая смена',
     week: 'Неделя',
     avgcheck: 'Средний чек',
     payments: 'Способы оплаты',
@@ -1387,7 +1461,7 @@ function DetailScreen(props: DetailProps) {
         {header}
         <div className="p-4 rounded-xl bg-emerald-500/6 border border-emerald-500/10 text-center">
           <p className="text-3xl font-black text-emerald-400 tabular-nums">{fmtCur(todayTotal)}</p>
-          <p className="text-[11px] text-white/30 mt-1">{todayChecks.length} чеков сегодня</p>
+          <p className="text-[11px] text-white/30 mt-1">{todayChecks.length} чеков · с {REPORT_DAY_HOUR}:00</p>
         </div>
         {todayChecks.length > 0 && (
           <div className="grid grid-cols-3 gap-2">
@@ -1404,7 +1478,7 @@ function DetailScreen(props: DetailProps) {
           </div>
         )}
         <div>
-          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Чеки сегодня</h3>
+          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Чеки за смену</h3>
           {checkList(todayChecks)}
         </div>
       </div>
