@@ -4,6 +4,13 @@ import type { Profile } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { getTelegramWebApp } from '@/lib/telegram';
 
+interface StaffEntry {
+  id: string;
+  nickname: string;
+  role: string;
+  hasPin: boolean;
+}
+
 interface AuthState {
   user: Profile | null;
   rememberedUserId: string | null;
@@ -11,9 +18,12 @@ interface AuthState {
   needsPinSetup: boolean;
   isLoading: boolean;
   error: string | null;
+  staffUsers: StaffEntry[];
   login: (nickname: string, password: string) => Promise<boolean>;
   loginWithTelegram: () => Promise<boolean>;
   loginWithPin: (pin: string) => Promise<boolean>;
+  loginWithPinForUser: (userId: string, pin: string) => Promise<boolean>;
+  loadStaffUsers: () => Promise<void>;
   setupPin: (pin: string) => Promise<boolean>;
   skipPinSetup: () => void;
   logout: () => void;
@@ -31,6 +41,7 @@ export const useAuthStore = create<AuthState>()(
       needsPinSetup: false,
       isLoading: false,
       error: null,
+      staffUsers: [],
 
       login: async (nickname: string, password: string) => {
         set({ isLoading: true, error: null });
@@ -127,6 +138,55 @@ export const useAuthStore = create<AuthState>()(
         } catch {
           set({ error: 'Ошибка подключения', isLoading: false });
           return false;
+        }
+      },
+
+      loginWithPinForUser: async (userId: string, pin: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .eq('pin', pin)
+            .single();
+
+          if (error || !data) {
+            set({ error: 'Неверный PIN-код', isLoading: false });
+            return false;
+          }
+
+          const profile = data as Profile;
+          set({
+            user: profile,
+            rememberedUserId: profile.id,
+            rememberedNickname: profile.nickname,
+            needsPinSetup: false,
+            isLoading: false,
+          });
+          return true;
+        } catch {
+          set({ error: 'Ошибка подключения', isLoading: false });
+          return false;
+        }
+      },
+
+      loadStaffUsers: async () => {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, nickname, role, pin')
+          .in('role', ['staff', 'owner'])
+          .order('role')
+          .order('nickname');
+        if (data) {
+          set({
+            staffUsers: data.map((p) => ({
+              id: p.id,
+              nickname: p.nickname,
+              role: p.role,
+              hasPin: !!p.pin,
+            })),
+          });
         }
       },
 

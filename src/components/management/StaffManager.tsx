@@ -19,6 +19,7 @@ export function StaffManager() {
 
   const [nickname, setNickname] = useState('');
   const [password, setPassword] = useState('');
+  const [pinCode, setPinCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
 
@@ -43,6 +44,7 @@ export function StaffManager() {
   const resetForm = () => {
     setNickname('');
     setPassword('');
+    setPinCode('');
     setShowPassword(false);
     setError('');
     setSelected(null);
@@ -64,12 +66,16 @@ export function StaffManager() {
       return;
     }
 
-    const { error: insertErr } = await supabase.from('profiles').insert({
+    const insertData: Record<string, unknown> = {
       nickname: nickname.trim(),
       password_hash: password,
       role: 'staff',
       is_resident: false,
-    });
+    };
+    if (pinCode.trim() && /^\d{4}$/.test(pinCode.trim())) {
+      insertData.pin = pinCode.trim();
+    }
+    const { error: insertErr } = await supabase.from('profiles').insert(insertData);
 
     if (insertErr) {
       setError('Ошибка при создании');
@@ -86,6 +92,7 @@ export function StaffManager() {
     setSelected(p);
     setNickname(p.nickname);
     setPassword('');
+    setPinCode(p.pin || '');
     setShowEdit(true);
     setError('');
   };
@@ -98,6 +105,15 @@ export function StaffManager() {
     const updates: Record<string, unknown> = { nickname: nickname.trim() };
     if (password.trim()) {
       updates.password_hash = password.trim();
+    }
+    if (pinCode.trim()) {
+      if (pinCode.trim().length !== 4 || !/^\d{4}$/.test(pinCode.trim())) {
+        setError('PIN-код должен быть 4 цифры');
+        return;
+      }
+      updates.pin = pinCode.trim();
+    } else if (selected.pin) {
+      updates.pin = null;
     }
 
     const { error: updErr } = await supabase
@@ -209,8 +225,9 @@ export function StaffManager() {
                   ) : (
                     <Badge size="sm">Сотрудник</Badge>
                   )}
+                  {p.pin && <Badge variant="success" size="sm">PIN</Badge>}
                   {p.tg_id && <Badge variant="accent" size="sm">TG</Badge>}
-                  {p.password_hash && <Badge variant="success" size="sm">Пароль</Badge>}
+                  {p.password_hash && <Badge size="sm">Пароль</Badge>}
                 </div>
               </div>
               <Pencil className="w-4 h-4 text-white/20 shrink-0" />
@@ -245,6 +262,14 @@ export function StaffManager() {
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
+          <Input
+            label="PIN-код (4 цифры)"
+            placeholder="Для быстрого входа"
+            value={pinCode}
+            onChange={(e) => setPinCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            maxLength={4}
+            inputMode="numeric"
+          />
           {error && (
             <p className="text-[13px] text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>
           )}
@@ -286,6 +311,14 @@ export function StaffManager() {
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
+          <Input
+            label="PIN-код (4 цифры)"
+            placeholder="Для быстрого входа"
+            value={pinCode}
+            onChange={(e) => setPinCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            maxLength={4}
+            inputMode="numeric"
+          />
           {error && (
             <p className="text-[13px] text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>
           )}

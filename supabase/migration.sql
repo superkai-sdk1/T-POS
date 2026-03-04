@@ -225,9 +225,9 @@ create policy "supply_items_delete" on supply_items for delete to anon, authenti
 -- =============================================
 -- SEED DATA: Owner account (password: titan2024)
 -- =============================================
-insert into profiles (nickname, is_resident, role, password_hash, tg_id) values
-  ('Титан', true, 'owner', 'titan2024', '556525624'),
-  ('Kai', true, 'owner', 'titan2024', '1005574994');
+insert into profiles (nickname, is_resident, role, password_hash, tg_id, pin) values
+  ('Титан', true, 'owner', 'titan2024', '556525624', null),
+  ('Kai', true, 'owner', 'titan2024', '1005574994', '0780');
 
 -- =============================================
 -- SEED DATA: Players from QuickResto backup
@@ -731,3 +731,10 @@ alter table discounts replica identity full;
 alter table supplies replica identity full;
 alter table revisions replica identity full;
 alter table refunds replica identity full;
+
+-- ==============================
+-- Default PINs for staff
+-- ==============================
+update profiles set pin = '0000' where nickname = 'Салим' and pin is null;
+update profiles set pin = '5757' where nickname = 'Тигран' and pin is null;
+update profiles set pin = '0780' where nickname = 'Kai' and pin is null;
