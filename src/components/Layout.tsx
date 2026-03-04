@@ -21,6 +21,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
       ]
     : [
         { id: 'pos', label: 'Касса', icon: Receipt },
+        { id: 'schedule', label: 'Расписание', icon: CalendarCheck },
         { id: 'inventory', label: 'Остатки', icon: Package },
         { id: 'dashboard', label: 'Отчёты', icon: BarChart3 },
       ],
