@@ -305,298 +305,254 @@ export function MenuEditor() {
     );
   }
 
-  // ============ CATEGORY LIST VIEW ============
+  const categoriesView = viewMode === 'categories';
 
-  if (viewMode === 'categories') {
-    return (
-      <div className="space-y-4">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 px-4 rounded-xl card text-center">
-            <span className="text-sm font-bold text-[var(--c-text)]">{items.length}</span>
-            <span className="text-xs text-white/40 ml-1.5">позиций</span>
+  return (
+    <div className="space-y-4">
+      {categoriesView ? (
+        <>
+          {/* ============ CATEGORY LIST VIEW ============ */}
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 px-4 rounded-xl card text-center">
+              <span className="text-sm font-bold text-[var(--c-text)]">{items.length}</span>
+              <span className="text-xs text-white/40 ml-1.5">позиций</span>
+            </div>
+            <div className="p-2.5 px-4 rounded-xl bg-emerald-500/10 text-center">
+              <span className="text-sm font-bold text-emerald-400">{categories.length}</span>
+              <span className="text-xs text-white/40 ml-1.5">разделов</span>
+            </div>
+            <div className="flex-1" />
+            <Button size="sm" variant="secondary" onClick={() => openCreateCategory()}>
+              <FolderPlus className="w-4 h-4" />
+              Раздел
+            </Button>
           </div>
-          <div className="p-2.5 px-4 rounded-xl bg-emerald-500/10 text-center">
-            <span className="text-sm font-bold text-emerald-400">{categories.length}</span>
-            <span className="text-xs text-white/40 ml-1.5">разделов</span>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <input
+              type="text"
+              placeholder="Поиск по названию..."
+              className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-white/30"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
-          <div className="flex-1" />
-          <Button size="sm" variant="secondary" onClick={() => openCreateCategory()}>
-            <FolderPlus className="w-4 h-4" />
-            Раздел
-          </Button>
-        </div>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-          <input
-            type="text"
-            placeholder="Поиск по названию..."
-            className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-white/30"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+          {search ? (
+            <ItemsList
+              items={filteredItems}
+              categories={categories}
+              onEdit={openEdit}
+              onToggle={toggleActive}
+              onMove={moveItem}
+              search
+            />
+          ) : (
+            <div className="space-y-1.5">
+              {topCategories.sort((a, b) => a.sort_order - b.sort_order).map((cat, idx) => {
+                const Icon = getIconComponent(cat.icon_name);
+                const count = countForCategory(cat);
+                const children = getChildren(cat.id).sort((a, b) => a.sort_order - b.sort_order);
+                return (
+                  <div key={cat.id}>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button
+                          onClick={() => moveCategoryOrder(cat, 'up')}
+                          disabled={idx === 0}
+                          className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
+                        >
+                          <ChevronUp className="w-3 h-3 text-white/50" />
+                        </button>
+                        <button
+                          onClick={() => moveCategoryOrder(cat, 'down')}
+                          disabled={idx === topCategories.length - 1}
+                          className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
+                        >
+                          <ChevronDown className="w-3 h-3 text-white/50" />
+                        </button>
+                      </div>
 
-        {search ? (
+                      <button
+                        onClick={() => { setActiveCategory(cat); setViewMode('items'); }}
+                        className={`flex-1 flex items-center gap-3 p-3 rounded-xl card-interactive bg-gradient-to-r ${getCategoryColor(idx)}`}
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+                          <Icon className="w-5 h-5 text-white/70" />
+                        </div>
+                        <div className="flex-1 min-w-0 text-left">
+                          <p className="text-[13px] font-semibold text-[var(--c-text)] truncate">{cat.name}</p>
+                          <p className="text-[11px] text-white/40 mt-0.5">
+                            {count} {count === 1 ? 'позиция' : count < 5 ? 'позиции' : 'позиций'}
+                            {children.length > 0 && ` · ${children.length} подразделов`}
+                          </p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-white/20 shrink-0" />
+                      </button>
+
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <button
+                          onClick={() => openEditCategory(cat)}
+                          className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 transition-all"
+                        >
+                          <Pencil className="w-3 h-3 text-white/50" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteCatTarget(cat)}
+                          className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 transition-all"
+                        >
+                          <Trash2 className="w-3 h-3 text-red-400/60" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {children.length > 0 && (
+                      <div className="ml-10 mt-1 space-y-1">
+                        {children.map((child, childIdx) => {
+                          const ChildIcon = getIconComponent(child.icon_name);
+                          const childCount = items.filter((i) => i.category === child.slug).length;
+                          return (
+                            <div key={child.id} className="flex items-center gap-2">
+                              <div className="flex flex-col gap-0.5 shrink-0">
+                                <button
+                                  onClick={() => moveCategoryOrder(child, 'up')}
+                                  disabled={childIdx === 0}
+                                  className="w-5 h-5 rounded bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
+                                >
+                                  <ChevronUp className="w-2.5 h-2.5 text-white/50" />
+                                </button>
+                                <button
+                                  onClick={() => moveCategoryOrder(child, 'down')}
+                                  disabled={childIdx === children.length - 1}
+                                  className="w-5 h-5 rounded bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
+                                >
+                                  <ChevronDown className="w-2.5 h-2.5 text-white/50" />
+                                </button>
+                              </div>
+                              <button
+                                onClick={() => { setActiveCategory(child); setViewMode('items'); }}
+                                className="flex-1 flex items-center gap-2.5 p-2.5 rounded-xl card-interactive"
+                              >
+                                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
+                                  <ChildIcon className="w-4 h-4 text-white/50" />
+                                </div>
+                                <div className="flex-1 text-left">
+                                  <p className="text-xs font-medium text-[var(--c-text)]">{child.name}</p>
+                                  <p className="text-[10px] text-white/30">{childCount} позиций</p>
+                                </div>
+                                <ChevronRight className="w-3.5 h-3.5 text-white/15" />
+                              </button>
+                              <div className="flex flex-col gap-0.5 shrink-0">
+                                <button onClick={() => openEditCategory(child)} className="w-5 h-5 rounded bg-white/5 flex items-center justify-center active:scale-90 transition-all">
+                                  <Pencil className="w-2.5 h-2.5 text-white/50" />
+                                </button>
+                                <button onClick={() => setDeleteCatTarget(child)} className="w-5 h-5 rounded bg-white/5 flex items-center justify-center active:scale-90 transition-all">
+                                  <Trash2 className="w-2.5 h-2.5 text-red-400/60" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div className="ml-10 mt-1">
+                      <button
+                        onClick={() => openCreateCategory(cat.id)}
+                        className="flex items-center gap-1.5 text-[11px] text-white/25 hover:text-white/50 transition-colors py-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Подраздел
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {/* ============ ITEMS LIST VIEW ============ */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => { setViewMode('categories'); setActiveCategory(null); setSearch(''); }}
+              className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center active:scale-90 transition-all shrink-0"
+            >
+              <ArrowLeft className="w-5 h-5 text-white/60" />
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-[var(--c-text)] truncate">
+                {activeCategory?.name || 'Все позиции'}
+              </p>
+              <p className="text-[11px] text-white/40">{filteredItems.length} позиций</p>
+            </div>
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="w-4 h-4" />
+              Позиция
+            </Button>
+          </div>
+
+          {activeCategory && getChildren(activeCategory.id).length > 0 && (
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-none -mx-1 px-1">
+              <button
+                onClick={() => {}}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-[var(--c-accent)]/15 text-[var(--c-accent)] shrink-0"
+              >
+                Все
+              </button>
+              {getChildren(activeCategory.id).sort((a, b) => a.sort_order - b.sort_order).map((sub) => {
+                const SubIcon = getIconComponent(sub.icon_name);
+                return (
+                  <button
+                    key={sub.id}
+                    onClick={() => setActiveCategory(sub)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-white/5 text-white/35 active:scale-95 shrink-0 transition-all"
+                  >
+                    <SubIcon className="w-3 h-3" />
+                    {sub.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <input
+              type="text"
+              placeholder="Поиск по названию..."
+              className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-white/30"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
           <ItemsList
             items={filteredItems}
             categories={categories}
             onEdit={openEdit}
             onToggle={toggleActive}
             onMove={moveItem}
-            search
+            search={!!search}
           />
-        ) : (
-          <div className="space-y-1.5">
-            {topCategories.sort((a, b) => a.sort_order - b.sort_order).map((cat, idx) => {
-              const Icon = getIconComponent(cat.icon_name);
-              const count = countForCategory(cat);
-              const children = getChildren(cat.id).sort((a, b) => a.sort_order - b.sort_order);
-              return (
-                <div key={cat.id}>
-                  <div className="flex items-center gap-2">
-                    {/* Reorder */}
-                    <div className="flex flex-col gap-0.5 shrink-0">
-                      <button
-                        onClick={() => moveCategoryOrder(cat, 'up')}
-                        disabled={idx === 0}
-                        className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
-                      >
-                        <ChevronUp className="w-3 h-3 text-white/50" />
-                      </button>
-                      <button
-                        onClick={() => moveCategoryOrder(cat, 'down')}
-                        disabled={idx === topCategories.length - 1}
-                        className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
-                      >
-                        <ChevronDown className="w-3 h-3 text-white/50" />
-                      </button>
-                    </div>
 
-                    {/* Category card */}
-                    <button
-                      onClick={() => { setActiveCategory(cat); setViewMode('items'); }}
-                      className={`flex-1 flex items-center gap-3 p-3 rounded-xl card-interactive bg-gradient-to-r ${getCategoryColor(idx)}`}
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                        <Icon className="w-5 h-5 text-white/70" />
-                      </div>
-                      <div className="flex-1 min-w-0 text-left">
-                        <p className="text-[13px] font-semibold text-[var(--c-text)] truncate">
-                          {cat.name}
-                        </p>
-                        <p className="text-[11px] text-white/40 mt-0.5">
-                          {count} {count === 1 ? 'позиция' : count < 5 ? 'позиции' : 'позиций'}
-                          {children.length > 0 && ` · ${children.length} подразделов`}
-                        </p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-white/20 shrink-0" />
-                    </button>
-
-                    {/* Edit/Delete */}
-                    <div className="flex flex-col gap-0.5 shrink-0">
-                      <button
-                        onClick={() => openEditCategory(cat)}
-                        className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 transition-all"
-                      >
-                        <Pencil className="w-3 h-3 text-white/50" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteCatTarget(cat)}
-                        className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 transition-all"
-                      >
-                        <Trash2 className="w-3 h-3 text-red-400/60" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Subcategories */}
-                  {children.length > 0 && (
-                    <div className="ml-10 mt-1 space-y-1">
-                      {children.map((child, childIdx) => {
-                        const ChildIcon = getIconComponent(child.icon_name);
-                        const childCount = items.filter((i) => i.category === child.slug).length;
-                        return (
-                          <div key={child.id} className="flex items-center gap-2">
-                            <div className="flex flex-col gap-0.5 shrink-0">
-                              <button
-                                onClick={() => moveCategoryOrder(child, 'up')}
-                                disabled={childIdx === 0}
-                                className="w-5 h-5 rounded bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
-                              >
-                                <ChevronUp className="w-2.5 h-2.5 text-white/50" />
-                              </button>
-                              <button
-                                onClick={() => moveCategoryOrder(child, 'down')}
-                                disabled={childIdx === children.length - 1}
-                                className="w-5 h-5 rounded bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
-                              >
-                                <ChevronDown className="w-2.5 h-2.5 text-white/50" />
-                              </button>
-                            </div>
-                            <button
-                              onClick={() => { setActiveCategory(child); setViewMode('items'); }}
-                              className="flex-1 flex items-center gap-2.5 p-2.5 rounded-xl card-interactive"
-                            >
-                              <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
-                                <ChildIcon className="w-4 h-4 text-white/50" />
-                              </div>
-                              <div className="flex-1 text-left">
-                                <p className="text-xs font-medium text-[var(--c-text)]">{child.name}</p>
-                                <p className="text-[10px] text-white/30">{childCount} позиций</p>
-                              </div>
-                              <ChevronRight className="w-3.5 h-3.5 text-white/15" />
-                            </button>
-                            <div className="flex flex-col gap-0.5 shrink-0">
-                              <button onClick={() => openEditCategory(child)} className="w-5 h-5 rounded bg-white/5 flex items-center justify-center active:scale-90 transition-all">
-                                <Pencil className="w-2.5 h-2.5 text-white/50" />
-                              </button>
-                              <button onClick={() => setDeleteCatTarget(child)} className="w-5 h-5 rounded bg-white/5 flex items-center justify-center active:scale-90 transition-all">
-                                <Trash2 className="w-2.5 h-2.5 text-red-400/60" />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Add sub-category button */}
-                  <div className="ml-10 mt-1">
-                    <button
-                      onClick={() => openCreateCategory(cat.id)}
-                      className="flex items-center gap-1.5 text-[11px] text-white/25 hover:text-white/50 transition-colors py-1"
-                    >
-                      <Plus className="w-3 h-3" />
-                      Подраздел
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Category edit/create drawer */}
-        <CategoryEditorDrawer
-          open={showCatEditor}
-          onClose={() => setShowCatEditor(false)}
-          editing={editingCategory}
-          form={catForm}
-          setForm={setCatForm}
-          topCategories={topCategories}
-          onSave={handleSaveCategory}
-        />
-
-        {/* Category delete confirm */}
-        <Drawer open={!!deleteCatTarget} onClose={() => setDeleteCatTarget(null)} title="Удалить раздел?" size="sm">
-          {deleteCatTarget && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                {(() => { const I = getIconComponent(deleteCatTarget.icon_name); return <I className="w-5 h-5 text-red-400 shrink-0" />; })()}
-                <div>
-                  <p className="text-[13px] font-semibold text-[var(--c-text)]">{deleteCatTarget.name}</p>
-                  <p className="text-xs text-white/40">{countForCategory(deleteCatTarget)} позиций</p>
-                </div>
-              </div>
-              <p className="text-xs text-white/40 text-center">
-                Позиции будут перемещены в другой раздел. Подразделы станут основными.
+          {filteredItems.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-[var(--c-hint)]">
+                {search ? 'Ничего не найдено' : 'Нет позиций в этом разделе'}
               </p>
-              <div className="flex gap-2">
-                <Button fullWidth variant="secondary" onClick={() => setDeleteCatTarget(null)}>Отмена</Button>
-                <Button fullWidth variant="danger" onClick={handleDeleteCategory}>Удалить</Button>
-              </div>
+              <Button size="sm" className="mt-3" onClick={openCreate}>
+                <Plus className="w-4 h-4" /> Добавить позицию
+              </Button>
             </div>
           )}
-        </Drawer>
-      </div>
-    );
-  }
-
-  // ============ ITEMS LIST VIEW ============
-
-  return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => { setViewMode('categories'); setActiveCategory(null); setSearch(''); }}
-          className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center active:scale-90 transition-all shrink-0"
-        >
-          <ArrowLeft className="w-5 h-5 text-white/60" />
-        </button>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-[var(--c-text)] truncate">
-            {activeCategory?.name || 'Все позиции'}
-          </p>
-          <p className="text-[11px] text-white/40">{filteredItems.length} позиций</p>
-        </div>
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="w-4 h-4" />
-          Позиция
-        </Button>
-      </div>
-
-      {/* Subcategory tabs if parent */}
-      {activeCategory && getChildren(activeCategory.id).length > 0 && (
-        <div className="flex gap-1.5 overflow-x-auto scrollbar-none -mx-1 px-1">
-          <button
-            onClick={() => {/* already showing all for this category */}}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-[var(--c-accent)]/15 text-[var(--c-accent)] shrink-0"
-          >
-            Все
-          </button>
-          {getChildren(activeCategory.id).sort((a, b) => a.sort_order - b.sort_order).map((sub) => {
-            const SubIcon = getIconComponent(sub.icon_name);
-            return (
-              <button
-                key={sub.id}
-                onClick={() => setActiveCategory(sub)}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-white/5 text-white/35 active:scale-95 shrink-0 transition-all"
-              >
-                <SubIcon className="w-3 h-3" />
-                {sub.name}
-              </button>
-            );
-          })}
-        </div>
+        </>
       )}
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
-        <input
-          type="text"
-          placeholder="Поиск по названию..."
-          className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-white/30"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+      {/* ============ ALL DRAWERS (always rendered) ============ */}
 
-      <ItemsList
-        items={filteredItems}
-        categories={categories}
-        onEdit={openEdit}
-        onToggle={toggleActive}
-        onMove={moveItem}
-        search={!!search}
-      />
-
-      {filteredItems.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-[var(--c-hint)]">
-            {search ? 'Ничего не найдено' : 'Нет позиций в этом разделе'}
-          </p>
-          <Button size="sm" className="mt-3" onClick={openCreate}>
-            <Plus className="w-4 h-4" /> Добавить позицию
-          </Button>
-        </div>
-      )}
-
-      {/* ============ EDIT / CREATE ITEM DRAWER ============ */}
       <Drawer
         open={showEditor}
         onClose={() => setShowEditor(false)}
@@ -604,7 +560,6 @@ export function MenuEditor() {
         size="md"
       >
         <div className="space-y-4">
-          {/* Image */}
           <div>
             <p className="text-xs font-medium text-white/50 mb-2">Изображение</p>
             {form.image_url ? (
@@ -646,7 +601,6 @@ export function MenuEditor() {
           <Input label="Название" placeholder="Название позиции" value={form.name} onChange={(e) => updateField('name', e.target.value)} />
           <Input label="Цена (₽)" type="number" placeholder="0" value={form.price} onChange={(e) => updateField('price', e.target.value)} min={0} />
 
-          {/* Category selector */}
           <div>
             <p className="text-xs font-medium text-white/50 mb-2">Раздел</p>
             <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto">
@@ -675,7 +629,6 @@ export function MenuEditor() {
 
           <Input label="Мин. остаток" type="number" placeholder="0 — не отслеживать" value={form.min_threshold} onChange={(e) => updateField('min_threshold', e.target.value)} min={0} />
 
-          {/* Active toggle */}
           <button
             onClick={() => updateField('is_active', !form.is_active)}
             className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all active:scale-[0.98] ${
@@ -704,7 +657,6 @@ export function MenuEditor() {
         </div>
       </Drawer>
 
-      {/* ============ DELETE CONFIRM ============ */}
       <Drawer open={!!deleteTarget} onClose={() => { setDeleteTarget(null); setDeleteError(''); }} title="Удалить позицию?" size="sm">
         {deleteTarget && (
           <div className="space-y-4">
@@ -739,6 +691,37 @@ export function MenuEditor() {
             <div className="flex gap-2">
               <Button fullWidth variant="secondary" onClick={() => { setDeleteTarget(null); setDeleteError(''); }}>Отмена</Button>
               {!deleteError && <Button fullWidth variant="danger" onClick={handleDelete}>Удалить</Button>}
+            </div>
+          </div>
+        )}
+      </Drawer>
+
+      <CategoryEditorDrawer
+        open={showCatEditor}
+        onClose={() => setShowCatEditor(false)}
+        editing={editingCategory}
+        form={catForm}
+        setForm={setCatForm}
+        topCategories={topCategories}
+        onSave={handleSaveCategory}
+      />
+
+      <Drawer open={!!deleteCatTarget} onClose={() => setDeleteCatTarget(null)} title="Удалить раздел?" size="sm">
+        {deleteCatTarget && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+              {(() => { const I = getIconComponent(deleteCatTarget.icon_name); return <I className="w-5 h-5 text-red-400 shrink-0" />; })()}
+              <div>
+                <p className="text-[13px] font-semibold text-[var(--c-text)]">{deleteCatTarget.name}</p>
+                <p className="text-xs text-white/40">{countForCategory(deleteCatTarget)} позиций</p>
+              </div>
+            </div>
+            <p className="text-xs text-white/40 text-center">
+              Позиции будут перемещены в другой раздел. Подразделы станут основными.
+            </p>
+            <div className="flex gap-2">
+              <Button fullWidth variant="secondary" onClick={() => setDeleteCatTarget(null)}>Отмена</Button>
+              <Button fullWidth variant="danger" onClick={handleDeleteCategory}>Удалить</Button>
             </div>
           </div>
         )}
