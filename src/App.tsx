@@ -11,7 +11,7 @@ import { CheckView } from '@/components/pos/CheckView';
 import { InventoryPage } from '@/components/inventory/InventoryPage';
 import { ManagementPage } from '@/components/management/ManagementPage';
 import { DashboardPage } from '@/components/dashboard/DashboardPage';
-import { BookingsPage } from '@/components/management/BookingsPage';
+import { SchedulePage } from '@/components/schedule/SchedulePage';
 
 export default function App() {
   const user = useAuthStore((s) => s.user);
@@ -75,7 +75,7 @@ export default function App() {
         )
       )}
       {activeTab === 'inventory' && <InventoryPage />}
-      {activeTab === 'bookings' && <BookingsPage />}
+      {activeTab === 'schedule' && <SchedulePage />}
       {activeTab === 'management' && <ManagementPage />}
       {activeTab === 'dashboard' && <DashboardPage />}
     </Layout>

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import {
   Package, Truck, ClipboardList, Users, AlertTriangle, Wallet, Star, Banknote, UtensilsCrossed, UserCircle,
-  ChevronRight, ArrowLeft, Percent, MapPin,
+  ChevronRight, ArrowLeft, Percent,
 } from 'lucide-react';
 import type { InventoryItem } from '@/types';
 import { SupplyPage } from '@/components/supply/SupplyPage';
@@ -16,9 +16,8 @@ import { ClientsManager } from './ClientsManager';
 import { StaffManager } from './StaffManager';
 import { DebtorsManager } from './DebtorsManager';
 import { DiscountsManager } from './DiscountsManager';
-import { EventsPage } from './EventsPage';
 
-type Screen = 'menu' | 'inventory' | 'supplies' | 'revision' | 'debtors' | 'staff' | 'bonus' | 'cash' | 'menuEditor' | 'clients' | 'discounts' | 'events';
+type Screen = 'menu' | 'inventory' | 'supplies' | 'revision' | 'debtors' | 'staff' | 'bonus' | 'cash' | 'menuEditor' | 'clients' | 'discounts';
 
 const categoryLabels: Record<string, string> = {
   drinks: 'Напитки', food: 'Еда', bar: 'Снеки', hookah: 'Кальяны', services: 'Услуги',
@@ -31,7 +30,6 @@ const menuItems: { id: Screen; label: string; desc: string; icon: typeof Package
   { id: 'revision', label: 'Ревизия', desc: 'История ревизий', icon: ClipboardList, color: 'bg-amber-500/15 text-amber-400' },
   { id: 'clients', label: 'Клиенты', desc: 'Профили, контакты, ДР', icon: UserCircle, color: 'bg-sky-500/15 text-sky-400' },
   { id: 'discounts', label: 'Скидки', desc: 'Процентные и фиксированные', icon: Percent, color: 'bg-pink-500/15 text-pink-400' },
-  { id: 'events', label: 'Выезды', desc: 'Мероприятия и история', icon: MapPin, color: 'bg-teal-500/15 text-teal-400' },
   { id: 'bonus', label: 'Бонусы', desc: 'Баллы и настройки', icon: Star, color: 'bg-yellow-500/15 text-yellow-400' },
   { id: 'cash', label: 'Инкассация', desc: 'Операции с наличными', icon: Banknote, color: 'bg-cyan-500/15 text-cyan-400' },
   { id: 'debtors', label: 'Должники', desc: 'Управление долгами', icon: Wallet, color: 'bg-red-500/15 text-red-400' },
@@ -89,7 +87,6 @@ export function ManagementPage() {
       {screen === 'bonus' && <BonusManager />}
       {screen === 'cash' && <InkassationPage />}
       {screen === 'discounts' && <DiscountsManager />}
-      {screen === 'events' && <EventsPage />}
       {screen === 'debtors' && <DebtorsManager />}
       {screen === 'staff' && <StaffManager />}
     </div>

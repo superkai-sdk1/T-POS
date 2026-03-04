@@ -15,7 +15,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const tabs = useMemo(() => isOwner()
     ? [
         { id: 'pos', label: 'Касса', icon: Receipt },
-        { id: 'bookings', label: 'Брони', icon: CalendarCheck },
+        { id: 'schedule', label: 'Расписание', icon: CalendarCheck },
         { id: 'dashboard', label: 'Отчёты', icon: BarChart3 },
         { id: 'management', label: 'Управление', icon: Settings },
       ]
