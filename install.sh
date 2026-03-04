@@ -125,7 +125,11 @@ server {
     }
 
     location /sb/ {
-        proxy_pass https://dscadajjthbcrullhwtx.supabase.co/;
+        resolver 8.8.8.8 1.1.1.1 valid=300s;
+        resolver_timeout 5s;
+        set \$supabase https://dscadajjthbcrullhwtx.supabase.co;
+        proxy_pass \$supabase\$request_uri;
+        rewrite ^/sb/(.*) /\$1 break;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -136,6 +140,7 @@ server {
         proxy_ssl_server_name on;
         proxy_buffering off;
         proxy_cache off;
+        proxy_connect_timeout 10s;
         proxy_read_timeout 86400s;
         proxy_send_timeout 86400s;
     }
@@ -177,7 +182,11 @@ server {
     }
 
     location /sb/ {
-        proxy_pass https://dscadajjthbcrullhwtx.supabase.co/;
+        resolver 8.8.8.8 1.1.1.1 valid=300s;
+        resolver_timeout 5s;
+        set \$supabase https://dscadajjthbcrullhwtx.supabase.co;
+        proxy_pass \$supabase\$request_uri;
+        rewrite ^/sb/(.*) /\$1 break;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -188,6 +197,7 @@ server {
         proxy_ssl_server_name on;
         proxy_buffering off;
         proxy_cache off;
+        proxy_connect_timeout 10s;
         proxy_read_timeout 86400s;
         proxy_send_timeout 86400s;
     }
@@ -296,7 +306,11 @@ ensure_supabase_proxy() {
     info "Добавление Supabase proxy в nginx (обход блокировок)..."
     sed -i '/location \/ {/i \
     location /sb/ {\
-        proxy_pass https://dscadajjthbcrullhwtx.supabase.co/;\
+        resolver 8.8.8.8 1.1.1.1 valid=300s;\
+        resolver_timeout 5s;\
+        set $supabase https://dscadajjthbcrullhwtx.supabase.co;\
+        proxy_pass $supabase$request_uri;\
+        rewrite ^/sb/(.*) /$1 break;\
         proxy_http_version 1.1;\
         proxy_set_header Upgrade $http_upgrade;\
         proxy_set_header Connection "upgrade";\
@@ -307,6 +321,7 @@ ensure_supabase_proxy() {
         proxy_ssl_server_name on;\
         proxy_buffering off;\
         proxy_cache off;\
+        proxy_connect_timeout 10s;\
         proxy_read_timeout 86400s;\
         proxy_send_timeout 86400s;\
     }' "$conf"
@@ -401,6 +416,8 @@ if [ "$MODE" = "update" ]; then
   SCRIPT_HASH_BEFORE=$(md5sum "$INSTALL_DIR/install.sh" 2>/dev/null | awk '{print $1}') || true
 
   info "Загрузка обновлений..."
+  git clean -fd dist-wallet/ 2>/dev/null || true
+  git checkout -- . 2>/dev/null || true
   git pull origin main
 
   # ── Re-exec if install.sh itself was updated ──
