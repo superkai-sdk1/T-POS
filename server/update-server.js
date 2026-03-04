@@ -81,6 +81,7 @@ const server = http.createServer((req, res) => {
       { label: 'Загрузка обновлений', cmd: 'git', args: ['pull', 'origin', 'main'] },
       { label: 'Установка зависимостей', cmd: 'npm', args: ['ci', '--loglevel=error'] },
       { label: 'Сборка проекта', cmd: 'npm', args: ['run', 'build'] },
+      { label: 'Сборка Wallet', cmd: 'npm', args: ['run', 'build:wallet'] },
     ];
 
     let stepIdx = 0;
@@ -88,6 +89,8 @@ const server = http.createServer((req, res) => {
     const runStep = () => {
       if (stepIdx >= steps.length) {
         try { execSync('chown -R www-data:www-data dist', { cwd: PROJECT_DIR }); } catch {}
+        try { execSync('chown -R www-data:www-data dist-wallet', { cwd: PROJECT_DIR }); } catch {}
+        try { execSync('systemctl restart tpos-wallet-bot', { timeout: 5000 }); } catch {}
         send({ type: 'complete', message: 'Обновление завершено' });
         res.end();
         updateInProgress = false;

@@ -24,19 +24,83 @@ DEFAULT_DIR="/var/www/tpos"
 NODE_MAJOR=22
 NGINX_CONF="/etc/nginx/sites-available/tpos"
 NGINX_LINK="/etc/nginx/sites-enabled/tpos"
+WALLET_NGINX_CONF="/etc/nginx/sites-available/tpos-wallet"
+WALLET_NGINX_LINK="/etc/nginx/sites-enabled/tpos-wallet"
+DEFAULT_WALLET_DOMAIN="wallet.cloudtitan.ru"
 
 info()    { echo -e "${CYAN}[INFO]${NC}  $1"; }
 success() { echo -e "${GREEN}[ OK ]${NC} $1"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
 err()     { echo -e "${RED}[ERR]${NC}  $1"; }
 
-# ── Shared: nginx setup function ──────────────
+# ── .env helpers ──────────────────────────────
+
+read_env_value() {
+  local file="$1"
+  local key="$2"
+  if [ -f "$file" ]; then
+    grep -m1 "^${key}=" "$file" 2>/dev/null | cut -d'=' -f2-
+  fi
+}
+
+add_env_key() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  if grep -q "^${key}=" "$file" 2>/dev/null; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+  else
+    echo "${key}=${value}" >> "$file"
+  fi
+}
+
+ensure_env_key() {
+  local file="$1"
+  local key="$2"
+  local prompt_text="$3"
+  local default_val="${4:-}"
+  local is_secret="${5:-false}"
+
+  local current
+  current=$(read_env_value "$file" "$key")
+
+  if [ -n "$current" ]; then
+    return 0
+  fi
+
+  if [ -n "$default_val" ]; then
+    echo -ne "${BOLD}${prompt_text} [${default_val}]: ${NC}"
+  else
+    echo -ne "${BOLD}${prompt_text}: ${NC}"
+  fi
+
+  local input
+  if [ "$is_secret" = "true" ]; then
+    read -rs input
+    echo ""
+  else
+    read -r input
+  fi
+
+  input="${input:-$default_val}"
+
+  if [ -z "$input" ]; then
+    warn "Пропущено: ${key}"
+    return 1
+  fi
+
+  add_env_key "$file" "$key" "$input"
+  success "${key} добавлен в .env"
+  return 0
+}
+
+# ── Shared: nginx setup functions ─────────────
 
 setup_nginx() {
   local domain="$1"
   local root_dir="$2"
 
-  info "Создание конфигурации nginx..."
+  info "Создание конфигурации nginx для ${domain}..."
 
   cat > "$NGINX_CONF" <<NGINXEOF
 server {
@@ -75,9 +139,44 @@ server {
 NGINXEOF
 
   ln -sf "$NGINX_CONF" "$NGINX_LINK"
-  success "Конфигурация nginx создана"
+  success "Конфигурация nginx создана для ${domain}"
+}
 
-  fix_and_reload_nginx
+setup_wallet_nginx() {
+  local wallet_domain="$1"
+  local root_dir="$2"
+
+  info "Создание конфигурации nginx для ${wallet_domain}..."
+
+  cat > "$WALLET_NGINX_CONF" <<WNEOF
+server {
+    listen 80;
+    listen [::]:80;
+    server_name ${wallet_domain};
+
+    root ${root_dir}/dist-wallet;
+    index wallet.html;
+
+    location / {
+        try_files \$uri \$uri/ /wallet.html;
+    }
+
+    location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript image/svg+xml;
+    gzip_min_length 256;
+}
+WNEOF
+
+  ln -sf "$WALLET_NGINX_CONF" "$WALLET_NGINX_LINK"
+  success "Конфигурация nginx создана для ${wallet_domain}"
 }
 
 setup_update_server() {
@@ -106,6 +205,41 @@ SVCEOF
   systemctl enable tpos-update --quiet
   systemctl restart tpos-update
   success "Сервер обновлений запущен (порт 3100)"
+}
+
+setup_wallet_bot() {
+  local dir="$1"
+
+  local has_token
+  has_token=$(read_env_value "${dir}/.env" "CLIENT_BOT_TOKEN")
+  if [ -z "$has_token" ]; then
+    warn "CLIENT_BOT_TOKEN не задан — бот wallet не будет запущен"
+    return 0
+  fi
+
+  info "Настройка TITAN Wallet Bot..."
+
+  cat > /etc/systemd/system/tpos-wallet-bot.service <<WBEOF
+[Unit]
+Description=TITAN Wallet Bot
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=${dir}
+ExecStart=$(which node) ${dir}/server/wallet-bot.js
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
+WBEOF
+
+  systemctl daemon-reload
+  systemctl enable tpos-wallet-bot --quiet
+  systemctl restart tpos-wallet-bot
+  success "TITAN Wallet Bot запущен"
 }
 
 ensure_nginx_proxy() {
@@ -155,10 +289,18 @@ setup_ssl() {
     --agree-tos \
     --email "$email" \
     --redirect; then
-    success "SSL-сертификат получен"
+    success "SSL-сертификат получен для ${domain}"
   else
-    warn "Не удалось. Попробуйте: certbot --nginx -d ${domain}"
+    warn "Не удалось получить SSL для ${domain}. Попробуйте: certbot --nginx -d ${domain}"
   fi
+}
+
+get_certbot_email() {
+  local email=""
+  if [ -d /etc/letsencrypt/renewal ]; then
+    email=$(grep -rh '^email' /etc/letsencrypt/renewal/*.conf 2>/dev/null | head -1 | sed 's/^email *= *//')
+  fi
+  echo "$email"
 }
 
 # ── Header ────────────────────────────────────
@@ -194,6 +336,8 @@ if [ "$MODE" = "update" ]; then
 
   cd "$INSTALL_DIR"
 
+  # ── Pull & Build ──
+
   info "Загрузка обновлений..."
   git pull origin main
 
@@ -203,14 +347,41 @@ if [ "$MODE" = "update" ]; then
   info "Сборка..."
   npm run build 2>&1
 
+  info "Сборка Wallet..."
+  npm run build:wallet 2>&1
+
   chown -R www-data:www-data dist 2>/dev/null || true
+  chown -R www-data:www-data dist-wallet 2>/dev/null || true
 
   success "Проект обновлён"
 
+  # ── Ensure .env has all required keys ──
+
+  echo ""
+  info "Проверка .env..."
+
+  ensure_env_key "$INSTALL_DIR/.env" "CLIENT_BOT_TOKEN" \
+    "Telegram Bot Token для клиентского кошелька" "" "true" || true
+
+  ensure_env_key "$INSTALL_DIR/.env" "WALLET_DOMAIN" \
+    "Домен для клиентского кошелька" "$DEFAULT_WALLET_DOMAIN" "false" || true
+
+  WALLET_DOMAIN=$(read_env_value "$INSTALL_DIR/.env" "WALLET_DOMAIN")
+  WALLET_DOMAIN="${WALLET_DOMAIN:-$DEFAULT_WALLET_DOMAIN}"
+
+  # ── Services ──
+
+  echo ""
   setup_update_server "$INSTALL_DIR"
   ensure_nginx_proxy "$NGINX_CONF"
 
-  # ── Check nginx config, set up if missing ──
+  # ── Wallet Bot ──
+
+  if [ -f "${INSTALL_DIR}/server/wallet-bot.js" ]; then
+    setup_wallet_bot "$INSTALL_DIR"
+  fi
+
+  # ── Main Nginx ──
 
   if [ ! -f "$NGINX_CONF" ]; then
     echo ""
@@ -225,36 +396,59 @@ if [ "$MODE" = "update" ]; then
     fi
 
     setup_nginx "$DOMAIN" "$INSTALL_DIR"
+  fi
 
-    # ── SSL ──
+  # ── Wallet Nginx ──
+
+  if [ ! -f "$WALLET_NGINX_CONF" ]; then
     echo ""
-    echo -ne "${BOLD}Выпустить SSL-сертификат? (y/n): ${NC}"
+    info "Настройка nginx для клиентского кошелька..."
+    setup_wallet_nginx "$WALLET_DOMAIN" "$INSTALL_DIR"
+  else
+    local_current_wallet_domain=$(grep 'server_name' "$WALLET_NGINX_CONF" 2>/dev/null | head -1 | awk '{print $2}' | tr -d ';')
+    if [ "$local_current_wallet_domain" != "$WALLET_DOMAIN" ] && [ -n "$WALLET_DOMAIN" ]; then
+      info "Обновление домена wallet: ${local_current_wallet_domain} → ${WALLET_DOMAIN}"
+      setup_wallet_nginx "$WALLET_DOMAIN" "$INSTALL_DIR"
+    fi
+  fi
+
+  fix_and_reload_nginx
+
+  # ── SSL ──
+
+  echo ""
+
+  # Main domain SSL
+  if [ -f "$NGINX_CONF" ] && ! grep -q 'ssl_certificate' "$NGINX_CONF" 2>/dev/null; then
+    warn "SSL для основного домена не настроен"
+    echo -ne "${BOLD}Выпустить SSL-сертификат для основного домена? (y/n): ${NC}"
     read -r yn
     if [ "$yn" = "y" ] || [ "$yn" = "Y" ]; then
+      DOMAIN=$(grep 'server_name' "$NGINX_CONF" | head -1 | awk '{print $2}' | tr -d ';')
       EMAIL=""
       echo -ne "${BOLD}Email для certbot: ${NC}"
       read -r EMAIL
-      if [ -n "$EMAIL" ]; then
+      if [ -n "$EMAIL" ] && [ -n "$DOMAIN" ]; then
         setup_ssl "$DOMAIN" "$EMAIL"
       fi
     fi
-  else
-    systemctl reload nginx 2>/dev/null || true
-    success "nginx перезагружен"
+  fi
 
-    # Check if SSL is configured
-    if ! grep -q 'ssl_certificate' "$NGINX_CONF" 2>/dev/null; then
-      warn "SSL не настроен"
-      echo -ne "${BOLD}Выпустить SSL-сертификат? (y/n): ${NC}"
-      read -r yn
-      if [ "$yn" = "y" ] || [ "$yn" = "Y" ]; then
-        DOMAIN=$(grep 'server_name' "$NGINX_CONF" | head -1 | awk '{print $2}' | tr -d ';')
-        EMAIL=""
+  # Wallet domain SSL
+  if [ -f "$WALLET_NGINX_CONF" ] && ! grep -q 'ssl_certificate' "$WALLET_NGINX_CONF" 2>/dev/null; then
+    warn "SSL для ${WALLET_DOMAIN} не настроен"
+    echo -ne "${BOLD}Выпустить SSL-сертификат для ${WALLET_DOMAIN}? (y/n): ${NC}"
+    read -r yn
+    if [ "$yn" = "y" ] || [ "$yn" = "Y" ]; then
+      CB_EMAIL=$(get_certbot_email)
+      if [ -z "$CB_EMAIL" ]; then
         echo -ne "${BOLD}Email для certbot: ${NC}"
-        read -r EMAIL
-        if [ -n "$EMAIL" ] && [ -n "$DOMAIN" ]; then
-          setup_ssl "$DOMAIN" "$EMAIL"
-        fi
+        read -r CB_EMAIL
+      else
+        info "Используем email из certbot: ${CB_EMAIL}"
+      fi
+      if [ -n "$CB_EMAIL" ]; then
+        setup_ssl "$WALLET_DOMAIN" "$CB_EMAIL"
       fi
     fi
   fi
@@ -318,11 +512,24 @@ info "Telegram настройки:"
 
 TG_BOT_TOKEN=""
 while [ -z "$TG_BOT_TOKEN" ]; do
-  echo -ne "${BOLD}  Telegram Bot Token: ${NC}"
+  echo -ne "${BOLD}  Telegram Bot Token (для T-POS): ${NC}"
   read -rs TG_BOT_TOKEN
   echo ""
   if [ -z "$TG_BOT_TOKEN" ]; then err "Обязательное поле"; fi
 done
+
+CLIENT_TG_TOKEN=""
+echo -ne "${BOLD}  Client Bot Token (для TITAN Wallet, Enter — пропустить): ${NC}"
+read -rs CLIENT_TG_TOKEN
+echo ""
+
+echo ""
+info "Клиентский кошелёк:"
+
+WALLET_DOMAIN=""
+echo -ne "${BOLD}  Домен для кошелька [${DEFAULT_WALLET_DOMAIN}]: ${NC}"
+read -r WALLET_DOMAIN
+WALLET_DOMAIN="${WALLET_DOMAIN:-$DEFAULT_WALLET_DOMAIN}"
 
 echo ""
 echo -ne "${BOLD}Директория установки [${DEFAULT_DIR}]: ${NC}"
@@ -331,12 +538,18 @@ INSTALL_DIR="${INSTALL_DIR:-$DEFAULT_DIR}"
 
 echo ""
 echo -e "${BOLD}─── Проверьте данные ───${NC}"
-echo -e "  Домен:       ${GREEN}${DOMAIN}${NC}"
-echo -e "  Email:       ${GREEN}${EMAIL}${NC}"
-echo -e "  Supabase:    ${GREEN}${SUPABASE_URL}${NC}"
-echo -e "  Anon Key:    ${GREEN}${SUPABASE_ANON_KEY:0:20}...${NC}"
-echo -e "  Bot Token:   ${GREEN}${TG_BOT_TOKEN:0:15}...${NC}"
-echo -e "  Директория:  ${GREEN}${INSTALL_DIR}${NC}"
+echo -e "  Домен T-POS:   ${GREEN}${DOMAIN}${NC}"
+echo -e "  Домен Wallet:  ${GREEN}${WALLET_DOMAIN}${NC}"
+echo -e "  Email:         ${GREEN}${EMAIL}${NC}"
+echo -e "  Supabase:      ${GREEN}${SUPABASE_URL}${NC}"
+echo -e "  Anon Key:      ${GREEN}${SUPABASE_ANON_KEY:0:20}...${NC}"
+echo -e "  Bot Token:     ${GREEN}${TG_BOT_TOKEN:0:15}...${NC}"
+if [ -n "$CLIENT_TG_TOKEN" ]; then
+  echo -e "  Client Bot:    ${GREEN}${CLIENT_TG_TOKEN:0:15}...${NC}"
+else
+  echo -e "  Client Bot:    ${YELLOW}(пропущен)${NC}"
+fi
+echo -e "  Директория:    ${GREEN}${INSTALL_DIR}${NC}"
 echo ""
 
 echo -ne "${BOLD}Начинаем установку? (y/n): ${NC}"
@@ -411,30 +624,33 @@ success "Репозиторий клонирован"
 cd "$INSTALL_DIR"
 
 info "Создание .env..."
-cat > .env <<'ENVEOF'
-VITE_SUPABASE_URL=__SUPABASE_URL__
-VITE_SUPABASE_ANON_KEY=__SUPABASE_ANON_KEY__
-VITE_TELEGRAM_BOT_TOKEN=__TG_BOT_TOKEN__
+cat > .env <<ENVEOF
+VITE_SUPABASE_URL=${SUPABASE_URL}
+VITE_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+VITE_TELEGRAM_BOT_TOKEN=${TG_BOT_TOKEN}
+CLIENT_BOT_TOKEN=${CLIENT_TG_TOKEN}
+WALLET_DOMAIN=${WALLET_DOMAIN}
 ENVEOF
-sed -i "s|__SUPABASE_URL__|${SUPABASE_URL}|g" .env
-sed -i "s|__SUPABASE_ANON_KEY__|${SUPABASE_ANON_KEY}|g" .env
-sed -i "s|__TG_BOT_TOKEN__|${TG_BOT_TOKEN}|g" .env
 success ".env создан"
 
 info "npm ci..."
 npm ci --loglevel=error 2>&1
 success "Зависимости установлены"
 
-info "Сборка..."
+info "Сборка T-POS..."
 npm run build 2>&1
 
 if [ ! -d "$INSTALL_DIR/dist" ]; then
-  err "Сборка не удалась"
+  err "Сборка T-POS не удалась"
   exit 1
 fi
 
+info "Сборка TITAN Wallet..."
+npm run build:wallet 2>&1
+
 success "Проект собран"
 chown -R www-data:www-data "$INSTALL_DIR/dist"
+chown -R www-data:www-data "$INSTALL_DIR/dist-wallet" 2>/dev/null || true
 
 setup_update_server "$INSTALL_DIR"
 
@@ -445,19 +661,26 @@ echo -e "${BOLD}${YELLOW}▸ Шаг 4/5: Nginx${NC}"
 echo ""
 
 setup_nginx "$DOMAIN" "$INSTALL_DIR"
+setup_wallet_nginx "$WALLET_DOMAIN" "$INSTALL_DIR"
+fix_and_reload_nginx
+
+setup_wallet_bot "$INSTALL_DIR"
 
 # ── Step 5: SSL ──────────────────────────────
 
 echo ""
-echo -e "${BOLD}${YELLOW}▸ Шаг 5/5: SSL-сертификат${NC}"
+echo -e "${BOLD}${YELLOW}▸ Шаг 5/5: SSL-сертификаты${NC}"
 echo ""
 
-echo -ne "${BOLD}Выпустить SSL-сертификат? (y/n): ${NC}"
+echo -ne "${BOLD}Выпустить SSL-сертификаты? (y/n): ${NC}"
 read -r yn
 if [ "$yn" = "y" ] || [ "$yn" = "Y" ]; then
   setup_ssl "$DOMAIN" "$EMAIL"
+  setup_ssl "$WALLET_DOMAIN" "$EMAIL"
 else
-  warn "SSL пропущен: certbot --nginx -d ${DOMAIN} --email ${EMAIL}"
+  warn "SSL пропущен"
+  warn "  Основной:  certbot --nginx -d ${DOMAIN} --email ${EMAIL}"
+  warn "  Wallet:    certbot --nginx -d ${WALLET_DOMAIN} --email ${EMAIL}"
 fi
 
 # ── Done ─────────────────────────────────────
@@ -467,8 +690,9 @@ echo -e "${BOLD}${GREEN}╔═════════════════�
 echo -e "${BOLD}${GREEN}║        Установка завершена!              ║${NC}"
 echo -e "${BOLD}${GREEN}╚══════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "  ${BOLD}Сайт:${NC}      https://${DOMAIN}"
-echo -e "  ${BOLD}Файлы:${NC}     ${INSTALL_DIR}"
+echo -e "  ${BOLD}T-POS:${NC}    https://${DOMAIN}"
+echo -e "  ${BOLD}Wallet:${NC}   https://${WALLET_DOMAIN}"
+echo -e "  ${BOLD}Файлы:${NC}    ${INSTALL_DIR}"
 echo ""
 echo -e "  ${CYAN}Обновление:${NC}  sudo bash ${INSTALL_DIR}/install.sh"
 echo ""

@@ -666,6 +666,26 @@ insert into menu_categories (name, slug, sort_order, icon_name) values
   ('Кальяны', 'hookah', 50, 'Wind');
 
 -- ==============================
+-- Telegram Link Requests (client wallet)
+-- ==============================
+create table if not exists tg_link_requests (
+  id uuid primary key default gen_random_uuid(),
+  tg_id text not null,
+  tg_username text,
+  tg_first_name text,
+  profile_id uuid not null references profiles(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_tg_link_requests_status on tg_link_requests(status);
+alter table tg_link_requests enable row level security;
+create policy "tg_link_requests_all" on tg_link_requests for all to anon, authenticated using (true) with check (true);
+
+alter publication supabase_realtime add table tg_link_requests;
+alter table tg_link_requests replica identity full;
+
+-- ==============================
 -- Realtime
 -- ==============================
 alter publication supabase_realtime add table checks, check_items, check_discounts, inventory, shifts, cash_operations, bookings, profiles, events, discounts, supplies, revisions;

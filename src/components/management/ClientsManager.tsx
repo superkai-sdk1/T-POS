@@ -7,10 +7,22 @@ import { Drawer } from '@/components/ui/Drawer';
 import {
   Search, Plus, Pencil, Trash2, Upload, X, Check, User,
   Phone, Calendar, Star, CreditCard, UserPlus, Cake, GraduationCap, Send,
+  Link, CheckCircle, XCircle,
 } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import type { Profile, ClientTier } from '@/types';
+
+interface LinkRequest {
+  id: string;
+  tg_id: string;
+  tg_username: string | null;
+  tg_first_name: string | null;
+  profile_id: string;
+  status: string;
+  created_at: string;
+  profile?: { nickname: string };
+}
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
@@ -47,6 +59,7 @@ export function ClientsManager() {
   const [deleteTarget, setDeleteTarget] = useState<Profile | null>(null);
   const [showDetail, setShowDetail] = useState(false);
   const [detailClient, setDetailClient] = useState<Profile | null>(null);
+  const [linkRequests, setLinkRequests] = useState<LinkRequest[]>([]);
 
   const loadClients = useCallback(async () => {
     const { data } = await supabase
@@ -57,12 +70,36 @@ export function ClientsManager() {
     if (data) setClients(data as Profile[]);
   }, []);
 
+  const loadLinkRequests = useCallback(async () => {
+    const { data } = await supabase
+      .from('tg_link_requests')
+      .select('*, profile:profiles(nickname)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    if (data) setLinkRequests(data as unknown as LinkRequest[]);
+  }, []);
+
+  const handleApproveLink = async (req: LinkRequest) => {
+    await supabase.from('tg_link_requests').update({ status: 'approved' }).eq('id', req.id);
+    hapticNotification('success');
+    loadLinkRequests();
+    loadClients();
+  };
+
+  const handleRejectLink = async (req: LinkRequest) => {
+    await supabase.from('tg_link_requests').update({ status: 'rejected' }).eq('id', req.id);
+    hapticNotification('warning');
+    loadLinkRequests();
+  };
+
   const profilesTables = useMemo(() => ['profiles'], []);
+  const linkTables = useMemo(() => ['tg_link_requests'], []);
   useOnTableChange(profilesTables, loadClients);
+  useOnTableChange(linkTables, loadLinkRequests);
 
   useEffect(() => {
-    loadClients().then(() => setIsLoading(false));
-  }, [loadClients]);
+    Promise.all([loadClients(), loadLinkRequests()]).then(() => setIsLoading(false));
+  }, [loadClients, loadLinkRequests]);
 
   const filtered = clients.filter((c) => {
     if (search) {
@@ -233,6 +270,43 @@ export function ClientsManager() {
             >
               {label}
             </button>
+          ))}
+        </div>
+      )}
+
+      {/* Link Requests */}
+      {linkRequests.length > 0 && (
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 px-1">
+            <Link className="w-3.5 h-3.5 text-sky-400" />
+            <p className="text-xs font-semibold text-sky-400">Заявки на привязку ({linkRequests.length})</p>
+          </div>
+          {linkRequests.map((req) => (
+            <div key={req.id} className="flex items-center gap-3 p-2.5 rounded-xl card border-sky-500/20">
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">
+                  {req.tg_first_name || 'Пользователь'}
+                  {req.tg_username && <span className="text-sky-400/60 ml-1.5">@{req.tg_username}</span>}
+                </p>
+                <p className="text-[11px] text-white/30 mt-0.5">
+                  хочет привязаться к <span className="text-white/60 font-medium">{(req.profile as unknown as { nickname: string })?.nickname || '?'}</span>
+                </p>
+              </div>
+              <div className="flex gap-1.5 shrink-0">
+                <button
+                  onClick={() => handleApproveLink(req)}
+                  className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center active:scale-90 transition-transform"
+                >
+                  <CheckCircle className="w-4 h-4 text-emerald-400" />
+                </button>
+                <button
+                  onClick={() => handleRejectLink(req)}
+                  className="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center active:scale-90 transition-transform"
+                >
+                  <XCircle className="w-4 h-4 text-red-400" />
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       )}

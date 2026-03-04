@@ -5,10 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:wallet": "vite --config vite.wallet.config.ts",
     "build": "tsc -b && vite build",
+    "build:wallet": "vite build --config vite.wallet.config.ts",
     "lint": "eslint .",
     "preview": "vite preview",
-    "update-server": "node server/update-server.js"
+    "update-server": "node server/update-server.js",
+    "wallet-bot": "node server/wallet-bot.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",
