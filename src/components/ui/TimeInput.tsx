@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState } from 'react';
 import { Clock } from 'lucide-react';
 
 interface TimeInputProps {
@@ -10,31 +10,6 @@ interface TimeInputProps {
 
 export function TimeInput({ label, value, onChange, className = '' }: TimeInputProps) {
   const [focused, setFocused] = useState(false);
-  const hRef = useRef<HTMLInputElement>(null);
-  const mRef = useRef<HTMLInputElement>(null);
-
-  const [h, m] = value ? value.split(':') : ['', ''];
-
-  const handleH = useCallback((raw: string) => {
-    const digits = raw.replace(/\D/g, '').slice(0, 2);
-    const num = Number(digits);
-    const clamped = num > 23 ? '23' : digits;
-    onChange(`${clamped.padStart(2, '0')}:${m || '00'}`);
-    if (digits.length === 2 || num > 2) mRef.current?.focus();
-  }, [m, onChange]);
-
-  const handleM = useCallback((raw: string) => {
-    const digits = raw.replace(/\D/g, '').slice(0, 2);
-    const num = Number(digits);
-    const clamped = num > 59 ? '59' : digits;
-    onChange(`${h || '00'}:${clamped.padStart(2, '0')}`);
-  }, [h, onChange]);
-
-  const handleMKey = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !m) {
-      hRef.current?.focus();
-    }
-  }, [m]);
 
   return (
     <div className={`w-full ${className}`}>
@@ -44,38 +19,21 @@ export function TimeInput({ label, value, onChange, className = '' }: TimeInputP
         </label>
       )}
       <div
-        className={`flex items-center gap-0.5 px-4 py-3 rounded-xl bg-white/5 border transition-all duration-200 ${
+        className={`flex items-center gap-2 px-4 py-3 rounded-xl bg-white/5 border transition-all duration-200 ${
           focused
             ? 'border-[var(--c-accent)]/30 ring-2 ring-[var(--c-accent)]/40 bg-white/8'
             : 'border-white/8'
         }`}
       >
-        <Clock className="w-4 h-4 text-white/25 shrink-0 mr-1.5" />
+        <Clock className="w-4 h-4 text-white/25 shrink-0" />
         <input
-          ref={hRef}
-          type="text"
-          inputMode="numeric"
-          maxLength={2}
-          placeholder="00"
-          value={h || ''}
-          onChange={(e) => handleH(e.target.value)}
+          type="time"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          className="w-7 bg-transparent text-center text-[var(--c-text)] font-medium placeholder:text-white/20 focus:outline-none tabular-nums"
-        />
-        <span className="text-white/30 font-bold">:</span>
-        <input
-          ref={mRef}
-          type="text"
-          inputMode="numeric"
-          maxLength={2}
-          placeholder="00"
-          value={m || ''}
-          onChange={(e) => handleM(e.target.value)}
-          onKeyDown={handleMKey}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          className="w-7 bg-transparent text-center text-[var(--c-text)] font-medium placeholder:text-white/20 focus:outline-none tabular-nums"
+          className="flex-1 bg-transparent text-[var(--c-text)] font-medium focus:outline-none tabular-nums appearance-none"
+          style={{ colorScheme: 'dark' }}
         />
       </div>
     </div>

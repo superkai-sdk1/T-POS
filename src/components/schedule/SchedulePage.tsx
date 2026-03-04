@@ -168,13 +168,15 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
   }, [bookings]);
 
   const calcAmount = useCallback(() => {
-    if (!selectedSpace || !startTime || !endTime) return;
+    if (!selectedSpace || !startTime) return;
     if (selectedSpace.hourly_rate === null) return;
-    const [sh, sm] = startTime.split(':').map(Number);
-    const [eh, em] = endTime.split(':').map(Number);
-    const hours = (eh * 60 + em - sh * 60 - sm) / 60;
-    if (hours > 0) {
-      setRentalAmount(String(Math.round(selectedSpace.hourly_rate * hours)));
+    if (endTime) {
+      const [sh, sm] = startTime.split(':').map(Number);
+      const [eh, em] = endTime.split(':').map(Number);
+      const hours = (eh * 60 + em - sh * 60 - sm) / 60;
+      if (hours > 0) {
+        setRentalAmount(String(Math.round(selectedSpace.hourly_rate * hours)));
+      }
     }
   }, [selectedSpace, startTime, endTime]);
   useEffect(() => { calcAmount(); }, [calcAmount]);
@@ -231,10 +233,12 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
   };
 
   const handleSaveBooking = async () => {
-    if (!selectedSpace || !startDate || !startTime || !endTime) return;
+    if (!selectedSpace || !startDate || !startTime) return;
     setSaving(true);
     const startISO = new Date(`${startDate}T${startTime}`).toISOString();
-    const endISO = new Date(`${startDate}T${endTime}`).toISOString();
+    const endISO = endTime
+      ? new Date(`${startDate}T${endTime}`).toISOString()
+      : new Date(`${startDate}T${startTime}`).toISOString();
     await supabase.from('bookings').insert({
       space_id: selectedSpace.id,
       client_id: selectedClient?.id || null,
@@ -455,7 +459,9 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                                 <p className="text-[13px] font-semibold text-[var(--c-text)] truncate leading-tight">
                                   {b.space?.name || 'Бронь'}
                                 </p>
-                                <p className="text-[10px] text-white/25">{fmtTime(b.start_time)} — {fmtTime(b.end_time)}</p>
+                                <p className="text-[10px] text-white/25">
+                                  {fmtTime(b.start_time)}{b.end_time && b.end_time !== b.start_time ? ` — ${fmtTime(b.end_time)}` : ' — ...'}
+                                </p>
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
@@ -676,19 +682,18 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                   </div>
 
                   <Input compact type="date" label="Дата" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-                  <div className="grid grid-cols-2 gap-2">
-                    <TimeInput label="Начало" value={startTime} onChange={setStartTime} />
-                    <TimeInput label="Конец" value={endTime} onChange={setEndTime} />
-                  </div>
+                  <TimeInput label="Время начала" value={startTime} onChange={setStartTime} />
+                  <p className="text-[11px] text-white/25 -mt-1 px-1">
+                    Конечное время рассчитается при закрытии чека
+                  </p>
                   <Input
                     compact
                     type="number"
-                    label="Сумма аренды"
-                    placeholder={selectedSpace.hourly_rate ? 'Авто' : 'Сумма'}
+                    label="Предварительная сумма"
+                    placeholder={selectedSpace.hourly_rate ? `${selectedSpace.hourly_rate}₽/ч` : 'Сумма'}
                     value={rentalAmount}
                     onChange={(e) => setRentalAmount(e.target.value)}
                     min={0}
-                    hint={selectedSpace.hourly_rate ? 'Авто-расчет' : undefined}
                   />
 
                   <div>
@@ -722,7 +727,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
 
                   <Input compact label="Примечание" placeholder="Комментарий" value={bookingNote} onChange={(e) => setBookingNote(e.target.value)} />
 
-                  <Button fullWidth onClick={handleSaveBooking} loading={saving} disabled={saving || !startTime || !endTime}>
+                  <Button fullWidth onClick={handleSaveBooking} loading={saving} disabled={saving || !startTime}>
                     <CalendarPlus className="w-4 h-4" />
                     Забронировать
                   </Button>
