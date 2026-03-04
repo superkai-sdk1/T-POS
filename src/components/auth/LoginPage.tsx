@@ -109,13 +109,7 @@ export function LoginPage() {
         <div className="w-full max-w-sm animate-fade-in-up relative z-10">
           <div className="card p-6 space-y-5" style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.25), 0 0 80px rgba(108,92,231,0.06)' }}>
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3 shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', boxShadow: '0 4px 20px rgba(108,92,231,0.3)' }}>
-                <span className="text-xl font-black text-white tracking-tight">T</span>
-              </div>
-              <h1 className="text-2xl font-bold text-[var(--c-text)]">
-                T-POS
-              </h1>
+              <img src="/icons/tpos.svg" alt="T-POS" className="w-28 h-auto mx-auto mb-3 drop-shadow-lg" />
               <p className="text-[10px] text-[var(--c-hint)] mt-0.5">
                 Клуб спортивной мафии «Титан»
               </p>
@@ -219,11 +213,7 @@ export function LoginPage() {
 
       <div className="w-full max-w-md animate-fade-in-up relative z-10">
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3 shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', boxShadow: '0 4px 20px rgba(108,92,231,0.3)' }}>
-            <span className="text-xl font-black text-white tracking-tight">T</span>
-          </div>
-          <h1 className="text-2xl font-bold text-[var(--c-text)]">T-POS</h1>
+          <img src="/icons/tpos.svg" alt="T-POS" className="w-28 h-auto mx-auto mb-3 drop-shadow-lg" />
           <p className="text-[10px] text-[var(--c-hint)] mt-0.5">Выберите профиль для входа</p>
         </div>
 

@@ -35,10 +35,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
         style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)', background: 'linear-gradient(180deg, var(--c-bg2) 0%, var(--c-bg) 100%)' }}
       >
         <div className="py-4">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', boxShadow: '0 4px 16px rgba(108,92,231,0.25)' }}>
-            <span className="text-xs font-black text-white">T</span>
-          </div>
+          <img src="/icons/tpos.svg" alt="T-POS" className="w-10 h-10 rounded-xl drop-shadow-lg" />
         </div>
 
         <nav className="flex-1 flex flex-col items-center gap-1 pt-2">
@@ -89,10 +86,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
         >
           <div className="flex items-center justify-between max-w-3xl mx-auto">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)' }}>
-                <span className="text-[10px] font-black text-white">T</span>
-              </div>
+              <img src="/icons/tpos.svg" alt="T-POS" className="w-7 h-7 rounded-lg" />
               <div>
                 <h1 className="text-[13px] font-bold text-[var(--c-text)] leading-tight">{user?.nickname || 'T-POS'}</h1>
               </div>

@@ -141,13 +141,8 @@ export function AboutSystem() {
     <div className="space-y-5">
       {/* Logo & title */}
       <div className="flex flex-col items-center gap-3 py-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--c-accent)] to-purple-600 flex items-center justify-center shadow-lg shadow-[var(--c-accent)]/20">
-          <span className="text-2xl font-black text-white">T</span>
-        </div>
-        <div className="text-center">
-          <h3 className="text-xl font-black text-[var(--c-text)]">T-POS</h3>
-          <p className="text-xs text-[var(--c-hint)] mt-0.5">Система автоматизации клуба «Титан»</p>
-        </div>
+        <img src="/icons/tpos.svg" alt="T-POS" className="w-36 h-auto drop-shadow-lg" />
+        <p className="text-xs text-[var(--c-hint)] mt-0.5">Система автоматизации клуба «Титан»</p>
       </div>
 
       {/* System info cards */}

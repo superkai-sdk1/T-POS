@@ -97,10 +97,7 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
       )}
 
       <div className="flex flex-col items-center w-full max-w-xs animate-fade-in relative z-10">
-        <div className="w-10 h-10 rounded-xl mb-5 flex items-center justify-center"
-          style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', boxShadow: '0 4px 16px rgba(108,92,231,0.3)' }}>
-          <span className="text-sm font-black text-white">T</span>
-        </div>
+        <img src="/icons/tpos.svg" alt="T-POS" className="w-20 h-auto mb-5 drop-shadow-lg" />
 
         <div className="card p-6 w-full flex flex-col items-center gap-5" style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}>
           <div className="text-center">

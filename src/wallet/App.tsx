@@ -274,10 +274,7 @@ export function WalletApp() {
       <div className="min-h-screen" style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)' }}>
         <div className="px-4 pt-4 pb-8 space-y-4 max-w-md mx-auto">
           <div className="text-center animate-fade-in-up">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3"
-              style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)' }}>
-              <span className="text-lg font-black text-white">T</span>
-            </div>
+            <img src="/icons/wallet.svg" alt="TITAN Wallet" className="w-24 h-auto mx-auto mb-3 drop-shadow-lg" />
             <p className="text-lg font-bold text-white/90">Привязка профиля</p>
             <p className="text-[13px] text-white/40 mt-1">Выберите свой никнейм в клубе «Титан»</p>
           </div>
@@ -372,12 +369,7 @@ function WalletCard({ profile }: { profile: Profile }) {
 
         <div className="relative flex items-center justify-between mb-6">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)' }}>
-              <svg className="w-4.5 h-4.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20.893 13.393l-1.135-1.135a2.252 2.252 0 01-.421-.585l-1.08-2.16a.414.414 0 00-.663-.107.827.827 0 01-.812.21l-1.273-.363a.89.89 0 00-.738 1.595l.587.39c.59.395.674 1.23.172 1.732l-.2.2c-.212.212-.33.498-.33.796v.41c0 .409-.11.809-.32 1.158l-1.315 2.191a2.11 2.11 0 01-1.81 1.025 1.055 1.055 0 01-1.055-1.055v-1.172c0-.92-.56-1.747-1.414-2.089l-.655-.261a2.25 2.25 0 01-1.383-2.46l.007-.042a2.25 2.25 0 01.29-.787l.09-.15a2.25 2.25 0 012.37-1.048l1.178.236a1.125 1.125 0 001.302-.795l.208-.73a1.125 1.125 0 00-.578-1.315l-.665-.332-.091.091a2.25 2.25 0 01-1.591.659h-.18a.94.94 0 00-.662.274" />
-              </svg>
-            </div>
+            <img src="/icons/wallet.svg" alt="TITAN Wallet" className="w-8 h-8 rounded-lg" />
             <div>
               <p className="text-[11px] font-semibold tracking-[0.15em] text-white/40 uppercase">TITAN</p>
               <p className="text-[13px] font-bold text-white/90 -mt-0.5">Wallet</p>
