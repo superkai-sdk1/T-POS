@@ -23,6 +23,7 @@ interface ClosedCheck {
 
 interface CheckItemStat {
   item_id: string;
+  check_id: string;
   quantity: number;
   price_at_time: number;
   item: { name: string; category: string } | null;
@@ -212,7 +213,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
   const loadAll = async () => {
     setIsLoading(true);
-    await Promise.all([loadChecks(), loadCheckItems(), loadDebtors(), loadSupplies(), loadCashOps()]);
+    await Promise.all([loadChecks(), loadCheckItems(), loadDebtors(), loadSupplies(), loadCashOps(), loadItemCosts()]);
     setIsLoading(false);
   };
 
@@ -238,13 +239,33 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   const loadCheckItems = async () => {
     const { data } = await supabase
       .from('check_items')
-      .select('item_id, quantity, price_at_time, item:inventory(name, category)');
+      .select('item_id, check_id, quantity, price_at_time, item:inventory(name, category)');
     if (data) {
       setCheckItemStats(data.map((ci) => ({
         ...ci,
         item: Array.isArray(ci.item) ? ci.item[0] : ci.item,
       })) as CheckItemStat[]);
     }
+  };
+
+  const [itemCostMap, setItemCostMap] = useState<Record<string, number>>({});
+
+  const loadItemCosts = async () => {
+    const { data } = await supabase
+      .from('supply_items')
+      .select('item_id, cost_per_unit, quantity');
+    if (!data || data.length === 0) return;
+    const agg: Record<string, { totalCost: number; totalQty: number }> = {};
+    for (const si of data) {
+      if (!agg[si.item_id]) agg[si.item_id] = { totalCost: 0, totalQty: 0 };
+      agg[si.item_id].totalCost += (si.cost_per_unit || 0) * (si.quantity || 0);
+      agg[si.item_id].totalQty += si.quantity || 0;
+    }
+    const map: Record<string, number> = {};
+    for (const [id, val] of Object.entries(agg)) {
+      map[id] = val.totalQty > 0 ? val.totalCost / val.totalQty : 0;
+    }
+    setItemCostMap(map);
   };
 
   const loadDebtors = async () => {
@@ -339,20 +360,14 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   }, [checks, checkPaymentsMap]);
 
   const financials = useMemo(() => {
-    let monthExpenses = 0, prevMonthExpenses = 0;
     let monthSupplyCost = 0, prevMonthSupplyCost = 0;
     let monthInkassation = 0;
 
     for (const s of supplies) {
       const d = new Date(s.created_at);
       const cost = s.total_cost || 0;
-      if (d >= monthStart) {
-        monthExpenses += cost;
-        monthSupplyCost += cost;
-      } else if (d >= prevMonthStart) {
-        prevMonthExpenses += cost;
-        prevMonthSupplyCost += cost;
-      }
+      if (d >= monthStart) monthSupplyCost += cost;
+      else if (d >= prevMonthStart) prevMonthSupplyCost += cost;
     }
 
     for (const op of cashOps) {
@@ -361,6 +376,21 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
         monthInkassation += op.amount || 0;
       }
     }
+
+    const checkDateMap = new Map(checks.map((c) => [c.id, new Date(c.closed_at)]));
+    let monthCOGS = 0, prevMonthCOGS = 0;
+    for (const ci of checkItemStats) {
+      const cost = itemCostMap[ci.item_id];
+      if (cost == null || cost === 0) continue;
+      const closedAt = checkDateMap.get(ci.check_id);
+      if (!closedAt) continue;
+      const itemCost = ci.quantity * cost;
+      if (closedAt >= monthStart) monthCOGS += itemCost;
+      else if (closedAt >= prevMonthStart) prevMonthCOGS += itemCost;
+    }
+
+    const monthExpenses = Math.round(monthCOGS);
+    const prevMonthExpenses = Math.round(prevMonthCOGS);
 
     const monthNetIncome = stats.month - monthExpenses;
     const prevMonthNetIncome = stats.prevMonth - prevMonthExpenses;
@@ -373,13 +403,15 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       monthExpenses,
       prevMonthExpenses,
       monthSupplyCost,
+      monthCOGS: Math.round(monthCOGS),
+      prevMonthCOGS: Math.round(prevMonthCOGS),
       monthInkassation,
       monthNetIncome,
       prevMonthNetIncome,
       marginPct,
       netGrowth,
     };
-  }, [supplies, cashOps, stats, monthStart, prevMonthStart]);
+  }, [supplies, cashOps, stats, checks, checkItemStats, itemCostMap, monthStart, prevMonthStart]);
 
   const dailyRevenue = useMemo((): DailyRevenue[] => {
     const days: DailyRevenue[] = [];
@@ -448,24 +480,12 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
     return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 15);
   }, [checks]);
 
-  const peakHours = useMemo(() => {
-    const hours = new Array(24).fill(0);
-    for (const c of checks) {
-      if (!c.closed_at) continue;
-      const h = new Date(c.closed_at).getHours();
-      hours[h] += c.total_amount || 0;
-    }
-    const relevantHours = hours.map((val, h) => ({ hour: h, val })).filter((h) => h.val > 0);
-    return relevantHours;
-  }, [checks]);
-
   const fmt = (n: number) =>
     new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n);
 
   const fmtCur = (n: number) => fmt(n) + '₽';
 
   const maxDaily = Math.max(...dailyRevenue.map((d) => d.total), 1);
-  const maxPeak = Math.max(...peakHours.map((h) => h.val), 1);
 
   const tabs: { id: TabId; label: string; icon: typeof BarChart3 }[] = [
     { id: 'overview', label: 'Обзор', icon: BarChart3 },
@@ -615,7 +635,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
             >
               <div className="flex items-center gap-1 mb-1">
                 <ArrowDownRight className="w-3 h-3 text-red-400" />
-                <span className="text-[9px] text-white/30 font-semibold uppercase">Расходы</span>
+                <span className="text-[9px] text-white/30 font-semibold uppercase">Себест.</span>
               </div>
               <p className="text-base font-black text-red-400 tabular-nums leading-tight">{fmtCur(financials.monthExpenses)}</p>
               <span className="text-[9px] text-white/20">подробнее →</span>
@@ -626,7 +646,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
             >
               <div className="flex items-center gap-1 mb-1">
                 <Wallet className="w-3 h-3 text-[var(--c-accent)]" />
-                <span className="text-[9px] text-white/30 font-semibold uppercase">Чистый</span>
+                <span className="text-[9px] text-white/30 font-semibold uppercase">Прибыль</span>
               </div>
               <p className={`text-base font-black tabular-nums leading-tight ${financials.monthNetIncome >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {fmtCur(financials.monthNetIncome)}
@@ -693,10 +713,25 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           </div>
 
           {/* Expense breakdown */}
-          {financials.monthExpenses > 0 && (
+          {(financials.monthExpenses > 0 || financials.monthSupplyCost > 0) && (
             <div>
-              <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Расходы за месяц</h3>
+              <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Затраты за месяц</h3>
               <div className="space-y-2">
+                {financials.monthCOGS > 0 && (
+                  <button
+                    onClick={() => setDetail('expenses')}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+                      <ShoppingBag className="w-4 h-4 text-orange-400" />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="text-xs text-white/50">Себестоимость проданного</p>
+                    </div>
+                    <span className="font-bold text-sm text-orange-400">{fmtCur(financials.monthCOGS)}</span>
+                    <ChevronRight className="w-3 h-3 text-white/10 shrink-0" />
+                  </button>
+                )}
                 <button
                   onClick={() => nav('management:supplies')}
                   className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
@@ -705,7 +740,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                     <Truck className="w-4 h-4 text-red-400" />
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="text-xs text-white/50">Поставки</p>
+                    <p className="text-xs text-white/50">Закупки (поставки)</p>
                   </div>
                   <span className="font-bold text-sm text-red-400">{fmtCur(financials.monthSupplyCost)}</span>
                   <ChevronRight className="w-3 h-3 text-white/10 shrink-0" />
@@ -786,26 +821,6 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               })}
             </div>
           </div>
-
-          {/* Peak hours */}
-          {peakHours.length > 0 && (
-            <div>
-              <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Популярные часы</h3>
-              <div className="flex items-end gap-px h-20">
-                {peakHours.map((h) => (
-                  <div key={h.hour} className="flex-1 flex flex-col items-center gap-0.5">
-                    <div className="w-full flex-1 flex items-end">
-                      <div
-                        className="w-full rounded-t-sm bg-amber-500/60 min-h-[2px]"
-                        style={{ height: `${Math.max(2, (h.val / maxPeak) * 100)}%` }}
-                      />
-                    </div>
-                    <span className="text-[8px] text-white/30">{h.hour}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Category breakdown */}
           {categoryBreakdown.length > 0 && (
@@ -1204,6 +1219,7 @@ interface StatsData {
 }
 interface FinData {
   monthExpenses: number; prevMonthExpenses: number; monthSupplyCost: number;
+  monthCOGS: number; prevMonthCOGS: number;
   monthInkassation: number; monthNetIncome: number; prevMonthNetIncome: number;
   marginPct: number; netGrowth: number;
 }
@@ -1361,15 +1377,13 @@ function DetailScreen(props: DetailProps) {
         {header}
         <div className="p-4 rounded-xl bg-red-500/6 border border-red-500/10 text-center">
           <p className="text-3xl font-black text-red-400 tabular-nums">{fmtCur(f.monthExpenses)}</p>
-          <p className="text-[11px] text-white/30 mt-1">{monthSupplies.length} поставок за месяц</p>
+          <p className="text-[11px] text-white/30 mt-1">себестоимость проданного за месяц</p>
         </div>
         <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">Структура расходов</h3>
-          {statRow('Поставки', totalSupplyCost, 'text-red-400')}
+          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">Детализация</h3>
+          {f.monthCOGS > 0 && statRow('Себестоимость проданного', f.monthCOGS, 'text-orange-400')}
+          {statRow('Закупки (поставки)', totalSupplyCost, 'text-red-400')}
           {totalInkassation > 0 && statRow('Инкассация', totalInkassation, 'text-amber-400')}
-          <div className="border-t border-white/5 mt-1 pt-1">
-            {statRow('Итого', f.monthExpenses, 'text-red-400')}
-          </div>
         </div>
         <div>
           <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Поставки</h3>
@@ -1401,18 +1415,22 @@ function DetailScreen(props: DetailProps) {
       <div className="space-y-4">
         {header}
         <div className={`p-4 rounded-xl text-center ${f.monthNetIncome >= 0 ? 'bg-emerald-500/6 border border-emerald-500/10' : 'bg-red-500/6 border border-red-500/10'}`}>
-          <p className="text-[11px] text-white/30 mb-1">Чистый доход</p>
+          <p className="text-[11px] text-white/30 mb-1">Чистая прибыль</p>
           <p className={`text-3xl font-black tabular-nums ${f.monthNetIncome >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmtCur(f.monthNetIncome)}</p>
           <p className="text-[11px] text-white/25 mt-1">маржа {f.marginPct}%</p>
         </div>
         <div className="p-3 rounded-xl card">
           <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">P&L</h3>
-          {statRow('Выручка (доход)', s.month, 'text-emerald-400')}
-          {statRow('Поставки', -f.monthSupplyCost, 'text-red-400')}
-          {f.monthInkassation > 0 && statRow('Инкассация', -f.monthInkassation, 'text-amber-400')}
+          {statRow('Выручка', s.month, 'text-emerald-400')}
+          {f.monthCOGS > 0 && statRow('Себестоимость проданного', -f.monthCOGS, 'text-orange-400')}
           <div className="border-t-2 border-white/10 mt-1 pt-1">
-            {statRow('Чистый доход', f.monthNetIncome, f.monthNetIncome >= 0 ? 'text-emerald-400' : 'text-red-400')}
+            {statRow('Чистая прибыль', f.monthNetIncome, f.monthNetIncome >= 0 ? 'text-emerald-400' : 'text-red-400')}
           </div>
+        </div>
+        <div className="p-3 rounded-xl card">
+          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">Движение средств</h3>
+          {statRow('Закупки (поставки)', f.monthSupplyCost, 'text-red-400')}
+          {f.monthInkassation > 0 && statRow('Инкассация', f.monthInkassation, 'text-amber-400')}
         </div>
         {s.month > 0 && (
           <div className="p-3 rounded-xl card space-y-2">
@@ -1433,8 +1451,8 @@ function DetailScreen(props: DetailProps) {
           {statRow('Выручка (прошлый)', s.prevMonth, 'text-white/40')}
           {statRow('Расходы (этот)', f.monthExpenses, 'text-red-400')}
           {statRow('Расходы (прошлый)', f.prevMonthExpenses, 'text-white/40')}
-          {statRow('Чистый (этот)', f.monthNetIncome, f.monthNetIncome >= 0 ? 'text-emerald-400' : 'text-red-400')}
-          {statRow('Чистый (прошлый)', f.prevMonthNetIncome, 'text-white/40')}
+          {statRow('Прибыль (этот)', f.monthNetIncome, f.monthNetIncome >= 0 ? 'text-emerald-400' : 'text-red-400')}
+          {statRow('Прибыль (прошлый)', f.prevMonthNetIncome, 'text-white/40')}
         </div>
       </div>
     );
