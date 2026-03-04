@@ -78,8 +78,9 @@ const server = http.createServer((req, res) => {
     };
 
     const steps = [
+      { label: 'Сброс локальных изменений', cmd: 'git', args: ['reset', '--hard', 'HEAD'] },
       { label: 'Загрузка обновлений', cmd: 'git', args: ['pull', 'origin', 'main'] },
-      { label: 'Установка зависимостей', cmd: 'npm', args: ['ci', '--loglevel=error'] },
+      { label: 'Установка зависимостей', cmd: 'npm', args: ['ci', '--include=dev', '--loglevel=error'] },
       { label: 'Сборка проекта', cmd: 'npm', args: ['run', 'build'] },
       { label: 'Сборка Wallet', cmd: 'npm', args: ['run', 'build:wallet'] },
     ];
@@ -102,7 +103,7 @@ const server = http.createServer((req, res) => {
 
       const proc = spawn(step.cmd, step.args, {
         cwd: PROJECT_DIR,
-        env: { ...process.env, NODE_ENV: 'production' },
+        env: { ...process.env, NODE_ENV: undefined },
         shell: true,
       });
 

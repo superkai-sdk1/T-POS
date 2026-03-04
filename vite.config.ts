@@ -19,7 +19,7 @@ export default defineConfig({
       '/sb': {
         target: process.env.VITE_SUPABASE_URL || 'https://dscadajjthbcrullhwtx.supabase.co',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/sb/, ''),
+        rewrite: (p) => p.replace(/^\/sb/, ''),
         ws: true,
       },
     },
