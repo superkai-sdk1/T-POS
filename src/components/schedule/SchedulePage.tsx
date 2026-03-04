@@ -284,8 +284,8 @@ export function SchedulePage() {
 
   return (
     <div className="space-y-4">
-      {/* Space status cards */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* Quick actions: spaces + event */}
+      <div className="grid grid-cols-4 gap-2">
         {spaces.map((s) => {
           const active = todayBookings.filter((b) => b.space_id === s.id);
           const isBusy = active.length > 0;
@@ -300,8 +300,8 @@ export function SchedulePage() {
                   : 'bg-white/5 border-white/5 hover:bg-white/8'
               }`}
             >
-              <Icon className="w-6 h-6 text-indigo-400 mx-auto mb-1" />
-              <p className="text-xs font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{s.name}</p>
+              <Icon className="w-5 h-5 text-indigo-400 mx-auto mb-1" />
+              <p className="text-[11px] font-bold text-[var(--tg-theme-text-color,#e0e0e0)] leading-tight">{s.name}</p>
               <p className="text-[10px] text-white/30 mt-0.5">
                 {s.hourly_rate ? `${s.hourly_rate}₽/ч` : 'Своя цена'}
               </p>
@@ -309,33 +309,29 @@ export function SchedulePage() {
             </button>
           );
         })}
+        <button
+          onClick={openNewEvent}
+          className="p-3 rounded-2xl text-center transition-all active:scale-[0.96] border bg-teal-500/6 border-teal-500/12 hover:bg-teal-500/10"
+        >
+          <MapPin className="w-5 h-5 text-teal-400 mx-auto mb-1" />
+          <p className="text-[11px] font-bold text-[var(--tg-theme-text-color,#e0e0e0)] leading-tight">Выезд</p>
+          <p className="text-[10px] text-white/30 mt-0.5">Мероприятие</p>
+        </button>
       </div>
 
-      {/* Tabs + actions */}
-      <div className="flex items-center justify-between">
-        <div className="flex gap-1 p-1 rounded-xl bg-white/4 border border-white/5">
-          {(['upcoming', 'history'] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                tab === t ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white' : 'text-white/40'
-              }`}
-            >
-              {t === 'upcoming' ? `Ближайшие (${schedule.length})` : `История (${pastItems.length})`}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-1.5">
-          <Button size="md" onClick={() => openNewBooking()}>
-            <DoorOpen className="w-4 h-4" />
-            Бронь
-          </Button>
-          <Button size="md" variant="secondary" onClick={openNewEvent}>
-            <MapPin className="w-4 h-4" />
-            Выезд
-          </Button>
-        </div>
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 rounded-xl bg-white/4 border border-white/5">
+        {(['upcoming', 'history'] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              tab === t ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white' : 'text-white/40'
+            }`}
+          >
+            {t === 'upcoming' ? `Ближайшие (${schedule.length})` : `История (${pastItems.length})`}
+          </button>
+        ))}
       </div>
 
       {/* Unified list */}
