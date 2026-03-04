@@ -416,8 +416,8 @@ if [ "$MODE" = "update" ]; then
   SCRIPT_HASH_BEFORE=$(md5sum "$INSTALL_DIR/install.sh" 2>/dev/null | awk '{print $1}') || true
 
   info "Загрузка обновлений..."
-  git clean -fd dist-wallet/ 2>/dev/null || true
-  git checkout -- . 2>/dev/null || true
+  git clean -fd 2>/dev/null || true
+  git reset --hard HEAD 2>/dev/null || true
   git pull origin main
 
   # ── Re-exec if install.sh itself was updated ──
@@ -435,118 +435,89 @@ if [ "$MODE" = "update" ]; then
   info "Сборка T-POS..."
   npm run build 2>&1
 
-  info "Сборка Wallet..."
-  npm run build:wallet 2>&1
+  if grep -q 'build:wallet' package.json 2>/dev/null; then
+    info "Сборка Wallet..."
+    npm run build:wallet 2>&1 || warn "Wallet build skipped"
+  fi
 
   chown -R www-data:www-data dist 2>/dev/null || true
   chown -R www-data:www-data dist-wallet 2>/dev/null || true
 
-  success "Проект обновлён"
+  success "Проект собран"
 
-  # ── Ensure .env has all required keys ──
+  # ── .env: auto-fill defaults silently ──
 
   echo ""
-  info "Проверка .env..."
-
-  ensure_env_key "$INSTALL_DIR/.env" "CLIENT_BOT_TOKEN" \
-    "Telegram Bot Token для клиентского кошелька" "" "true"
-
-  ensure_env_key "$INSTALL_DIR/.env" "WALLET_DOMAIN" \
-    "Домен для клиентского кошелька" "$DEFAULT_WALLET_DOMAIN" "false"
-
   WALLET_DOMAIN=$(read_env_value "$INSTALL_DIR/.env" "WALLET_DOMAIN") || true
-  WALLET_DOMAIN="${WALLET_DOMAIN:-$DEFAULT_WALLET_DOMAIN}"
+  if [ -z "$WALLET_DOMAIN" ]; then
+    WALLET_DOMAIN="$DEFAULT_WALLET_DOMAIN"
+    add_env_key "$INSTALL_DIR/.env" "WALLET_DOMAIN" "$WALLET_DOMAIN"
+    info "WALLET_DOMAIN = ${WALLET_DOMAIN} (по умолчанию)"
+  else
+    success "WALLET_DOMAIN = ${WALLET_DOMAIN}"
+  fi
 
   # ── Services ──
 
-  echo ""
   setup_update_server "$INSTALL_DIR"
-  ensure_nginx_proxy "$NGINX_CONF"
-  ensure_supabase_proxy "$NGINX_CONF"
-  ensure_supabase_proxy "$WALLET_NGINX_CONF"
-
-  # ── Wallet Bot ──
 
   if [ -f "${INSTALL_DIR}/server/wallet-bot.js" ]; then
-    setup_wallet_bot "$INSTALL_DIR"
+    local has_bot_token=""
+    has_bot_token=$(read_env_value "$INSTALL_DIR/.env" "CLIENT_BOT_TOKEN") || true
+    if [ -n "$has_bot_token" ]; then
+      setup_wallet_bot "$INSTALL_DIR"
+    fi
   fi
 
-  # ── Main Nginx ──
+  # ── Nginx: regenerate configs with all proxy blocks ──
 
-  if [ ! -f "$NGINX_CONF" ]; then
-    echo ""
-    warn "Конфигурация nginx не найдена — настраиваю"
+  echo ""
+  DOMAIN=""
 
-    DOMAIN=""
+  if [ -f "$NGINX_CONF" ]; then
+    DOMAIN=$(extract_server_name "$NGINX_CONF")
+    HAS_SSL=""
+    if grep -q 'ssl_certificate' "$NGINX_CONF" 2>/dev/null; then
+      HAS_SSL="yes"
+    fi
+  fi
+
+  if [ -z "$DOMAIN" ]; then
     echo -ne "${BOLD}Домен для T-POS: ${NC}"
     read -r DOMAIN
     if [ -z "$DOMAIN" ]; then
       err "Домен обязателен для настройки nginx"
       exit 1
     fi
-
-    setup_nginx "$DOMAIN" "$INSTALL_DIR"
   fi
 
-  # ── Wallet Nginx ──
+  info "Пересоздание nginx конфигурации для ${DOMAIN}..."
+  setup_nginx "$DOMAIN" "$INSTALL_DIR"
 
-  if [ ! -f "$WALLET_NGINX_CONF" ]; then
-    echo ""
-    info "Настройка nginx для ${WALLET_DOMAIN}..."
+  if [ -f "$WALLET_NGINX_CONF" ] || [ -n "$WALLET_DOMAIN" ]; then
+    info "Пересоздание nginx конфигурации для ${WALLET_DOMAIN}..."
     setup_wallet_nginx "$WALLET_DOMAIN" "$INSTALL_DIR"
-  else
-    local_current=$(extract_server_name "$WALLET_NGINX_CONF")
-    if [ -n "$WALLET_DOMAIN" ] && [ "$local_current" != "$WALLET_DOMAIN" ]; then
-      info "Обновление домена wallet: ${local_current} → ${WALLET_DOMAIN}"
-      setup_wallet_nginx "$WALLET_DOMAIN" "$INSTALL_DIR"
-    fi
   fi
 
   fix_and_reload_nginx
 
-  # ── SSL ──
+  # ── SSL: re-apply non-interactively if was configured ──
 
-  echo ""
+  SSL_EMAIL=$(get_certbot_email) || true
 
-  if [ -f "$NGINX_CONF" ] && ! grep -q 'ssl_certificate' "$NGINX_CONF" 2>/dev/null; then
-    DOMAIN=$(extract_server_name "$NGINX_CONF")
-    warn "SSL для ${DOMAIN} не настроен"
-    echo -ne "${BOLD}Выпустить SSL-сертификат для ${DOMAIN}? (y/n): ${NC}"
-    read -r yn || true
-    if [ "$yn" = "y" ] || [ "$yn" = "Y" ]; then
-      SSL_EMAIL=$(get_certbot_email)
-      if [ -z "$SSL_EMAIL" ]; then
-        echo -ne "${BOLD}Email для certbot: ${NC}"
-        read -r SSL_EMAIL || true
-      else
-        info "Используем email: ${SSL_EMAIL}"
-      fi
-      if [ -n "$SSL_EMAIL" ] && [ -n "$DOMAIN" ]; then
-        setup_ssl "$DOMAIN" "$SSL_EMAIL"
-      fi
+  if [ -n "$HAS_SSL" ] && [ -n "$SSL_EMAIL" ]; then
+    info "Восстановление SSL для ${DOMAIN}..."
+    certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "$SSL_EMAIL" --keep-until-expiring --redirect 2>&1 || warn "SSL для ${DOMAIN} — проверьте вручную"
+    if [ -n "$WALLET_DOMAIN" ]; then
+      certbot --nginx -d "$WALLET_DOMAIN" --non-interactive --agree-tos --email "$SSL_EMAIL" --keep-until-expiring --redirect 2>&1 || warn "SSL для ${WALLET_DOMAIN} — проверьте вручную"
     fi
-  fi
-
-  if [ -f "$WALLET_NGINX_CONF" ] && ! grep -q 'ssl_certificate' "$WALLET_NGINX_CONF" 2>/dev/null; then
-    warn "SSL для ${WALLET_DOMAIN} не настроен"
-    echo -ne "${BOLD}Выпустить SSL-сертификат для ${WALLET_DOMAIN}? (y/n): ${NC}"
-    read -r yn || true
-    if [ "$yn" = "y" ] || [ "$yn" = "Y" ]; then
-      SSL_EMAIL=$(get_certbot_email)
-      if [ -z "$SSL_EMAIL" ]; then
-        echo -ne "${BOLD}Email для certbot: ${NC}"
-        read -r SSL_EMAIL || true
-      else
-        info "Используем email: ${SSL_EMAIL}"
-      fi
-      if [ -n "$SSL_EMAIL" ]; then
-        setup_ssl "$WALLET_DOMAIN" "$SSL_EMAIL"
-      fi
-    fi
+    systemctl reload nginx 2>/dev/null || true
+  elif [ -z "$HAS_SSL" ]; then
+    warn "SSL не настроен. Настройте вручную: certbot --nginx -d ${DOMAIN}"
   fi
 
   echo ""
-  echo -e "${BOLD}${GREEN}Готово!${NC} $(git log -1 --format='%h %s')"
+  echo -e "${BOLD}${GREEN}✓ Обновление завершено!${NC} $(git log -1 --format='%h %s')"
   echo ""
   exit 0
 fi
