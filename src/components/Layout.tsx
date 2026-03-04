@@ -9,7 +9,9 @@ interface LayoutProps {
 }
 
 export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
-  const { user, logout, isOwner } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const isOwner = useAuthStore((s) => s.isOwner);
 
   const tabs = useMemo(() => isOwner()
     ? [
@@ -73,7 +75,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
 
         <div className="px-2.5 pb-4">
           <button
-            onClick={logout}
+            onClick={() => useAuthStore.getState().logout()}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[var(--c-hint)] hover:bg-red-500/8 hover:text-red-400 transition-all tap"
           >
             <LogOut className="w-[18px] h-[18px]" />
@@ -100,7 +102,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
               </div>
             </div>
             <button
-              onClick={logout}
+              onClick={() => useAuthStore.getState().logout()}
               className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center hover:bg-red-500/10 transition-colors group active:scale-90"
             >
               <LogOut className="w-3.5 h-3.5 text-[var(--c-hint)] group-hover:text-red-400 transition-colors" />

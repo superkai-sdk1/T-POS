@@ -219,12 +219,13 @@ export const useAuthStore = create<AuthState>()(
       refreshProfile: async () => {
         const { user } = get();
         if (!user) return;
+        const userId = user.id;
         const { data } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', user.id)
+          .eq('id', userId)
           .single();
-        if (data) {
+        if (data && get().user?.id === userId) {
           set({ user: data as Profile });
         }
       },
