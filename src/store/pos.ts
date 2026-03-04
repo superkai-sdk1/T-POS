@@ -106,9 +106,10 @@ export const usePOSStore = create<POSState>((set, get) => ({
   createCheck: async (playerId: string | null, spaceId?: string | null) => {
     const user = useAuthStore.getState().user;
     const shift = useShiftStore.getState().activeShift;
+    if (!shift) return null;
     const insert: Record<string, unknown> = {
       staff_id: user?.id,
-      shift_id: shift?.id || null,
+      shift_id: shift.id,
     };
     if (playerId) insert.player_id = playerId;
     if (spaceId) insert.space_id = spaceId;

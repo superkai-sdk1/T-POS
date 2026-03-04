@@ -91,6 +91,14 @@ export const useShiftStore = create<ShiftState>()(
       closeShift: async (cashEnd: number, note?: string) => {
         const { activeShift } = get();
         if (!activeShift) return false;
+
+        const { count } = await supabase
+          .from('checks')
+          .select('id', { count: 'exact', head: true })
+          .eq('shift_id', activeShift.id)
+          .eq('status', 'open');
+        if (count && count > 0) return false;
+
         const user = useAuthStore.getState().user;
         const closedAt = new Date().toISOString();
 

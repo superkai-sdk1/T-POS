@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { Badge } from '@/components/ui/Badge';
 import {
   Package, Truck, ClipboardList, Users, AlertTriangle, Wallet, Star, Banknote, UtensilsCrossed, UserCircle,
-  ChevronRight, ArrowLeft, Percent, Info,
+  ChevronRight, ArrowLeft, Percent, Info, RotateCcw,
 } from 'lucide-react';
 import type { InventoryItem } from '@/types';
 import { SupplyPage } from '@/components/supply/SupplyPage';
@@ -16,8 +16,9 @@ import { StaffManager } from './StaffManager';
 import { DebtorsManager } from './DebtorsManager';
 import { DiscountsManager } from './DiscountsManager';
 import { AboutSystem } from './AboutSystem';
+import { RefundsManager } from './RefundsManager';
 
-type Screen = 'menu' | 'inventory' | 'supplies' | 'revision' | 'debtors' | 'staff' | 'bonus' | 'cash' | 'menuEditor' | 'clients' | 'discounts' | 'about';
+type Screen = 'menu' | 'inventory' | 'supplies' | 'revision' | 'debtors' | 'staff' | 'bonus' | 'cash' | 'menuEditor' | 'clients' | 'discounts' | 'refunds' | 'about';
 
 const categoryLabels: Record<string, string> = {
   drinks: 'Напитки', food: 'Еда', bar: 'Снеки', hookah: 'Кальяны', services: 'Услуги',
@@ -32,6 +33,7 @@ const menuItems: { id: Screen; label: string; desc: string; icon: typeof Package
   { id: 'discounts', label: 'Скидки', desc: 'Процентные и фиксированные', icon: Percent, color: 'bg-pink-500/10 text-pink-400' },
   { id: 'bonus', label: 'Бонусы', desc: 'Баллы и настройки', icon: Star, color: 'bg-yellow-500/10 text-yellow-400' },
   { id: 'cash', label: 'Инкассация', desc: 'Операции с наличными', icon: Banknote, color: 'bg-cyan-500/10 text-cyan-400' },
+  { id: 'refunds', label: 'Возвраты', desc: 'Полные и частичные возвраты', icon: RotateCcw, color: 'bg-rose-500/10 text-rose-400' },
   { id: 'debtors', label: 'Должники', desc: 'Управление долгами', icon: Wallet, color: 'bg-red-500/10 text-red-400' },
   { id: 'staff', label: 'Персонал', desc: 'Сотрудники и доступы', icon: Users, color: 'bg-violet-500/10 text-violet-400' },
   { id: 'about', label: 'О системе', desc: 'Версия, обновление', icon: Info, color: 'bg-gray-500/10 text-gray-400' },
@@ -99,6 +101,7 @@ export function ManagementPage({ initialScreen }: ManagementPageProps) {
       {screen === 'bonus' && <BonusManager />}
       {screen === 'cash' && <InkassationPage />}
       {screen === 'discounts' && <DiscountsManager />}
+      {screen === 'refunds' && <RefundsManager />}
       {screen === 'debtors' && <DebtorsManager />}
       {screen === 'staff' && <StaffManager />}
       {screen === 'about' && <AboutSystem />}

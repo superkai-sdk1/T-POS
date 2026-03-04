@@ -4,7 +4,7 @@ export type VisitTariff = 'regular' | 'resident' | 'student' | 'single_game';
 export type ItemCategory = string;
 export type CheckStatus = 'open' | 'closed';
 export type PaymentMethod = 'cash' | 'card' | 'debt' | 'bonus' | 'split';
-export type TransactionType = 'supply' | 'write_off' | 'sale' | 'revision' | 'bonus_accrual' | 'bonus_spend' | 'cash_operation' | 'debt_adjustment';
+export type TransactionType = 'supply' | 'write_off' | 'sale' | 'revision' | 'bonus_accrual' | 'bonus_spend' | 'cash_operation' | 'debt_adjustment' | 'refund';
 
 export interface Profile {
   id: string;
@@ -258,4 +258,31 @@ export interface CheckPayment {
   check_id: string;
   method: PaymentMethod;
   amount: number;
+}
+
+export type RefundType = 'full' | 'partial';
+
+export interface Refund {
+  id: string;
+  check_id: string;
+  shift_id: string | null;
+  refund_type: RefundType;
+  total_amount: number;
+  bonus_deducted: number;
+  bonus_returned: number;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+  creator?: { nickname: string };
+  check?: Check;
+  items?: RefundItem[];
+}
+
+export interface RefundItem {
+  id: string;
+  refund_id: string;
+  item_id: string;
+  quantity: number;
+  price_at_time: number;
+  item?: InventoryItem;
 }

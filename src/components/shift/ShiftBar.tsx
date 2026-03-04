@@ -3,7 +3,7 @@ import { useShiftStore } from '@/store/shift';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
-import { PlayCircle, StopCircle, Clock, Banknote, Cake, X } from 'lucide-react';
+import { PlayCircle, StopCircle, Clock, Banknote, Cake, X, AlertTriangle } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { ShiftAnalytics } from './ShiftAnalytics';
 import { supabase } from '@/lib/supabase';
@@ -62,10 +62,30 @@ export function ShiftBar() {
     }
   };
 
+  const [openChecksCount, setOpenChecksCount] = useState(0);
+  const [closeError, setCloseError] = useState('');
+
   const handleStartClose = async () => {
     if (!activeShift) return;
     hapticFeedback('medium');
     setIsClosing(true);
+    setCloseError('');
+
+    const { count } = await supabase
+      .from('checks')
+      .select('id', { count: 'exact', head: true })
+      .eq('shift_id', activeShift.id)
+      .eq('status', 'open');
+    const openCount = count || 0;
+    setOpenChecksCount(openCount);
+
+    if (openCount > 0) {
+      setIsClosing(false);
+      setCloseError(`Невозможно закрыть смену: ${openCount} ${openCount === 1 ? 'открытый чек' : 'открытых чеков'}`);
+      hapticNotification('error');
+      return;
+    }
+
     const data = await getShiftAnalytics(activeShift.id);
     setAnalytics(data);
     setIsClosing(false);
@@ -80,7 +100,11 @@ export function ShiftBar() {
       setShowClose(false);
       setCashEnd('');
       setCloseNote('');
+      setCloseError('');
       setShowAnalytics(true);
+    } else {
+      setCloseError('Не удалось закрыть смену. Проверьте открытые чеки.');
+      hapticNotification('error');
     }
   };
 
@@ -181,6 +205,16 @@ export function ShiftBar() {
           Закрыть
         </button>
       </div>
+
+      {closeError && (
+        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-500/6 border border-red-500/10 animate-fade-in">
+          <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+          <p className="text-[11px] text-red-400 flex-1">{closeError}</p>
+          <button onClick={() => setCloseError('')} className="w-5 h-5 rounded-md bg-white/5 flex items-center justify-center shrink-0">
+            <X className="w-2.5 h-2.5 text-white/25" />
+          </button>
+        </div>
+      )}
 
       <Drawer open={showClose} onClose={() => setShowClose(false)} title="Закрытие смены" size="md">
         <div className="space-y-3">

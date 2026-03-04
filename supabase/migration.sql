@@ -686,9 +686,38 @@ alter publication supabase_realtime add table tg_link_requests;
 alter table tg_link_requests replica identity full;
 
 -- ==============================
+-- Refunds
+-- ==============================
+create table if not exists refunds (
+  id uuid primary key default gen_random_uuid(),
+  check_id uuid not null references checks(id) on delete restrict,
+  shift_id uuid references shifts(id),
+  refund_type text not null check (refund_type in ('full', 'partial')),
+  total_amount numeric not null default 0,
+  bonus_deducted numeric not null default 0,
+  bonus_returned numeric not null default 0,
+  note text,
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists refund_items (
+  id uuid primary key default gen_random_uuid(),
+  refund_id uuid not null references refunds(id) on delete cascade,
+  item_id uuid not null references inventory(id),
+  quantity numeric not null default 1,
+  price_at_time numeric not null default 0
+);
+
+alter table refunds enable row level security;
+create policy "refunds_all" on refunds for all to anon, authenticated using (true) with check (true);
+alter table refund_items enable row level security;
+create policy "refund_items_all" on refund_items for all to anon, authenticated using (true) with check (true);
+
+-- ==============================
 -- Realtime
 -- ==============================
-alter publication supabase_realtime add table checks, check_items, check_discounts, inventory, shifts, cash_operations, bookings, profiles, events, discounts, supplies, revisions;
+alter publication supabase_realtime add table checks, check_items, check_discounts, inventory, shifts, cash_operations, bookings, profiles, events, discounts, supplies, revisions, refunds;
 alter table checks replica identity full;
 alter table check_items replica identity full;
 alter table check_discounts replica identity full;
@@ -701,3 +730,4 @@ alter table events replica identity full;
 alter table discounts replica identity full;
 alter table supplies replica identity full;
 alter table revisions replica identity full;
+alter table refunds replica identity full;
