@@ -87,6 +87,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
   // Event detail/edit
   const [showEventDetail, setShowEventDetail] = useState<OffsiteEvent | null>(null);
   const [editingEvent, setEditingEvent] = useState<OffsiteEvent | null>(null);
+  const [checkTotals, setCheckTotals] = useState<Record<string, { total: number; method: string | null; status: string }>>({});
 
   const load = useCallback(async () => {
     const { data: sp } = await supabase.from('spaces').select('*').eq('is_active', true).order('type');
@@ -109,6 +110,22 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
       .order('start_time', { ascending: true })
       .limit(200);
     if (ev) setEvents(ev as OffsiteEvent[]);
+
+    const checkIds = [
+      ...(bk || []).filter((b) => b.check_id).map((b) => b.check_id as string),
+      ...(ev || []).filter((e) => e.check_id).map((e) => e.check_id as string),
+    ];
+    if (checkIds.length > 0) {
+      const { data: checks } = await supabase
+        .from('checks')
+        .select('id, total_amount, payment_method, status')
+        .in('id', checkIds);
+      if (checks) {
+        const map: Record<string, { total: number; method: string | null; status: string }> = {};
+        for (const c of checks) map[c.id] = { total: c.total_amount, method: c.payment_method, status: c.status };
+        setCheckTotals(map);
+      }
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -268,14 +285,13 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
 
   const startBooking = async (booking: Booking) => {
     hapticFeedback('medium');
-    await supabase.from('bookings').update({ status: 'active' as BookingStatus }).eq('id', booking.id);
 
     await usePOSStore.getState().loadOpenChecks();
     const existingChecks = usePOSStore.getState().openChecks;
-    const existing = existingChecks.find((c) => c.space_id === booking.space_id && c.status === 'open');
+    let checkToOpen = existingChecks.find((c) => c.space_id === booking.space_id && c.status === 'open');
 
-    if (existing) {
-      await selectCheck(existing);
+    if (checkToOpen) {
+      await selectCheck(checkToOpen);
     } else {
       const check = await createCheck(booking.client_id || null, booking.space_id);
       if (!check) {
@@ -283,9 +299,35 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
         load();
         return;
       }
+      checkToOpen = check;
     }
 
+    await supabase.from('bookings').update({
+      status: 'active' as BookingStatus,
+      check_id: checkToOpen.id,
+    }).eq('id', booking.id);
+
     hapticNotification('success');
+    load();
+    onOpenCheck?.();
+  };
+
+  const startEvent = async (event: OffsiteEvent) => {
+    hapticFeedback('medium');
+
+    const check = await createCheck(null);
+    if (!check) {
+      hapticNotification('error');
+      return;
+    }
+
+    await supabase.from('events').update({
+      status: 'completed' as EventStatus,
+      check_id: check.id,
+    }).eq('id', event.id);
+
+    hapticNotification('success');
+    setShowEventDetail(null);
     load();
     onOpenCheck?.();
   };
@@ -398,7 +440,11 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <Badge variant={bookingStatusVariants[b.status]}>{bookingStatusLabels[b.status]}</Badge>
-                      <span className="font-bold text-sm text-[var(--tg-theme-button-color,#6c5ce7)] tabular-nums">{fmtCur(b.rental_amount)}</span>
+                      {b.check_id && checkTotals[b.check_id]?.status === 'closed' ? (
+                        <span className="font-bold text-sm text-emerald-400 tabular-nums">{fmtCur(checkTotals[b.check_id].total)}</span>
+                      ) : (
+                        <span className="font-bold text-sm text-[var(--tg-theme-button-color,#6c5ce7)] tabular-nums">{fmtCur(b.rental_amount)}</span>
+                      )}
                     </div>
                   </div>
                   {b.client && (
@@ -408,6 +454,18 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                     </div>
                   )}
                   {b.note && <p className="text-xs text-white/25">{b.note}</p>}
+                  {b.check_id && checkTotals[b.check_id]?.status === 'closed' && (
+                    <div className="flex items-center gap-1.5 text-[10px] text-emerald-400/60 pt-0.5">
+                      <Check className="w-3 h-3" />
+                      Чек закрыт · {fmtCur(checkTotals[b.check_id].total)}
+                    </div>
+                  )}
+                  {b.check_id && checkTotals[b.check_id]?.status === 'open' && (
+                    <div className="flex items-center gap-1.5 text-[10px] text-amber-400/60 pt-0.5">
+                      <Clock className="w-3 h-3" />
+                      Чек открыт в кассе
+                    </div>
+                  )}
                   {(b.status === 'booked' || b.status === 'active') && (
                     <div className="flex gap-1.5 pt-1">
                       {b.status === 'booked' && (
@@ -447,9 +505,25 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <Badge variant={eventStatusVariants[e.status]}>{eventStatusLabels[e.status]}</Badge>
-                      <span className="font-bold text-sm text-[var(--tg-theme-button-color,#6c5ce7)] tabular-nums">{fmtCur(e.amount)}</span>
+                      {e.check_id && checkTotals[e.check_id]?.status === 'closed' ? (
+                        <span className="font-bold text-sm text-emerald-400 tabular-nums">{fmtCur(checkTotals[e.check_id].total)}</span>
+                      ) : (
+                        <span className="font-bold text-sm text-[var(--tg-theme-button-color,#6c5ce7)] tabular-nums">{fmtCur(e.amount)}</span>
+                      )}
                     </div>
                   </div>
+                  {e.check_id && checkTotals[e.check_id]?.status === 'closed' && (
+                    <div className="flex items-center gap-1.5 text-[10px] text-emerald-400/60 mt-1">
+                      <Check className="w-3 h-3" />
+                      Чек закрыт · {fmtCur(checkTotals[e.check_id].total)}
+                    </div>
+                  )}
+                  {e.check_id && checkTotals[e.check_id]?.status === 'open' && (
+                    <div className="flex items-center gap-1.5 text-[10px] text-amber-400/60 mt-1">
+                      <Clock className="w-3 h-3" />
+                      Чек открыт в кассе
+                    </div>
+                  )}
                 </button>
               );
             }
@@ -495,16 +569,32 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
             </div>
 
             {showEventDetail.status === 'planned' && (
-              <div className="flex gap-2 pt-2">
-                <button onClick={() => openEditEvent(showEventDetail)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white/5 text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] active:scale-[0.97] transition-all">
-                  <Edit2 className="w-4 h-4" />Изменить
+              <div className="space-y-2 pt-2">
+                <button onClick={() => startEvent(showEventDetail)} className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-500/10 text-sm font-semibold text-emerald-400 active:scale-[0.97] transition-all">
+                  <Check className="w-4 h-4" />Начать и открыть в кассе
                 </button>
-                <button onClick={() => updateEventStatus(showEventDetail.id, 'completed')} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-500/10 text-sm font-semibold text-emerald-400 active:scale-[0.97] transition-all">
-                  <Check className="w-4 h-4" />Завершить
-                </button>
-                <button onClick={() => updateEventStatus(showEventDetail.id, 'cancelled')} className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-red-500/10 text-sm font-semibold text-red-400 active:scale-[0.97] transition-all">
-                  <X className="w-4 h-4" />
-                </button>
+                <div className="flex gap-2">
+                  <button onClick={() => openEditEvent(showEventDetail)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white/5 text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] active:scale-[0.97] transition-all">
+                    <Edit2 className="w-4 h-4" />Изменить
+                  </button>
+                  <button onClick={() => updateEventStatus(showEventDetail.id, 'cancelled')} className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-red-500/10 text-sm font-semibold text-red-400 active:scale-[0.97] transition-all">
+                    <X className="w-4 h-4" />Отмена
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {showEventDetail.check_id && checkTotals[showEventDetail.check_id] && (
+              <div className="p-3 rounded-xl bg-white/5 border border-white/5">
+                <p className="text-[10px] text-white/40 mb-1">Привязанный чек</p>
+                {checkTotals[showEventDetail.check_id].status === 'closed' ? (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-emerald-400 font-semibold">Чек закрыт</span>
+                    <span className="text-sm font-bold text-emerald-400">{fmtCur(checkTotals[showEventDetail.check_id].total)}</span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-amber-400 font-semibold">Чек открыт в кассе</p>
+                )}
               </div>
             )}
           </div>

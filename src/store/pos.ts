@@ -396,6 +396,20 @@ export const usePOSStore = create<POSState>((set, get) => ({
       }
     }
 
+    if (activeCheck.space_id) {
+      await supabase
+        .from('bookings')
+        .update({ status: 'completed' })
+        .eq('check_id', activeCheck.id)
+        .eq('status', 'active');
+    }
+
+    await supabase
+      .from('events')
+      .update({ status: 'completed' })
+      .eq('check_id', activeCheck.id)
+      .neq('status', 'cancelled');
+
     set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
     await get().loadOpenChecks();
     await get().loadInventory();
