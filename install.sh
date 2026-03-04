@@ -312,13 +312,21 @@ ln -sf "$NGINX_CONF" "$NGINX_LINK"
 success "Конфигурация nginx создана"
 
 info "Проверка nginx..."
-if nginx -t 2>&1; then
-  systemctl reload nginx
-  success "nginx перезагружен"
-else
-  err "Ошибка nginx! Проверьте: nginx -t"
-  exit 1
+if ! nginx -t 2>&1; then
+  if nginx -t 2>&1 | grep -q "server_names_hash"; then
+    info "Увеличение server_names_hash_bucket_size..."
+    if ! grep -q 'server_names_hash_bucket_size' /etc/nginx/nginx.conf; then
+      sed -i '/http {/a \\tserver_names_hash_bucket_size 128;' /etc/nginx/nginx.conf
+    fi
+  fi
+  if ! nginx -t 2>&1; then
+    err "Ошибка nginx! Проверьте: nginx -t"
+    exit 1
+  fi
 fi
+success "Конфигурация nginx корректна"
+systemctl reload nginx
+success "nginx перезагружен"
 
 # ── Step 5: SSL ──────────────────────────────
 
