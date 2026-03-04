@@ -44,6 +44,7 @@ let _savingCart = false;
 export function isSavingCart() { return _savingCart; }
 
 let _lastCartFingerprint = '';
+let _savePromise: Promise<void> | null = null;
 
 export const usePOSStore = create<POSState>((set, get) => ({
   openChecks: [],
@@ -160,6 +161,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   selectCheck: async (check: Check) => {
+    _lastCartFingerprint = '';
     set({ activeCheck: check, isLoading: true, cart: [], appliedDiscounts: [] });
     const { data } = await supabase
       .from('check_items')
@@ -314,43 +316,40 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   saveCartToDb: async () => {
+    if (_savePromise) await _savePromise;
+
     const { activeCheck, cart } = get();
     if (!activeCheck) return;
 
     const fp = cart.map((c) => `${c.item.id}:${c.quantity}`).sort().join('|');
     if (fp === _lastCartFingerprint) return;
 
-    _savingCart = true;
-    try {
-      if (cart.length === 0) {
+    const doSave = async () => {
+      _savingCart = true;
+      try {
         await supabase.from('check_items').delete().eq('check_id', activeCheck.id);
+        if (cart.length > 0) {
+          const rows = cart.map((c) => ({
+            check_id: activeCheck.id,
+            item_id: c.item.id,
+            quantity: c.quantity,
+            price_at_time: c.item.price,
+          }));
+          const { error } = await supabase.from('check_items').insert(rows);
+          if (error) {
+            console.error('saveCartToDb insert failed:', error);
+            return;
+          }
+        }
         _lastCartFingerprint = fp;
-        return;
+      } finally {
+        setTimeout(() => { _savingCart = false; }, 600);
+        _savePromise = null;
       }
-      const rows = cart.map((c) => ({
-        check_id: activeCheck.id,
-        item_id: c.item.id,
-        quantity: c.quantity,
-        price_at_time: c.item.price,
-      }));
-      const { data: inserted, error: insertError } = await supabase
-        .from('check_items')
-        .insert(rows)
-        .select('id');
-      if (insertError || !inserted) {
-        console.error('saveCartToDb insert failed, keeping old data:', insertError);
-        return;
-      }
-      const newIds = inserted.map((r) => r.id);
-      await supabase
-        .from('check_items')
-        .delete()
-        .eq('check_id', activeCheck.id)
-        .not('id', 'in', `(${newIds.join(',')})`);
-      _lastCartFingerprint = fp;
-    } finally {
-      setTimeout(() => { _savingCart = false; }, 600);
-    }
+    };
+
+    _savePromise = doSave();
+    await _savePromise;
   },
 
   cancelCheck: async () => {
