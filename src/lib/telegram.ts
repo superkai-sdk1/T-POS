@@ -83,10 +83,11 @@ function applySafeAreaInsets(tg: TelegramWebApp) {
   const sa = tg.safeAreaInset;
   const csa = tg.contentSafeAreaInset;
 
-  const top = Math.max(sa?.top || 0, csa?.top || 0);
-  const bottom = Math.max(sa?.bottom || 0, csa?.bottom || 0);
-  const left = Math.max(sa?.left || 0, csa?.left || 0);
-  const right = Math.max(sa?.right || 0, csa?.right || 0);
+  // In fullscreen, device insets (notch) and Telegram UI insets are independent — sum them
+  const top = (sa?.top || 0) + (csa?.top || 0);
+  const bottom = (sa?.bottom || 0) + (csa?.bottom || 0);
+  const left = (sa?.left || 0) + (csa?.left || 0);
+  const right = (sa?.right || 0) + (csa?.right || 0);
 
   root.style.setProperty('--tg-safe-top', `${top}px`);
   root.style.setProperty('--tg-safe-bottom', `${bottom}px`);
