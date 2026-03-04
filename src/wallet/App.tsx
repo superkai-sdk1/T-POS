@@ -50,20 +50,37 @@ export function WalletApp() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadProfile = useCallback(async (tgId: string) => {
-    const { data, error: err } = await supabase
+  const loadProfile = useCallback(async (tgId: string, tgUsername?: string) => {
+    let data: Profile | null = null;
+
+    const { data: byId } = await supabase
       .from('profiles')
       .select('id, nickname, bonus_points, balance, client_tier, photo_url, created_at')
       .eq('tg_id', tgId)
       .single();
 
-    if (err || !data) {
-      setError('Профиль не найден. Используй /start в боте для привязки.');
+    if (byId) {
+      data = byId as Profile;
+    } else if (tgUsername) {
+      const clean = tgUsername.replace(/^@/, '').toLowerCase();
+      const { data: byUsername } = await supabase
+        .from('profiles')
+        .select('id, nickname, bonus_points, balance, client_tier, photo_url, created_at')
+        .ilike('tg_username', clean)
+        .single();
+      if (byUsername) {
+        data = byUsername as Profile;
+        await supabase.from('profiles').update({ tg_id: tgId }).eq('id', byUsername.id);
+      }
+    }
+
+    if (!data) {
+      setError('Профиль не найден. Обратитесь к администратору клуба.');
       setLoading(false);
       return;
     }
 
-    setProfile(data as Profile);
+    setProfile(data);
 
     const { data: txData } = await supabase
       .from('transactions')
@@ -84,7 +101,7 @@ export function WalletApp() {
     const tgUser = tg?.initDataUnsafe?.user;
 
     if (tgUser) {
-      loadProfile(String(tgUser.id));
+      loadProfile(String(tgUser.id), tgUser.username);
     } else {
       setError('Откройте через Telegram');
       setLoading(false);
