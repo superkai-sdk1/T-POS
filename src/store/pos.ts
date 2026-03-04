@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CartItem, Check, CheckItem, CheckDiscount, InventoryItem, PaymentMethod } from '@/types';
+import type { CartItem, Check, CheckItem, CheckDiscount, InventoryItem, PaymentMethod, Space } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from './auth';
 import { useShiftStore } from './shift';
@@ -32,7 +32,7 @@ interface POSState {
   applyDiscount: (discountId: string, discountName: string, discountType: 'percentage' | 'fixed', discountValue: number, target: 'check' | 'item', itemId?: string) => Promise<void>;
   removeDiscount: (checkDiscountId: string) => Promise<void>;
   saveCartToDb: () => Promise<void>;
-  closeCheck: (payments: PaymentPortion[], bonusUsed?: number) => Promise<boolean>;
+  closeCheck: (payments: PaymentPortion[], bonusUsed?: number, spaceRental?: number) => Promise<boolean>;
   cancelCheck: () => Promise<boolean>;
   leaveCheck: () => Promise<void>;
 }
@@ -60,7 +60,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
   loadOpenChecks: async () => {
     const { data } = await supabase
       .from('checks')
-      .select('*, player:profiles!checks_player_id_fkey(*)')
+      .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*)')
       .eq('status', 'open')
       .order('created_at', { ascending: false });
     if (!data) return;
@@ -68,6 +68,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const checks = data.map((c) => ({
       ...c,
       player: Array.isArray(c.player) ? c.player[0] : c.player,
+      space: Array.isArray(c.space) ? c.space[0] : c.space,
     })) as Check[];
 
     const checksWithTotals = await Promise.all(
@@ -100,12 +101,13 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const { data, error } = await supabase
       .from('checks')
       .insert(insert)
-      .select('*, player:profiles!checks_player_id_fkey(*)')
+      .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*)')
       .single();
     if (error || !data) return null;
     const check = {
       ...data,
       player: Array.isArray(data.player) ? data.player[0] : data.player,
+      space: Array.isArray(data.space) ? data.space[0] : data.space,
     } as Check;
     set({ activeCheck: check, cart: [], checkItems: [], appliedDiscounts: [] });
     return check;
@@ -265,11 +267,11 @@ export const usePOSStore = create<POSState>((set, get) => ({
     await get().loadOpenChecks();
   },
 
-  closeCheck: async (payments: PaymentPortion[], bonusUsed = 0) => {
+  closeCheck: async (payments: PaymentPortion[], bonusUsed = 0, spaceRental = 0) => {
     const { activeCheck, cart, appliedDiscounts } = get();
     if (!activeCheck) return false;
     const user = useAuthStore.getState().user;
-    const total = get().getCartTotal();
+    const total = get().getCartTotal() + spaceRental;
     const discountTotal = get().getDiscountTotal();
 
     await get().saveCartToDb();

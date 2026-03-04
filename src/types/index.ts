@@ -50,6 +50,7 @@ export interface Check {
   created_at: string;
   closed_at: string | null;
   player?: Profile;
+  space?: Space;
 }
 
 export interface CheckItem {

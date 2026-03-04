@@ -178,11 +178,15 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
             >
               <div className="flex items-center gap-2.5">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  check.player
+                  check.space
+                    ? 'bg-indigo-500/15'
+                    : check.player
                     ? 'bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)]/25 to-purple-600/10'
                     : 'bg-white/8'
                 }`}>
-                  {check.player ? (
+                  {check.space ? (
+                    <DoorOpen className="w-4 h-4 text-indigo-400" />
+                  ) : check.player ? (
                     <User className="w-4 h-4 text-[var(--tg-theme-button-color,#6c5ce7)]" />
                   ) : (
                     <UserX className="w-4 h-4 text-white/30" />
@@ -190,9 +194,12 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-sm text-[var(--tg-theme-text-color,#e0e0e0)] truncate leading-tight">
-                    {check.player?.nickname || 'Без клиента'}
+                    {check.space ? check.space.name : check.player?.nickname || 'Без клиента'}
                   </p>
-                  {check.note && (
+                  {check.space && check.player && (
+                    <p className="text-[10px] text-indigo-400/60 truncate mt-0.5">{check.player.nickname}</p>
+                  )}
+                  {!check.space && check.note && (
                     <p className="text-[10px] text-white/25 truncate mt-0.5">{check.note}</p>
                   )}
                 </div>

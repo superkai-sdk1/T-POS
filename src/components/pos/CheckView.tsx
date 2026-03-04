@@ -7,7 +7,7 @@ import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import {
   ArrowLeft, CreditCard, Plus, Zap, Minus, X,
   Coffee, UtensilsCrossed, Cookie, Wind, Ticket, ShoppingBag,
-  MessageSquare, Percent, Trash2,
+  MessageSquare, Percent, Trash2, DoorOpen, Timer,
 } from 'lucide-react';
 import { hapticFeedback } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase';
@@ -81,9 +81,29 @@ export function CheckView({ onBack }: CheckViewProps) {
     }, 800);
   };
 
-  const total = getCartTotal();
+  const [rentalAmount, setRentalAmount] = useState(0);
+  const [rentalMinutes, setRentalMinutes] = useState(0);
+
+  useEffect(() => {
+    if (!activeCheck?.space || !activeCheck.space.hourly_rate) return;
+    const rate = activeCheck.space.hourly_rate;
+
+    const tick = () => {
+      const elapsed = (Date.now() - new Date(activeCheck.created_at).getTime()) / 60000;
+      const rounded = Math.max(1, Math.ceil(elapsed / 30)) * 30;
+      setRentalMinutes(Math.round(elapsed));
+      setRentalAmount(Math.round((rounded / 60) * rate));
+    };
+    tick();
+    const iv = setInterval(tick, 15000);
+    return () => clearInterval(iv);
+  }, [activeCheck?.space, activeCheck?.created_at]);
+
+  const cartSubtotal = cart.reduce((s, c) => s + c.item.price * c.quantity, 0);
+  const spaceRental = activeCheck?.space?.hourly_rate ? rentalAmount : 0;
+  const total = getCartTotal() + spaceRental;
   const discountTotal = getDiscountTotal();
-  const subtotal = cart.reduce((s, c) => s + c.item.price * c.quantity, 0);
+  const subtotal = cartSubtotal + spaceRental;
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
 
   const loadDiscountsList = useCallback(async () => {
@@ -162,9 +182,10 @@ export function CheckView({ onBack }: CheckViewProps) {
         </button>
         <div className="flex-1 min-w-0">
           <h2 className="text-base font-bold text-[var(--tg-theme-text-color,#e0e0e0)] truncate leading-tight">
-            {activeCheck.player?.nickname || 'Без клиента'}
+            {activeCheck.space ? activeCheck.space.name : activeCheck.player?.nickname || 'Без клиента'}
           </h2>
           <p className="text-[11px] text-[var(--tg-theme-hint-color,#888)]">
+            {activeCheck.space && activeCheck.player && <>{activeCheck.player.nickname} · </>}
             {new Date(activeCheck.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
             {cartCount > 0 && <> · {cartCount} поз.</>}
           </p>
@@ -212,6 +233,28 @@ export function CheckView({ onBack }: CheckViewProps) {
             rows={2}
             className="w-full px-3.5 py-2.5 rounded-xl bg-white/5 border border-white/8 text-sm text-[var(--tg-theme-text-color,#e0e0e0)] placeholder:text-white/20 focus:border-[var(--tg-theme-button-color,#6c5ce7)]/40 focus:outline-none resize-none transition-all"
           />
+        </div>
+      )}
+
+      {/* Space rental banner */}
+      {activeCheck.space && activeCheck.space.hourly_rate != null && (
+        <div className="mb-3 p-3 rounded-xl bg-indigo-500/8 border border-indigo-500/15 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <DoorOpen className="w-4 h-4 text-indigo-400" />
+              <span className="text-sm font-semibold text-indigo-300">{activeCheck.space.name}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 text-xs text-indigo-400/70">
+                <Timer className="w-3 h-3" />
+                <span>{Math.floor(rentalMinutes / 60)}ч {String(rentalMinutes % 60).padStart(2, '0')}м</span>
+              </div>
+              <span className="text-sm font-bold text-indigo-300">{fmtCur(rentalAmount)}</span>
+            </div>
+          </div>
+          <p className="text-[10px] text-indigo-400/50 mt-1">
+            {activeCheck.space.hourly_rate}₽/час · округление до 30 мин
+          </p>
         </div>
       )}
 
@@ -447,6 +490,7 @@ export function CheckView({ onBack }: CheckViewProps) {
           setShowPayment(false);
           onBack();
         }}
+        spaceRental={spaceRental}
       />
 
       {/* Discounts drawer */}

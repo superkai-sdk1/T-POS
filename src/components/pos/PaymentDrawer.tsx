@@ -14,6 +14,7 @@ interface PaymentDrawerProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  spaceRental?: number;
 }
 
 const methodConfig: { method: PaymentMethod; label: string; icon: typeof Banknote; color: string }[] = [
@@ -23,7 +24,7 @@ const methodConfig: { method: PaymentMethod; label: string; icon: typeof Banknot
   { method: 'debt', label: 'В долг', icon: Clock, color: 'bg-red-500/12 text-red-400 border-red-500/20' },
 ];
 
-export function PaymentDrawer({ open, onClose, onSuccess }: PaymentDrawerProps) {
+export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: PaymentDrawerProps) {
   const { activeCheck, getCartTotal, closeCheck } = usePOSStore();
   const [isProcessing, setIsProcessing] = useState(false);
   const [playerInfo, setPlayerInfo] = useState<Profile | null>(null);
@@ -32,7 +33,7 @@ export function PaymentDrawer({ open, onClose, onSuccess }: PaymentDrawerProps) 
   const [splitMethod, setSplitMethod] = useState<PaymentMethod>('cash');
   const [splitAmount, setSplitAmount] = useState('');
 
-  const total = getCartTotal();
+  const total = getCartTotal() + spaceRental;
 
   useEffect(() => {
     if (open && activeCheck?.player_id) {
@@ -68,7 +69,7 @@ export function PaymentDrawer({ open, onClose, onSuccess }: PaymentDrawerProps) 
     const payments: PaymentPortion[] = [];
     if (bonusUsed > 0) payments.push({ method: 'bonus', amount: bonusUsed });
     payments.push({ method, amount });
-    const success = await closeCheck(payments, bonusUsed);
+    const success = await closeCheck(payments, bonusUsed, spaceRental);
     setIsProcessing(false);
     if (success) {
       hapticNotification('success');
@@ -81,7 +82,7 @@ export function PaymentDrawer({ open, onClose, onSuccess }: PaymentDrawerProps) 
     const remaining = total - maxBonus;
     const payments: PaymentPortion[] = [{ method: 'bonus', amount: maxBonus }];
     if (remaining > 0) payments.push({ method: 'cash', amount: remaining });
-    const success = await closeCheck(payments, maxBonus);
+    const success = await closeCheck(payments, maxBonus, spaceRental);
     setIsProcessing(false);
     if (success) {
       hapticNotification('success');
@@ -120,7 +121,7 @@ export function PaymentDrawer({ open, onClose, onSuccess }: PaymentDrawerProps) 
     if (splitRemaining > 0) return;
     setIsProcessing(true);
     const bonusUsed = splitPayments.filter((p) => p.method === 'bonus').reduce((s, p) => s + p.amount, 0);
-    const success = await closeCheck(splitPayments, bonusUsed);
+    const success = await closeCheck(splitPayments, bonusUsed, spaceRental);
     setIsProcessing(false);
     if (success) {
       hapticNotification('success');

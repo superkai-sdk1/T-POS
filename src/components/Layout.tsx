@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from 'react';
 import { useAuthStore } from '@/store/auth';
 import { useSwipe } from '@/hooks/useSwipe';
-import { Receipt, Package, BarChart3, LogOut, Settings } from 'lucide-react';
+import { Receipt, Package, BarChart3, LogOut, Settings, CalendarCheck } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -15,6 +15,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const tabs = useMemo(() => isOwner()
     ? [
         { id: 'pos', label: 'Касса', icon: Receipt },
+        { id: 'bookings', label: 'Брони', icon: CalendarCheck },
         { id: 'dashboard', label: 'Отчёты', icon: BarChart3 },
         { id: 'management', label: 'Управление', icon: Settings },
       ]
