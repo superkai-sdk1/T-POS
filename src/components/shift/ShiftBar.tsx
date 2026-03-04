@@ -24,13 +24,34 @@ export function ShiftBar() {
   const loadCashBalance = useCallback(async () => {
     if (!activeShift) { setCashInRegister(null); return; }
 
-    const { data: cashChecks } = await supabase
+    const { data: shiftChecks } = await supabase
       .from('checks')
-      .select('total_amount')
+      .select('id, total_amount, payment_method')
       .eq('shift_id', activeShift.id)
-      .eq('status', 'closed')
-      .eq('payment_method', 'cash');
-    const cashFromSales = (cashChecks || []).reduce((s, c) => s + (c.total_amount || 0), 0);
+      .eq('status', 'closed');
+
+    let cashFromSales = 0;
+    const checkIds = (shiftChecks || []).map((c) => c.id);
+
+    for (const c of shiftChecks || []) {
+      if (c.payment_method === 'cash') {
+        cashFromSales += c.total_amount || 0;
+      }
+    }
+
+    if (checkIds.length > 0) {
+      const { data: splitPayments } = await supabase
+        .from('check_payments')
+        .select('check_id, method, amount')
+        .in('check_id', checkIds)
+        .eq('method', 'cash');
+      for (const p of splitPayments || []) {
+        const check = shiftChecks?.find((c) => c.id === p.check_id);
+        if (check && check.payment_method !== 'cash') {
+          cashFromSales += p.amount || 0;
+        }
+      }
+    }
 
     const { data: cashOps } = await supabase
       .from('cash_operations')
@@ -88,6 +109,9 @@ export function ShiftBar() {
 
     const data = await getShiftAnalytics(activeShift.id);
     setAnalytics(data);
+    if (cashInRegister !== null) {
+      setCashEnd(String(cashInRegister));
+    }
     setIsClosing(false);
     setShowClose(true);
   };
@@ -131,12 +155,26 @@ export function ShiftBar() {
     </div>
   ) : null;
 
+  const handleOpenDrawer = useCallback(async () => {
+    const { data: lastShift } = await supabase
+      .from('shifts')
+      .select('cash_end')
+      .eq('status', 'closed')
+      .order('closed_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (lastShift?.cash_end != null) {
+      setCashStart(String(lastShift.cash_end));
+    }
+    setShowOpen(true);
+  }, []);
+
   if (!activeShift) {
     return (
       <>
         {birthdayBanner}
         <button
-          onClick={() => setShowOpen(true)}
+          onClick={handleOpenDrawer}
           className="w-full flex items-center gap-2.5 p-3 rounded-xl bg-emerald-500/6 border border-emerald-500/10 active:scale-[0.98] transition-transform"
         >
           <div className="w-8 h-8 rounded-lg bg-emerald-500/12 flex items-center justify-center">
