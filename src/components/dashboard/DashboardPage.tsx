@@ -115,6 +115,22 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
     setAnalyticsLoading(false);
   };
 
+  const [checkPaymentsMap, setCheckPaymentsMap] = useState<Record<string, { method: string; amount: number }[]>>({});
+
+  const loadCheckPayments = async (checkIds: string[]) => {
+    if (checkIds.length === 0) { setCheckPaymentsMap({}); return; }
+    const { data } = await supabase
+      .from('check_payments')
+      .select('check_id, method, amount')
+      .in('check_id', checkIds);
+    const map: Record<string, { method: string; amount: number }[]> = {};
+    for (const p of data || []) {
+      if (!map[p.check_id]) map[p.check_id] = [];
+      map[p.check_id].push({ method: p.method, amount: p.amount });
+    }
+    setCheckPaymentsMap(map);
+  };
+
   const loadAll = async () => {
     setIsLoading(true);
     await Promise.all([loadChecks(), loadCheckItems(), loadDebtors(), loadSupplies(), loadCashOps()]);
@@ -128,10 +144,15 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       .eq('status', 'closed')
       .order('closed_at', { ascending: false });
     if (data) {
-      setChecks(data.map((c) => ({
+      const mapped = data.map((c) => ({
         ...c,
         player: Array.isArray(c.player) ? c.player[0] : c.player,
-      })) as ClosedCheck[]);
+      })) as ClosedCheck[];
+      setChecks(mapped);
+      const splitIds = mapped
+        .filter((c) => c.payment_method === 'split' || c.payment_method === 'bonus')
+        .map((c) => c.id);
+      await loadCheckPayments(splitIds);
     }
   };
 
@@ -196,7 +217,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   const stats = useMemo(() => {
     let today = 0, week = 0, month = 0, prevMonth = 0;
     let todayCount = 0, weekCount = 0, monthCount = 0;
-    let cash = 0, card = 0, debt = 0;
+    let cash = 0, card = 0, debt = 0, bonus = 0;
 
     for (const c of checks) {
       const amt = c.total_amount || 0;
@@ -210,21 +231,33 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
         prevMonth += amt;
       }
 
-      if (c.payment_method === 'cash') cash += amt;
+      if (c.payment_method === 'split' || c.payment_method === 'bonus') {
+        const parts = checkPaymentsMap[c.id] || [];
+        if (parts.length > 0) {
+          for (const p of parts) {
+            if (p.method === 'cash') cash += p.amount;
+            else if (p.method === 'card') card += p.amount;
+            else if (p.method === 'debt') debt += p.amount;
+            else if (p.method === 'bonus') bonus += p.amount;
+          }
+        } else {
+          cash += amt;
+        }
+      } else if (c.payment_method === 'cash') cash += amt;
       else if (c.payment_method === 'card') card += amt;
       else if (c.payment_method === 'debt') debt += amt;
     }
 
     const avgCheck = monthCount > 0 ? Math.round(month / monthCount) : 0;
     const monthGrowth = prevMonth > 0 ? Math.round(((month - prevMonth) / prevMonth) * 100) : 0;
-    const totalPayments = cash + card + debt;
+    const totalPayments = cash + card + debt + bonus;
 
     return {
       today, week, month, prevMonth, monthGrowth,
       todayCount, weekCount, monthCount,
-      cash, card, debt, avgCheck, totalPayments,
+      cash, card, debt, bonus, avgCheck, totalPayments,
     };
-  }, [checks]);
+  }, [checks, checkPaymentsMap]);
 
   const financials = useMemo(() => {
     let monthExpenses = 0, prevMonthExpenses = 0;
@@ -407,7 +440,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       } else if (c.payment_method === 'cash') cash += amt;
       else if (c.payment_method === 'card') card += amt;
       else if (c.payment_method === 'debt') debt += amt;
-      else if (c.payment_method === 'bonus') cash += amt;
+      else if (c.payment_method === 'bonus') { /* fully paid by bonus, amt is 0 */ }
     }
     const total = cash + card + debt + bonus;
     return { total, cash, card, debt, bonus };
@@ -474,6 +507,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           weekStart={weekStart}
           monthStart={monthStart}
           onNavigate={nav}
+          checkPaymentsMap={checkPaymentsMap}
         />
       )}
 
@@ -652,7 +686,8 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                 { label: 'Наличные', value: stats.cash, icon: Banknote, color: 'bg-emerald-500' },
                 { label: 'Карта', value: stats.card, icon: CreditCard, color: 'bg-sky-500' },
                 { label: 'В долг', value: stats.debt, icon: HandCoins, color: 'bg-red-500' },
-              ].map((pm) => {
+                { label: 'Бонусы', value: stats.bonus, icon: Star, color: 'bg-amber-500' },
+              ].filter((pm) => pm.value > 0).map((pm) => {
                 const pct = stats.totalPayments > 0 ? (pm.value / stats.totalPayments) * 100 : 0;
                 return (
                   <div key={pm.label} className="flex items-center gap-3">
@@ -1052,6 +1087,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                   bonus_spend: { label: 'Бонус−', variant: 'warning' },
                   cash_operation: { label: 'Касса', variant: 'default' },
                   debt_adjustment: { label: 'Долг', variant: 'warning' },
+                  refund: { label: 'Возврат', variant: 'danger' },
                 };
                 const meta = typeMap[tx.type] || { label: tx.type, variant: 'default' as const };
                 return (
@@ -1090,7 +1126,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 interface StatsData {
   today: number; week: number; month: number; prevMonth: number; monthGrowth: number;
   todayCount: number; weekCount: number; monthCount: number;
-  cash: number; card: number; debt: number; avgCheck: number; totalPayments: number;
+  cash: number; card: number; debt: number; bonus: number; avgCheck: number; totalPayments: number;
 }
 interface FinData {
   monthExpenses: number; prevMonthExpenses: number; monthSupplyCost: number;
@@ -1114,6 +1150,7 @@ interface DetailProps {
   weekStart: Date;
   monthStart: Date;
   onNavigate: (t: string) => void;
+  checkPaymentsMap: Record<string, { method: string; amount: number }[]>;
 }
 
 function DetailScreen(props: DetailProps) {
@@ -1331,9 +1368,20 @@ function DetailScreen(props: DetailProps) {
 
   if (detail === 'today') {
     const todayTotal = todayChecks.reduce((a, c) => a + c.total_amount, 0);
-    const todayCash = todayChecks.filter((c) => c.payment_method === 'cash').reduce((a, c) => a + c.total_amount, 0);
-    const todayCard = todayChecks.filter((c) => c.payment_method === 'card').reduce((a, c) => a + c.total_amount, 0);
-    const todayDebt = todayChecks.filter((c) => c.payment_method === 'debt').reduce((a, c) => a + c.total_amount, 0);
+    let todayCash = 0, todayCard = 0, todayDebt = 0;
+    for (const c of todayChecks) {
+      const amt = c.total_amount || 0;
+      if (c.payment_method === 'split' || c.payment_method === 'bonus') {
+        const parts = props.checkPaymentsMap[c.id] || [];
+        for (const p of parts) {
+          if (p.method === 'cash') todayCash += p.amount;
+          else if (p.method === 'card') todayCard += p.amount;
+          else if (p.method === 'debt') todayDebt += p.amount;
+        }
+      } else if (c.payment_method === 'cash') todayCash += amt;
+      else if (c.payment_method === 'card') todayCard += amt;
+      else if (c.payment_method === 'debt') todayDebt += amt;
+    }
     return (
       <div className="space-y-4">
         {header}

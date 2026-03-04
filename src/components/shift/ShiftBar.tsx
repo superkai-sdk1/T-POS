@@ -62,10 +62,40 @@ export function ShiftBar() {
       opsBalance += op.type === 'deposit' ? op.amount : -op.amount;
     }
 
-    setCashInRegister(activeShift.cash_start + cashFromSales + opsBalance);
+    let cashRefunded = 0;
+    const { data: refundData } = await supabase
+      .from('refunds')
+      .select('total_amount, check_id')
+      .eq('shift_id', activeShift.id);
+    if (refundData && refundData.length > 0) {
+      const refundCheckIds = refundData.map((r) => r.check_id);
+      const { data: refChecks } = await supabase
+        .from('checks')
+        .select('id, total_amount, payment_method')
+        .in('id', refundCheckIds);
+      const refCheckMap = new Map((refChecks || []).map((c) => [c.id, c]));
+
+      for (const r of refundData) {
+        const origCheck = refCheckMap.get(r.check_id);
+        if (!origCheck) continue;
+        if (origCheck.payment_method === 'cash') {
+          cashRefunded += r.total_amount || 0;
+        } else if (origCheck.payment_method === 'split') {
+          const { data: cp } = await supabase
+            .from('check_payments')
+            .select('method, amount')
+            .eq('check_id', r.check_id);
+          const cashPortion = (cp || []).filter((p) => p.method === 'cash').reduce((s, p) => s + p.amount, 0);
+          const origTotal = origCheck.total_amount || 1;
+          cashRefunded += Math.round((cashPortion / origTotal) * (r.total_amount || 0));
+        }
+      }
+    }
+
+    setCashInRegister(activeShift.cash_start + cashFromSales + opsBalance - cashRefunded);
   }, [activeShift]);
 
-  const cashTables = useMemo(() => ['checks', 'cash_operations'], []);
+  const cashTables = useMemo(() => ['checks', 'cash_operations', 'refunds'], []);
   useOnTableChange(cashTables, loadCashBalance);
 
   useEffect(() => {
@@ -322,6 +352,6 @@ export function ShiftBar() {
 }
 
 function pmLabel(m: string) {
-  const map: Record<string, string> = { cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы' };
+  const map: Record<string, string> = { cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы', split: 'Разделённая' };
   return map[m] || m;
 }

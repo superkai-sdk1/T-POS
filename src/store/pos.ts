@@ -101,9 +101,18 @@ export const usePOSStore = create<POSState>((set, get) => ({
       );
     }
 
+    const { data: allDiscounts } = await supabase
+      .from('check_discounts')
+      .select('check_id, discount_amount')
+      .in('check_id', checkIds);
+    const discountsMap = new Map<string, number>();
+    for (const d of allDiscounts || []) {
+      discountsMap.set(d.check_id, (discountsMap.get(d.check_id) || 0) + d.discount_amount);
+    }
+
     const checksWithTotals = checks.map((check) => ({
       ...check,
-      total_amount: totalsMap.get(check.id) || 0,
+      total_amount: Math.max(0, (totalsMap.get(check.id) || 0) - (discountsMap.get(check.id) || 0)),
     }));
 
     const prev = get().openChecks;
@@ -247,13 +256,25 @@ export const usePOSStore = create<POSState>((set, get) => ({
       }
     }
 
+    let checkItemId: string | null = null;
+    if (target === 'item' && itemId) {
+      const { data: ciRow } = await supabase
+        .from('check_items')
+        .select('id')
+        .eq('check_id', activeCheck.id)
+        .eq('item_id', itemId)
+        .limit(1)
+        .maybeSingle();
+      if (ciRow) checkItemId = ciRow.id;
+    }
+
     const { data, error } = await supabase
       .from('check_discounts')
       .insert({
         check_id: activeCheck.id,
         discount_id: discountId,
         target,
-        item_id: null,
+        item_id: checkItemId,
         discount_amount: amount,
       })
       .select('*, discount:discounts(*)')
