@@ -246,7 +246,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
       </div>
 
       {!checksLoaded ? (
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="p-3 rounded-xl bg-white/3 animate-pulse space-y-2 border border-white/5" style={{ opacity: 1 - i * 0.2 }}>
               <div className="flex items-center gap-2">
@@ -276,7 +276,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 stagger-children">
+        <div className="grid gap-2 stagger-children" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
           {openChecks.map((check) => {
             const hasSpace = !!check.space;
             return (

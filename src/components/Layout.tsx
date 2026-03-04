@@ -10,7 +10,6 @@ interface LayoutProps {
 
 export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const user = useAuthStore((s) => s.user);
-  const logout = useAuthStore((s) => s.logout);
   const isOwner = useAuthStore((s) => s.isOwner);
 
   const tabs = useMemo(() => isOwner()
@@ -29,63 +28,59 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-[var(--c-bg)] flex flex-col lg:flex-row">
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar — compact icon rail */}
       <aside
-        className="hidden lg:flex flex-col w-60 shrink-0 fixed top-0 left-0 h-full z-40 border-r border-white/5"
+        className="hidden lg:flex flex-col w-[68px] shrink-0 fixed top-0 left-0 h-full z-40 border-r border-white/5 items-center"
         style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)', background: 'linear-gradient(180deg, var(--c-bg2) 0%, var(--c-bg) 100%)' }}
       >
-        <div className="flex items-center gap-3 px-4 py-4">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
+        <div className="py-4">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
             style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', boxShadow: '0 4px 16px rgba(108,92,231,0.25)' }}>
             <span className="text-xs font-black text-white">T</span>
           </div>
-          <div className="min-w-0">
-            <h1 className="text-sm font-bold text-[var(--c-text)] leading-tight">T-POS</h1>
-            <p className="text-[10px] text-[var(--c-hint)] leading-tight truncate">
-              {user?.nickname}
-              {isOwner() && <span className="text-[var(--c-accent)] ml-1 font-semibold">owner</span>}
-            </p>
-          </div>
         </div>
 
-        <p className="px-5 mt-3 mb-1.5 text-[10px] uppercase tracking-widest text-white/20 font-semibold">Навигация</p>
-
-        <nav className="flex-1 px-2.5 space-y-0.5">
+        <nav className="flex-1 flex flex-col items-center gap-1 pt-2">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 tap relative ${
+                title={tab.label}
+                className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150 tap relative ${
                   isActive
-                    ? 'bg-[var(--c-accent)]/10 text-[var(--c-accent)]'
-                    : 'text-[var(--c-hint)] hover:bg-white/4 hover:text-[var(--c-text)]'
+                    ? 'bg-[var(--c-accent)]/12 text-[var(--c-accent)]'
+                    : 'text-[var(--c-hint)] hover:bg-white/5 hover:text-[var(--c-text)]'
                 }`}
               >
                 {isActive && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-[var(--c-accent)]" />
                 )}
-                <tab.icon className={`w-[18px] h-[18px] ${isActive ? 'stroke-[2.5]' : ''}`} />
-                <span className="text-[13px] font-semibold">{tab.label}</span>
+                <tab.icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : ''}`} />
               </button>
             );
           })}
         </nav>
 
-        <div className="px-2.5 pb-4">
+        <div className="pb-4 flex flex-col items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-[var(--c-accent)]/10 flex items-center justify-center" title={user?.nickname}>
+            <span className="text-[10px] font-bold text-[var(--c-accent)]">
+              {user?.nickname?.charAt(0).toUpperCase()}
+            </span>
+          </div>
           <button
             onClick={() => useAuthStore.getState().logout()}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[var(--c-hint)] hover:bg-red-500/8 hover:text-red-400 transition-all tap"
+            title="Выход"
+            className="w-11 h-11 rounded-xl flex items-center justify-center text-[var(--c-hint)] hover:bg-red-500/10 hover:text-red-400 transition-all tap"
           >
-            <LogOut className="w-[18px] h-[18px]" />
-            <span className="text-[13px] font-semibold">Выход</span>
+            <LogOut className="w-5 h-5" />
           </button>
         </div>
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col lg:ml-60">
+      <div className="flex-1 flex flex-col lg:ml-[68px]">
         {/* Mobile header */}
         <header
           className="lg:hidden sticky top-0 z-40 px-4 py-2 glass-strong"
@@ -110,7 +105,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-3 lg:px-6 lg:py-5 max-w-5xl mx-auto w-full pb-mobile-nav">
+        <main className="flex-1 px-4 py-3 lg:px-5 lg:py-4 w-full pb-mobile-nav">
           {children}
         </main>
 
