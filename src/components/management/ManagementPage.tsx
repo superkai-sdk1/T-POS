@@ -59,17 +59,17 @@ export function ManagementPage({ initialScreen }: ManagementPageProps) {
     return (
       <div className="space-y-3">
         <h2 className="text-lg font-bold text-[var(--c-text)]">Управление</h2>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 stagger-children">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 stagger-children">
           {menuItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setScreen(item.id)}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-xl card-interactive aspect-square justify-center"
+              className="flex items-center gap-2.5 p-3 rounded-xl card-interactive"
             >
-              <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${item.color.split(' ')[0]}`}>
-                <item.icon className={`w-5 h-5 ${item.color.split(' ')[1]}`} />
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.color.split(' ')[0]}`}>
+                <item.icon className={`w-[18px] h-[18px] ${item.color.split(' ')[1]}`} />
               </div>
-              <p className="font-semibold text-[11px] text-[var(--c-text)] text-center leading-tight">{item.label}</p>
+              <p className="font-semibold text-[12px] text-[var(--c-text)] text-left leading-tight">{item.label}</p>
             </button>
           ))}
         </div>
