@@ -26,6 +26,9 @@ interface TelegramWebApp {
   expand: () => void;
   close: () => void;
   requestFullscreen?: () => void;
+  disableVerticalSwipes?: () => void;
+  enableVerticalSwipes?: () => void;
+  isVerticalSwipesEnabled?: boolean;
   isFullscreen?: boolean;
   safeAreaInset?: SafeAreaInset;
   contentSafeAreaInset?: SafeAreaInset;
@@ -37,6 +40,7 @@ interface TelegramWebApp {
   themeParams: Record<string, string>;
   colorScheme: 'light' | 'dark';
   onEvent?: (event: string, callback: () => void) => void;
+  offEvent?: (event: string, callback: () => void) => void;
 }
 
 export function hapticFeedback(type: 'light' | 'medium' | 'heavy' = 'medium') {
@@ -59,17 +63,19 @@ export function hapticNotification(type: 'success' | 'error' | 'warning' = 'succ
 
 export function initTelegramApp() {
   const tg = getTelegramWebApp();
-  if (tg) {
-    tg.ready();
-    tg.expand();
-    try { tg.requestFullscreen?.(); } catch { /* not supported */ }
-    applyTelegramTheme(tg);
-    applySafeAreaInsets(tg);
+  if (!tg) return;
 
-    tg.onEvent?.('fullscreenChanged', () => applySafeAreaInsets(tg));
-    tg.onEvent?.('safeAreaChanged', () => applySafeAreaInsets(tg));
-    tg.onEvent?.('contentSafeAreaChanged', () => applySafeAreaInsets(tg));
-  }
+  tg.ready();
+  tg.expand();
+  try { tg.requestFullscreen?.(); } catch { /* not supported */ }
+  try { tg.disableVerticalSwipes?.(); } catch { /* not supported */ }
+
+  applyTelegramTheme(tg);
+  applySafeAreaInsets(tg);
+
+  tg.onEvent?.('fullscreenChanged', () => applySafeAreaInsets(tg));
+  tg.onEvent?.('safeAreaChanged', () => applySafeAreaInsets(tg));
+  tg.onEvent?.('contentSafeAreaChanged', () => applySafeAreaInsets(tg));
 }
 
 function applySafeAreaInsets(tg: TelegramWebApp) {
