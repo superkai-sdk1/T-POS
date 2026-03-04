@@ -93,3 +93,24 @@ input[type="number"] {
 .animate-shake {
   animation: shake 0.4s ease-in-out;
 }
+
+.pb-mobile-nav {
+  padding-bottom: calc(4rem + var(--safe-bottom));
+}
+
+@media (min-width: 1024px) {
+  .pb-mobile-nav {
+    padding-bottom: 1.5rem;
+  }
+}
+
+.bottom-bar-pos {
+  bottom: calc(4rem + var(--safe-bottom));
+}
+
+@media (min-width: 1024px) {
+  .bottom-bar-pos {
+    bottom: 0;
+    padding-bottom: 1.5rem;
+  }
+}

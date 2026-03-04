@@ -256,8 +256,8 @@ export function CheckView({ onBack }: CheckViewProps) {
       </div>
 
       {/* Bottom bar */}
-      <div className="fixed left-0 right-0 z-30 px-4 pb-3" style={{ bottom: 'calc(4rem + var(--safe-bottom))' }}>
-        <div className="max-w-3xl mx-auto flex gap-2">
+      <div className="fixed left-0 right-0 lg:left-64 z-30 px-4 pb-3 bottom-bar-pos">
+        <div className="max-w-5xl mx-auto flex gap-2">
           <button
             onClick={openMenu}
             className="flex items-center gap-2 px-4 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 transition-all active:scale-[0.97] flex-1 font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]"
@@ -284,7 +284,7 @@ export function CheckView({ onBack }: CheckViewProps) {
         title={menuCategory ? categoryConfig.find((c) => c.key === menuCategory)?.label || 'Меню' : 'Меню'}
       >
         {menuCategory === null ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
             {categoryConfig.map((cat) => {
               const count = categoryCounts[cat.key] || 0;
               if (count === 0) return null;
@@ -327,7 +327,7 @@ export function CheckView({ onBack }: CheckViewProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 max-h-[55vh] overflow-y-auto">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 max-h-[55vh] overflow-y-auto">
               {filteredItems.sort((a, b) => a.sort_order - b.sort_order).map((item) => {
                 const isCritical = item.stock_quantity <= item.min_threshold && item.min_threshold > 0;
                 const inCart = cart.find((c) => c.item.id === item.id);

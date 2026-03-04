@@ -43,7 +43,7 @@ export function ManagementPage() {
     return (
       <div className="space-y-4">
         <h2 className="text-xl font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">Управление</h2>
-        <div className="space-y-2">
+        <div className="space-y-2 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-3 lg:space-y-0">
           {menuItems.map((item) => (
             <button
               key={item.id}
