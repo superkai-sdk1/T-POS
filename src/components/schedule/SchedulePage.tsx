@@ -8,6 +8,7 @@ import {
   Plus, DoorOpen, Calendar, Clock, User, X, Check,
   Home, Building2, Warehouse, MapPin, Edit2, CalendarPlus,
 } from 'lucide-react';
+import { TimeInput } from '@/components/ui/TimeInput';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { useAuthStore } from '@/store/auth';
 import { usePOSStore } from '@/store/pos';
@@ -578,8 +579,8 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
 
                   <Input type="date" label="Дата" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
                   <div className="grid grid-cols-2 gap-2">
-                    <Input type="time" label="Начало" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-                    <Input type="time" label="Конец" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                    <TimeInput label="Начало" value={startTime} onChange={setStartTime} />
+                    <TimeInput label="Конец" value={endTime} onChange={setEndTime} />
                   </div>
                   <Input
                     type="number"
@@ -637,8 +638,8 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
               <Input label="Место" placeholder="Адрес или локация" value={evLocation} onChange={(e) => setEvLocation(e.target.value)} />
               <Input type="date" label="Дата" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               <div className="grid grid-cols-2 gap-2">
-                <Input type="time" label="Начало" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-                <Input type="time" label="Конец" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                <TimeInput label="Начало" value={startTime} onChange={setStartTime} />
+                <TimeInput label="Конец" value={endTime} onChange={setEndTime} />
               </div>
               <Input type="number" label="Сумма (₽)" placeholder="0" value={evAmount} onChange={(e) => setEvAmount(e.target.value)} min={0} />
               <Input label="Примечание" placeholder="Дополнительная информация" value={evNote} onChange={(e) => setEvNote(e.target.value)} />
