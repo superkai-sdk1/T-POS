@@ -1,16 +1,14 @@
-import { useMemo, useRef, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { useAuthStore } from '@/store/auth';
-import { useSwipe } from '@/hooks/useSwipe';
 import { Receipt, Package, BarChart3, LogOut, Settings, CalendarCheck } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
   activeTab: string;
   onTabChange: (tab: string) => void;
-  tabDirection?: 'left' | 'right' | null;
 }
 
-export function Layout({ children, activeTab, onTabChange, tabDirection }: LayoutProps) {
+export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const { user, logout, isOwner } = useAuthStore();
 
   const tabs = useMemo(() => isOwner()
@@ -27,21 +25,7 @@ export function Layout({ children, activeTab, onTabChange, tabDirection }: Layou
       ],
   [isOwner]);
 
-  const currentIdx = tabs.findIndex((t) => t.id === activeTab);
-
-  const swipe = useSwipe({
-    onSwipeLeft: () => {
-      if (currentIdx < tabs.length - 1) onTabChange(tabs[currentIdx + 1].id);
-    },
-    onSwipeRight: () => {
-      if (currentIdx > 0) onTabChange(tabs[currentIdx - 1].id);
-    },
-    threshold: 60,
-  });
-
-  const animClass = tabDirection === 'right' ? 'tab-enter-right'
-    : tabDirection === 'left' ? 'tab-enter-left'
-    : 'tab-content-enter';
+  const animClass = 'tab-content-enter';
 
   return (
     <div className="min-h-screen bg-[var(--tg-theme-bg-color,#0f0f23)] flex flex-col lg:flex-row">
@@ -126,7 +110,6 @@ export function Layout({ children, activeTab, onTabChange, tabDirection }: Layou
 
         <main
           className="flex-1 px-4 py-3 lg:px-6 lg:py-5 max-w-5xl mx-auto w-full pb-mobile-nav"
-          {...swipe}
         >
           <div key={activeTab} className={animClass}>
             {children}
