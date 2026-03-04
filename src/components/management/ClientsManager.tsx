@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
 import {
   Search, Plus, Pencil, Trash2, Upload, X, Check, User,
-  Phone, Calendar, Star, CreditCard, UserPlus,
+  Phone, Calendar, Star, CreditCard, UserPlus, Cake,
 } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import type { Profile } from '@/types';
@@ -246,7 +246,7 @@ export function ClientsManager() {
               <div className="flex items-center gap-1.5">
                 <p className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{client.nickname}</p>
                 {client.birthday && isBirthdaySoon(client.birthday) && (
-                  <span className="text-xs">🎂</span>
+                  <Cake className="w-3.5 h-3.5 text-pink-400 shrink-0" />
                 )}
               </div>
               <div className="flex items-center gap-2 mt-0.5">
@@ -262,7 +262,7 @@ export function ClientsManager() {
 
             <div className="text-right shrink-0">
               {client.bonus_points > 0 && (
-                <p className="text-xs font-bold text-amber-400">{client.bonus_points} ★</p>
+                <p className="text-xs font-bold text-amber-400 flex items-center gap-0.5"><Star className="w-3 h-3" />{client.bonus_points}</p>
               )}
               {client.balance < 0 && (
                 <p className="text-[10px] text-red-400">{client.balance}₽</p>

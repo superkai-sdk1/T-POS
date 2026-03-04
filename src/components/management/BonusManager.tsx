@@ -196,7 +196,7 @@ export function BonusManager() {
                   )}
                 </div>
                 <Badge variant={p.bonus_points > 0 ? 'success' : 'default'}>
-                  {p.bonus_points} ★
+                  <Star className="w-3 h-3 inline mr-0.5" />{p.bonus_points}
                 </Badge>
               </button>
             ))}
@@ -330,7 +330,7 @@ export function BonusManager() {
                   {bonusAction === 'add'
                     ? selectedPlayer.bonus_points + Math.abs(Number(bonusAmount))
                     : Math.max(0, selectedPlayer.bonus_points - Math.abs(Number(bonusAmount)))
-                  } ★
+                  } <Star className="w-4 h-4 inline text-amber-400" />
                 </p>
               </div>
             )}

@@ -14,12 +14,14 @@ import type { InventoryItem, ItemCategory } from '@/types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
-const categoryConfig: { key: ItemCategory; label: string; emoji: string; icon: typeof Coffee }[] = [
-  { key: 'services', label: 'Услуги', emoji: '🎮', icon: Ticket },
-  { key: 'drinks', label: 'Напитки', emoji: '☕', icon: Coffee },
-  { key: 'food', label: 'Еда', emoji: '🍔', icon: UtensilsCrossed },
-  { key: 'bar', label: 'Снеки', emoji: '🍿', icon: Cookie },
-  { key: 'hookah', label: 'Кальяны', emoji: '💨', icon: Wind },
+import { Package } from 'lucide-react';
+
+const categoryConfig: { key: ItemCategory; label: string; icon: typeof Coffee }[] = [
+  { key: 'services', label: 'Услуги', icon: Ticket },
+  { key: 'drinks', label: 'Напитки', icon: Coffee },
+  { key: 'food', label: 'Еда', icon: UtensilsCrossed },
+  { key: 'bar', label: 'Снеки', icon: Cookie },
+  { key: 'hookah', label: 'Кальяны', icon: Wind },
 ];
 
 interface EditForm {
@@ -244,7 +246,7 @@ export function MenuEditor() {
                     : 'bg-white/5 text-white/50 hover:text-white/70'
                 }`}
               >
-                <span>{cat.emoji}</span>
+                <cat.icon className="w-3.5 h-3.5" />
                 <span>{cat.label}</span>
                 <span className={`ml-0.5 ${isActive ? 'text-white/70' : 'text-white/30'}`}>{count}</span>
               </button>
@@ -271,9 +273,7 @@ export function MenuEditor() {
                 {item.image_url ? (
                   <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="text-lg">
-                    {categoryConfig.find((c) => c.key === item.category)?.emoji || '📦'}
-                  </span>
+                  (() => { const CatIcon = categoryConfig.find((c) => c.key === item.category)?.icon || Package; return <CatIcon className="w-5 h-5 text-white/40" />; })()
                 )}
               </div>
 
@@ -428,7 +428,7 @@ export function MenuEditor() {
                       : 'bg-white/5 text-white/50'
                   }`}
                 >
-                  <span>{cat.emoji}</span>
+                  <cat.icon className="w-3.5 h-3.5 shrink-0" />
                   <span className="truncate">{cat.label}</span>
                 </button>
               ))}
@@ -502,8 +502,8 @@ export function MenuEditor() {
               {deleteTarget.image_url ? (
                 <img src={deleteTarget.image_url} className="w-12 h-12 rounded-xl object-cover" />
               ) : (
-                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-lg">
-                  {categoryConfig.find((c) => c.key === deleteTarget.category)?.emoji || '📦'}
+                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
+                  {(() => { const CatIcon = categoryConfig.find((c) => c.key === deleteTarget.category)?.icon || Package; return <CatIcon className="w-5 h-5 text-white/40" />; })()}
                 </div>
               )}
               <div>

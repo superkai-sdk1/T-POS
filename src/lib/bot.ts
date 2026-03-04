@@ -35,14 +35,14 @@ const pmLabel: Record<string, string> = {
 export function buildBirthdayReport(names: string[]): string {
   if (names.length === 0) return '';
   const list = names.join(', ');
-  return `🎂 <b>Сегодня день рождения!</b>\n${list}`;
+  return `[DR] <b>Сегодня день рождения!</b>\n${list}`;
 }
 
 export function buildShiftOpenReport(staffName: string, cashStart: number): string {
   const now = new Date();
   const time = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
-  return `🟢 <b>Смена открыта</b> · ${time}\n👤 ${staffName}\n💰 В кассе: ${fmt(cashStart)}₽`;
+  return `[+] <b>Смена открыта</b> · ${time}\n- ${staffName}\n- В кассе: ${fmt(cashStart)}₽`;
 }
 
 export interface CloseReportCheck {
@@ -71,8 +71,8 @@ export function buildShiftCloseReport(d: CloseReportData): string {
   const time = closeTime.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
   const lines: string[] = [
-    `🔴 <b>Смена закрыта</b> · ${time} (${dur})`,
-    `👤 ${d.staffClose}`,
+    `[-] <b>Смена закрыта</b> · ${time} (${dur})`,
+    `- ${d.staffClose}`,
     ``,
   ];
 
@@ -85,7 +85,7 @@ export function buildShiftCloseReport(d: CloseReportData): string {
   }
 
   lines.push(`<b>Итого: ${fmt(d.totalRevenue)}₽</b> · ${d.checks.length} чек.`);
-  lines.push(`💰 В кассе: ${fmt(d.cashEnd)}₽`);
+  lines.push(`- В кассе: ${fmt(d.cashEnd)}₽`);
 
   return lines.join('\n');
 }

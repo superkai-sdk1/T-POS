@@ -7,7 +7,7 @@ import { Drawer } from '@/components/ui/Drawer';
 import { Input } from '@/components/ui/Input';
 import { ShiftBar } from '@/components/shift/ShiftBar';
 import { ShiftHistory } from '@/components/shift/ShiftHistory';
-import { Plus, Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen } from 'lucide-react';
+import { Plus, Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen, Home, Building2, Warehouse } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Profile, Space } from '@/types';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
@@ -78,10 +78,10 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     setShowSpaces(true);
   };
 
-  const spaceIcon: Record<string, string> = {
-    cabin_small: '🏠',
-    cabin_big: '🏡',
-    hall: '🏛️',
+  const spaceIconMap: Record<string, typeof Home> = {
+    cabin_small: Home,
+    cabin_big: Building2,
+    hall: Warehouse,
   };
 
   const handleSelectCheck = async (check: (typeof openChecks)[0]) => {
@@ -378,7 +378,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               onClick={() => handleCreateCheck(null, s.id)}
               className="w-full flex items-center gap-3 p-4 rounded-2xl glass hover:bg-white/8 transition-all active:scale-[0.97]"
             >
-              <span className="text-2xl">{spaceIcon[s.type] || '📍'}</span>
+              {(() => { const Icon = spaceIconMap[s.type] || DoorOpen; return <div className="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center shrink-0"><Icon className="w-5 h-5 text-indigo-400" /></div>; })()}
               <div className="flex-1 text-left">
                 <p className="font-bold text-sm text-[var(--tg-theme-text-color,#e0e0e0)]">{s.name}</p>
                 <p className="text-xs text-white/30">

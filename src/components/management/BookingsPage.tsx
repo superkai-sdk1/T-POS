@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/ui/Drawer';
-import { Plus, DoorOpen, Calendar, Clock, User, X, Check } from 'lucide-react';
+import { Plus, DoorOpen, Calendar, Clock, User, X, Check, Home, Building2, Warehouse } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { useAuthStore } from '@/store/auth';
 import type { Space, Booking, BookingStatus, Profile } from '@/types';
@@ -134,10 +134,10 @@ export function BookingsPage() {
   const fmtTime = (d: string) => new Date(d).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
   const fmtDate = (d: string) => new Date(d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 
-  const spaceIcon: Record<string, string> = {
-    cabin_small: '🏠',
-    cabin_big: '🏡',
-    hall: '🏛️',
+  const spaceIconMap: Record<string, typeof Home> = {
+    cabin_small: Home,
+    cabin_big: Building2,
+    hall: Warehouse,
   };
 
   return (
@@ -157,7 +157,7 @@ export function BookingsPage() {
                   : 'bg-white/5 border-white/5 hover:bg-white/8'
               }`}
             >
-              <p className="text-2xl mb-1">{spaceIcon[s.type] || '📍'}</p>
+              {(() => { const Icon = spaceIconMap[s.type] || DoorOpen; return <Icon className="w-6 h-6 text-indigo-400 mb-1" />; })()}
               <p className="text-xs font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{s.name}</p>
               <p className="text-[10px] text-white/30 mt-0.5">
                 {s.hourly_rate ? `${s.hourly_rate}₽/ч` : 'Своя цена'}
@@ -192,7 +192,7 @@ export function BookingsPage() {
             <div key={b.id} className="p-3.5 rounded-2xl glass space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">{spaceIcon[b.space?.type || ''] || '📍'}</span>
+                  {(() => { const Icon = spaceIconMap[b.space?.type || ''] || DoorOpen; return <Icon className="w-5 h-5 text-indigo-400 shrink-0" />; })()}
                   <div>
                     <p className="text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
                       {b.space?.name || 'Пространство'}
@@ -247,7 +247,7 @@ export function BookingsPage() {
                     onClick={() => setSelectedSpace(s)}
                     className="p-3 rounded-xl bg-white/5 border border-white/5 text-center hover:bg-white/8 transition-all active:scale-95"
                   >
-                    <p className="text-xl mb-1">{spaceIcon[s.type] || '📍'}</p>
+                    {(() => { const Icon = spaceIconMap[s.type] || DoorOpen; return <Icon className="w-5 h-5 text-indigo-400 mb-1" />; })()}
                     <p className="text-xs font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">{s.name}</p>
                   </button>
                 ))}
@@ -257,7 +257,7 @@ export function BookingsPage() {
           {selectedSpace && (
             <>
               <div className="p-3 rounded-xl glass flex items-center gap-2">
-                <span className="text-xl">{spaceIcon[selectedSpace.type] || '📍'}</span>
+                {(() => { const Icon = spaceIconMap[selectedSpace.type] || DoorOpen; return <Icon className="w-5 h-5 text-indigo-400 shrink-0" />; })()}
                 <div>
                   <p className="text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{selectedSpace.name}</p>
                   <p className="text-[10px] text-white/30">
