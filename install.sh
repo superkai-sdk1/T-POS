@@ -27,7 +27,7 @@ success() { echo -e "${GREEN}[ OK ]${NC} $1"; }
 warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
 err()     { echo -e "${RED}[ERR]${NC}  $1"; }
 
-# ── Ensure we can read from terminal even if piped ──
+# ── Ensure we can read from terminal ──────────
 
 if [ ! -t 0 ]; then
   err "Этот скрипт интерактивный и не может запускаться через pipe."
@@ -69,7 +69,6 @@ fi
 echo -e "${BOLD}${YELLOW}▸ Шаг 1/5: Ввод данных${NC}"
 echo ""
 
-# Domain
 DOMAIN=""
 while [ -z "$DOMAIN" ]; do
   echo -ne "${BOLD}Домен для T-POS (например pos.example.com): ${NC}"
@@ -77,7 +76,6 @@ while [ -z "$DOMAIN" ]; do
   if [ -z "$DOMAIN" ]; then err "Обязательное поле"; fi
 done
 
-# Email
 EMAIL=""
 while [ -z "$EMAIL" ]; do
   echo -ne "${BOLD}Email для SSL-сертификата (certbot): ${NC}"
@@ -88,7 +86,6 @@ done
 echo ""
 info "Supabase настройки:"
 
-# Supabase URL
 SUPABASE_URL=""
 while [ -z "$SUPABASE_URL" ]; do
   echo -ne "${BOLD}  Supabase URL: ${NC}"
@@ -96,7 +93,6 @@ while [ -z "$SUPABASE_URL" ]; do
   if [ -z "$SUPABASE_URL" ]; then err "Обязательное поле"; fi
 done
 
-# Supabase Anon Key
 SUPABASE_ANON_KEY=""
 while [ -z "$SUPABASE_ANON_KEY" ]; do
   echo -ne "${BOLD}  Supabase Anon Key: ${NC}"
@@ -108,7 +104,6 @@ done
 echo ""
 info "Telegram настройки:"
 
-# Bot Token
 TG_BOT_TOKEN=""
 while [ -z "$TG_BOT_TOKEN" ]; do
   echo -ne "${BOLD}  Telegram Bot Token: ${NC}"
@@ -122,7 +117,6 @@ echo -ne "${BOLD}Директория установки [${DEFAULT_DIR}]: ${NC}
 read -r INSTALL_DIR
 INSTALL_DIR="${INSTALL_DIR:-$DEFAULT_DIR}"
 
-# Show summary
 echo ""
 echo -e "${BOLD}─── Проверьте данные ───${NC}"
 echo -e "  Домен:       ${GREEN}${DOMAIN}${NC}"
@@ -150,16 +144,14 @@ info "Обновление списка пакетов..."
 apt-get update -qq > /dev/null 2>&1
 success "Пакеты обновлены"
 
-# nginx
 if command -v nginx > /dev/null 2>&1; then
-  success "nginx уже установлен"
+  success "nginx уже установлен ($(nginx -v 2>&1 | cut -d/ -f2))"
 else
   info "Установка nginx..."
   apt-get install -y -qq nginx > /dev/null 2>&1
   success "nginx установлен"
 fi
 
-# certbot
 if command -v certbot > /dev/null 2>&1; then
   success "certbot уже установлен"
 else
@@ -168,7 +160,6 @@ else
   success "certbot установлен"
 fi
 
-# git
 if command -v git > /dev/null 2>&1; then
   success "git уже установлен"
 else
@@ -177,7 +168,6 @@ else
   success "git установлен"
 fi
 
-# Node.js
 install_node() {
   info "Установка Node.js ${NODE_MAJOR}..."
   apt-get install -y -qq ca-certificates curl gnupg > /dev/null 2>&1
@@ -220,7 +210,7 @@ if [ -d "$INSTALL_DIR" ]; then
   else
     info "Обновление существующего репозитория..."
     cd "$INSTALL_DIR"
-    git pull origin main
+    git pull origin main || true
   fi
 fi
 
@@ -233,11 +223,14 @@ fi
 cd "$INSTALL_DIR"
 
 info "Создание .env..."
-cat > .env <<ENVEOF
-VITE_SUPABASE_URL=${SUPABASE_URL}
-VITE_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-VITE_TELEGRAM_BOT_TOKEN=${TG_BOT_TOKEN}
+cat > .env <<'ENVEOF'
+VITE_SUPABASE_URL=__SUPABASE_URL__
+VITE_SUPABASE_ANON_KEY=__SUPABASE_ANON_KEY__
+VITE_TELEGRAM_BOT_TOKEN=__TG_BOT_TOKEN__
 ENVEOF
+sed -i "s|__SUPABASE_URL__|${SUPABASE_URL}|g" .env
+sed -i "s|__SUPABASE_ANON_KEY__|${SUPABASE_ANON_KEY}|g" .env
+sed -i "s|__TG_BOT_TOKEN__|${TG_BOT_TOKEN}|g" .env
 success ".env создан"
 
 info "Установка npm зависимостей (может занять пару минут)..."
@@ -245,14 +238,23 @@ npm ci --loglevel=error 2>&1
 success "Зависимости установлены"
 
 info "Сборка проекта..."
-npm run build 2>&1
-if [ -d "$INSTALL_DIR/dist" ]; then
-  success "Проект собран -> ${INSTALL_DIR}/dist"
-else
-  err "Сборка не удалась (dist/ не найден)"
+set +e
+BUILD_OUTPUT=$(npm run build 2>&1)
+BUILD_EXIT=$?
+set -e
+
+if [ $BUILD_EXIT -ne 0 ]; then
+  err "Сборка не удалась!"
+  echo "$BUILD_OUTPUT" | tail -20
   exit 1
 fi
 
+if [ ! -d "$INSTALL_DIR/dist" ]; then
+  err "Сборка завершилась но dist/ не найден"
+  exit 1
+fi
+
+success "Проект собран -> ${INSTALL_DIR}/dist"
 chown -R www-data:www-data "$INSTALL_DIR/dist"
 
 # ── Step 4: Nginx config ─────────────────────
@@ -289,22 +291,18 @@ server {
     root ${INSTALL_DIR}/dist;
     index index.html;
 
-    # SPA: all routes -> index.html
     location / {
         try_files \$uri \$uri/ /index.html;
     }
 
-    # Cache static assets
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot)\$ {
+    location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot)$ {
         expires 30d;
         add_header Cache-Control "public, immutable";
     }
 
-    # Security headers
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
-    # Gzip
     gzip on;
     gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript image/svg+xml;
     gzip_min_length 256;
@@ -316,13 +314,19 @@ NGINXEOF
 fi
 
 info "Проверка конфигурации nginx..."
-if nginx -t 2>&1; then
+set +e
+NGINX_TEST=$(nginx -t 2>&1)
+NGINX_EXIT=$?
+set -e
+
+if [ $NGINX_EXIT -eq 0 ]; then
   success "Конфигурация nginx корректна"
   systemctl reload nginx
   success "nginx перезагружен"
 else
   err "Ошибка в конфигурации nginx!"
-  err "Проверьте вручную: nginx -t"
+  echo "$NGINX_TEST"
+  err "Исправьте вручную: nano ${NGINX_CONF} && nginx -t && systemctl reload nginx"
   exit 1
 fi
 
@@ -368,9 +372,8 @@ echo -e "  ${BOLD}Билд:${NC}      ${INSTALL_DIR}/dist"
 echo -e "  ${BOLD}Nginx:${NC}     ${NGINX_CONF}"
 echo -e "  ${BOLD}.env:${NC}      ${INSTALL_DIR}/.env"
 echo ""
-echo -e "  ${CYAN}Обновление проекта:${NC}"
-echo -e "    cd ${INSTALL_DIR} && git pull && npm ci && npm run build"
-echo -e "    chown -R www-data:www-data dist"
+echo -e "  ${CYAN}Быстрое обновление:${NC}"
+echo -e "    cd ${INSTALL_DIR} && sudo bash update.sh"
 echo ""
 echo -e "  ${CYAN}Сертификат обновляется автоматически (certbot cron).${NC}"
 echo ""
