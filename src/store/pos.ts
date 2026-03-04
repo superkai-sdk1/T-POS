@@ -1,8 +1,13 @@
 import { create } from 'zustand';
-import type { CartItem, Check, CheckItem, InventoryItem, PaymentMethod } from '@/types';
+import type { CartItem, Check, CheckItem, CheckDiscount, InventoryItem, PaymentMethod } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from './auth';
 import { useShiftStore } from './shift';
+
+export interface PaymentPortion {
+  method: PaymentMethod;
+  amount: number;
+}
 
 interface POSState {
   openChecks: Check[];
@@ -10,11 +15,12 @@ interface POSState {
   checkItems: CheckItem[];
   cart: CartItem[];
   inventory: InventoryItem[];
+  appliedDiscounts: CheckDiscount[];
   isLoading: boolean;
 
   loadInventory: () => Promise<void>;
   loadOpenChecks: () => Promise<void>;
-  createCheck: (playerId: string | null) => Promise<Check | null>;
+  createCheck: (playerId: string | null, spaceId?: string | null) => Promise<Check | null>;
   updateCheckNote: (note: string) => Promise<void>;
   selectCheck: (check: Check) => Promise<void>;
   addToCart: (item: InventoryItem) => void;
@@ -22,8 +28,11 @@ interface POSState {
   updateCartQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
   getCartTotal: () => number;
+  getDiscountTotal: () => number;
+  applyDiscount: (discountId: string, discountName: string, discountType: 'percentage' | 'fixed', discountValue: number, target: 'check' | 'item', itemId?: string) => Promise<void>;
+  removeDiscount: (checkDiscountId: string) => Promise<void>;
   saveCartToDb: () => Promise<void>;
-  closeCheck: (method: PaymentMethod, bonusUsed?: number) => Promise<boolean>;
+  closeCheck: (payments: PaymentPortion[], bonusUsed?: number) => Promise<boolean>;
   cancelCheck: () => Promise<boolean>;
   leaveCheck: () => Promise<void>;
 }
@@ -34,6 +43,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
   checkItems: [],
   cart: [],
   inventory: [],
+  appliedDiscounts: [],
   isLoading: false,
 
   loadInventory: async () => {
@@ -77,7 +87,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     set({ openChecks: checksWithTotals });
   },
 
-  createCheck: async (playerId: string | null) => {
+  createCheck: async (playerId: string | null, spaceId?: string | null) => {
     const user = useAuthStore.getState().user;
     const shift = useShiftStore.getState().activeShift;
     const insert: Record<string, unknown> = {
@@ -85,6 +95,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       shift_id: shift?.id || null,
     };
     if (playerId) insert.player_id = playerId;
+    if (spaceId) insert.space_id = spaceId;
 
     const { data, error } = await supabase
       .from('checks')
@@ -96,7 +107,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       ...data,
       player: Array.isArray(data.player) ? data.player[0] : data.player,
     } as Check;
-    set({ activeCheck: check, cart: [], checkItems: [] });
+    set({ activeCheck: check, cart: [], checkItems: [], appliedDiscounts: [] });
     return check;
   },
 
@@ -108,7 +119,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   selectCheck: async (check: Check) => {
-    set({ activeCheck: check, isLoading: true, cart: [] });
+    set({ activeCheck: check, isLoading: true, cart: [], appliedDiscounts: [] });
     const { data } = await supabase
       .from('check_items')
       .select('*, item:inventory(*)')
@@ -122,7 +133,16 @@ export const usePOSStore = create<POSState>((set, get) => ({
       .filter((ci) => ci.item)
       .map((ci) => ({ item: ci.item!, quantity: ci.quantity }));
 
-    set({ checkItems: items, cart, isLoading: false });
+    const { data: discountsData } = await supabase
+      .from('check_discounts')
+      .select('*, discount:discounts(*)')
+      .eq('check_id', check.id);
+    const discounts = (discountsData || []).map((cd) => ({
+      ...cd,
+      discount: Array.isArray(cd.discount) ? cd.discount[0] : cd.discount,
+    })) as CheckDiscount[];
+
+    set({ checkItems: items, cart, appliedDiscounts: discounts, isLoading: false });
   },
 
   addToCart: (item: InventoryItem) => {
@@ -158,7 +178,55 @@ export const usePOSStore = create<POSState>((set, get) => ({
   clearCart: () => set({ cart: [] }),
 
   getCartTotal: () => {
-    return get().cart.reduce((sum, c) => sum + c.item.price * c.quantity, 0);
+    const subtotal = get().cart.reduce((sum, c) => sum + c.item.price * c.quantity, 0);
+    const discountTotal = get().getDiscountTotal();
+    return Math.max(0, subtotal - discountTotal);
+  },
+
+  getDiscountTotal: () => {
+    return get().appliedDiscounts.reduce((sum, d) => sum + d.discount_amount, 0);
+  },
+
+  applyDiscount: async (discountId, discountName, discountType, discountValue, target, itemId) => {
+    const { activeCheck, cart } = get();
+    if (!activeCheck) return;
+
+    let amount = 0;
+    if (target === 'check') {
+      const subtotal = cart.reduce((s, c) => s + c.item.price * c.quantity, 0);
+      amount = discountType === 'percentage' ? Math.round(subtotal * discountValue / 100) : discountValue;
+    } else if (itemId) {
+      const ci = cart.find((c) => c.item.id === itemId);
+      if (ci) {
+        const itemTotal = ci.item.price * ci.quantity;
+        amount = discountType === 'percentage' ? Math.round(itemTotal * discountValue / 100) : discountValue;
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('check_discounts')
+      .insert({
+        check_id: activeCheck.id,
+        discount_id: discountId,
+        target,
+        item_id: null,
+        discount_amount: amount,
+      })
+      .select('*, discount:discounts(*)')
+      .single();
+
+    if (!error && data) {
+      const cd = {
+        ...data,
+        discount: Array.isArray(data.discount) ? data.discount[0] : data.discount,
+      } as CheckDiscount;
+      set({ appliedDiscounts: [...get().appliedDiscounts, cd] });
+    }
+  },
+
+  removeDiscount: async (checkDiscountId: string) => {
+    await supabase.from('check_discounts').delete().eq('id', checkDiscountId);
+    set({ appliedDiscounts: get().appliedDiscounts.filter((d) => d.id !== checkDiscountId) });
   },
 
   saveCartToDb: async () => {
@@ -179,46 +247,65 @@ export const usePOSStore = create<POSState>((set, get) => ({
   cancelCheck: async () => {
     const { activeCheck } = get();
     if (!activeCheck) return false;
+    await supabase.from('check_discounts').delete().eq('check_id', activeCheck.id);
     await supabase.from('check_items').delete().eq('check_id', activeCheck.id);
     const { error } = await supabase.from('checks').delete().eq('id', activeCheck.id);
     if (error) {
       console.error('cancelCheck error:', error);
       return false;
     }
-    set({ activeCheck: null, cart: [], checkItems: [] });
+    set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
     await get().loadOpenChecks();
     return true;
   },
 
   leaveCheck: async () => {
     await get().saveCartToDb();
-    set({ activeCheck: null, cart: [], checkItems: [] });
+    set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
     await get().loadOpenChecks();
   },
 
-  closeCheck: async (method: PaymentMethod, bonusUsed = 0) => {
-    const { activeCheck, cart } = get();
+  closeCheck: async (payments: PaymentPortion[], bonusUsed = 0) => {
+    const { activeCheck, cart, appliedDiscounts } = get();
     if (!activeCheck) return false;
     const user = useAuthStore.getState().user;
     const total = get().getCartTotal();
+    const discountTotal = get().getDiscountTotal();
 
     await get().saveCartToDb();
 
     const finalAmount = bonusUsed > 0 ? Math.max(0, total - bonusUsed) : total;
+
+    const isSplit = payments.length > 1;
+    const primaryMethod: PaymentMethod = isSplit ? 'split' : payments[0]?.method || 'cash';
 
     await supabase
       .from('checks')
       .update({
         status: 'closed',
         total_amount: finalAmount,
-        payment_method: method,
+        payment_method: primaryMethod,
         bonus_used: bonusUsed,
+        discount_total: discountTotal,
         closed_at: new Date().toISOString(),
       })
       .eq('id', activeCheck.id);
 
+    if (payments.length > 0) {
+      const paymentRows = payments.map((p) => ({
+        check_id: activeCheck.id,
+        method: p.method,
+        amount: p.amount,
+      }));
+      await supabase.from('check_payments').insert(paymentRows);
+    }
+
     if (activeCheck.player_id) {
-      if (method === 'debt') {
+      const debtAmount = payments
+        .filter((p) => p.method === 'debt')
+        .reduce((s, p) => s + p.amount, 0);
+
+      if (debtAmount > 0) {
         const { data: player } = await supabase
           .from('profiles')
           .select('balance')
@@ -227,7 +314,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
         if (player) {
           await supabase
             .from('profiles')
-            .update({ balance: player.balance - finalAmount })
+            .update({ balance: player.balance - debtAmount })
             .eq('id', activeCheck.player_id);
         }
       }
@@ -240,7 +327,8 @@ export const usePOSStore = create<POSState>((set, get) => ({
       const bonusMin = Number(cfg['bonus_min_purchase'] || '0');
       const bonusOnDebt = cfg['bonus_accrual_on_debt'] === 'true';
 
-      const shouldAccrue = bonusEnabled && total >= bonusMin && (method !== 'debt' || bonusOnDebt);
+      const hasNonDebt = payments.some((p) => p.method !== 'debt');
+      const shouldAccrue = bonusEnabled && total >= bonusMin && (hasNonDebt || bonusOnDebt);
       const bonusAccrual = shouldAccrue ? Math.floor(total * bonusRate / 100) : 0;
 
       const { data: player } = await supabase
@@ -279,10 +367,14 @@ export const usePOSStore = create<POSState>((set, get) => ({
       }
     }
 
+    const methodDesc = isSplit
+      ? 'разд. оплата'
+      : primaryMethod;
+
     await supabase.from('transactions').insert({
       type: 'sale',
       amount: finalAmount,
-      description: `Закрытие чека (${method})`,
+      description: `Закрытие чека (${methodDesc})`,
       check_id: activeCheck.id,
       player_id: activeCheck.player_id || null,
       created_by: user?.id,
@@ -302,7 +394,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       }
     }
 
-    set({ activeCheck: null, cart: [], checkItems: [] });
+    set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
     await get().loadOpenChecks();
     await get().loadInventory();
     return true;

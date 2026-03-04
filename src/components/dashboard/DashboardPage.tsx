@@ -38,7 +38,7 @@ interface DailyRevenue {
 type TabId = 'overview' | 'checks' | 'items' | 'players' | 'log';
 
 const pmLabels: Record<string, string> = {
-  cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы',
+  cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы', split: 'Разделённая',
 };
 
 export function DashboardPage() {
@@ -300,20 +300,47 @@ export function DashboardPage() {
 
   const selectedShift = shifts[selectedShiftIdx] || null;
 
+  const [splitBreakdowns, setSplitBreakdowns] = useState<Record<string, { method: string; amount: number }[]>>({});
+
+  useEffect(() => {
+    if (!shiftAnalytics) return;
+    const splitChecks = shiftAnalytics.checks.filter((c) => c.payment_method === 'split');
+    if (splitChecks.length === 0) { setSplitBreakdowns({}); return; }
+
+    (async () => {
+      const ids = splitChecks.map((c) => c.id);
+      const { data } = await supabase.from('check_payments').select('*').in('check_id', ids);
+      const map: Record<string, { method: string; amount: number }[]> = {};
+      for (const p of data || []) {
+        if (!map[p.check_id]) map[p.check_id] = [];
+        map[p.check_id].push({ method: p.method, amount: p.amount });
+      }
+      setSplitBreakdowns(map);
+    })();
+  }, [shiftAnalytics]);
+
   const shiftSummary = useMemo(() => {
     if (!shiftAnalytics) return null;
     let cash = 0, card = 0, debt = 0, bonus = 0;
     for (const c of shiftAnalytics.checks) {
       const amt = c.total_amount || 0;
       bonus += c.bonus_used || 0;
-      if (c.payment_method === 'cash') cash += amt;
+      if (c.payment_method === 'split') {
+        const parts = splitBreakdowns[c.id] || [];
+        for (const p of parts) {
+          if (p.method === 'cash') cash += p.amount;
+          else if (p.method === 'card') card += p.amount;
+          else if (p.method === 'debt') debt += p.amount;
+          else if (p.method === 'bonus') bonus += p.amount;
+        }
+      } else if (c.payment_method === 'cash') cash += amt;
       else if (c.payment_method === 'card') card += amt;
       else if (c.payment_method === 'debt') debt += amt;
       else if (c.payment_method === 'bonus') cash += amt;
     }
     const total = cash + card + debt + bonus;
     return { total, cash, card, debt, bonus };
-  }, [shiftAnalytics]);
+  }, [shiftAnalytics, splitBreakdowns]);
 
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
@@ -639,10 +666,22 @@ export function DashboardPage() {
                                       </div>
                                     </>
                                   )}
-                                  <div className="flex justify-between text-xs">
-                                    <span className="text-white/40">Способ оплаты</span>
-                                    <span className="text-[var(--tg-theme-text-color,#e0e0e0)]">{pmLabels[c.payment_method || ''] || c.payment_method || '-'}</span>
-                                  </div>
+                                  {c.payment_method === 'split' && splitBreakdowns[c.id] ? (
+                                    <div className="space-y-0.5">
+                                      <span className="text-xs text-white/40">Разделённая оплата:</span>
+                                      {splitBreakdowns[c.id].map((sp, si) => (
+                                        <div key={si} className="flex justify-between text-xs pl-2">
+                                          <span className="text-white/40">{pmLabels[sp.method] || sp.method}</span>
+                                          <span className="text-[var(--tg-theme-text-color,#e0e0e0)]">{fmtCur(sp.amount)}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="flex justify-between text-xs">
+                                      <span className="text-white/40">Способ оплаты</span>
+                                      <span className="text-[var(--tg-theme-text-color,#e0e0e0)]">{pmLabels[c.payment_method || ''] || c.payment_method || '-'}</span>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             )}

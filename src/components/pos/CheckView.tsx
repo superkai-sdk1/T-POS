@@ -7,10 +7,11 @@ import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import {
   ArrowLeft, CreditCard, Plus, Zap, Minus, X,
   Coffee, UtensilsCrossed, Cookie, Wind, Ticket, ShoppingBag,
-  MessageSquare,
+  MessageSquare, Percent, Trash2,
 } from 'lucide-react';
 import { hapticFeedback } from '@/lib/telegram';
-import type { ItemCategory, InventoryItem } from '@/types';
+import { supabase } from '@/lib/supabase';
+import type { ItemCategory, InventoryItem, Discount } from '@/types';
 
 interface CheckViewProps {
   onBack: () => void;
@@ -25,10 +26,12 @@ const categoryConfig: { key: ItemCategory; label: string; icon: typeof Coffee; c
 ];
 
 export function CheckView({ onBack }: CheckViewProps) {
-  const { activeCheck, cart, addToCart, updateCartQuantity, removeFromCart, inventory, leaveCheck, cancelCheck, getCartTotal, updateCheckNote, saveCartToDb } = usePOSStore();
+  const { activeCheck, cart, addToCart, updateCartQuantity, removeFromCart, inventory, leaveCheck, cancelCheck, getCartTotal, getDiscountTotal, updateCheckNote, saveCartToDb, appliedDiscounts, applyDiscount, removeDiscount } = usePOSStore();
   const [showPayment, setShowPayment] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showDiscounts, setShowDiscounts] = useState(false);
+  const [discountsList, setDiscountsList] = useState<Discount[]>([]);
   const [menuCategory, setMenuCategory] = useState<ItemCategory | null>(null);
   const [note, setNote] = useState(activeCheck?.note || '');
   const [showNote, setShowNote] = useState(false);
@@ -79,7 +82,24 @@ export function CheckView({ onBack }: CheckViewProps) {
   };
 
   const total = getCartTotal();
+  const discountTotal = getDiscountTotal();
+  const subtotal = cart.reduce((s, c) => s + c.item.price * c.quantity, 0);
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
+
+  const loadDiscountsList = useCallback(async () => {
+    const { data } = await supabase.from('discounts').select('*').eq('is_active', true).order('name');
+    if (data) setDiscountsList(data as Discount[]);
+  }, []);
+
+  const handleApplyDiscount = async (d: Discount) => {
+    hapticFeedback('medium');
+    await applyDiscount(d.id, d.name, d.type, d.value, 'check');
+  };
+
+  const handleApplyItemDiscount = async (d: Discount, itemId: string) => {
+    hapticFeedback('medium');
+    await applyDiscount(d.id, d.name, d.type, d.value, 'item', itemId);
+  };
 
   const filteredItems = useMemo(() => {
     if (!menuCategory) return [];
@@ -149,6 +169,14 @@ export function CheckView({ onBack }: CheckViewProps) {
             {cartCount > 0 && <> · {cartCount} поз.</>}
           </p>
         </div>
+        <button
+          onClick={() => { loadDiscountsList(); setShowDiscounts(true); }}
+          className={`w-9 h-9 rounded-xl flex items-center justify-center active:scale-90 transition-all shrink-0 ${
+            appliedDiscounts.length > 0 ? 'bg-pink-500/12 border border-pink-500/25' : 'bg-white/5 border border-white/5'
+          }`}
+        >
+          <Percent className={`w-4 h-4 ${appliedDiscounts.length > 0 ? 'text-pink-400' : 'text-white/30'}`} />
+        </button>
         <button
           onClick={() => setShowNote(!showNote)}
           className={`w-9 h-9 rounded-xl flex items-center justify-center active:scale-90 transition-all shrink-0 ${
@@ -246,12 +274,47 @@ export function CheckView({ onBack }: CheckViewProps) {
               </SwipeableRow>
             ))}
 
+            {/* Discount lines */}
+            {appliedDiscounts.length > 0 && (
+              <div className="space-y-1 mt-2">
+                {appliedDiscounts.map((ad) => (
+                  <div key={ad.id} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-pink-500/6 border border-pink-500/10">
+                    <Percent className="w-3 h-3 text-pink-400 shrink-0" />
+                    <span className="flex-1 text-xs text-pink-400 font-medium truncate">
+                      {ad.discount?.name || 'Скидка'} ({ad.target === 'check' ? 'на чек' : 'на позицию'})
+                    </span>
+                    <span className="text-xs font-bold text-pink-400 tabular-nums">-{fmtCur(ad.discount_amount)}</span>
+                    <button
+                      onClick={() => { hapticFeedback('light'); removeDiscount(ad.id); }}
+                      className="w-5 h-5 rounded flex items-center justify-center bg-pink-500/10 active:scale-90 transition-transform"
+                    >
+                      <Trash2 className="w-3 h-3 text-pink-400" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Total */}
-            <div className="flex items-center justify-between pt-3 mt-1 border-t border-white/8">
-              <span className="text-[var(--tg-theme-hint-color,#888)] font-semibold text-sm">Итого</span>
-              <span className="text-2xl font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums animate-count-up">
-                {fmtCur(total)}
-              </span>
+            <div className="pt-3 mt-1 border-t border-white/8 space-y-1">
+              {discountTotal > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-[var(--tg-theme-hint-color,#888)]">Подытог</span>
+                  <span className="text-sm text-white/40 tabular-nums">{fmtCur(subtotal)}</span>
+                </div>
+              )}
+              {discountTotal > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-pink-400">Скидка</span>
+                  <span className="text-sm font-bold text-pink-400 tabular-nums">-{fmtCur(discountTotal)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--tg-theme-hint-color,#888)] font-semibold text-sm">Итого</span>
+                <span className="text-2xl font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums animate-count-up">
+                  {fmtCur(total)}
+                </span>
+              </div>
             </div>
           </div>
         )}
@@ -385,6 +448,68 @@ export function CheckView({ onBack }: CheckViewProps) {
           onBack();
         }}
       />
+
+      {/* Discounts drawer */}
+      <Drawer
+        open={showDiscounts}
+        onClose={() => setShowDiscounts(false)}
+        title="Применить скидку"
+      >
+        <div className="space-y-4">
+          {discountsList.length === 0 ? (
+            <p className="text-sm text-[var(--tg-theme-hint-color,#888)] text-center py-8">Нет активных скидок</p>
+          ) : (
+            <>
+              <p className="text-xs text-[var(--tg-theme-hint-color,#888)] font-medium">На весь чек</p>
+              <div className="space-y-1.5">
+                {discountsList.map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() => { handleApplyDiscount(d); setShowDiscounts(false); }}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl glass hover:bg-white/8 transition-all active:scale-[0.98]"
+                  >
+                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${d.type === 'percentage' ? 'bg-violet-500/15' : 'bg-emerald-500/15'}`}>
+                      <Percent className={`w-4 h-4 ${d.type === 'percentage' ? 'text-violet-400' : 'text-emerald-400'}`} />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">{d.name}</p>
+                      <p className="text-xs text-white/30">
+                        {d.type === 'percentage' ? `-${d.value}%` : `-${d.value}₽`}
+                        {d.type === 'percentage' && subtotal > 0 && (
+                          <> ≈ -{fmtCur(Math.round(subtotal * d.value / 100))}</>
+                        )}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {cart.length > 0 && (
+                <>
+                  <p className="text-xs text-[var(--tg-theme-hint-color,#888)] font-medium pt-2">На позицию</p>
+                  <div className="space-y-1.5 max-h-[30vh] overflow-y-auto">
+                    {cart.map((ci) => (
+                      <div key={ci.item.id} className="p-2.5 rounded-xl bg-white/3 border border-white/5">
+                        <p className="text-xs font-medium text-[var(--tg-theme-text-color,#e0e0e0)] mb-1.5">{ci.item.name} ({fmtCur(ci.item.price * ci.quantity)})</p>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {discountsList.map((d) => (
+                            <button
+                              key={d.id}
+                              onClick={() => { handleApplyItemDiscount(d, ci.item.id); setShowDiscounts(false); }}
+                              className="px-2 py-1 rounded-lg bg-white/5 text-[10px] font-medium text-white/50 hover:bg-white/10 active:scale-95 transition-all"
+                            >
+                              {d.name} ({d.type === 'percentage' ? `-${d.value}%` : `-${d.value}₽`})
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </Drawer>
 
       {/* Cancel confirmation */}
       <Drawer

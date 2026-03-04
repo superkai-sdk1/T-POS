@@ -3,16 +3,18 @@ import { persist } from 'zustand/middleware';
 import type { Shift, ShiftCheckDetail } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from './auth';
-import { sendToOwners, buildShiftOpenReport, buildShiftCloseReport, type CloseReportCheck } from '@/lib/bot';
+import { sendToOwners, buildShiftOpenReport, buildShiftCloseReport, buildBirthdayReport, type CloseReportCheck } from '@/lib/bot';
 
 interface ShiftState {
   activeShift: Shift | null;
+  birthdayNames: string[];
   isLoading: boolean;
 
   loadActiveShift: () => Promise<void>;
   openShift: (cashStart: number) => Promise<Shift | null>;
   closeShift: (cashEnd: number, note?: string) => Promise<boolean>;
   getShiftAnalytics: (shiftId: string) => Promise<ShiftAnalytics | null>;
+  dismissBirthdays: () => void;
 }
 
 export interface ShiftAnalytics {
@@ -30,6 +32,7 @@ export const useShiftStore = create<ShiftState>()(
   persist(
     (set, get) => ({
       activeShift: null,
+      birthdayNames: [],
       isLoading: false,
 
       loadActiveShift: async () => {
@@ -59,6 +62,28 @@ export const useShiftStore = create<ShiftState>()(
         set({ activeShift: shift });
 
         sendToOwners(buildShiftOpenReport(user.nickname, cashStart));
+
+        const now = new Date();
+        const month = now.getMonth() + 1;
+        const day = now.getDate();
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const datePattern = `%-${pad(month)}-${pad(day)}`;
+        const { data: bdayProfiles } = await supabase
+          .from('profiles')
+          .select('nickname, birthday')
+          .not('birthday', 'is', null);
+        const names: string[] = [];
+        if (bdayProfiles) {
+          for (const p of bdayProfiles) {
+            if (p.birthday && p.birthday.includes(`-${pad(month)}-${pad(day)}`)) {
+              names.push(p.nickname);
+            }
+          }
+        }
+        if (names.length > 0) {
+          set({ birthdayNames: names });
+          sendToOwners(buildBirthdayReport(names));
+        }
 
         return shift;
       },
@@ -111,6 +136,8 @@ export const useShiftStore = create<ShiftState>()(
         set({ activeShift: null });
         return true;
       },
+
+      dismissBirthdays: () => set({ birthdayNames: [] }),
 
       getShiftAnalytics: async (shiftId: string) => {
         const { data: shiftData } = await supabase

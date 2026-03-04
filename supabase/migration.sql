@@ -530,11 +530,119 @@ values ('client-photos', 'client-photos', true)
 on conflict (id) do nothing;
 
 -- ==============================
+-- Discounts
+-- ==============================
+create type discount_type as enum ('percentage', 'fixed');
+create type discount_target as enum ('check', 'item');
+
+create table discounts (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  type discount_type not null,
+  value numeric not null,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table check_discounts (
+  id uuid primary key default gen_random_uuid(),
+  check_id uuid not null references checks(id) on delete cascade,
+  discount_id uuid references discounts(id),
+  target discount_target not null default 'check',
+  item_id uuid references check_items(id) on delete cascade,
+  discount_amount numeric not null default 0,
+  created_at timestamptz not null default now()
+);
+
+alter table checks add column discount_total numeric not null default 0;
+
+alter table discounts enable row level security;
+alter table check_discounts enable row level security;
+create policy "discounts_all" on discounts for all to anon, authenticated using (true) with check (true);
+create policy "check_discounts_all" on check_discounts for all to anon, authenticated using (true) with check (true);
+
+-- ==============================
+-- Spaces & Bookings
+-- ==============================
+create type space_type as enum ('cabin_small', 'cabin_big', 'hall');
+create type booking_status as enum ('booked', 'active', 'completed', 'cancelled');
+
+create table spaces (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  type space_type not null,
+  hourly_rate numeric,
+  is_active boolean not null default true
+);
+
+alter table checks add column space_id uuid references spaces(id);
+
+create table bookings (
+  id uuid primary key default gen_random_uuid(),
+  space_id uuid not null references spaces(id),
+  client_id uuid references profiles(id),
+  check_id uuid references checks(id),
+  start_time timestamptz not null,
+  end_time timestamptz not null,
+  rental_amount numeric not null default 0,
+  note text,
+  status booking_status not null default 'booked',
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now()
+);
+
+insert into spaces (name, type, hourly_rate) values
+  ('Маленькая кабинка', 'cabin_small', 250),
+  ('Большая кабинка', 'cabin_big', 500),
+  ('Зал', 'hall', null);
+
+alter table spaces enable row level security;
+alter table bookings enable row level security;
+create policy "spaces_all" on spaces for all to anon, authenticated using (true) with check (true);
+create policy "bookings_all" on bookings for all to anon, authenticated using (true) with check (true);
+
+-- ==============================
+-- Events (offsite)
+-- ==============================
+create type event_status as enum ('planned', 'completed', 'cancelled');
+
+create table events (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  location text not null,
+  start_time timestamptz not null,
+  end_time timestamptz not null,
+  amount numeric not null default 0,
+  note text,
+  status event_status not null default 'planned',
+  check_id uuid references checks(id),
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now()
+);
+
+alter table events enable row level security;
+create policy "events_all" on events for all to anon, authenticated using (true) with check (true);
+
+-- ==============================
+-- Split Payments
+-- ==============================
+create table check_payments (
+  id uuid primary key default gen_random_uuid(),
+  check_id uuid not null references checks(id) on delete cascade,
+  method payment_method not null,
+  amount numeric not null default 0
+);
+
+alter table check_payments enable row level security;
+create policy "check_payments_all" on check_payments for all to anon, authenticated using (true) with check (true);
+
+-- ==============================
 -- Realtime
 -- ==============================
-alter publication supabase_realtime add table checks, check_items, inventory, shifts, cash_operations;
+alter publication supabase_realtime add table checks, check_items, inventory, shifts, cash_operations, bookings;
 alter table checks replica identity full;
 alter table check_items replica identity full;
 alter table inventory replica identity full;
 alter table shifts replica identity full;
 alter table cash_operations replica identity full;
+alter table bookings replica identity full;

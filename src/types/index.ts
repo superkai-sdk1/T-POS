@@ -1,7 +1,7 @@
 export type UserRole = 'owner' | 'staff' | 'client';
 export type ItemCategory = 'drinks' | 'food' | 'bar' | 'hookah' | 'services';
 export type CheckStatus = 'open' | 'closed';
-export type PaymentMethod = 'cash' | 'card' | 'debt' | 'bonus';
+export type PaymentMethod = 'cash' | 'card' | 'debt' | 'bonus' | 'split';
 export type TransactionType = 'supply' | 'write_off' | 'sale' | 'revision' | 'bonus_accrual' | 'bonus_spend' | 'cash_operation' | 'debt_adjustment';
 
 export interface Profile {
@@ -44,6 +44,8 @@ export interface Check {
   total_amount: number;
   payment_method: PaymentMethod | null;
   bonus_used: number;
+  discount_total: number;
+  space_id: string | null;
   note: string | null;
   created_at: string;
   closed_at: string | null;
@@ -163,4 +165,77 @@ export interface CashOperation {
   created_by: string | null;
   created_at: string;
   creator?: { nickname: string };
+}
+
+export type DiscountType = 'percentage' | 'fixed';
+export type DiscountTarget = 'check' | 'item';
+
+export interface Discount {
+  id: string;
+  name: string;
+  type: DiscountType;
+  value: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface CheckDiscount {
+  id: string;
+  check_id: string;
+  discount_id: string | null;
+  target: DiscountTarget;
+  item_id: string | null;
+  discount_amount: number;
+  created_at: string;
+  discount?: Discount;
+}
+
+export type SpaceType = 'cabin_small' | 'cabin_big' | 'hall';
+export type BookingStatus = 'booked' | 'active' | 'completed' | 'cancelled';
+
+export interface Space {
+  id: string;
+  name: string;
+  type: SpaceType;
+  hourly_rate: number | null;
+  is_active: boolean;
+}
+
+export interface Booking {
+  id: string;
+  space_id: string;
+  client_id: string | null;
+  check_id: string | null;
+  start_time: string;
+  end_time: string;
+  rental_amount: number;
+  note: string | null;
+  status: BookingStatus;
+  created_by: string | null;
+  created_at: string;
+  space?: Space;
+  client?: Profile;
+}
+
+export type EventStatus = 'planned' | 'completed' | 'cancelled';
+
+export interface OffsiteEvent {
+  id: string;
+  name: string;
+  location: string;
+  start_time: string;
+  end_time: string;
+  amount: number;
+  note: string | null;
+  status: EventStatus;
+  check_id: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface CheckPayment {
+  id: string;
+  check_id: string;
+  method: PaymentMethod;
+  amount: number;
 }

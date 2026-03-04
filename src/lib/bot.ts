@@ -29,7 +29,14 @@ const pmLabel: Record<string, string> = {
   card: 'карта',
   debt: 'долг',
   bonus: 'бонусы',
+  split: 'разд.',
 };
+
+export function buildBirthdayReport(names: string[]): string {
+  if (names.length === 0) return '';
+  const list = names.join(', ');
+  return `🎂 <b>Сегодня день рождения!</b>\n${list}`;
+}
 
 export function buildShiftOpenReport(staffName: string, cashStart: number): string {
   const now = new Date();

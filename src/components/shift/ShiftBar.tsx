@@ -3,14 +3,14 @@ import { useShiftStore } from '@/store/shift';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
-import { PlayCircle, StopCircle, Clock, Banknote } from 'lucide-react';
+import { PlayCircle, StopCircle, Clock, Banknote, Cake, X } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { ShiftAnalytics } from './ShiftAnalytics';
 import { supabase } from '@/lib/supabase';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
 
 export function ShiftBar() {
-  const { activeShift, openShift, closeShift, getShiftAnalytics } = useShiftStore();
+  const { activeShift, openShift, closeShift, getShiftAnalytics, birthdayNames, dismissBirthdays } = useShiftStore();
   const [showOpen, setShowOpen] = useState(false);
   const [showClose, setShowClose] = useState(false);
   const [cashStart, setCashStart] = useState('');
@@ -94,9 +94,23 @@ export function ShiftBar() {
     return `${h}ч ${m}м`;
   };
 
+  const birthdayBanner = birthdayNames.length > 0 ? (
+    <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-gradient-to-r from-pink-500/10 to-amber-500/5 border border-pink-500/15 animate-fade-in-up mb-3">
+      <Cake className="w-5 h-5 text-pink-400 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-bold text-pink-400">День рождения!</p>
+        <p className="text-[11px] text-white/50 truncate">{birthdayNames.join(', ')}</p>
+      </div>
+      <button onClick={dismissBirthdays} className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 transition-transform shrink-0">
+        <X className="w-3.5 h-3.5 text-white/30" />
+      </button>
+    </div>
+  ) : null;
+
   if (!activeShift) {
     return (
       <>
+        {birthdayBanner}
         <button
           onClick={() => setShowOpen(true)}
           className="w-full flex items-center gap-3 p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-emerald-600/5 border border-emerald-500/15 hover:from-emerald-500/15 hover:to-emerald-600/10 transition-all active:scale-[0.98]"
@@ -133,6 +147,7 @@ export function ShiftBar() {
 
   return (
     <>
+      {birthdayBanner}
       <div className="p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/8 to-emerald-600/4 border border-emerald-500/12">
         <div className="flex items-center gap-3">
           <div className="relative">

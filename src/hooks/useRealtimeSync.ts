@@ -59,6 +59,13 @@ export function useRealtimeSync() {
           emitTableChange('cash_operations');
         }),
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bookings' },
+        () => debounced('bookings', () => {
+          emitTableChange('bookings');
+        }),
+      )
       .subscribe();
 
     channelRef.current = channel;

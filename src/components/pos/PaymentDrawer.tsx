@@ -3,10 +3,11 @@ import { Drawer } from '@/components/ui/Drawer';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
-import { usePOSStore } from '@/store/pos';
+import { SwipeableRow } from '@/components/ui/SwipeableRow';
+import { usePOSStore, type PaymentPortion } from '@/store/pos';
 import { supabase } from '@/lib/supabase';
-import { hapticNotification } from '@/lib/telegram';
-import { Banknote, CreditCard, Clock, Star } from 'lucide-react';
+import { hapticFeedback, hapticNotification } from '@/lib/telegram';
+import { Banknote, CreditCard, Clock, Star, Split, Plus, Trash2 } from 'lucide-react';
 import type { PaymentMethod, Profile } from '@/types';
 
 interface PaymentDrawerProps {
@@ -15,12 +16,22 @@ interface PaymentDrawerProps {
   onSuccess: () => void;
 }
 
+const methodConfig: { method: PaymentMethod; label: string; icon: typeof Banknote; color: string }[] = [
+  { method: 'cash', label: 'Наличные', icon: Banknote, color: 'bg-emerald-500/12 text-emerald-400 border-emerald-500/20' },
+  { method: 'card', label: 'Карта', icon: CreditCard, color: 'bg-blue-500/12 text-blue-400 border-blue-500/20' },
+  { method: 'bonus', label: 'Бонусы', icon: Star, color: 'bg-amber-500/12 text-amber-400 border-amber-500/20' },
+  { method: 'debt', label: 'В долг', icon: Clock, color: 'bg-red-500/12 text-red-400 border-red-500/20' },
+];
+
 export function PaymentDrawer({ open, onClose, onSuccess }: PaymentDrawerProps) {
   const { activeCheck, getCartTotal, closeCheck } = usePOSStore();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [bonusAmount, setBonusAmount] = useState(0);
   const [playerInfo, setPlayerInfo] = useState<Profile | null>(null);
-  const [useBonusPartial, setUseBonusPartial] = useState(false);
+  const [splitMode, setSplitMode] = useState(false);
+  const [splitPayments, setSplitPayments] = useState<PaymentPortion[]>([]);
+  const [splitMethod, setSplitMethod] = useState<PaymentMethod>('cash');
+  const [splitAmount, setSplitAmount] = useState('');
+
   const total = getCartTotal();
 
   useEffect(() => {
@@ -37,37 +48,89 @@ export function PaymentDrawer({ open, onClose, onSuccess }: PaymentDrawerProps) 
       setPlayerInfo(null);
     }
     if (!open) {
-      setBonusAmount(0);
-      setUseBonusPartial(false);
       setIsProcessing(false);
+      setSplitMode(false);
+      setSplitPayments([]);
+      setSplitAmount('');
     }
   }, [open, activeCheck]);
 
-  const handlePay = async (method: PaymentMethod) => {
-    setIsProcessing(true);
-    const finalBonusUsed = useBonusPartial ? bonusAmount : 0;
-    const success = await closeCheck(method, finalBonusUsed);
-    setIsProcessing(false);
-    if (success) {
-      hapticNotification('success');
-      onSuccess();
-    }
-  };
-
-  const handlePayBonus = async () => {
-    setIsProcessing(true);
-    const success = await closeCheck('bonus', maxBonus);
-    setIsProcessing(false);
-    if (success) {
-      hapticNotification('success');
-      onSuccess();
-    }
-  };
-
   const maxBonus = Math.min(playerInfo?.bonus_points || 0, Math.floor(total * 0.5));
-  const displayTotal = useBonusPartial ? Math.max(0, total - bonusAmount) : total;
+
+  const splitPaid = splitPayments.reduce((s, p) => s + p.amount, 0);
+  const splitRemaining = Math.max(0, total - splitPaid);
+  const splitBonusUsed = splitPayments.filter((p) => p.method === 'bonus').reduce((s, p) => s + p.amount, 0);
+  const splitBonusAvailable = Math.max(0, maxBonus - splitBonusUsed);
+
+  const handleSimplePay = async (method: PaymentMethod, bonusUsed = 0) => {
+    setIsProcessing(true);
+    const amount = bonusUsed > 0 ? Math.max(0, total - bonusUsed) : total;
+    const payments: PaymentPortion[] = [];
+    if (bonusUsed > 0) payments.push({ method: 'bonus', amount: bonusUsed });
+    payments.push({ method, amount });
+    const success = await closeCheck(payments, bonusUsed);
+    setIsProcessing(false);
+    if (success) {
+      hapticNotification('success');
+      onSuccess();
+    }
+  };
+
+  const handleBonusPay = async () => {
+    setIsProcessing(true);
+    const remaining = total - maxBonus;
+    const payments: PaymentPortion[] = [{ method: 'bonus', amount: maxBonus }];
+    if (remaining > 0) payments.push({ method: 'cash', amount: remaining });
+    const success = await closeCheck(payments, maxBonus);
+    setIsProcessing(false);
+    if (success) {
+      hapticNotification('success');
+      onSuccess();
+    }
+  };
+
+  const addSplitPayment = () => {
+    const amt = Number(splitAmount);
+    if (!amt || amt <= 0 || amt > splitRemaining) return;
+
+    if (splitMethod === 'bonus') {
+      if (amt > splitBonusAvailable) return;
+    }
+    if (splitMethod === 'debt' && !activeCheck?.player_id) return;
+
+    hapticFeedback('light');
+    setSplitPayments([...splitPayments, { method: splitMethod, amount: amt }]);
+    setSplitAmount('');
+  };
+
+  const addSplitRemainder = (method: PaymentMethod) => {
+    if (splitRemaining <= 0) return;
+    if (method === 'bonus' && splitRemaining > splitBonusAvailable) return;
+    if (method === 'debt' && !activeCheck?.player_id) return;
+    hapticFeedback('light');
+    setSplitPayments([...splitPayments, { method, amount: splitRemaining }]);
+  };
+
+  const removeSplitPayment = (idx: number) => {
+    hapticFeedback('light');
+    setSplitPayments(splitPayments.filter((_, i) => i !== idx));
+  };
+
+  const handleSplitConfirm = async () => {
+    if (splitRemaining > 0) return;
+    setIsProcessing(true);
+    const bonusUsed = splitPayments.filter((p) => p.method === 'bonus').reduce((s, p) => s + p.amount, 0);
+    const success = await closeCheck(splitPayments, bonusUsed);
+    setIsProcessing(false);
+    if (success) {
+      hapticNotification('success');
+      onSuccess();
+    }
+  };
 
   const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
+
+  const getMethodConf = (m: PaymentMethod) => methodConfig.find((mc) => mc.method === m) || methodConfig[0];
 
   return (
     <Drawer open={open} onClose={onClose} title="Оплата">
@@ -80,16 +143,11 @@ export function PaymentDrawer({ open, onClose, onSuccess }: PaymentDrawerProps) 
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs text-[var(--tg-theme-hint-color,#888)] font-medium">Баланс</span>
-              <Badge variant={playerInfo.balance < 0 ? 'danger' : 'default'}>
-                {playerInfo.balance}₽
-              </Badge>
+              <Badge variant={playerInfo.balance < 0 ? 'danger' : 'default'}>{playerInfo.balance}₽</Badge>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs text-[var(--tg-theme-hint-color,#888)] font-medium">Бонусы</span>
-              <Badge variant="success">
-                <Star className="w-3 h-3 mr-1" />
-                {playerInfo.bonus_points}
-              </Badge>
+              <Badge variant="success"><Star className="w-3 h-3 mr-1" />{playerInfo.bonus_points}</Badge>
             </div>
           </div>
         )}
@@ -97,105 +155,160 @@ export function PaymentDrawer({ open, onClose, onSuccess }: PaymentDrawerProps) 
         <div className="text-center py-2">
           <p className="text-xs text-[var(--tg-theme-hint-color,#888)] font-medium mb-1">К оплате</p>
           <p className="text-4xl font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums animate-count-up">
-            {fmtCur(displayTotal)}
+            {fmtCur(total)}
           </p>
-          {useBonusPartial && bonusAmount > 0 && (
-            <p className="text-xs text-emerald-400 mt-1 font-semibold animate-fade-in">
-              -{fmtCur(bonusAmount)} бонусами
-            </p>
-          )}
         </div>
 
-        {maxBonus > 0 && (
-          <div className="p-3.5 rounded-2xl bg-emerald-500/6 border border-emerald-500/12 space-y-3">
-            <label className="flex items-center gap-2.5 cursor-pointer">
-              <div className={`w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${
-                useBonusPartial ? 'bg-emerald-500 border-emerald-500' : 'border-white/20 bg-white/5'
-              }`}>
-                {useBonusPartial && (
-                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
+        {!splitMode ? (
+          <>
+            <div className="space-y-2.5">
+              <Button size="lg" fullWidth onClick={() => handleSimplePay('cash')} loading={isProcessing} disabled={isProcessing}>
+                <Banknote className="w-5 h-5" />Наличные
+              </Button>
+              <Button size="lg" fullWidth variant="secondary" onClick={() => handleSimplePay('card')} loading={isProcessing} disabled={isProcessing}>
+                <CreditCard className="w-5 h-5" />Карта
+              </Button>
+              {activeCheck?.player_id && maxBonus > 0 && (
+                <Button
+                  size="lg" fullWidth variant="secondary" onClick={handleBonusPay}
+                  loading={isProcessing} disabled={isProcessing}
+                  className="!bg-amber-500/10 !border-amber-500/20 !text-amber-400 hover:!bg-amber-500/20"
+                >
+                  <Star className="w-5 h-5" />
+                  Бонусы -{fmtCur(maxBonus)} (ост. {fmtCur(total - maxBonus)})
+                </Button>
+              )}
+              {activeCheck?.player_id && (
+                <Button size="lg" fullWidth variant="danger" onClick={() => handleSimplePay('debt')} loading={isProcessing} disabled={isProcessing}>
+                  <Clock className="w-5 h-5" />В долг
+                </Button>
+              )}
+            </div>
+
+            <button
+              onClick={() => { hapticFeedback('light'); setSplitMode(true); }}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white/5 border border-white/5 text-sm font-semibold text-[var(--tg-theme-hint-color,#888)] hover:bg-white/8 transition-all active:scale-[0.98]"
+            >
+              <Split className="w-4 h-4" />
+              Разделить оплату
+            </button>
+          </>
+        ) : (
+          <>
+            {/* Split mode */}
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-500/8 to-pink-500/5 border border-white/8">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-white/40 font-medium">Осталось</span>
+                <span className={`text-xl font-black tabular-nums ${splitRemaining === 0 ? 'text-emerald-400' : 'text-[var(--tg-theme-text-color,#e0e0e0)]'}`}>
+                  {fmtCur(splitRemaining)}
+                </span>
               </div>
-              <input
-                type="checkbox"
-                checked={useBonusPartial}
-                onChange={(e) => {
-                  setUseBonusPartial(e.target.checked);
-                  if (!e.target.checked) setBonusAmount(0);
-                }}
-                className="hidden"
-              />
-              <span className="text-sm text-emerald-400 font-semibold">
-                Списать бонусы (макс {maxBonus}, до 50%)
-              </span>
-            </label>
-            {useBonusPartial && (
-              <Input
-                type="number"
-                min={0}
-                max={maxBonus}
-                value={bonusAmount}
-                onChange={(e) => setBonusAmount(Math.min(Number(e.target.value), maxBonus))}
-                placeholder={`Макс: ${maxBonus}`}
-              />
+              <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[var(--tg-theme-button-color,#6c5ce7)] transition-all duration-300"
+                  style={{ width: `${total > 0 ? ((splitPaid / total) * 100) : 0}%` }}
+                />
+              </div>
+            </div>
+
+            {splitPayments.length > 0 && (
+              <div className="space-y-1.5">
+                {splitPayments.map((sp, idx) => {
+                  const conf = getMethodConf(sp.method);
+                  return (
+                    <SwipeableRow key={idx} onDelete={() => removeSplitPayment(idx)}>
+                      <div className={`flex items-center gap-3 p-3 rounded-xl border ${conf.color}`}>
+                        <conf.icon className="w-4 h-4 shrink-0" />
+                        <span className="flex-1 text-sm font-medium">{conf.label}</span>
+                        <span className="font-bold text-sm tabular-nums">{fmtCur(sp.amount)}</span>
+                      </div>
+                    </SwipeableRow>
+                  );
+                })}
+              </div>
             )}
-          </div>
+
+            {splitRemaining > 0 && (
+              <div className="space-y-3">
+                <div className="flex gap-1.5 flex-wrap">
+                  {methodConfig
+                    .filter((mc) => {
+                      if (mc.method === 'debt' && !activeCheck?.player_id) return false;
+                      if (mc.method === 'bonus' && (!activeCheck?.player_id || splitBonusAvailable <= 0)) return false;
+                      return true;
+                    })
+                    .map((mc) => (
+                    <button
+                      key={mc.method}
+                      onClick={() => setSplitMethod(mc.method)}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition-all active:scale-95 ${
+                        splitMethod === mc.method
+                          ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/15 border-[var(--tg-theme-button-color,#6c5ce7)]/30 text-[var(--tg-theme-button-color,#6c5ce7)]'
+                          : 'bg-white/5 border-white/8 text-white/40'
+                      }`}
+                    >
+                      <mc.icon className="w-3.5 h-3.5" />
+                      {mc.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    placeholder={`Сумма (макс ${fmtCur(splitMethod === 'bonus' ? Math.min(splitRemaining, splitBonusAvailable) : splitRemaining)})`}
+                    value={splitAmount}
+                    onChange={(e) => setSplitAmount(e.target.value)}
+                    min={0}
+                    max={splitMethod === 'bonus' ? Math.min(splitRemaining, splitBonusAvailable) : splitRemaining}
+                    className="flex-1"
+                  />
+                  <Button onClick={addSplitPayment} disabled={!splitAmount || Number(splitAmount) <= 0}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                <div className="flex gap-1.5">
+                  {methodConfig
+                    .filter((mc) => {
+                      if (mc.method === 'debt' && !activeCheck?.player_id) return false;
+                      if (mc.method === 'bonus' && (!activeCheck?.player_id || splitBonusAvailable < splitRemaining)) return false;
+                      return true;
+                    })
+                    .map((mc) => (
+                    <button
+                      key={mc.method}
+                      onClick={() => addSplitRemainder(mc.method)}
+                      className="flex-1 py-2 rounded-lg bg-white/5 text-[10px] font-semibold text-white/30 hover:bg-white/8 transition-all active:scale-95"
+                    >
+                      Всё {mc.label.toLowerCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setSplitMode(false); setSplitPayments([]); setSplitAmount(''); }}
+                className="flex-1 py-3 rounded-xl bg-white/5 text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] active:scale-[0.97] transition-all"
+              >
+                Назад
+              </button>
+              <Button
+                size="lg"
+                className="flex-1"
+                onClick={handleSplitConfirm}
+                loading={isProcessing}
+                disabled={isProcessing || splitRemaining > 0}
+              >
+                Подтвердить
+              </Button>
+            </div>
+          </>
         )}
 
-        <div className="space-y-2.5">
-          <Button
-            size="lg"
-            fullWidth
-            onClick={() => handlePay('cash')}
-            loading={isProcessing}
-            disabled={isProcessing}
-          >
-            <Banknote className="w-5 h-5" />
-            Наличные {useBonusPartial && bonusAmount > 0 ? fmtCur(displayTotal) : ''}
-          </Button>
-          <Button
-            size="lg"
-            fullWidth
-            variant="secondary"
-            onClick={() => handlePay('card')}
-            loading={isProcessing}
-            disabled={isProcessing}
-          >
-            <CreditCard className="w-5 h-5" />
-            Карта {useBonusPartial && bonusAmount > 0 ? fmtCur(displayTotal) : ''}
-          </Button>
-          {activeCheck?.player_id && maxBonus > 0 && (
-            <Button
-              size="lg"
-              fullWidth
-              variant="secondary"
-              onClick={handlePayBonus}
-              loading={isProcessing}
-              disabled={isProcessing}
-              className="!bg-amber-500/10 !border-amber-500/20 !text-amber-400 hover:!bg-amber-500/20"
-            >
-              <Star className="w-5 h-5" />
-              Бонусы -{fmtCur(maxBonus)} (ост. {fmtCur(total - maxBonus)})
-            </Button>
-          )}
-          {activeCheck?.player_id && (
-            <Button
-              size="lg"
-              fullWidth
-              variant="danger"
-              onClick={() => handlePay('debt')}
-              loading={isProcessing}
-              disabled={isProcessing}
-            >
-              <Clock className="w-5 h-5" />
-              В долг
-            </Button>
-          )}
-        </div>
-
-        {activeCheck?.player_id && (
+        {!splitMode && activeCheck?.player_id && (
           <p className="text-[11px] text-center text-white/25 font-medium">
             Бонусы будут начислены автоматически
           </p>

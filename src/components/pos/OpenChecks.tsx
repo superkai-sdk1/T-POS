@@ -7,9 +7,9 @@ import { Drawer } from '@/components/ui/Drawer';
 import { Input } from '@/components/ui/Input';
 import { ShiftBar } from '@/components/shift/ShiftBar';
 import { ShiftHistory } from '@/components/shift/ShiftHistory';
-import { Plus, Receipt, Search, User, Clock, History, UserPlus, UserX } from 'lucide-react';
+import { Plus, Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import type { Profile } from '@/types';
+import type { Profile, Space } from '@/types';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 
 interface OpenChecksProps {
@@ -29,6 +29,8 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const [newNickname, setNewNickname] = useState('');
   const [newIsResident, setNewIsResident] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [showSpaces, setShowSpaces] = useState(false);
+  const [spacesList, setSpacesList] = useState<Space[]>([]);
 
   useEffect(() => {
     loadOpenChecks();
@@ -56,17 +58,30 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     }, 300);
   }, []);
 
-  const handleCreateCheck = async (playerId: string | null) => {
+  const handleCreateCheck = async (playerId: string | null, spaceId?: string | null) => {
     hapticFeedback('medium');
-    const check = await createCheck(playerId);
+    const check = await createCheck(playerId, spaceId);
     if (check) {
       setShowNewCheck(false);
+      setShowSpaces(false);
       setSearchQuery('');
       setPlayers([]);
       onSelectCheck();
     } else {
       hapticNotification('error');
     }
+  };
+
+  const loadSpaces = async () => {
+    const { data } = await supabase.from('spaces').select('*').eq('is_active', true);
+    if (data) setSpacesList(data as Space[]);
+    setShowSpaces(true);
+  };
+
+  const spaceIcon: Record<string, string> = {
+    cabin_small: '🏠',
+    cabin_big: '🏡',
+    hall: '🏛️',
   };
 
   const handleSelectCheck = async (check: (typeof openChecks)[0]) => {
@@ -217,24 +232,33 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         title="Новый чек"
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <button
               onClick={() => handleCreateCheck(null)}
-              className="flex items-center gap-2.5 p-3.5 rounded-2xl glass hover:bg-white/8 transition-all active:scale-[0.97]"
+              className="flex flex-col items-center gap-2 p-3.5 rounded-2xl glass hover:bg-white/8 transition-all active:scale-[0.97]"
             >
               <div className="w-10 h-10 rounded-xl bg-white/8 flex items-center justify-center">
                 <UserX className="w-5 h-5 text-white/40" />
               </div>
-              <span className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">Без клиента</span>
+              <span className="text-xs font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">Без клиента</span>
             </button>
             <button
               onClick={() => { setShowNewCheck(false); setShowCreateClient(true); }}
-              className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-emerald-500/8 border border-emerald-500/15 hover:bg-emerald-500/12 transition-all active:scale-[0.97]"
+              className="flex flex-col items-center gap-2 p-3.5 rounded-2xl bg-emerald-500/8 border border-emerald-500/15 hover:bg-emerald-500/12 transition-all active:scale-[0.97]"
             >
               <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
                 <UserPlus className="w-5 h-5 text-emerald-400" />
               </div>
-              <span className="text-sm font-semibold text-emerald-400">Новый</span>
+              <span className="text-xs font-semibold text-emerald-400">Новый</span>
+            </button>
+            <button
+              onClick={() => { setShowNewCheck(false); loadSpaces(); }}
+              className="flex flex-col items-center gap-2 p-3.5 rounded-2xl bg-indigo-500/8 border border-indigo-500/15 hover:bg-indigo-500/12 transition-all active:scale-[0.97]"
+            >
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center">
+                <DoorOpen className="w-5 h-5 text-indigo-400" />
+              </div>
+              <span className="text-xs font-semibold text-indigo-400">Кабинка</span>
             </button>
           </div>
 
@@ -330,6 +354,32 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
             <UserPlus className="w-5 h-5" />
             Создать и открыть чек
           </Button>
+        </div>
+      </Drawer>
+
+      {/* Space selection */}
+      <Drawer
+        open={showSpaces}
+        onClose={() => setShowSpaces(false)}
+        title="Чек на кабинку / зал"
+      >
+        <div className="space-y-3">
+          <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">Выберите пространство для открытия чека</p>
+          {spacesList.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => handleCreateCheck(null, s.id)}
+              className="w-full flex items-center gap-3 p-4 rounded-2xl glass hover:bg-white/8 transition-all active:scale-[0.97]"
+            >
+              <span className="text-2xl">{spaceIcon[s.type] || '📍'}</span>
+              <div className="flex-1 text-left">
+                <p className="font-bold text-sm text-[var(--tg-theme-text-color,#e0e0e0)]">{s.name}</p>
+                <p className="text-xs text-white/30">
+                  {s.hourly_rate ? `${s.hourly_rate}₽/час` : 'Ручная цена'}
+                </p>
+              </div>
+            </button>
+          ))}
         </div>
       </Drawer>
     </div>

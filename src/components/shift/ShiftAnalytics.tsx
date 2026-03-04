@@ -14,10 +14,10 @@ interface Props {
 }
 
 const pmLabels: Record<string, string> = {
-  cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы',
+  cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы', split: 'Разделённая',
 };
 const pmColors: Record<string, string> = {
-  cash: 'bg-emerald-500', card: 'bg-blue-500', debt: 'bg-red-500', bonus: 'bg-amber-500',
+  cash: 'bg-emerald-500', card: 'bg-blue-500', debt: 'bg-red-500', bonus: 'bg-amber-500', split: 'bg-violet-500',
 };
 
 type Tab = 'overview' | 'checks' | 'items' | 'players';
