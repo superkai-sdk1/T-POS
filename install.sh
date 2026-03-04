@@ -34,19 +34,18 @@ warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
 err()     { echo -e "${RED}[ERR]${NC}  $1"; }
 
 # ── .env helpers ──────────────────────────────
+# All grep pipelines use `|| true` to survive `set -eo pipefail`
 
 read_env_value() {
-  local file="$1"
-  local key="$2"
+  local file="$1" key="$2" val=""
   if [ -f "$file" ]; then
-    grep -m1 "^${key}=" "$file" 2>/dev/null | cut -d'=' -f2-
+    val=$(grep -m1 "^${key}=" "$file" 2>/dev/null | cut -d'=' -f2-) || true
   fi
+  echo "$val"
 }
 
 add_env_key() {
-  local file="$1"
-  local key="$2"
-  local value="$3"
+  local file="$1" key="$2" value="$3"
   if grep -q "^${key}=" "$file" 2>/dev/null; then
     sed -i "s|^${key}=.*|${key}=${value}|" "$file"
   else
@@ -55,16 +54,14 @@ add_env_key() {
 }
 
 ensure_env_key() {
-  local file="$1"
-  local key="$2"
-  local prompt_text="$3"
-  local default_val="${4:-}"
-  local is_secret="${5:-false}"
+  local file="$1" key="$2" prompt_text="$3"
+  local default_val="${4:-}" is_secret="${5:-false}"
 
-  local current
-  current=$(read_env_value "$file" "$key")
+  local current=""
+  current=$(read_env_value "$file" "$key") || true
 
   if [ -n "$current" ]; then
+    success "${key} уже задан"
     return 0
   fi
 
@@ -74,19 +71,19 @@ ensure_env_key() {
     echo -ne "${BOLD}${prompt_text}: ${NC}"
   fi
 
-  local input
+  local input=""
   if [ "$is_secret" = "true" ]; then
-    read -rs input
+    read -rs input || true
     echo ""
   else
-    read -r input
+    read -r input || true
   fi
 
   input="${input:-$default_val}"
 
   if [ -z "$input" ]; then
     warn "Пропущено: ${key}"
-    return 1
+    return 0
   fi
 
   add_env_key "$file" "$key" "$input"
@@ -94,11 +91,14 @@ ensure_env_key() {
   return 0
 }
 
+grep_safe() {
+  grep "$@" 2>/dev/null || true
+}
+
 # ── Shared: nginx setup functions ─────────────
 
 setup_nginx() {
-  local domain="$1"
-  local root_dir="$2"
+  local domain="$1" root_dir="$2"
 
   info "Создание конфигурации nginx для ${domain}..."
 
@@ -143,8 +143,7 @@ NGINXEOF
 }
 
 setup_wallet_nginx() {
-  local wallet_domain="$1"
-  local root_dir="$2"
+  local wallet_domain="$1" root_dir="$2"
 
   info "Создание конфигурации nginx для ${wallet_domain}..."
 
@@ -210,8 +209,8 @@ SVCEOF
 setup_wallet_bot() {
   local dir="$1"
 
-  local has_token
-  has_token=$(read_env_value "${dir}/.env" "CLIENT_BOT_TOKEN")
+  local has_token=""
+  has_token=$(read_env_value "${dir}/.env" "CLIENT_BOT_TOKEN") || true
   if [ -z "$has_token" ]; then
     warn "CLIENT_BOT_TOKEN не задан — бот wallet не будет запущен"
     return 0
@@ -279,8 +278,7 @@ fix_and_reload_nginx() {
 }
 
 setup_ssl() {
-  local domain="$1"
-  local email="$2"
+  local domain="$1" email="$2"
 
   info "Запрос SSL-сертификата для ${domain}..."
   if certbot --nginx \
@@ -298,9 +296,15 @@ setup_ssl() {
 get_certbot_email() {
   local email=""
   if [ -d /etc/letsencrypt/renewal ]; then
-    email=$(grep -rh '^email' /etc/letsencrypt/renewal/*.conf 2>/dev/null | head -1 | sed 's/^email *= *//')
+    email=$(grep -rh '^email' /etc/letsencrypt/renewal/*.conf 2>/dev/null | head -1 | sed 's/^email *= *//') || true
   fi
   echo "$email"
+}
+
+extract_server_name() {
+  local conf="$1" name=""
+  name=$(grep_safe 'server_name' "$conf" | head -1 | awk '{print $2}' | tr -d ';') || true
+  echo "$name"
 }
 
 # ── Header ────────────────────────────────────
@@ -336,15 +340,26 @@ if [ "$MODE" = "update" ]; then
 
   cd "$INSTALL_DIR"
 
-  # ── Pull & Build ──
+  # ── Save hash of current script before pull ──
+
+  SCRIPT_HASH_BEFORE=$(md5sum "$INSTALL_DIR/install.sh" 2>/dev/null | awk '{print $1}') || true
 
   info "Загрузка обновлений..."
   git pull origin main
 
+  # ── Re-exec if install.sh itself was updated ──
+
+  SCRIPT_HASH_AFTER=$(md5sum "$INSTALL_DIR/install.sh" 2>/dev/null | awk '{print $1}') || true
+  if [ -n "$SCRIPT_HASH_BEFORE" ] && [ -n "$SCRIPT_HASH_AFTER" ] && [ "$SCRIPT_HASH_BEFORE" != "$SCRIPT_HASH_AFTER" ]; then
+    echo ""
+    info "Скрипт обновления изменился — перезапуск с новой версией..."
+    exec bash "$INSTALL_DIR/install.sh"
+  fi
+
   info "Установка зависимостей..."
   npm ci --loglevel=error 2>&1
 
-  info "Сборка..."
+  info "Сборка T-POS..."
   npm run build 2>&1
 
   info "Сборка Wallet..."
@@ -361,12 +376,12 @@ if [ "$MODE" = "update" ]; then
   info "Проверка .env..."
 
   ensure_env_key "$INSTALL_DIR/.env" "CLIENT_BOT_TOKEN" \
-    "Telegram Bot Token для клиентского кошелька" "" "true" || true
+    "Telegram Bot Token для клиентского кошелька" "" "true"
 
   ensure_env_key "$INSTALL_DIR/.env" "WALLET_DOMAIN" \
-    "Домен для клиентского кошелька" "$DEFAULT_WALLET_DOMAIN" "false" || true
+    "Домен для клиентского кошелька" "$DEFAULT_WALLET_DOMAIN" "false"
 
-  WALLET_DOMAIN=$(read_env_value "$INSTALL_DIR/.env" "WALLET_DOMAIN")
+  WALLET_DOMAIN=$(read_env_value "$INSTALL_DIR/.env" "WALLET_DOMAIN") || true
   WALLET_DOMAIN="${WALLET_DOMAIN:-$DEFAULT_WALLET_DOMAIN}"
 
   # ── Services ──
@@ -402,12 +417,12 @@ if [ "$MODE" = "update" ]; then
 
   if [ ! -f "$WALLET_NGINX_CONF" ]; then
     echo ""
-    info "Настройка nginx для клиентского кошелька..."
+    info "Настройка nginx для ${WALLET_DOMAIN}..."
     setup_wallet_nginx "$WALLET_DOMAIN" "$INSTALL_DIR"
   else
-    local_current_wallet_domain=$(grep 'server_name' "$WALLET_NGINX_CONF" 2>/dev/null | head -1 | awk '{print $2}' | tr -d ';')
-    if [ "$local_current_wallet_domain" != "$WALLET_DOMAIN" ] && [ -n "$WALLET_DOMAIN" ]; then
-      info "Обновление домена wallet: ${local_current_wallet_domain} → ${WALLET_DOMAIN}"
+    local_current=$(extract_server_name "$WALLET_NGINX_CONF")
+    if [ -n "$WALLET_DOMAIN" ] && [ "$local_current" != "$WALLET_DOMAIN" ]; then
+      info "Обновление домена wallet: ${local_current} → ${WALLET_DOMAIN}"
       setup_wallet_nginx "$WALLET_DOMAIN" "$INSTALL_DIR"
     fi
   fi
@@ -418,37 +433,39 @@ if [ "$MODE" = "update" ]; then
 
   echo ""
 
-  # Main domain SSL
   if [ -f "$NGINX_CONF" ] && ! grep -q 'ssl_certificate' "$NGINX_CONF" 2>/dev/null; then
-    warn "SSL для основного домена не настроен"
-    echo -ne "${BOLD}Выпустить SSL-сертификат для основного домена? (y/n): ${NC}"
-    read -r yn
+    DOMAIN=$(extract_server_name "$NGINX_CONF")
+    warn "SSL для ${DOMAIN} не настроен"
+    echo -ne "${BOLD}Выпустить SSL-сертификат для ${DOMAIN}? (y/n): ${NC}"
+    read -r yn || true
     if [ "$yn" = "y" ] || [ "$yn" = "Y" ]; then
-      DOMAIN=$(grep 'server_name' "$NGINX_CONF" | head -1 | awk '{print $2}' | tr -d ';')
-      EMAIL=""
-      echo -ne "${BOLD}Email для certbot: ${NC}"
-      read -r EMAIL
-      if [ -n "$EMAIL" ] && [ -n "$DOMAIN" ]; then
-        setup_ssl "$DOMAIN" "$EMAIL"
+      SSL_EMAIL=$(get_certbot_email)
+      if [ -z "$SSL_EMAIL" ]; then
+        echo -ne "${BOLD}Email для certbot: ${NC}"
+        read -r SSL_EMAIL || true
+      else
+        info "Используем email: ${SSL_EMAIL}"
+      fi
+      if [ -n "$SSL_EMAIL" ] && [ -n "$DOMAIN" ]; then
+        setup_ssl "$DOMAIN" "$SSL_EMAIL"
       fi
     fi
   fi
 
-  # Wallet domain SSL
   if [ -f "$WALLET_NGINX_CONF" ] && ! grep -q 'ssl_certificate' "$WALLET_NGINX_CONF" 2>/dev/null; then
     warn "SSL для ${WALLET_DOMAIN} не настроен"
     echo -ne "${BOLD}Выпустить SSL-сертификат для ${WALLET_DOMAIN}? (y/n): ${NC}"
-    read -r yn
+    read -r yn || true
     if [ "$yn" = "y" ] || [ "$yn" = "Y" ]; then
-      CB_EMAIL=$(get_certbot_email)
-      if [ -z "$CB_EMAIL" ]; then
+      SSL_EMAIL=$(get_certbot_email)
+      if [ -z "$SSL_EMAIL" ]; then
         echo -ne "${BOLD}Email для certbot: ${NC}"
-        read -r CB_EMAIL
+        read -r SSL_EMAIL || true
       else
-        info "Используем email из certbot: ${CB_EMAIL}"
+        info "Используем email: ${SSL_EMAIL}"
       fi
-      if [ -n "$CB_EMAIL" ]; then
-        setup_ssl "$WALLET_DOMAIN" "$CB_EMAIL"
+      if [ -n "$SSL_EMAIL" ]; then
+        setup_ssl "$WALLET_DOMAIN" "$SSL_EMAIL"
       fi
     fi
   fi
@@ -520,7 +537,7 @@ done
 
 CLIENT_TG_TOKEN=""
 echo -ne "${BOLD}  Client Bot Token (для TITAN Wallet, Enter — пропустить): ${NC}"
-read -rs CLIENT_TG_TOKEN
+read -rs CLIENT_TG_TOKEN || true
 echo ""
 
 echo ""
@@ -528,12 +545,12 @@ info "Клиентский кошелёк:"
 
 WALLET_DOMAIN=""
 echo -ne "${BOLD}  Домен для кошелька [${DEFAULT_WALLET_DOMAIN}]: ${NC}"
-read -r WALLET_DOMAIN
+read -r WALLET_DOMAIN || true
 WALLET_DOMAIN="${WALLET_DOMAIN:-$DEFAULT_WALLET_DOMAIN}"
 
 echo ""
 echo -ne "${BOLD}Директория установки [${DEFAULT_DIR}]: ${NC}"
-read -r INSTALL_DIR
+read -r INSTALL_DIR || true
 INSTALL_DIR="${INSTALL_DIR:-$DEFAULT_DIR}"
 
 echo ""
