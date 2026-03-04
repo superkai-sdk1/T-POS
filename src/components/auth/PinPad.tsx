@@ -78,39 +78,50 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center p-4 bg-[var(--tg-theme-bg-color,#0f0f23)]"
+      className="min-h-screen flex flex-col items-center justify-center p-4 bg-[var(--c-bg)] relative overflow-hidden"
       style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)' }}
     >
+      <div className="absolute inset-0 pointer-events-none" aria-hidden>
+        <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full opacity-[0.04]"
+          style={{ background: 'radial-gradient(circle, #6c5ce7, transparent 70%)' }} />
+      </div>
+
       {onBack && (
         <button
           onClick={onBack}
-          className="absolute p-2 rounded-xl text-white/40 hover:text-white/70 hover:bg-white/5 transition-all duration-150"
+          className="absolute p-2 rounded-xl text-white/40 hover:text-white/70 hover:bg-white/5 transition-all duration-150 z-10"
           style={{ top: 'calc(var(--safe-top) + 1rem)', left: '1rem' }}
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
       )}
 
-      <div className="flex flex-col items-center w-full max-w-xs animate-fade-in">
-        <div className="card p-6 w-full flex flex-col items-center gap-5">
+      <div className="flex flex-col items-center w-full max-w-xs animate-fade-in relative z-10">
+        <div className="w-10 h-10 rounded-xl mb-5 flex items-center justify-center"
+          style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', boxShadow: '0 4px 16px rgba(108,92,231,0.3)' }}>
+          <span className="text-sm font-black text-white">T</span>
+        </div>
+
+        <div className="card p-6 w-full flex flex-col items-center gap-5" style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}>
           <div className="text-center">
-            <h1 className="text-xl font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
+            <h1 className="text-xl font-bold text-[var(--c-text)]">
               {displayTitle}
             </h1>
             {displaySubtitle && (
-              <p className="text-[10px] text-[var(--tg-theme-hint-color,#888)] mt-0.5">{displaySubtitle}</p>
+              <p className="text-[10px] text-[var(--c-hint)] mt-0.5">{displaySubtitle}</p>
             )}
           </div>
 
-          <div className={`flex gap-3 ${shake ? 'animate-shake' : ''}`}>
+          <div className={`flex gap-3.5 ${shake ? 'animate-shake' : ''}`}>
             {[0, 1, 2, 3].map((i) => (
               <div
                 key={i}
-                className={`w-3 h-3 rounded-full transition-all duration-150 ${
+                className={`w-3.5 h-3.5 rounded-full transition-all duration-200 ${
                   pin.length > i
-                    ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] scale-110'
-                    : 'bg-white/15'
+                    ? 'scale-110'
+                    : 'bg-white/10'
                 }`}
+                style={pin.length > i ? { background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', boxShadow: '0 0 8px rgba(108,92,231,0.4)' } : undefined}
               />
             ))}
           </div>
@@ -141,7 +152,7 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
                   key={i}
                   onClick={() => handleDigit(key)}
                   disabled={isLoading}
-                  className="w-14 h-14 rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/15 text-xl font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] transition-all duration-150 active:scale-90 disabled:opacity-50"
+                  className="w-14 h-14 rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/15 text-xl font-semibold text-[var(--c-text)] transition-all duration-150 active:scale-90 disabled:opacity-50"
                 >
                   {key}
                 </button>
@@ -150,7 +161,7 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
           </div>
 
           {isLoading && (
-            <div className="flex items-center gap-2 text-[var(--tg-theme-hint-color,#888)]">
+            <div className="flex items-center gap-2 text-[var(--c-hint)]">
               <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
               <span className="text-[13px]">Проверка...</span>
             </div>

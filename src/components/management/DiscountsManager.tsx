@@ -136,7 +136,7 @@ export function DiscountsManager() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-[var(--tg-theme-hint-color,#888)]">
+        <p className="text-sm text-[var(--c-hint)]">
           {discounts.length} скидок
         </p>
         <Button size="md" onClick={openNew}>
@@ -148,7 +148,7 @@ export function DiscountsManager() {
       {discounts.length === 0 ? (
         <div className="text-center py-12">
           <Percent className="w-10 h-10 text-white/8 mx-auto mb-3" />
-          <p className="text-sm text-[var(--tg-theme-hint-color,#888)]">Нет скидок</p>
+          <p className="text-sm text-[var(--c-hint)]">Нет скидок</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -172,7 +172,7 @@ export function DiscountsManager() {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
+                <p className="font-semibold text-[13px] text-[var(--c-text)] truncate">
                   {d.name}
                 </p>
                 <div className="flex items-center gap-1 mt-0.5 flex-wrap">
@@ -243,12 +243,12 @@ export function DiscountsManager() {
                   onClick={() => setType(t)}
                   className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all active:scale-[0.97] ${
                     type === t
-                      ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/15 border-[var(--tg-theme-button-color,#6c5ce7)]/30'
+                      ? 'bg-[var(--c-accent)]/15 border-[var(--c-accent)]/30'
                       : 'bg-white/3 border-white/8'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${type === t ? 'text-[var(--tg-theme-button-color,#6c5ce7)]' : 'text-white/30'}`} />
-                  <span className={`text-[13px] font-medium ${type === t ? 'text-[var(--tg-theme-text-color,#e0e0e0)]' : 'text-white/40'}`}>
+                  <Icon className={`w-4 h-4 ${type === t ? 'text-[var(--c-accent)]' : 'text-white/30'}`} />
+                  <span className={`text-[13px] font-medium ${type === t ? 'text-[var(--c-text)]' : 'text-white/40'}`}>
                     {label}
                   </span>
                 </button>
@@ -285,7 +285,7 @@ export function DiscountsManager() {
               {selectedItemId ? (
                 <div className="flex items-center gap-2 p-2 rounded-xl card">
                   <Package className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span className="text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] truncate flex-1">{selectedItemName}</span>
+                  <span className="text-[13px] text-[var(--c-text)] truncate flex-1">{selectedItemName}</span>
                   <button onClick={clearItem} className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 shrink-0">
                     <Trash2 className="w-3 h-3 text-white/40" />
                   </button>
@@ -325,7 +325,7 @@ export function DiscountsManager() {
               placeholder="Поиск..."
               value={itemSearch}
               onChange={(e) => setItemSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/5 border border-white/6 text-sm text-[var(--tg-theme-text-color,#e0e0e0)] placeholder:text-white/15 focus:outline-none focus:border-[var(--tg-theme-button-color,#6c5ce7)]/25 transition-colors"
+              className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/5 border border-white/6 text-sm text-[var(--c-text)] placeholder:text-white/15 focus:outline-none focus:border-[var(--c-accent)]/25 transition-colors"
               autoFocus
             />
           </div>
@@ -344,7 +344,7 @@ export function DiscountsManager() {
                   )}
                 </div>
                 <div className="text-left flex-1 min-w-0">
-                  <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{item.name}</p>
+                  <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{item.name}</p>
                   <p className="text-[11px] text-white/30 tabular-nums">{item.price}₽</p>
                 </div>
               </button>

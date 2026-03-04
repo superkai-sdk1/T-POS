@@ -42,8 +42,8 @@ export function InventoryPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">Остатки</h2>
-          <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">{items.length} позиций</p>
+          <h2 className="text-lg font-bold text-[var(--c-text)]">Остатки</h2>
+          <p className="text-xs text-[var(--c-hint)]">{items.length} позиций</p>
         </div>
       </div>
 
@@ -90,7 +90,7 @@ export function InventoryPage() {
                   <Package className={`w-5 h-5 ${isCritical ? 'text-red-400' : 'text-white/50'}`} />
                 </div>
                 <div>
-                  <p className="font-medium text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">
+                  <p className="font-medium text-[13px] text-[var(--c-text)]">
                     {item.name}
                   </p>
                   <div className="flex gap-2 mt-0.5">
@@ -100,11 +100,11 @@ export function InventoryPage() {
                 </div>
               </div>
               <div className="text-right">
-                <p className={`text-lg font-bold ${isCritical ? 'text-red-400' : 'text-[var(--tg-theme-text-color,#e0e0e0)]'}`}>
+                <p className={`text-lg font-bold ${isCritical ? 'text-red-400' : 'text-[var(--c-text)]'}`}>
                   {item.stock_quantity}
                 </p>
                 {item.min_threshold > 0 && (
-                  <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">
+                  <p className="text-xs text-[var(--c-hint)]">
                     мин: {item.min_threshold}
                   </p>
                 )}

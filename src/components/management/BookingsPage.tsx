@@ -158,7 +158,7 @@ export function BookingsPage() {
               }`}
             >
               {(() => { const Icon = spaceIconMap[s.type] || DoorOpen; return <Icon className="w-6 h-6 text-indigo-400 mb-1" />; })()}
-              <p className="text-xs font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{s.name}</p>
+              <p className="text-xs font-bold text-[var(--c-text)]">{s.name}</p>
               <p className="text-[10px] text-white/30 mt-0.5">
                 {s.hourly_rate ? `${s.hourly_rate}₽/ч` : 'Своя цена'}
               </p>
@@ -184,7 +184,7 @@ export function BookingsPage() {
       {filteredBookings.length === 0 ? (
         <div className="text-center py-10">
           <DoorOpen className="w-10 h-10 text-white/8 mx-auto mb-3" />
-          <p className="text-sm text-[var(--tg-theme-hint-color,#888)]">Нет бронирований на эту дату</p>
+          <p className="text-sm text-[var(--c-hint)]">Нет бронирований на эту дату</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -194,7 +194,7 @@ export function BookingsPage() {
                 <div className="flex items-center gap-2">
                   {(() => { const Icon = spaceIconMap[b.space?.type || ''] || DoorOpen; return <Icon className="w-5 h-5 text-indigo-400 shrink-0" />; })()}
                   <div>
-                    <p className="text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
+                    <p className="text-sm font-bold text-[var(--c-text)]">
                       {b.space?.name || 'Пространство'}
                     </p>
                     <p className="text-[10px] text-white/30">
@@ -204,7 +204,7 @@ export function BookingsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={statusVariants[b.status]}>{statusLabels[b.status]}</Badge>
-                  <span className="font-bold text-sm text-[var(--tg-theme-button-color,#6c5ce7)] tabular-nums">{fmtCur(b.rental_amount)}</span>
+                  <span className="font-bold text-sm text-[var(--c-accent)] tabular-nums">{fmtCur(b.rental_amount)}</span>
                 </div>
               </div>
               {b.client && (
@@ -239,7 +239,7 @@ export function BookingsPage() {
         <div className="space-y-4">
           {!selectedSpace && (
             <div>
-              <p className="text-xs font-medium text-[var(--tg-theme-hint-color,#888)] mb-2">Выберите пространство</p>
+              <p className="text-xs font-medium text-[var(--c-hint)] mb-2">Выберите пространство</p>
               <div className="grid grid-cols-3 gap-2">
                 {spaces.map((s) => (
                   <button
@@ -248,7 +248,7 @@ export function BookingsPage() {
                     className="p-3 rounded-xl bg-white/5 border border-white/5 text-center hover:bg-white/8 transition-all active:scale-95"
                   >
                     {(() => { const Icon = spaceIconMap[s.type] || DoorOpen; return <Icon className="w-5 h-5 text-indigo-400 mb-1" />; })()}
-                    <p className="text-xs font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">{s.name}</p>
+                    <p className="text-xs font-medium text-[var(--c-text)]">{s.name}</p>
                   </button>
                 ))}
               </div>
@@ -259,7 +259,7 @@ export function BookingsPage() {
               <div className="p-3 rounded-xl glass flex items-center gap-2">
                 {(() => { const Icon = spaceIconMap[selectedSpace.type] || DoorOpen; return <Icon className="w-5 h-5 text-indigo-400 shrink-0" />; })()}
                 <div>
-                  <p className="text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{selectedSpace.name}</p>
+                  <p className="text-sm font-bold text-[var(--c-text)]">{selectedSpace.name}</p>
                   <p className="text-[10px] text-white/30">
                     {selectedSpace.hourly_rate ? `${selectedSpace.hourly_rate}₽/ч · авто-расчет` : 'Ручной ввод суммы'}
                   </p>
@@ -285,11 +285,11 @@ export function BookingsPage() {
               />
 
               <div>
-                <p className="text-xs font-medium text-[var(--tg-theme-hint-color,#888)] mb-2">Клиент (необязательно)</p>
+                <p className="text-xs font-medium text-[var(--c-hint)] mb-2">Клиент (необязательно)</p>
                 {selectedClient ? (
                   <div className="flex items-center gap-2 p-2.5 rounded-xl glass">
-                    <User className="w-4 h-4 text-[var(--tg-theme-button-color,#6c5ce7)]" />
-                    <span className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">{selectedClient.nickname}</span>
+                    <User className="w-4 h-4 text-[var(--c-accent)]" />
+                    <span className="text-sm font-medium text-[var(--c-text)]">{selectedClient.nickname}</span>
                     <button onClick={() => setSelectedClient(null)} className="ml-auto w-6 h-6 rounded bg-white/5 flex items-center justify-center active:scale-90">
                       <X className="w-3 h-3 text-white/30" />
                     </button>
@@ -301,7 +301,7 @@ export function BookingsPage() {
                       <div className="space-y-1 mt-2 max-h-32 overflow-y-auto">
                         {clients.map((c) => (
                           <button key={c.id} onClick={() => { setSelectedClient(c); setClients([]); setClientSearch(''); }}
-                            className="w-full flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/8 text-sm text-[var(--tg-theme-text-color,#e0e0e0)] transition-all active:scale-[0.98]"
+                            className="w-full flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/8 text-sm text-[var(--c-text)] transition-all active:scale-[0.98]"
                           >
                             <User className="w-4 h-4 text-white/30" />
                             {c.nickname}

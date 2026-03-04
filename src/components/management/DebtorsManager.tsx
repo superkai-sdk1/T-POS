@@ -97,7 +97,7 @@ export function DebtorsManager() {
   if (isLoading) {
     return (
       <div className="text-center py-16">
-        <div className="w-8 h-8 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-8 h-8 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
       </div>
     );
   }
@@ -121,7 +121,7 @@ export function DebtorsManager() {
       {debtors.length === 0 ? (
         <div className="text-center py-12">
           <Wallet className="w-16 h-16 text-white/5 mx-auto mb-4" />
-          <p className="text-[var(--tg-theme-hint-color,#888)]">Нет должников</p>
+          <p className="text-[var(--c-hint)]">Нет должников</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -135,7 +135,7 @@ export function DebtorsManager() {
                 <User className="w-5 h-5 text-red-400" />
               </div>
               <div className="flex-1 min-w-0 text-left">
-                <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{d.nickname}</p>
+                <p className="font-semibold text-[13px] text-[var(--c-text)] truncate">{d.nickname}</p>
                 {d.is_resident && <span className="text-[10px] text-emerald-400">Резидент</span>}
               </div>
               <span className="text-lg font-bold text-red-400 shrink-0">{fmtCur(d.balance)}</span>

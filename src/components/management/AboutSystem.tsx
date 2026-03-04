@@ -141,12 +141,12 @@ export function AboutSystem() {
     <div className="space-y-5">
       {/* Logo & title */}
       <div className="flex flex-col items-center gap-3 py-4">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)] to-purple-600 flex items-center justify-center shadow-lg shadow-[var(--tg-theme-button-color,#6c5ce7)]/20">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[var(--c-accent)] to-purple-600 flex items-center justify-center shadow-lg shadow-[var(--c-accent)]/20">
           <span className="text-2xl font-black text-white">T</span>
         </div>
         <div className="text-center">
-          <h3 className="text-xl font-black text-[var(--tg-theme-text-color,#e0e0e0)]">T-POS</h3>
-          <p className="text-xs text-[var(--tg-theme-hint-color,#888)] mt-0.5">Система автоматизации клуба «Титан»</p>
+          <h3 className="text-xl font-black text-[var(--c-text)]">T-POS</h3>
+          <p className="text-xs text-[var(--c-hint)] mt-0.5">Система автоматизации клуба «Титан»</p>
         </div>
       </div>
 
@@ -170,17 +170,17 @@ export function AboutSystem() {
           <div className="grid grid-cols-2 gap-2">
             <div className="p-3 rounded-xl card space-y-1">
               <div className="flex items-center gap-1.5">
-                <Code2 className="w-3.5 h-3.5 text-[var(--tg-theme-button-color,#6c5ce7)]" />
+                <Code2 className="w-3.5 h-3.5 text-[var(--c-accent)]" />
                 <span className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">Версия</span>
               </div>
-              <p className="text-lg font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{info.version}</p>
+              <p className="text-lg font-black text-[var(--c-text)] tabular-nums">{info.version}</p>
             </div>
             <div className="p-3 rounded-xl card space-y-1">
               <div className="flex items-center gap-1.5">
                 <GitBranch className="w-3.5 h-3.5 text-emerald-400" />
                 <span className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">Ветка</span>
               </div>
-              <p className="text-lg font-black text-[var(--tg-theme-text-color,#e0e0e0)]">{info.git.branch}</p>
+              <p className="text-lg font-black text-[var(--c-text)]">{info.git.branch}</p>
             </div>
           </div>
 
@@ -188,8 +188,8 @@ export function AboutSystem() {
             <Clock className="w-4 h-4 text-white/30 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">Последний коммит</p>
-              <p className="text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">
-                <span className="font-mono text-[var(--tg-theme-button-color,#6c5ce7)]">{info.git.hash}</span>
+              <p className="text-[13px] text-[var(--c-text)]">
+                <span className="font-mono text-[var(--c-accent)]">{info.git.hash}</span>
                 <span className="text-white/25 mx-1.5">·</span>
                 {fmtDate(info.git.date)}
               </p>
@@ -200,7 +200,7 @@ export function AboutSystem() {
             <Server className="w-4 h-4 text-white/30 shrink-0" />
             <div className="flex-1">
               <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">Node.js</p>
-              <p className="text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">{info.nodeVersion}</p>
+              <p className="text-[13px] text-[var(--c-text)]">{info.nodeVersion}</p>
             </div>
           </div>
 
@@ -244,7 +244,7 @@ export function AboutSystem() {
           {/* Progress bar */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">
+              <span className="text-xs font-semibold text-[var(--c-text)]">
                 {status === 'complete' ? 'Готово' : status === 'error' ? 'Ошибка' : stepLabel}
               </span>
               <span className="text-[11px] font-bold tabular-nums text-white/40">
@@ -254,7 +254,7 @@ export function AboutSystem() {
             <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
-                  status === 'error' ? 'bg-red-500' : status === 'complete' ? 'bg-emerald-500' : 'bg-[var(--tg-theme-button-color,#6c5ce7)]'
+                  status === 'error' ? 'bg-red-500' : status === 'complete' ? 'bg-emerald-500' : 'bg-[var(--c-accent)]'
                 }`}
                 style={{ width: `${status === 'complete' ? 100 : progressPct}%` }}
               />
@@ -269,7 +269,7 @@ export function AboutSystem() {
               return (
                 <div key={i} className="flex-1 flex items-center gap-1.5">
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
-                    done ? 'bg-emerald-500' : active ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]' : 'bg-white/5'
+                    done ? 'bg-emerald-500' : active ? 'bg-[var(--c-accent)]' : 'bg-white/5'
                   }`}>
                     {done ? (
                       <CheckCircle className="w-3 h-3 text-white" />
@@ -279,7 +279,7 @@ export function AboutSystem() {
                       <span className="text-[9px] font-bold text-white/30">{i + 1}</span>
                     )}
                   </div>
-                  <span className={`text-[10px] font-medium truncate ${done ? 'text-emerald-400' : active ? 'text-[var(--tg-theme-text-color,#e0e0e0)]' : 'text-white/20'}`}>
+                  <span className={`text-[10px] font-medium truncate ${done ? 'text-emerald-400' : active ? 'text-[var(--c-text)]' : 'text-white/20'}`}>
                     {i === 0 ? 'Git' : i === 1 ? 'npm' : 'Build'}
                   </span>
                 </div>
@@ -292,7 +292,7 @@ export function AboutSystem() {
             <div className="space-y-0.5 font-mono text-[10px] leading-relaxed">
               {logs.filter((l) => l.type !== 'step' || l.label).map((log, i) => (
                 <div key={i} className={
-                  log.type === 'step' ? 'text-[var(--tg-theme-button-color,#6c5ce7)] font-semibold pt-1' :
+                  log.type === 'step' ? 'text-[var(--c-accent)] font-semibold pt-1' :
                   log.type === 'step_done' ? 'text-emerald-400' :
                   log.type === 'error' ? 'text-red-400' :
                   log.type === 'complete' ? 'text-emerald-400 font-semibold' :
@@ -346,7 +346,7 @@ export function AboutSystem() {
             <span className="text-sm font-bold text-violet-400">K</span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">Kai Michaelson</p>
+            <p className="text-[13px] font-semibold text-[var(--c-text)]">Kai Michaelson</p>
             <p className="text-[11px] text-white/30">Full-stack developer</p>
           </div>
           <a
@@ -364,7 +364,7 @@ export function AboutSystem() {
             <GitBranch className="w-4 h-4 text-white/30" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">GitHub</p>
+            <p className="text-[13px] font-semibold text-[var(--c-text)]">GitHub</p>
             <p className="text-[11px] text-white/30 truncate">superkai-sdk1/T-POS</p>
           </div>
           <a

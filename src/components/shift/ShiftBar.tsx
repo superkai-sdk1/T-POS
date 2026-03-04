@@ -188,7 +188,7 @@ export function ShiftBar() {
             <div className="space-y-2 stagger-children">
               <div className="grid grid-cols-3 gap-1.5">
                 <div className="p-2.5 rounded-xl card text-center">
-                  <p className="text-base font-black text-[var(--tg-theme-button-color,#6c5ce7)] tabular-nums">{analytics.totalChecks}</p>
+                  <p className="text-base font-black text-[var(--c-accent)] tabular-nums">{analytics.totalChecks}</p>
                   <p className="text-[9px] text-white/25 font-semibold">Чеков</p>
                 </div>
                 <div className="p-2.5 rounded-xl card text-center">
@@ -207,7 +207,7 @@ export function ShiftBar() {
                   {Object.entries(analytics.paymentBreakdown).map(([method, val]) => (
                     <div key={method} className="flex justify-between text-[13px]">
                       <span className="text-white/35">{pmLabel(method)} ({val.count})</span>
-                      <span className="font-bold text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(val.amount)}</span>
+                      <span className="font-bold text-[var(--c-text)] tabular-nums">{fmtCur(val.amount)}</span>
                     </div>
                   ))}
                 </div>

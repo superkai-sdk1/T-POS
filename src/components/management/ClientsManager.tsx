@@ -217,7 +217,7 @@ export function ClientsManager() {
   if (isLoading) {
     return (
       <div className="text-center py-20">
-        <div className="w-8 h-8 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-8 h-8 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
       </div>
     );
   }
@@ -226,8 +226,8 @@ export function ClientsManager() {
     <div className="space-y-4">
       {/* Stats */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="p-3 rounded-xl bg-[var(--tg-theme-button-color,#6c5ce7)]/10 text-center">
-          <p className="text-lg font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">{clients.length}</p>
+        <div className="p-3 rounded-xl bg-[var(--c-accent)]/10 text-center">
+          <p className="text-lg font-bold text-[var(--c-accent)]">{clients.length}</p>
           <p className="text-[10px] text-white/40">Всего</p>
         </div>
         <div className="p-3 rounded-xl bg-emerald-500/10 text-center">
@@ -235,7 +235,7 @@ export function ClientsManager() {
           <p className="text-[10px] text-white/40">Резиденты</p>
         </div>
         <div className="p-3 rounded-xl card text-center">
-          <p className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{clients.length - totalResidents}</p>
+          <p className="text-lg font-bold text-[var(--c-text)]">{clients.length - totalResidents}</p>
           <p className="text-[10px] text-white/40">Гости</p>
         </div>
       </div>
@@ -247,7 +247,7 @@ export function ClientsManager() {
           <input
             type="text"
             placeholder="Имя или телефон..."
-            className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] placeholder:text-white/30"
+            className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-white/30"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -265,7 +265,7 @@ export function ClientsManager() {
               key={key}
               onClick={() => setFilter(key)}
               className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
-                filter === key ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white shadow' : 'text-white/50'
+                filter === key ? 'bg-[var(--c-accent)] text-white shadow' : 'text-white/50'
               }`}
             >
               {label}
@@ -284,7 +284,7 @@ export function ClientsManager() {
           {linkRequests.map((req) => (
             <div key={req.id} className="flex items-center gap-3 p-2.5 rounded-xl card border-sky-500/20">
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">
+                <p className="text-[13px] font-medium text-[var(--c-text)]">
                   {req.tg_first_name || 'Пользователь'}
                   {req.tg_username && <span className="text-sky-400/60 ml-1.5">@{req.tg_username}</span>}
                 </p>
@@ -330,7 +330,7 @@ export function ClientsManager() {
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5">
-                <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{client.nickname}</p>
+                <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{client.nickname}</p>
                 {client.birthday && isBirthdaySoon(client.birthday) && (
                   <Cake className="w-3.5 h-3.5 text-pink-400 shrink-0" />
                 )}
@@ -364,7 +364,7 @@ export function ClientsManager() {
         {filtered.length === 0 && (
           <div className="text-center py-12">
             <User className="w-12 h-12 text-white/5 mx-auto mb-3" />
-            <p className="text-[var(--tg-theme-hint-color,#888)]">
+            <p className="text-[var(--c-hint)]">
               {search ? 'Никого не найдено' : 'Нет клиентов'}
             </p>
           </div>
@@ -390,7 +390,7 @@ export function ClientsManager() {
                 )}
               </div>
               <div className="text-center">
-                <p className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{detailClient.nickname}</p>
+                <p className="text-lg font-bold text-[var(--c-text)]">{detailClient.nickname}</p>
                 {detailClient.client_tier === 'resident' && <Badge variant="success" size="sm">Резидент</Badge>}
                 {detailClient.client_tier === 'student' && <Badge variant="accent" size="sm">Студент</Badge>}
               </div>
@@ -412,7 +412,7 @@ export function ClientsManager() {
                   <Phone className="w-4 h-4 text-white/40" />
                   <div className="flex-1">
                     <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">Телефон</p>
-                    <p className="text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">{detailClient.phone}</p>
+                    <p className="text-[13px] text-[var(--c-text)]">{detailClient.phone}</p>
                   </div>
                 </div>
               )}
@@ -421,7 +421,7 @@ export function ClientsManager() {
                   <Calendar className="w-4 h-4 text-white/40" />
                   <div className="flex-1">
                     <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">День рождения</p>
-                    <p className="text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">
+                    <p className="text-[13px] text-[var(--c-text)]">
                       {formatBirthday(detailClient.birthday)}
                       <span className="text-white/30 ml-2">({getAge(detailClient.birthday)} лет)</span>
                     </p>
@@ -436,7 +436,7 @@ export function ClientsManager() {
                 </div>
                 <div className="p-2.5 rounded-xl card text-center">
                   <CreditCard className="w-4 h-4 text-white/40 mx-auto mb-1" />
-                  <p className={`text-lg font-bold ${detailClient.balance < 0 ? 'text-red-400' : 'text-[var(--tg-theme-text-color,#e0e0e0)]'}`}>
+                  <p className={`text-lg font-bold ${detailClient.balance < 0 ? 'text-red-400' : 'text-[var(--c-text)]'}`}>
                     {detailClient.balance}₽
                   </p>
                   <p className="text-[10px] text-white/40">Баланс</p>
@@ -496,7 +496,7 @@ export function ClientsManager() {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
-              className="text-xs text-[var(--tg-theme-button-color,#6c5ce7)] font-medium"
+              className="text-xs text-[var(--c-accent)] font-medium"
             >
               {isUploading ? 'Загрузка...' : form.photo_url ? 'Изменить фото' : 'Загрузить фото'}
             </button>
@@ -552,7 +552,7 @@ export function ClientsManager() {
                   onClick={() => updateField('client_tier', key)}
                   className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${
                     form.client_tier === key
-                      ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/10 border border-[var(--tg-theme-button-color,#6c5ce7)]/30 text-[var(--tg-theme-button-color,#6c5ce7)]'
+                      ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/30 text-[var(--c-accent)]'
                       : 'card border border-white/6 text-white/50'
                   }`}
                 >
@@ -588,7 +588,7 @@ export function ClientsManager() {
                 )}
               </div>
               <div>
-                <p className="text-[13px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">{deleteTarget.nickname}</p>
+                <p className="text-[13px] font-semibold text-[var(--c-text)]">{deleteTarget.nickname}</p>
                 <p className="text-xs text-red-400">Все данные будут утеряны</p>
               </div>
             </div>

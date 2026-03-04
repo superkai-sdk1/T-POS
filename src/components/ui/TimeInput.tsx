@@ -39,14 +39,14 @@ export function TimeInput({ label, value, onChange, className = '' }: TimeInputP
   return (
     <div className={`w-full ${className}`}>
       {label && (
-        <label className="block text-xs font-semibold text-[var(--tg-theme-hint-color,#888)] mb-1.5 uppercase tracking-wide">
+        <label className="block text-xs font-semibold text-[var(--c-hint)] mb-1.5 uppercase tracking-wide">
           {label}
         </label>
       )}
       <div
         className={`flex items-center gap-0.5 px-4 py-3 rounded-xl bg-white/5 border transition-all duration-200 ${
           focused
-            ? 'border-[var(--tg-theme-button-color,#6c5ce7)]/30 ring-2 ring-[var(--tg-theme-button-color,#6c5ce7)]/40 bg-white/8'
+            ? 'border-[var(--c-accent)]/30 ring-2 ring-[var(--c-accent)]/40 bg-white/8'
             : 'border-white/8'
         }`}
       >
@@ -61,7 +61,7 @@ export function TimeInput({ label, value, onChange, className = '' }: TimeInputP
           onChange={(e) => handleH(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          className="w-7 bg-transparent text-center text-[var(--tg-theme-text-color,#e0e0e0)] font-medium placeholder:text-white/20 focus:outline-none tabular-nums"
+          className="w-7 bg-transparent text-center text-[var(--c-text)] font-medium placeholder:text-white/20 focus:outline-none tabular-nums"
         />
         <span className="text-white/30 font-bold">:</span>
         <input
@@ -75,7 +75,7 @@ export function TimeInput({ label, value, onChange, className = '' }: TimeInputP
           onKeyDown={handleMKey}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          className="w-7 bg-transparent text-center text-[var(--tg-theme-text-color,#e0e0e0)] font-medium placeholder:text-white/20 focus:outline-none tabular-nums"
+          className="w-7 bg-transparent text-center text-[var(--c-text)] font-medium placeholder:text-white/20 focus:outline-none tabular-nums"
         />
       </div>
     </div>

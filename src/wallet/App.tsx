@@ -2,8 +2,12 @@ import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { getTelegramWebApp, initTelegramApp } from '@/lib/telegram';
 
+const supabaseUrl = import.meta.env.PROD
+  ? `${window.location.origin}/sb`
+  : (import.meta.env.VITE_SUPABASE_URL as string);
+
 const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL as string,
+  supabaseUrl,
   import.meta.env.VITE_SUPABASE_ANON_KEY as string
 );
 
@@ -127,7 +131,7 @@ export function WalletApp() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
             </svg>
           </div>
-          <p className="text-[var(--tg-theme-hint-color,#888)] text-sm">{error}</p>
+          <p className="text-white/40 text-sm">{error}</p>
         </div>
       </div>
     );

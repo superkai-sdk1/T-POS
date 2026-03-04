@@ -4,7 +4,7 @@ import { getTelegramWebApp } from '@/lib/telegram';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { PinPad } from './PinPad';
-import { Shield, MessageCircle, LogIn } from 'lucide-react';
+import { MessageCircle, LogIn } from 'lucide-react';
 
 export function LoginPage() {
   const {
@@ -61,19 +61,27 @@ export function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4 bg-[var(--tg-theme-bg-color,#0f0f23)]"
+      className="min-h-screen flex items-center justify-center p-4 bg-[var(--c-bg)] relative overflow-hidden"
       style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)' }}
     >
-      <div className="w-full max-w-sm animate-fade-in-up">
-        <div className="card p-6 space-y-5">
+      <div className="absolute inset-0 pointer-events-none" aria-hidden>
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full opacity-[0.04]"
+          style={{ background: 'radial-gradient(circle, #6c5ce7, transparent 70%)' }} />
+        <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] rounded-full opacity-[0.03]"
+          style={{ background: 'radial-gradient(circle, #a29bfe, transparent 70%)' }} />
+      </div>
+
+      <div className="w-full max-w-sm animate-fade-in-up relative z-10">
+        <div className="card p-6 space-y-5" style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.25), 0 0 80px rgba(108,92,231,0.06)' }}>
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-[var(--tg-theme-button-color,#6c5ce7)]/20 mb-3">
-              <Shield className="w-7 h-7 text-[var(--tg-theme-button-color,#6c5ce7)]" />
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3 shadow-lg"
+              style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', boxShadow: '0 4px 20px rgba(108,92,231,0.3)' }}>
+              <span className="text-xl font-black text-white tracking-tight">T</span>
             </div>
-            <h1 className="text-2xl font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
+            <h1 className="text-2xl font-bold text-[var(--c-text)]">
               T-POS
             </h1>
-            <p className="text-[10px] text-[var(--tg-theme-hint-color,#888)] mt-0.5">
+            <p className="text-[10px] text-[var(--c-hint)] mt-0.5">
               Клуб спортивной мафии «Титан»
             </p>
           </div>
@@ -134,7 +142,7 @@ export function LoginPage() {
             <div className="flex flex-col items-center gap-1.5 pt-1">
               <button
                 onClick={() => setShowFullLogin(false)}
-                className="text-[13px] text-[var(--tg-theme-button-color,#6c5ce7)] hover:underline"
+                className="text-[13px] text-[var(--c-accent)] hover:underline"
               >
                 Войти по PIN-коду
               </button>

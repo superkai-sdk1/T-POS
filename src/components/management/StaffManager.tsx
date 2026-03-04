@@ -143,7 +143,7 @@ export function StaffManager() {
   if (isLoading) {
     return (
       <div className="text-center py-16">
-        <div className="w-8 h-8 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-8 h-8 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
       </div>
     );
   }
@@ -151,7 +151,7 @@ export function StaffManager() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">
+        <p className="text-xs text-[var(--c-hint)]">
           {staff.filter((s) => s.role === 'owner').length} владельцев · {staff.filter((s) => s.role === 'staff').length} сотрудников
         </p>
         <Button size="sm" onClick={() => { resetForm(); setShowAdd(true); }}>
@@ -175,7 +175,7 @@ export function StaffManager() {
       {filtered.length === 0 && (
         <div className="text-center py-12">
           <Users className="w-16 h-16 text-white/5 mx-auto mb-4" />
-          <p className="text-[var(--tg-theme-hint-color,#888)]">
+          <p className="text-[var(--c-hint)]">
             {staff.length === 0 ? 'Нет сотрудников' : 'Никого не найдено'}
           </p>
         </div>
@@ -191,18 +191,18 @@ export function StaffManager() {
               className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
             >
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                isOwner ? 'bg-amber-500/15' : 'bg-[var(--tg-theme-button-color,#6c5ce7)]/15'
+                isOwner ? 'bg-amber-500/15' : 'bg-[var(--c-accent)]/15'
               }`}>
                 {isOwner ? (
                   <Crown className="w-4.5 h-4.5 text-amber-400" />
                 ) : (
-                  <span className="text-sm font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">
+                  <span className="text-sm font-bold text-[var(--c-accent)]">
                     {p.nickname.charAt(0).toUpperCase()}
                   </span>
                 )}
               </div>
               <div className="text-left flex-1 min-w-0">
-                <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{p.nickname}</p>
+                <p className="font-semibold text-[13px] text-[var(--c-text)] truncate">{p.nickname}</p>
                 <div className="flex gap-1.5 mt-0.5">
                   {isOwner ? (
                     <Badge variant="warning" size="sm">Владелец</Badge>

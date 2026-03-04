@@ -47,7 +47,7 @@ export function ShiftHistory() {
   if (isLoading) {
     return (
       <div className="text-center py-20">
-        <div className="w-8 h-8 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-8 h-8 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
       </div>
     );
   }
@@ -57,7 +57,7 @@ export function ShiftHistory() {
       {shifts.length === 0 ? (
         <div className="text-center py-16">
           <Calendar className="w-16 h-16 text-white/5 mx-auto mb-4" />
-          <p className="text-[var(--tg-theme-hint-color,#888)]">Нет закрытых смен</p>
+          <p className="text-[var(--c-hint)]">Нет закрытых смен</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -69,15 +69,15 @@ export function ShiftHistory() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-xl bg-[var(--tg-theme-button-color,#6c5ce7)]/15 flex items-center justify-center shrink-0">
-                    <Truck className="w-5 h-5 text-[var(--tg-theme-button-color,#6c5ce7)]" />
+                  <div className="w-10 h-10 rounded-xl bg-[var(--c-accent)]/15 flex items-center justify-center shrink-0">
+                    <Truck className="w-5 h-5 text-[var(--c-accent)]" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-[var(--tg-theme-text-color,#e0e0e0)]">
+                      <span className="font-semibold text-sm text-[var(--c-text)]">
                         {fmtDate(s.opened_at)}
                       </span>
-                      <span className="text-xs text-[var(--tg-theme-hint-color,#888)]">
+                      <span className="text-xs text-[var(--c-hint)]">
                         {fmtTime(s.opened_at)} — {s.closed_at ? fmtTime(s.closed_at) : '...'}
                       </span>
                     </div>

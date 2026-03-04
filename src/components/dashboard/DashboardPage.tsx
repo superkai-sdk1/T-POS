@@ -445,7 +445,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
             onClick={() => { setTab(t.id); setDetail(null); }}
             className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap min-w-0 ${
               tab === t.id
-                ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white shadow-sm'
+                ? 'bg-[var(--c-accent)] text-white shadow-sm'
                 : 'text-white/30'
             }`}
           >
@@ -484,13 +484,13 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           <div className="grid grid-cols-3 gap-2">
             <button
               onClick={() => setDetail('revenue')}
-              className="p-3 rounded-xl bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)]/15 to-purple-900/5 card-interactive text-left col-span-1"
+              className="p-3 rounded-xl bg-gradient-to-br from-[var(--c-accent)]/15 to-purple-900/5 card-interactive text-left col-span-1"
             >
               <div className="flex items-center gap-1 mb-1">
                 <ArrowUpRight className="w-3 h-3 text-emerald-400" />
                 <span className="text-[9px] text-white/30 font-semibold uppercase">Доход</span>
               </div>
-              <p className="text-base font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums leading-tight">{fmtCur(stats.month)}</p>
+              <p className="text-base font-black text-[var(--c-text)] tabular-nums leading-tight">{fmtCur(stats.month)}</p>
               {stats.monthGrowth !== 0 && (
                 <span className={`text-[9px] font-bold ${stats.monthGrowth > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                   {stats.monthGrowth > 0 ? '+' : ''}{stats.monthGrowth}%
@@ -513,7 +513,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               className={`p-3 rounded-xl card-interactive text-left col-span-1 ${financials.monthNetIncome >= 0 ? 'bg-emerald-500/5' : 'bg-red-500/5'}`}
             >
               <div className="flex items-center gap-1 mb-1">
-                <Wallet className="w-3 h-3 text-[var(--tg-theme-button-color,#6c5ce7)]" />
+                <Wallet className="w-3 h-3 text-[var(--c-accent)]" />
                 <span className="text-[9px] text-white/30 font-semibold uppercase">Чистый</span>
               </div>
               <p className={`text-base font-black tabular-nums leading-tight ${financials.monthNetIncome >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -572,7 +572,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                   <s.icon className={`w-4 h-4 ${s.color}`} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums leading-tight">{fmtCur(s.value)}</p>
+                  <p className="text-sm font-black text-[var(--c-text)] tabular-nums leading-tight">{fmtCur(s.value)}</p>
                   <p className="text-[9px] text-white/20">{s.sub}</p>
                 </div>
                 <ChevronRight className="w-3 h-3 text-white/10 shrink-0" />
@@ -631,7 +631,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                   </span>
                   <div className="w-full flex-1 flex items-end">
                     <div
-                      className="w-full rounded-t-md bg-[var(--tg-theme-button-color,#6c5ce7)] transition-all duration-500 min-h-[2px]"
+                      className="w-full rounded-t-md bg-[var(--c-accent)] transition-all duration-500 min-h-[2px]"
                       style={{ height: `${Math.max(2, (day.total / maxDaily) * 100)}%` }}
                     />
                   </div>
@@ -660,7 +660,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs text-white/60">{pm.label}</span>
-                        <span className="text-xs font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
+                        <span className="text-xs font-bold text-[var(--c-text)]">
                           {fmtCur(pm.value)} <span className="text-white/30 font-normal">({Math.round(pct)}%)</span>
                         </span>
                       </div>
@@ -735,7 +735,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               className="w-full flex items-center gap-2 mb-3 group"
             >
               <AlertCircle className="w-4 h-4 text-red-400" />
-              <h3 className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">
+              <h3 className="text-sm font-semibold text-[var(--c-text)]">
                 Должники ({debtors.length})
               </h3>
               <span className="ml-auto text-xs font-bold text-red-400">
@@ -744,7 +744,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               <ChevronRight className="w-3.5 h-3.5 text-white/15 group-hover:text-white/30 transition-colors shrink-0" />
             </button>
             {debtors.length === 0 ? (
-              <p className="text-xs text-[var(--tg-theme-hint-color,#888)] py-4 text-center">Нет должников</p>
+              <p className="text-xs text-[var(--c-hint)] py-4 text-center">Нет должников</p>
             ) : (
               <div className="space-y-1.5">
                 {debtors.slice(0, 5).map((d) => (
@@ -753,14 +753,14 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                     onClick={() => nav('management:debtors')}
                     className="w-full flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/10 active:scale-[0.99] transition-transform"
                   >
-                    <span className="font-medium text-sm text-[var(--tg-theme-text-color,#e0e0e0)]">{d.nickname}</span>
+                    <span className="font-medium text-sm text-[var(--c-text)]">{d.nickname}</span>
                     <span className="font-bold text-sm text-red-400">{fmtCur(d.balance)}</span>
                   </button>
                 ))}
                 {debtors.length > 5 && (
                   <button
                     onClick={() => nav('management:debtors')}
-                    className="w-full py-2 text-xs text-[var(--tg-theme-link-color,#6c5ce7)] font-medium"
+                    className="w-full py-2 text-xs text-[var(--c-accent)] font-medium"
                   >
                     Все должники ({debtors.length}) →
                   </button>
@@ -776,10 +776,10 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
         <div className="space-y-4">
           {shiftsLoading ? (
             <div className="text-center py-12">
-              <div className="w-6 h-6 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin mx-auto" />
+              <div className="w-6 h-6 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
             </div>
           ) : shifts.length === 0 ? (
-            <p className="text-sm text-[var(--tg-theme-hint-color,#888)] text-center py-12">Нет закрытых смен</p>
+            <p className="text-sm text-[var(--c-hint)] text-center py-12">Нет закрытых смен</p>
           ) : (
             <>
               {/* Shift selector */}
@@ -789,15 +789,15 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                   disabled={selectedShiftIdx >= shifts.length - 1}
                   className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all"
                 >
-                  <ChevronLeft className="w-4 h-4 text-[var(--tg-theme-text-color,#e0e0e0)]" />
+                  <ChevronLeft className="w-4 h-4 text-[var(--c-text)]" />
                 </button>
                 <div className="flex-1 text-center">
                   {selectedShift && (
                     <>
-                      <p className="text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
+                      <p className="text-sm font-bold text-[var(--c-text)]">
                         {fmtDate(selectedShift.opened_at)}
                       </p>
-                      <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">
+                      <p className="text-xs text-[var(--c-hint)]">
                         {fmtTime(selectedShift.opened_at)} — {fmtTime(selectedShift.closed_at)}
                       </p>
                     </>
@@ -808,22 +808,22 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                   disabled={selectedShiftIdx <= 0}
                   className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all"
                 >
-                  <ChevronRight className="w-4 h-4 text-[var(--tg-theme-text-color,#e0e0e0)]" />
+                  <ChevronRight className="w-4 h-4 text-[var(--c-text)]" />
                 </button>
               </div>
 
               {analyticsLoading ? (
                 <div className="text-center py-10">
-                  <div className="w-6 h-6 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin mx-auto" />
+                  <div className="w-6 h-6 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
                 </div>
               ) : shiftAnalytics ? (
                 <>
                   {/* Summary bar */}
                   {shiftSummary && (
-                    <div className="p-4 rounded-2xl bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)]/15 to-emerald-500/5 border border-white/5">
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-[var(--c-accent)]/15 to-emerald-500/5 border border-white/5">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs text-white/40">Итого за смену</span>
-                        <span className="text-xl font-black text-[var(--tg-theme-text-color,#e0e0e0)]">
+                        <span className="text-xl font-black text-[var(--c-text)]">
                           {fmtCur(shiftSummary.total)}
                         </span>
                       </div>
@@ -837,7 +837,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                           <div key={s.label} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
                             <s.icon className={`w-3.5 h-3.5 ${s.color} shrink-0`} />
                             <span className="text-xs text-white/50">{s.label}</span>
-                            <span className="ml-auto text-xs font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{fmtCur(s.value)}</span>
+                            <span className="ml-auto text-xs font-bold text-[var(--c-text)]">{fmtCur(s.value)}</span>
                           </div>
                         ))}
                       </div>
@@ -863,7 +863,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <span className="font-medium text-sm text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
+                                <span className="font-medium text-sm text-[var(--c-text)] truncate">
                                   {c.player_nickname}
                                 </span>
                                 <span className="text-[10px] text-white/30">{fmtTime(c.closed_at)}</span>
@@ -879,7 +879,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                                     {pmLabels[c.payment_method] || c.payment_method}
                                   </span>
                                 )}
-                                <span className="font-bold text-sm text-[var(--tg-theme-button-color,#6c5ce7)]">
+                                <span className="font-bold text-sm text-[var(--c-accent)]">
                                   {fmtCur(c.bonus_used > 0 ? originalTotal : c.total_amount)}
                                 </span>
                                 <ChevronDown className={`w-4 h-4 text-white/20 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
@@ -897,7 +897,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                                 <div className="pt-2 border-t border-white/5 space-y-1">
                                   <div className="flex justify-between text-xs">
                                     <span className="text-white/40">Сумма</span>
-                                    <span className="font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">{fmtCur(originalTotal)}</span>
+                                    <span className="font-semibold text-[var(--c-text)]">{fmtCur(originalTotal)}</span>
                                   </div>
                                   {c.bonus_used > 0 && (
                                     <>
@@ -907,7 +907,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                                       </div>
                                       <div className="flex justify-between text-xs">
                                         <span className="text-white/40">К оплате ({pmLabels[c.payment_method || ''] || ''})</span>
-                                        <span className="font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">{fmtCur(c.total_amount)}</span>
+                                        <span className="font-semibold text-[var(--c-text)]">{fmtCur(c.total_amount)}</span>
                                       </div>
                                     </>
                                   )}
@@ -917,14 +917,14 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                                       {splitBreakdowns[c.id].map((sp, si) => (
                                         <div key={si} className="flex justify-between text-xs pl-2">
                                           <span className="text-white/40">{pmLabels[sp.method] || sp.method}</span>
-                                          <span className="text-[var(--tg-theme-text-color,#e0e0e0)]">{fmtCur(sp.amount)}</span>
+                                          <span className="text-[var(--c-text)]">{fmtCur(sp.amount)}</span>
                                         </div>
                                       ))}
                                     </div>
                                   ) : (
                                     <div className="flex justify-between text-xs">
                                       <span className="text-white/40">Способ оплаты</span>
-                                      <span className="text-[var(--tg-theme-text-color,#e0e0e0)]">{pmLabels[c.payment_method || ''] || c.payment_method || '-'}</span>
+                                      <span className="text-[var(--c-text)]">{pmLabels[c.payment_method || ''] || c.payment_method || '-'}</span>
                                     </div>
                                   )}
                                 </div>
@@ -945,11 +945,11 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       {/* ITEMS TAB */}
       {tab === 'items' && (
         <div className="space-y-5">
-          <h3 className="text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
+          <h3 className="text-sm font-bold text-[var(--c-text)]">
             Топ товаров
           </h3>
           {topItems.length === 0 ? (
-            <p className="text-sm text-[var(--tg-theme-hint-color,#888)] text-center py-10">Нет данных о продажах</p>
+            <p className="text-sm text-[var(--c-hint)] text-center py-10">Нет данных о продажах</p>
           ) : (
             <div className="space-y-2">
               {topItems.map((item, i) => {
@@ -965,18 +965,18 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                       {i + 1}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{item.name}</p>
+                      <p className="text-sm font-medium text-[var(--c-text)] truncate">{item.name}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <div className="flex-1 h-1 rounded-full bg-white/5 overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-[var(--tg-theme-button-color,#6c5ce7)] transition-all duration-500"
+                            className="h-full rounded-full bg-[var(--c-accent)] transition-all duration-500"
                             style={{ width: `${(item.revenue / maxRev) * 100}%` }}
                           />
                         </div>
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{fmtCur(item.revenue)}</p>
+                      <p className="text-sm font-bold text-[var(--c-text)]">{fmtCur(item.revenue)}</p>
                       <p className="text-[10px] text-white/30">{item.qty} шт</p>
                     </div>
                   </div>
@@ -990,11 +990,11 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       {/* PLAYERS TAB */}
       {tab === 'players' && (
         <div className="space-y-5">
-          <h3 className="text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
+          <h3 className="text-sm font-bold text-[var(--c-text)]">
             Топ игроков
           </h3>
           {topPlayers.length === 0 ? (
-            <p className="text-sm text-[var(--tg-theme-hint-color,#888)] text-center py-10">Нет данных</p>
+            <p className="text-sm text-[var(--c-hint)] text-center py-10">Нет данных</p>
           ) : (
             <div className="space-y-2">
               {topPlayers.map((player, i) => {
@@ -1010,7 +1010,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                       {i === 0 ? <Crown className="w-3 h-3" /> : i + 1}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{player.nickname}</p>
+                      <p className="text-sm font-medium text-[var(--c-text)] truncate">{player.nickname}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <div className="flex-1 h-1 rounded-full bg-white/5 overflow-hidden">
                           <div
@@ -1021,7 +1021,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{fmtCur(player.total)}</p>
+                      <p className="text-sm font-bold text-[var(--c-text)]">{fmtCur(player.total)}</p>
                       <div className="flex items-center gap-1 justify-end">
                         <Hash className="w-2.5 h-2.5 text-white/20" />
                         <p className="text-[10px] text-white/30">{player.count} чек.</p>
@@ -1039,7 +1039,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       {tab === 'log' && (
         <div className="space-y-3">
           {transactions.length === 0 ? (
-            <p className="text-sm text-[var(--tg-theme-hint-color,#888)] text-center py-10">Нет транзакций</p>
+            <p className="text-sm text-[var(--c-hint)] text-center py-10">Нет транзакций</p>
           ) : (
             <>
               {transactions.map((tx) => {
@@ -1058,12 +1058,12 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                   <div key={tx.id} className="flex items-start gap-2.5 p-2.5 rounded-xl card">
                     <Badge variant={meta.variant}>{meta.label}</Badge>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{tx.description}</p>
-                      <p className="text-[10px] text-[var(--tg-theme-hint-color,#888)] mt-0.5">
+                      <p className="text-sm text-[var(--c-text)] truncate">{tx.description}</p>
+                      <p className="text-[10px] text-[var(--c-hint)] mt-0.5">
                         {tx.creator?.nickname || '—'} · {new Date(tx.created_at).toLocaleString('ru-RU')}
                       </p>
                     </div>
-                    <span className="font-bold text-sm text-[var(--tg-theme-text-color,#e0e0e0)] whitespace-nowrap">
+                    <span className="font-bold text-sm text-[var(--c-text)] whitespace-nowrap">
                       {fmtCur(tx.amount)}
                     </span>
                   </div>
@@ -1072,7 +1072,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               {transactions.length >= txLimit && (
                 <button
                   onClick={() => setTxLimit((l) => l + 50)}
-                  className="w-full py-2.5 text-sm text-[var(--tg-theme-link-color,#6c5ce7)] hover:bg-white/5 rounded-xl transition-colors font-medium"
+                  className="w-full py-2.5 text-sm text-[var(--c-accent)] hover:bg-white/5 rounded-xl transition-colors font-medium"
                 >
                   Загрузить ещё
                 </button>
@@ -1134,9 +1134,9 @@ function DetailScreen(props: DetailProps) {
   const header = (
     <div className="flex items-center gap-2 mb-4">
       <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center active:scale-90 transition-transform shrink-0">
-        <ArrowLeft className="w-4 h-4 text-[var(--tg-theme-text-color,#e0e0e0)]" />
+        <ArrowLeft className="w-4 h-4 text-[var(--c-text)]" />
       </button>
-      <h2 className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{titleMap[detail || ''] || ''}</h2>
+      <h2 className="text-lg font-bold text-[var(--c-text)]">{titleMap[detail || ''] || ''}</h2>
     </div>
   );
 
@@ -1161,7 +1161,7 @@ function DetailScreen(props: DetailProps) {
   const checkList = (list: ClosedCheck[], showDate = false) => (
     <div className="space-y-1.5">
       {list.length === 0 ? (
-        <p className="text-xs text-[var(--tg-theme-hint-color,#888)] text-center py-8">Нет чеков</p>
+        <p className="text-xs text-[var(--c-hint)] text-center py-8">Нет чеков</p>
       ) : list.map((c) => {
         const pm = pmIcons[c.payment_method || ''] || pmIcons.cash;
         return (
@@ -1170,7 +1170,7 @@ function DetailScreen(props: DetailProps) {
               <pm.icon className={`w-3.5 h-3.5 ${pm.color}`} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
+              <p className="text-[13px] font-medium text-[var(--c-text)] truncate">
                 {c.player?.nickname || 'Гость'}
               </p>
               <p className="text-[10px] text-white/25">
@@ -1178,7 +1178,7 @@ function DetailScreen(props: DetailProps) {
                 {c.payment_method && ` · ${pmLabels[c.payment_method] || c.payment_method}`}
               </p>
             </div>
-            <span className="font-bold text-sm text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums shrink-0">
+            <span className="font-bold text-sm text-[var(--c-text)] tabular-nums shrink-0">
               {fmtCur(c.total_amount)}
             </span>
           </div>
@@ -1187,7 +1187,7 @@ function DetailScreen(props: DetailProps) {
     </div>
   );
 
-  const statRow = (label: string, value: number, color = 'text-[var(--tg-theme-text-color,#e0e0e0)]') => (
+  const statRow = (label: string, value: number, color = 'text-[var(--c-text)]') => (
     <div className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
       <span className="text-xs text-white/50">{label}</span>
       <span className={`text-sm font-bold tabular-nums ${color}`}>{fmtCur(value)}</span>
@@ -1203,8 +1203,8 @@ function DetailScreen(props: DetailProps) {
     return (
       <div className="space-y-4">
         {header}
-        <div className="p-4 rounded-xl bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)]/12 to-purple-900/5 card text-center">
-          <p className="text-3xl font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(s.month)}</p>
+        <div className="p-4 rounded-xl bg-gradient-to-br from-[var(--c-accent)]/12 to-purple-900/5 card text-center">
+          <p className="text-3xl font-black text-[var(--c-text)] tabular-nums">{fmtCur(s.month)}</p>
           <p className="text-[11px] text-white/30 mt-1">{s.monthCount} чеков · ср. {fmtCur(s.avgCheck)}</p>
           {s.monthGrowth !== 0 && (
             <Badge variant={s.monthGrowth > 0 ? 'success' : 'danger'} size="sm" className="mt-2">
@@ -1221,7 +1221,7 @@ function DetailScreen(props: DetailProps) {
                 <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
                   <span className="text-[8px] text-white/30">{day.total > 0 ? fmt(day.total) : ''}</span>
                   <div className="w-full flex-1 flex items-end">
-                    <div className="w-full rounded-t-md bg-[var(--tg-theme-button-color,#6c5ce7)] min-h-[2px]" style={{ height: `${Math.max(2, (day.total / maxD) * 100)}%` }} />
+                    <div className="w-full rounded-t-md bg-[var(--c-accent)] min-h-[2px]" style={{ height: `${Math.max(2, (day.total / maxD) * 100)}%` }} />
                   </div>
                   <span className="text-[9px] text-white/40 font-semibold">{day.label}</span>
                 </div>
@@ -1264,14 +1264,14 @@ function DetailScreen(props: DetailProps) {
           <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Поставки</h3>
           <div className="space-y-1.5">
             {monthSupplies.length === 0 ? (
-              <p className="text-xs text-[var(--tg-theme-hint-color,#888)] text-center py-6">Нет поставок</p>
+              <p className="text-xs text-[var(--c-hint)] text-center py-6">Нет поставок</p>
             ) : monthSupplies.map((sup) => (
               <button key={sup.id} onClick={() => onNavigate('management:supplies')} className="w-full flex items-center gap-2.5 p-2.5 rounded-xl card-interactive">
                 <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
                   <Truck className="w-3.5 h-3.5 text-red-400" />
                 </div>
                 <div className="flex-1 text-left min-w-0">
-                  <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">
+                  <p className="text-[13px] font-medium text-[var(--c-text)]">
                     {new Date(sup.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
@@ -1423,15 +1423,15 @@ function DetailScreen(props: DetailProps) {
         </div>
         <div className="grid grid-cols-3 gap-2">
           <div className="p-2.5 rounded-xl card text-center">
-            <p className="text-sm font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(minCheck)}</p>
+            <p className="text-sm font-black text-[var(--c-text)] tabular-nums">{fmtCur(minCheck)}</p>
             <p className="text-[9px] text-white/20">Мин.</p>
           </div>
           <div className="p-2.5 rounded-xl card text-center">
-            <p className="text-sm font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(median)}</p>
+            <p className="text-sm font-black text-[var(--c-text)] tabular-nums">{fmtCur(median)}</p>
             <p className="text-[9px] text-white/20">Медиана</p>
           </div>
           <div className="p-2.5 rounded-xl card text-center">
-            <p className="text-sm font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(maxCheck)}</p>
+            <p className="text-sm font-black text-[var(--c-text)] tabular-nums">{fmtCur(maxCheck)}</p>
             <p className="text-[9px] text-white/20">Макс.</p>
           </div>
         </div>
@@ -1481,7 +1481,7 @@ function DetailScreen(props: DetailProps) {
       <div className="space-y-4">
         {header}
         <div className="p-4 rounded-xl card text-center">
-          <p className="text-3xl font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(totalPm)}</p>
+          <p className="text-3xl font-black text-[var(--c-text)] tabular-nums">{fmtCur(totalPm)}</p>
           <p className="text-[11px] text-white/30 mt-1">{monthChecks.length} чеков за месяц</p>
         </div>
         {totalPm > 0 && (
@@ -1502,10 +1502,10 @@ function DetailScreen(props: DetailProps) {
                     <pm.icon className={`w-4 h-4 ${pm.color}`} />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">{pmLabels[method] || method}</p>
+                    <p className="text-sm font-semibold text-[var(--c-text)]">{pmLabels[method] || method}</p>
                     <p className="text-[10px] text-white/25">{val.count} чеков · {pct}%</p>
                   </div>
-                  <span className="text-lg font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(val.total)}</span>
+                  <span className="text-lg font-black text-[var(--c-text)] tabular-nums">{fmtCur(val.total)}</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
                   <div className={`h-full rounded-full ${pmColors[method] || 'bg-white/20'}`} style={{ width: `${pct}%` }} />

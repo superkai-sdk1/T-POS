@@ -10,13 +10,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles = {
   primary:
-    'bg-[var(--tg-theme-button-color,#6c5ce7)] text-[var(--tg-theme-button-text-color,#fff)] shadow-md shadow-[var(--tg-theme-button-color,#6c5ce7)]/15 hover:brightness-110',
+    'text-[var(--c-accent-text)] shadow-md hover:brightness-110 [background:linear-gradient(135deg,#6c5ce7,#7c6cf7)] [box-shadow:0_4px_16px_rgba(108,92,231,0.25)]',
   secondary:
-    'bg-white/6 text-[var(--tg-theme-text-color,#e0e0e0)] hover:bg-white/10 border border-white/6',
+    'bg-white/6 text-[var(--c-text)] hover:bg-white/10 border border-white/6',
   danger:
     'bg-red-500/12 text-red-400 hover:bg-red-500/20 border border-red-500/8',
   ghost:
-    'text-[var(--tg-theme-link-color,#6c5ce7)] hover:bg-white/5',
+    'text-[var(--c-accent)] hover:bg-white/5',
 };
 
 const sizeStyles = {

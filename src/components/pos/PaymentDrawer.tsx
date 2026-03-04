@@ -139,13 +139,13 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
         {/* Player info */}
         {playerInfo && (
           <div className="flex items-center gap-3 p-3 rounded-xl card">
-            <div className="w-9 h-9 rounded-lg bg-[var(--tg-theme-button-color,#6c5ce7)]/10 flex items-center justify-center">
-              <span className="text-sm font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">
+            <div className="w-9 h-9 rounded-lg bg-[var(--c-accent)]/10 flex items-center justify-center">
+              <span className="text-sm font-bold text-[var(--c-accent)]">
                 {playerInfo.nickname?.charAt(0).toUpperCase()}
               </span>
             </div>
             <div className="flex-1">
-              <p className="text-[13px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">{playerInfo.nickname}</p>
+              <p className="text-[13px] font-semibold text-[var(--c-text)]">{playerInfo.nickname}</p>
               <div className="flex gap-1.5 mt-0.5">
                 <Badge variant={playerInfo.balance < 0 ? 'danger' : 'default'} size="sm">{playerInfo.balance}₽</Badge>
                 {playerInfo.bonus_points > 0 && (
@@ -159,7 +159,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
         {/* Total */}
         <div className="text-center py-1">
           <p className="text-[10px] text-white/25 font-semibold uppercase tracking-wider mb-0.5">К оплате</p>
-          <p className="text-4xl font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums animate-count-up">
+          <p className="text-4xl font-black text-[var(--c-text)] tabular-nums animate-count-up">
             {fmtCur(total)}
           </p>
         </div>
@@ -230,7 +230,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
             <div className="p-3 rounded-xl card">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] text-white/30 font-semibold uppercase tracking-wider">Осталось</span>
-                <span className={`text-lg font-black tabular-nums ${splitRemaining === 0 ? 'text-emerald-400' : 'text-[var(--tg-theme-text-color,#e0e0e0)]'}`}>
+                <span className={`text-lg font-black tabular-nums ${splitRemaining === 0 ? 'text-emerald-400' : 'text-[var(--c-text)]'}`}>
                   {fmtCur(splitRemaining)}
                 </span>
               </div>
@@ -284,7 +284,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                       onClick={() => setSplitMethod(mc.method)}
                       className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-all active:scale-95 ${
                         splitMethod === mc.method
-                          ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/12 border-[var(--tg-theme-button-color,#6c5ce7)]/20 text-[var(--tg-theme-button-color,#6c5ce7)]'
+                          ? 'bg-[var(--c-accent)]/12 border-[var(--c-accent)]/20 text-[var(--c-accent)]'
                           : 'bg-white/4 border-white/6 text-white/30'
                       }`}
                     >
@@ -333,7 +333,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
             <div className="flex gap-2">
               <button
                 onClick={() => { setSplitMode(false); setSplitPayments([]); setSplitAmount(''); }}
-                className="flex-1 py-2.5 rounded-xl bg-white/5 text-[13px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] active:scale-[0.97] transition-transform"
+                className="flex-1 py-2.5 rounded-xl bg-white/5 text-[13px] font-semibold text-[var(--c-text)] active:scale-[0.97] transition-transform"
               >
                 Назад
               </button>

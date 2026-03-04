@@ -70,7 +70,6 @@ export function initTelegramApp() {
   try { tg.requestFullscreen?.(); } catch { /* not supported */ }
   try { tg.disableVerticalSwipes?.(); } catch { /* not supported */ }
 
-  applyTelegramTheme(tg);
   applySafeAreaInsets(tg);
 
   tg.onEvent?.('fullscreenChanged', () => applySafeAreaInsets(tg));
@@ -95,19 +94,3 @@ function applySafeAreaInsets(tg: TelegramWebApp) {
   root.style.setProperty('--tg-safe-right', `${right}px`);
 }
 
-function applyTelegramTheme(tg: TelegramWebApp) {
-  const root = document.documentElement;
-  const params = tg.themeParams;
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      root.style.setProperty(`--tg-theme-${camelToKebab(key)}`, value);
-    });
-  }
-  if (tg.colorScheme === 'dark') {
-    root.classList.add('dark');
-  }
-}
-
-function camelToKebab(str: string): string {
-  return str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
-}

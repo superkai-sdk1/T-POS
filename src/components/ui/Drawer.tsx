@@ -81,7 +81,8 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
           transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
           transition: dragging ? 'none' : 'transform 0.25s var(--ease-spring)',
           paddingBottom: 'var(--safe-bottom)',
-          background: 'var(--tg-theme-bg-color, #0f0f23)',
+          background: 'linear-gradient(180deg, color-mix(in srgb, var(--c-bg2) 60%, var(--c-bg)) 0%, var(--c-bg) 100%)',
+          boxShadow: '0 -8px 40px rgba(0,0,0,0.3)',
         }}
       >
         <div
@@ -95,7 +96,7 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
 
         <div className="flex items-center justify-between px-5 py-2">
           {title && (
-            <h3 className="text-base font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
+            <h3 className="text-base font-bold text-[var(--c-text)]">
               {title}
             </h3>
           )}
@@ -103,7 +104,7 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
             onClick={handleClose}
             className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors ml-auto active:scale-90"
           >
-            <X className="w-4 h-4 text-[var(--tg-theme-hint-color,#888)]" />
+            <X className="w-4 h-4 text-[var(--c-hint)]" />
           </button>
         </div>
 

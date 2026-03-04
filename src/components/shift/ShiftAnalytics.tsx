@@ -69,7 +69,7 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
               onClick={() => setTab(t.id)}
               className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
                 tab === t.id
-                  ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white shadow-sm'
+                  ? 'bg-[var(--c-accent)] text-white shadow-sm'
                   : 'text-white/30'
               }`}
             >
@@ -82,9 +82,9 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
         <div key={tab} className="tab-content-enter">
           {tab === 'overview' && (
             <div className="space-y-2.5 stagger-children">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)]/10 to-emerald-500/5 card">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-[var(--c-accent)]/10 to-emerald-500/5 card">
                 <p className="text-[10px] text-white/25 font-semibold mb-0.5">Выручка</p>
-                <p className="text-2xl font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(analytics.totalRevenue)}</p>
+                <p className="text-2xl font-black text-[var(--c-text)] tabular-nums">{fmtCur(analytics.totalRevenue)}</p>
                 <p className="text-[10px] text-white/20 mt-0.5">
                   {new Date(analytics.shift.opened_at).toLocaleDateString('ru-RU')} · {shiftDuration()}
                 </p>
@@ -92,7 +92,7 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
 
               <div className="grid grid-cols-3 gap-1.5">
                 {[
-                  { value: analytics.totalChecks, label: 'Чеков', color: 'text-[var(--tg-theme-button-color,#6c5ce7)]' },
+                  { value: analytics.totalChecks, label: 'Чеков', color: 'text-[var(--c-accent)]' },
                   { value: fmtCur(analytics.avgCheck), label: 'Ср. чек', color: 'text-amber-400' },
                   { value: analytics.itemsSold.length, label: 'Позиций', color: 'text-emerald-400' },
                 ].map((s) => (
@@ -112,7 +112,7 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                       <div key={method}>
                         <div className="flex justify-between text-[12px] mb-0.5">
                           <span className="text-white/35">{pmLabels[method] || method} · {val.count}</span>
-                          <span className="font-bold text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(val.amount)}</span>
+                          <span className="font-bold text-[var(--c-text)] tabular-nums">{fmtCur(val.amount)}</span>
                         </div>
                         <div className="h-1 rounded-full bg-white/4 overflow-hidden">
                           <div
@@ -131,12 +131,12 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                   <p className="text-[10px] font-semibold text-white/20 uppercase tracking-wider">Касса</p>
                   <div className="flex justify-between text-[12px]">
                     <span className="text-white/30">Начало</span>
-                    <span className="text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(analytics.shift.cash_start)}</span>
+                    <span className="text-[var(--c-text)] tabular-nums">{fmtCur(analytics.shift.cash_start)}</span>
                   </div>
                   {analytics.shift.cash_end !== null && (
                     <div className="flex justify-between text-[12px]">
                       <span className="text-white/30">Конец</span>
-                      <span className="text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">{fmtCur(analytics.shift.cash_end)}</span>
+                      <span className="text-[var(--c-text)] tabular-nums">{fmtCur(analytics.shift.cash_end)}</span>
                     </div>
                   )}
                   {analytics.paymentBreakdown['cash'] && (
@@ -173,7 +173,7 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                 <div key={c.id} className="p-2.5 rounded-xl card space-y-1.5">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">{c.player_nickname}</span>
+                      <span className="font-semibold text-[13px] text-[var(--c-text)]">{c.player_nickname}</span>
                       <span className="text-[10px] text-white/20 ml-1.5">{fmtTime(c.closed_at)}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -187,7 +187,7 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                           {pmLabels[c.payment_method] || c.payment_method}
                         </span>
                       )}
-                      <span className="font-black text-[13px] text-[var(--tg-theme-button-color,#6c5ce7)] tabular-nums">{fmtCur(c.total_amount + (c.bonus_used || 0))}</span>
+                      <span className="font-black text-[13px] text-[var(--c-accent)] tabular-nums">{fmtCur(c.total_amount + (c.bonus_used || 0))}</span>
                     </div>
                   </div>
                   {c.items.length > 0 && (
@@ -220,16 +220,16 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                 <div key={item.name} className="flex items-center gap-2.5 p-2 rounded-xl card">
                   <span className="text-[10px] font-black text-white/12 w-4 text-right tabular-nums shrink-0">{idx + 1}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{item.name}</p>
+                    <p className="text-[12px] font-medium text-[var(--c-text)] truncate">{item.name}</p>
                     <div className="h-1 rounded-full bg-white/4 overflow-hidden mt-1">
                       <div
-                        className="h-full rounded-full bg-[var(--tg-theme-button-color,#6c5ce7)] transition-all duration-500"
+                        className="h-full rounded-full bg-[var(--c-accent)] transition-all duration-500"
                         style={{ width: `${(item.revenue / maxItemRev) * 100}%` }}
                       />
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[12px] font-bold text-[var(--tg-theme-button-color,#6c5ce7)] tabular-nums">{fmtCur(item.revenue)}</p>
+                    <p className="text-[12px] font-bold text-[var(--c-accent)] tabular-nums">{fmtCur(item.revenue)}</p>
                     <p className="text-[9px] text-white/20">{item.quantity} шт</p>
                   </div>
                 </div>
@@ -246,7 +246,7 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                 <div key={p.nickname} className="flex items-center gap-2.5 p-2 rounded-xl card">
                   <span className="text-[10px] font-black text-white/12 w-4 text-right tabular-nums shrink-0">{idx + 1}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{p.nickname}</p>
+                    <p className="text-[12px] font-medium text-[var(--c-text)] truncate">{p.nickname}</p>
                     <div className="h-1 rounded-full bg-white/4 overflow-hidden mt-1">
                       <div
                         className="h-full rounded-full bg-emerald-500 transition-all duration-500"

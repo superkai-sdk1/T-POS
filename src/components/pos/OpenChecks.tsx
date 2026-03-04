@@ -226,8 +226,8 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
 
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">Касса</h2>
-          <p className="text-[11px] text-[var(--tg-theme-hint-color,#888)]">
+          <h2 className="text-lg font-bold text-[var(--c-text)]">Касса</h2>
+          <p className="text-[11px] text-[var(--c-hint)]">
             {openChecks.length > 0 ? `${openChecks.length} открыт${openChecks.length === 1 ? '' : 'о'}` : 'Нет открытых чеков'}
           </p>
         </div>
@@ -236,7 +236,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
             onClick={() => setShowHistory(true)}
             className="w-9 h-9 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-white/10 transition-all active:scale-90"
           >
-            <History className="w-4 h-4 text-[var(--tg-theme-hint-color,#888)]" />
+            <History className="w-4 h-4 text-[var(--c-hint)]" />
           </button>
           <Button size="sm" onClick={() => setShowNewCheck(true)} disabled={!activeShift}>
             <Plus className="w-3.5 h-3.5" />
@@ -265,11 +265,12 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           <button
             onClick={() => activeShift && setShowNewCheck(true)}
             disabled={!activeShift}
-            className="w-16 h-16 rounded-2xl bg-[var(--tg-theme-button-color,#6c5ce7)]/10 border border-[var(--tg-theme-button-color,#6c5ce7)]/15 flex items-center justify-center mx-auto mb-4 active:scale-90 transition-transform disabled:opacity-30"
+            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 active:scale-90 transition-transform disabled:opacity-30"
+            style={{ background: 'linear-gradient(135deg, rgba(108,92,231,0.12), rgba(162,155,254,0.06))', border: '1px solid rgba(108,92,231,0.15)', boxShadow: '0 0 30px rgba(108,92,231,0.08)' }}
           >
-            <Plus className="w-7 h-7 text-[var(--tg-theme-button-color,#6c5ce7)] animate-pulse" />
+            <Plus className="w-7 h-7 text-[var(--c-accent)] animate-pulse" />
           </button>
-          <p className="text-[var(--tg-theme-hint-color,#888)] text-sm font-medium">Нет открытых чеков</p>
+          <p className="text-[var(--c-hint)] text-sm font-medium">Нет открытых чеков</p>
           <p className="text-xs text-white/20 mt-1">
             {activeShift ? 'Нажмите чтобы создать' : 'Откройте смену для начала'}
           </p>
@@ -289,16 +290,16 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                     hasSpace
                       ? 'bg-indigo-500/12'
                       : check.player
-                      ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/10'
+                      ? 'bg-[var(--c-accent)]/10'
                       : 'bg-white/5'
                   }`}>
                     {hasSpace ? (() => { const Icon = spaceIconMap[check.space!.type] || DoorOpen; return <Icon className="w-3.5 h-3.5 text-indigo-400" />; })()
                       : check.player
-                      ? <span className="text-xs font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">{check.player.nickname?.charAt(0).toUpperCase()}</span>
+                      ? <span className="text-xs font-bold text-[var(--c-accent)]">{check.player.nickname?.charAt(0).toUpperCase()}</span>
                       : <UserX className="w-3.5 h-3.5 text-white/25" />}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] truncate leading-tight">
+                    <p className="font-semibold text-[13px] text-[var(--c-text)] truncate leading-tight">
                       {hasSpace
                         ? check.space!.name
                         : (() => {
@@ -323,7 +324,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                     <span className="text-[10px] tabular-nums"><ElapsedTime since={check.created_at} /></span>
                   </div>
                   {check.total_amount > 0 ? (
-                    <span className="text-base font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums leading-none">
+                    <span className="text-base font-black text-[var(--c-text)] tabular-nums leading-none">
                       {fmtCur(check.total_amount)}
                     </span>
                   ) : (
@@ -356,7 +357,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               <div className="w-9 h-9 rounded-lg bg-white/6 flex items-center justify-center">
                 <UserX className="w-4 h-4 text-white/35" />
               </div>
-              <span className="text-[11px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">Без клиента</span>
+              <span className="text-[11px] font-semibold text-[var(--c-text)]">Без клиента</span>
             </button>
             <button
               onClick={() => { setShowNewCheck(false); setShowCreateClient(true); }}
@@ -398,7 +399,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
 
           {isSearching && (
             <div className="flex justify-center py-3">
-              <div className="w-5 h-5 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin" />
             </div>
           )}
 
@@ -409,13 +410,13 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                 onClick={() => handlePlayerSelected(player)}
                 className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/5 transition-colors active:scale-[0.98]"
               >
-                <div className="w-8 h-8 rounded-lg bg-[var(--tg-theme-button-color,#6c5ce7)]/10 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">
+                <div className="w-8 h-8 rounded-lg bg-[var(--c-accent)]/10 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-bold text-[var(--c-accent)]">
                     {player.nickname?.charAt(0).toUpperCase()}
                   </span>
                 </div>
                 <div className="text-left flex-1 min-w-0">
-                  <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
+                  <p className="font-semibold text-[13px] text-[var(--c-text)] truncate">
                     {player.nickname}
                   </p>
                   <div className="flex gap-1 mt-0.5">
@@ -427,7 +428,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               </button>
             ))}
             {searchQuery.length > 0 && !isSearching && players.length === 0 && (
-              <p className="text-xs text-center text-[var(--tg-theme-hint-color,#888)] py-6">
+              <p className="text-xs text-center text-[var(--c-hint)] py-6">
                 Никого не найдено
               </p>
             )}
@@ -445,13 +446,13 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         {selectedPlayer && (
           <div className="space-y-4">
             <div className="flex items-center gap-3 p-3 rounded-xl card">
-              <div className="w-10 h-10 rounded-xl bg-[var(--tg-theme-button-color,#6c5ce7)]/10 flex items-center justify-center shrink-0">
-                <span className="text-sm font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">
+              <div className="w-10 h-10 rounded-xl bg-[var(--c-accent)]/10 flex items-center justify-center shrink-0">
+                <span className="text-sm font-bold text-[var(--c-accent)]">
                   {selectedPlayer.nickname?.charAt(0).toUpperCase()}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-bold text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{selectedPlayer.nickname}</p>
+                <p className="text-[13px] font-bold text-[var(--c-text)] truncate">{selectedPlayer.nickname}</p>
                 <div className="flex gap-1 mt-0.5">
                   {tierBadge(selectedPlayer.client_tier)}
                   {(selectedPlayer.bonus_points ?? 0) > 0 && (
@@ -471,7 +472,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                     onClick={() => { setSelectedTariff(key); hapticFeedback('light'); }}
                     className={`relative flex flex-col items-center gap-1 p-3 rounded-xl border transition-all active:scale-[0.97] ${
                       isSelected
-                        ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/10 border-[var(--tg-theme-button-color,#6c5ce7)]/30'
+                        ? 'bg-[var(--c-accent)]/10 border-[var(--c-accent)]/30'
                         : 'card border-white/6'
                     }`}
                   >
@@ -492,12 +493,12 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                        <User className="w-4 h-4 text-white/40" />}
                     </div>
                     <span className={`text-xs font-semibold ${
-                      isSelected ? 'text-[var(--tg-theme-button-color,#6c5ce7)]' : 'text-[var(--tg-theme-text-color,#e0e0e0)]'
+                      isSelected ? 'text-[var(--c-accent)]' : 'text-[var(--c-text)]'
                     }`}>
                       {info.label}
                     </span>
                     <span className={`text-sm font-black tabular-nums ${
-                      isSelected ? 'text-[var(--tg-theme-button-color,#6c5ce7)]' : 'text-white/50'
+                      isSelected ? 'text-[var(--c-accent)]' : 'text-white/50'
                     }`}>
                       {info.price}₽
                     </span>
@@ -544,11 +545,11 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                   onClick={() => setNewClientTier(key)}
                   className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${
                     newClientTier === key
-                      ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/10 border border-[var(--tg-theme-button-color,#6c5ce7)]/30 text-[var(--tg-theme-button-color,#6c5ce7)]'
+                      ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/30 text-[var(--c-accent)]'
                       : 'card border border-white/6 text-white/50'
                   }`}
                 >
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${newClientTier === key ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/15' : color}`}>
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${newClientTier === key ? 'bg-[var(--c-accent)]/15' : color}`}>
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                   {label}
@@ -587,7 +588,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                   <Icon className="w-4 h-4 text-indigo-400" />
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">{s.name}</p>
+                  <p className="font-semibold text-[13px] text-[var(--c-text)]">{s.name}</p>
                   <p className="text-[11px] text-white/25">
                     {s.hourly_rate ? `${s.hourly_rate}₽/час` : 'Ручная цена'}
                   </p>

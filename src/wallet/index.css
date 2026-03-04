@@ -1,11 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --tg-theme-bg-color: #0a0a1a;
-  --tg-theme-text-color: #e8e8f0;
-  --tg-theme-hint-color: #888899;
-  --tg-theme-button-color: #6c5ce7;
-  --tg-theme-secondary-bg-color: #12122a;
+  --c-bg: #0a0a1a;
+  --c-bg2: #12122a;
+  --c-text: #e8e8f0;
+  --c-hint: #888899;
+  --c-accent: #6c5ce7;
+  --c-accent-text: #ffffff;
+  --c-accent-glow: rgba(108, 92, 231, 0.15);
 
   --tg-safe-top: 0px;
   --tg-safe-bottom: 0px;
@@ -35,8 +37,8 @@ body {
   overflow-y: auto;
   overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
-  background-color: var(--tg-theme-bg-color, #0a0a1a);
-  color: var(--tg-theme-text-color, #e8e8f0);
+  background-color: var(--c-bg);
+  color: var(--c-text);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   margin: 0;

@@ -95,7 +95,7 @@ export function InkassationPage() {
   if (isLoading) {
     return (
       <div className="text-center py-20">
-        <div className="w-8 h-8 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-8 h-8 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
       </div>
     );
   }
@@ -115,7 +115,7 @@ export function InkassationPage() {
       </div>
 
       <div className="flex items-center justify-between">
-        <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">{operations.length} операций</p>
+        <p className="text-xs text-[var(--c-hint)]">{operations.length} операций</p>
         <Button size="lg" onClick={() => setShowCreate(true)}>
           <Plus className="w-5 h-5" />
           Новая
@@ -125,7 +125,7 @@ export function InkassationPage() {
       {operations.length === 0 ? (
         <div className="text-center py-16">
           <Banknote className="w-16 h-16 text-white/5 mx-auto mb-4" />
-          <p className="text-[var(--tg-theme-hint-color,#888)]">Нет операций</p>
+          <p className="text-[var(--c-hint)]">Нет операций</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -144,7 +144,7 @@ export function InkassationPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">
+                  <span className="font-semibold text-[13px] text-[var(--c-text)]">
                     {op.type === 'inkassation' ? 'Инкассация' : 'Внесение'}
                   </span>
                   <Badge variant={op.type === 'inkassation' ? 'danger' : 'success'} size="sm">
@@ -238,7 +238,7 @@ export function InkassationPage() {
           <div className="space-y-4">
             <div className="p-2.5 rounded-xl card text-center">
               <p className="text-[13px] text-white/50">{showDeleteConfirm.type === 'inkassation' ? 'Инкассация' : 'Внесение'}</p>
-              <p className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{new Intl.NumberFormat('ru-RU').format(showDeleteConfirm.amount)}₽</p>
+              <p className="text-lg font-bold text-[var(--c-text)]">{new Intl.NumberFormat('ru-RU').format(showDeleteConfirm.amount)}₽</p>
               <p className="text-[10px] text-white/30 mt-1">{new Date(showDeleteConfirm.created_at).toLocaleString('ru-RU')}</p>
             </div>
             <div className="flex gap-2">

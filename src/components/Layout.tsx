@@ -26,21 +26,22 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   [isOwner]);
 
   return (
-    <div className="min-h-screen bg-[var(--tg-theme-bg-color,#0f0f23)] flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-[var(--c-bg)] flex flex-col lg:flex-row">
       {/* Desktop sidebar */}
       <aside
-        className="hidden lg:flex flex-col w-60 shrink-0 fixed top-0 left-0 h-full z-40 bg-[var(--tg-theme-secondary-bg-color,#1a1a2e)] border-r border-white/5"
-        style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)' }}
+        className="hidden lg:flex flex-col w-60 shrink-0 fixed top-0 left-0 h-full z-40 border-r border-white/5"
+        style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)', background: 'linear-gradient(180deg, var(--c-bg2) 0%, var(--c-bg) 100%)' }}
       >
         <div className="flex items-center gap-3 px-4 py-4">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)] to-purple-600 flex items-center justify-center shadow-lg shadow-[var(--tg-theme-button-color,#6c5ce7)]/20">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
+            style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', boxShadow: '0 4px 16px rgba(108,92,231,0.25)' }}>
             <span className="text-xs font-black text-white">T</span>
           </div>
           <div className="min-w-0">
-            <h1 className="text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)] leading-tight">T-POS</h1>
-            <p className="text-[10px] text-[var(--tg-theme-hint-color,#888)] leading-tight truncate">
+            <h1 className="text-sm font-bold text-[var(--c-text)] leading-tight">T-POS</h1>
+            <p className="text-[10px] text-[var(--c-hint)] leading-tight truncate">
               {user?.nickname}
-              {isOwner() && <span className="text-[var(--tg-theme-button-color,#6c5ce7)] ml-1 font-semibold">owner</span>}
+              {isOwner() && <span className="text-[var(--c-accent)] ml-1 font-semibold">owner</span>}
             </p>
           </div>
         </div>
@@ -56,12 +57,12 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                 onClick={() => onTabChange(tab.id)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 tap relative ${
                   isActive
-                    ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/10 text-[var(--tg-theme-button-color,#6c5ce7)]'
-                    : 'text-[var(--tg-theme-hint-color,#888)] hover:bg-white/4 hover:text-[var(--tg-theme-text-color,#e0e0e0)]'
+                    ? 'bg-[var(--c-accent)]/10 text-[var(--c-accent)]'
+                    : 'text-[var(--c-hint)] hover:bg-white/4 hover:text-[var(--c-text)]'
                 }`}
               >
                 {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-[var(--tg-theme-button-color,#6c5ce7)]" />
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-[var(--c-accent)]" />
                 )}
                 <tab.icon className={`w-[18px] h-[18px] ${isActive ? 'stroke-[2.5]' : ''}`} />
                 <span className="text-[13px] font-semibold">{tab.label}</span>
@@ -73,7 +74,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
         <div className="px-2.5 pb-4">
           <button
             onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[var(--tg-theme-hint-color,#888)] hover:bg-red-500/8 hover:text-red-400 transition-all tap"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[var(--c-hint)] hover:bg-red-500/8 hover:text-red-400 transition-all tap"
           >
             <LogOut className="w-[18px] h-[18px]" />
             <span className="text-[13px] font-semibold">Выход</span>
@@ -90,18 +91,19 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
         >
           <div className="flex items-center justify-between max-w-3xl mx-auto">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[var(--tg-theme-button-color,#6c5ce7)] to-purple-600 flex items-center justify-center">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                style={{ background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)' }}>
                 <span className="text-[10px] font-black text-white">T</span>
               </div>
               <div>
-                <h1 className="text-[13px] font-bold text-[var(--tg-theme-text-color,#e0e0e0)] leading-tight">{user?.nickname || 'T-POS'}</h1>
+                <h1 className="text-[13px] font-bold text-[var(--c-text)] leading-tight">{user?.nickname || 'T-POS'}</h1>
               </div>
             </div>
             <button
               onClick={logout}
               className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center hover:bg-red-500/10 transition-colors group active:scale-90"
             >
-              <LogOut className="w-3.5 h-3.5 text-[var(--tg-theme-hint-color,#888)] group-hover:text-red-400 transition-colors" />
+              <LogOut className="w-3.5 h-3.5 text-[var(--c-hint)] group-hover:text-red-400 transition-colors" />
             </button>
           </div>
         </header>
@@ -124,12 +126,12 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                   onClick={() => onTabChange(tab.id)}
                   className={`flex-1 flex flex-col items-center gap-1 py-2 transition-all duration-150 active:scale-90 relative ${
                     isActive
-                      ? 'text-[var(--tg-theme-button-color,#6c5ce7)]'
-                      : 'text-[var(--tg-theme-hint-color,#888)]'
+                      ? 'text-[var(--c-accent)]'
+                      : 'text-[var(--c-hint)]'
                   }`}
                 >
                   {isActive && (
-                    <div className="absolute -top-px left-1/2 -translate-x-1/2 h-[2px] rounded-full bg-[var(--tg-theme-button-color,#6c5ce7)] transition-all duration-200" style={{ width: '24px' }} />
+                    <div className="absolute -top-px left-1/2 -translate-x-1/2 h-[2px] rounded-full bg-[var(--c-accent)] transition-all duration-200" style={{ width: '24px' }} />
                   )}
                   <tab.icon className={`w-[22px] h-[22px] transition-all duration-150 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.5]'}`} />
                   <span className={`text-[10px] font-semibold transition-all duration-150 ${isActive ? 'opacity-100' : 'opacity-50'}`}>{tab.label}</span>

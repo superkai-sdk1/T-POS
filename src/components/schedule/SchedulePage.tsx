@@ -390,7 +390,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                 <Icon className="w-4 h-4 text-indigo-400" />
                 <div className={`w-1.5 h-1.5 rounded-full ${isBusy ? 'bg-amber-400' : 'bg-emerald-400'}`} />
               </div>
-              <p className="text-[11px] font-bold text-[var(--tg-theme-text-color,#e0e0e0)] leading-tight truncate">{s.name}</p>
+              <p className="text-[11px] font-bold text-[var(--c-text)] leading-tight truncate">{s.name}</p>
               {isBusy && busyClient ? (
                 <p className="text-[9px] text-amber-400/60 truncate mt-0.5">{busyClient}</p>
               ) : (
@@ -404,7 +404,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
           className="flex-shrink-0 w-[100px] p-2.5 rounded-xl text-center transition-transform active:scale-[0.96] border bg-teal-500/4 border-teal-500/8"
         >
           <MapPin className="w-4 h-4 text-teal-400 mx-auto mb-1" />
-          <p className="text-[11px] font-bold text-[var(--tg-theme-text-color,#e0e0e0)] leading-tight">Выезд</p>
+          <p className="text-[11px] font-bold text-[var(--c-text)] leading-tight">Выезд</p>
           <p className="text-[9px] text-white/20 mt-0.5">Мероприятие</p>
         </button>
       </div>
@@ -416,7 +416,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
             key={t}
             onClick={() => setTab(t)}
             className={`flex-1 px-3 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
-              tab === t ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white shadow-sm' : 'text-white/30'
+              tab === t ? 'bg-[var(--c-accent)] text-white shadow-sm' : 'text-white/30'
             }`}
           >
             {t === 'upcoming' ? `Ближайшие (${schedule.length})` : `История (${pastItems.length})`}
@@ -428,7 +428,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
       {displayItems.length === 0 ? (
         <div className="text-center py-14 animate-fade-in">
           <Calendar className="w-10 h-10 text-white/6 mx-auto mb-2" />
-          <p className="text-[13px] text-[var(--tg-theme-hint-color,#888)] font-medium">
+          <p className="text-[13px] text-[var(--c-hint)] font-medium">
             {tab === 'upcoming' ? 'Нет предстоящих' : 'Нет истории'}
           </p>
         </div>
@@ -452,7 +452,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                                 <Icon className="w-3.5 h-3.5 text-indigo-400" />
                               </div>
                               <div className="min-w-0">
-                                <p className="text-[13px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] truncate leading-tight">
+                                <p className="text-[13px] font-semibold text-[var(--c-text)] truncate leading-tight">
                                   {b.space?.name || 'Бронь'}
                                 </p>
                                 <p className="text-[10px] text-white/25">{fmtTime(b.start_time)} — {fmtTime(b.end_time)}</p>
@@ -460,7 +460,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
                               <Badge variant={bookingStatusVariants[b.status]} size="sm">{bookingStatusLabels[b.status]}</Badge>
-                              <span className="text-[13px] font-bold tabular-nums text-[var(--tg-theme-text-color,#e0e0e0)]">
+                              <span className="text-[13px] font-bold tabular-nums text-[var(--c-text)]">
                                 {b.check_id && checkTotals[b.check_id]?.status === 'closed'
                                   ? fmtCur(checkTotals[b.check_id].total)
                                   : fmtCur(b.rental_amount)}
@@ -512,13 +512,13 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                                 <MapPin className="w-3.5 h-3.5 text-teal-400" />
                               </div>
                               <div className="min-w-0">
-                                <p className="text-[13px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] truncate leading-tight">{e.name}</p>
+                                <p className="text-[13px] font-semibold text-[var(--c-text)] truncate leading-tight">{e.name}</p>
                                 <p className="text-[10px] text-white/25">{fmtTime(e.start_time)} — {fmtTime(e.end_time)} · {e.location}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
                               <Badge variant={eventStatusVariants[e.status]} size="sm">{eventStatusLabels[e.status]}</Badge>
-                              <span className="text-[13px] font-bold tabular-nums text-[var(--tg-theme-text-color,#e0e0e0)]">
+                              <span className="text-[13px] font-bold tabular-nums text-[var(--c-text)]">
                                 {e.check_id && checkTotals[e.check_id]?.status === 'closed'
                                   ? fmtCur(checkTotals[e.check_id].total)
                                   : fmtCur(e.amount)}
@@ -558,17 +558,17 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
               ].map(({ label, value }) => (
                 <div key={label} className="flex justify-between text-[13px]">
                   <span className="text-white/30">{label}</span>
-                  <span className="text-[var(--tg-theme-text-color,#e0e0e0)] font-medium">{value}</span>
+                  <span className="text-[var(--c-text)] font-medium">{value}</span>
                 </div>
               ))}
               <div className="flex justify-between text-[13px]">
                 <span className="text-white/30">Сумма</span>
-                <span className="font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">{fmtCur(showEventDetail.amount)}</span>
+                <span className="font-bold text-[var(--c-accent)]">{fmtCur(showEventDetail.amount)}</span>
               </div>
               {showEventDetail.note && (
                 <div className="flex justify-between text-[13px]">
                   <span className="text-white/30">Примечание</span>
-                  <span className="text-[var(--tg-theme-text-color,#e0e0e0)] text-right max-w-[60%]">{showEventDetail.note}</span>
+                  <span className="text-[var(--c-text)] text-right max-w-[60%]">{showEventDetail.note}</span>
                 </div>
               )}
               <div className="flex justify-between items-center text-[13px]">
@@ -653,7 +653,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                           className="p-2.5 rounded-xl card-interactive text-center"
                         >
                           <Icon className="w-4 h-4 text-indigo-400 mx-auto mb-1" />
-                          <p className="text-[11px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">{s.name}</p>
+                          <p className="text-[11px] font-medium text-[var(--c-text)]">{s.name}</p>
                         </button>
                       );
                     })}
@@ -665,7 +665,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                   <div className="flex items-center gap-2 p-2.5 rounded-xl card">
                     {(() => { const Icon = spaceIconMap[selectedSpace.type] || DoorOpen; return <Icon className="w-4 h-4 text-indigo-400 shrink-0" />; })()}
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">{selectedSpace.name}</p>
+                      <p className="text-[13px] font-semibold text-[var(--c-text)]">{selectedSpace.name}</p>
                       <p className="text-[10px] text-white/25">
                         {selectedSpace.hourly_rate ? `${selectedSpace.hourly_rate}₽/ч` : 'Ручной ввод'}
                       </p>
@@ -695,8 +695,8 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                     <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider mb-1.5">Клиент</p>
                     {selectedClient ? (
                       <div className="flex items-center gap-2 p-2 rounded-xl card">
-                        <User className="w-3.5 h-3.5 text-[var(--tg-theme-button-color,#6c5ce7)]" />
-                        <span className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">{selectedClient.nickname}</span>
+                        <User className="w-3.5 h-3.5 text-[var(--c-accent)]" />
+                        <span className="text-[13px] font-medium text-[var(--c-text)]">{selectedClient.nickname}</span>
                         <button onClick={() => setSelectedClient(null)} className="ml-auto w-5 h-5 rounded bg-white/5 flex items-center justify-center active:scale-90">
                           <X className="w-3 h-3 text-white/25" />
                         </button>
@@ -708,7 +708,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                           <div className="space-y-0.5 mt-1 max-h-28 overflow-y-auto">
                             {clients.map((c) => (
                               <button key={c.id} onClick={() => { setSelectedClient(c); setClients([]); setClientSearch(''); }}
-                                className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] transition-colors active:scale-[0.98]"
+                                className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 text-[13px] text-[var(--c-text)] transition-colors active:scale-[0.98]"
                               >
                                 <User className="w-3.5 h-3.5 text-white/25" />
                                 {c.nickname}

@@ -126,7 +126,7 @@ export function EventsPage() {
               onClick={() => setTab(t)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 tab === t
-                  ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white'
+                  ? 'bg-[var(--c-accent)] text-white'
                   : 'text-white/40'
               }`}
             >
@@ -143,7 +143,7 @@ export function EventsPage() {
       {displayEvents.length === 0 ? (
         <div className="text-center py-12">
           <MapPin className="w-10 h-10 text-white/8 mx-auto mb-3" />
-          <p className="text-sm text-[var(--tg-theme-hint-color,#888)]">
+          <p className="text-sm text-[var(--c-hint)]">
             {tab === 'upcoming' ? 'Нет запланированных выездов' : 'Нет истории'}
           </p>
         </div>
@@ -158,11 +158,11 @@ export function EventsPage() {
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <MapPin className="w-4 h-4 text-teal-400 shrink-0" />
-                  <p className="font-bold text-sm text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{e.name}</p>
+                  <p className="font-bold text-sm text-[var(--c-text)] truncate">{e.name}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge variant={statusVariants[e.status]}>{statusLabels[e.status]}</Badge>
-                  <span className="font-bold text-sm text-[var(--tg-theme-button-color,#6c5ce7)] tabular-nums">{fmtCur(e.amount)}</span>
+                  <span className="font-bold text-sm text-[var(--c-accent)] tabular-nums">{fmtCur(e.amount)}</span>
                 </div>
               </div>
               <div className="flex items-center gap-3 text-[10px] text-white/30">
@@ -186,24 +186,24 @@ export function EventsPage() {
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-white/40">Место</span>
-                <span className="text-[var(--tg-theme-text-color,#e0e0e0)] font-medium">{showDetail.location}</span>
+                <span className="text-[var(--c-text)] font-medium">{showDetail.location}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-white/40">Дата</span>
-                <span className="text-[var(--tg-theme-text-color,#e0e0e0)]">{fmtDate(showDetail.start_time)}</span>
+                <span className="text-[var(--c-text)]">{fmtDate(showDetail.start_time)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-white/40">Время</span>
-                <span className="text-[var(--tg-theme-text-color,#e0e0e0)]">{fmtTime(showDetail.start_time)} — {fmtTime(showDetail.end_time)}</span>
+                <span className="text-[var(--c-text)]">{fmtTime(showDetail.start_time)} — {fmtTime(showDetail.end_time)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-white/40">Сумма</span>
-                <span className="font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">{fmtCur(showDetail.amount)}</span>
+                <span className="font-bold text-[var(--c-accent)]">{fmtCur(showDetail.amount)}</span>
               </div>
               {showDetail.note && (
                 <div className="flex justify-between text-sm">
                   <span className="text-white/40">Примечание</span>
-                  <span className="text-[var(--tg-theme-text-color,#e0e0e0)] text-right max-w-[60%]">{showDetail.note}</span>
+                  <span className="text-[var(--c-text)] text-right max-w-[60%]">{showDetail.note}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
@@ -214,7 +214,7 @@ export function EventsPage() {
 
             {showDetail.status === 'planned' && (
               <div className="flex gap-2 pt-2">
-                <button onClick={() => openEdit(showDetail)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white/5 text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] active:scale-[0.97] transition-all">
+                <button onClick={() => openEdit(showDetail)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white/5 text-sm font-semibold text-[var(--c-text)] active:scale-[0.97] transition-all">
                   <Edit2 className="w-4 h-4" />Изменить
                 </button>
                 <button onClick={() => updateStatus(showDetail.id, 'completed')} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-500/10 text-sm font-semibold text-emerald-400 active:scale-[0.97] transition-all">

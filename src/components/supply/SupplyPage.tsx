@@ -311,7 +311,7 @@ export function SupplyPage() {
   if (isLoading) {
     return (
       <div className="text-center py-20">
-        <div className="w-8 h-8 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-8 h-8 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
       </div>
     );
   }
@@ -328,12 +328,12 @@ export function SupplyPage() {
             onClick={handleTryExit}
             className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors active:scale-95 shrink-0"
           >
-            <ArrowLeft className="w-5 h-5 text-[var(--tg-theme-text-color,#e0e0e0)]" />
+            <ArrowLeft className="w-5 h-5 text-[var(--c-text)]" />
           </button>
           <div className="flex-1">
-            <h2 className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">Новая поставка</h2>
+            <h2 className="text-lg font-bold text-[var(--c-text)]">Новая поставка</h2>
             {draftItems.length > 0 && (
-              <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">{draftItems.length} поз. · {fmtCur(draftTotal)}</p>
+              <p className="text-xs text-[var(--c-hint)]">{draftItems.length} поз. · {fmtCur(draftTotal)}</p>
             )}
           </div>
         </div>
@@ -352,7 +352,7 @@ export function SupplyPage() {
               <div key={d.item.id} className="p-3 rounded-xl bg-white/5 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{d.item.name}</p>
+                    <p className="text-sm font-semibold text-[var(--c-text)] truncate">{d.item.name}</p>
                     <p className="text-[10px] text-white/30">Остаток: {d.item.stock_quantity} · Цена: {d.item.price}₽</p>
                   </div>
                   <button onClick={() => removeDraftItem(idx)} className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center active:scale-90">
@@ -377,17 +377,17 @@ export function SupplyPage() {
 
         <button
           onClick={() => setShowAddItem(true)}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-white/10 text-[var(--tg-theme-hint-color,#888)] hover:border-white/20 hover:text-white/60 transition-all active:scale-[0.98]"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-white/10 text-[var(--c-hint)] hover:border-white/20 hover:text-white/60 transition-all active:scale-[0.98]"
         >
           <Plus className="w-4 h-4" />
           <span className="text-sm font-medium">Добавить товар</span>
         </button>
 
         {draftItems.length > 0 && (
-          <div className="p-3 rounded-xl bg-[var(--tg-theme-button-color,#6c5ce7)]/10 border border-[var(--tg-theme-button-color,#6c5ce7)]/20">
+          <div className="p-3 rounded-xl bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/20">
             <div className="flex justify-between text-sm">
               <span className="text-white/50">Позиций: {draftItems.length}</span>
-              <span className="font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">Итого: {fmtCur(draftTotal)}</span>
+              <span className="font-bold text-[var(--c-text)]">Итого: {fmtCur(draftTotal)}</span>
             </div>
           </div>
         )}
@@ -413,7 +413,7 @@ export function SupplyPage() {
                 <button key={item.id} onClick={() => addInventoryItem(item)} className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all active:scale-[0.98]">
                   <Package className="w-4 h-4 text-white/30 shrink-0" />
                   <div className="text-left flex-1 min-w-0">
-                    <p className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{item.name}</p>
+                    <p className="text-sm font-medium text-[var(--c-text)] truncate">{item.name}</p>
                     <p className="text-[10px] text-white/30">{categoryLabels[item.category] || item.category} · {item.price}₽</p>
                   </div>
                   <Badge>Ост: {item.stock_quantity}</Badge>
@@ -457,7 +457,7 @@ export function SupplyPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">{supplies.length} документов</p>
+        <p className="text-xs text-[var(--c-hint)]">{supplies.length} документов</p>
         <Button size="lg" onClick={() => setIsCreating(true)}>
           <Plus className="w-5 h-5" />
           Новая
@@ -467,7 +467,7 @@ export function SupplyPage() {
       {supplies.length === 0 ? (
         <div className="text-center py-16">
           <Truck className="w-16 h-16 text-white/5 mx-auto mb-4" />
-          <p className="text-[var(--tg-theme-hint-color,#888)]">Нет поставок</p>
+          <p className="text-[var(--c-hint)]">Нет поставок</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -484,8 +484,8 @@ export function SupplyPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm text-[var(--tg-theme-text-color,#e0e0e0)]">{formatDate(s.created_at)}</span>
-                      <span className="text-xs text-[var(--tg-theme-hint-color,#888)]">{formatTime(s.created_at)}</span>
+                      <span className="font-semibold text-sm text-[var(--c-text)]">{formatDate(s.created_at)}</span>
+                      <span className="text-xs text-[var(--c-hint)]">{formatTime(s.created_at)}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       {s.note && <span className="text-xs text-white/40 truncate">{s.note}</span>}
@@ -494,7 +494,7 @@ export function SupplyPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-base font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">{fmtCur(s.total_cost)}</span>
+                  <span className="text-base font-bold text-[var(--c-accent)]">{fmtCur(s.total_cost)}</span>
                   <ChevronRight className="w-4 h-4 text-white/20" />
                 </div>
               </div>
@@ -515,30 +515,30 @@ export function SupplyPage() {
             <div className="p-3 rounded-xl bg-white/5 space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-white/50 flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Дата</span>
-                <span className="text-[var(--tg-theme-text-color,#e0e0e0)]">{new Date(selectedSupply.created_at).toLocaleString('ru-RU')}</span>
+                <span className="text-[var(--c-text)]">{new Date(selectedSupply.created_at).toLocaleString('ru-RU')}</span>
               </div>
               {selectedSupply.creator && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-white/50 flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Кто принял</span>
-                  <span className="text-[var(--tg-theme-text-color,#e0e0e0)]">{selectedSupply.creator.nickname}</span>
+                  <span className="text-[var(--c-text)]">{selectedSupply.creator.nickname}</span>
                 </div>
               )}
               {selectedSupply.note && (
                 <div className="text-sm">
                   <span className="text-white/50">Примечание:</span>
-                  <span className="text-[var(--tg-theme-text-color,#e0e0e0)] ml-2">{selectedSupply.note}</span>
+                  <span className="text-[var(--c-text)] ml-2">{selectedSupply.note}</span>
                 </div>
               )}
             </div>
 
             {/* Totals */}
             <div className="grid grid-cols-2 gap-2">
-              <div className="p-3 rounded-xl bg-[var(--tg-theme-button-color,#6c5ce7)]/10 border border-[var(--tg-theme-button-color,#6c5ce7)]/15 text-center">
-                <p className="text-xl font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">{fmtCur(selectedSupply.total_cost)}</p>
+              <div className="p-3 rounded-xl bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/15 text-center">
+                <p className="text-xl font-bold text-[var(--c-accent)]">{fmtCur(selectedSupply.total_cost)}</p>
                 <p className="text-[10px] text-white/40">Общая сумма</p>
               </div>
               <div className="p-3 rounded-xl bg-white/5 text-center">
-                <p className="text-xl font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{detailTotalQty}</p>
+                <p className="text-xl font-bold text-[var(--c-text)]">{detailTotalQty}</p>
                 <p className="text-[10px] text-white/40">Единиц товара</p>
               </div>
             </div>
@@ -550,8 +550,8 @@ export function SupplyPage() {
                 {detailItems.map((si) => (
                   <div key={si.id} className="p-3 rounded-xl bg-white/5">
                     <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate flex-1 min-w-0">{si.item?.name}</p>
-                      <span className="font-bold text-sm text-[var(--tg-theme-text-color,#e0e0e0)] shrink-0 ml-2">{fmtCur(si.total_cost)}</span>
+                      <p className="text-sm font-medium text-[var(--c-text)] truncate flex-1 min-w-0">{si.item?.name}</p>
+                      <span className="font-bold text-sm text-[var(--c-text)] shrink-0 ml-2">{fmtCur(si.total_cost)}</span>
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-[10px] text-white/30">
                       <span>{si.quantity} шт</span>
@@ -583,7 +583,7 @@ export function SupplyPage() {
             <div className="space-y-3">
               {editItems.map((d, idx) => (
                 <div key={d.item.id} className="p-3 rounded-xl bg-white/5 space-y-2">
-                  <p className="text-sm font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{d.item.name}</p>
+                  <p className="text-sm font-semibold text-[var(--c-text)] truncate">{d.item.name}</p>
                   <div className="grid grid-cols-3 gap-2">
                     <Input type="number" placeholder="Кол-во" min={1} value={d.quantity} onChange={(e) => updateEditItem(idx, 'quantity', e.target.value)} />
                     <Input type="number" placeholder="За шт." min={0} step="0.01" value={d.costPerUnit} onChange={(e) => updateEditItem(idx, 'costPerUnit', e.target.value)} />

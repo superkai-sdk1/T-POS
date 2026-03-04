@@ -12,7 +12,7 @@ export function Cart() {
   if (cart.length === 0) {
     return (
       <div className="text-center py-10">
-        <p className="text-[var(--tg-theme-hint-color,#888)]">Корзина пуста</p>
+        <p className="text-[var(--c-hint)]">Корзина пуста</p>
         <p className="text-white/30 text-xs mt-1">Выберите товары из меню</p>
       </div>
     );
@@ -27,10 +27,10 @@ export function Cart() {
             className="flex items-center gap-3 p-3 rounded-xl bg-white/5"
           >
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
+              <p className="text-sm font-medium text-[var(--c-text)] truncate">
                 {cartItem.item.name}
               </p>
-              <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">
+              <p className="text-xs text-[var(--c-hint)]">
                 {cartItem.item.price}₽ × {cartItem.quantity}
               </p>
             </div>
@@ -45,7 +45,7 @@ export function Cart() {
               >
                 <Minus className="w-4 h-4 text-white/70" />
               </button>
-              <span className="w-8 text-center text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
+              <span className="w-8 text-center text-sm font-bold text-[var(--c-text)]">
                 {cartItem.quantity}
               </span>
               <button
@@ -59,7 +59,7 @@ export function Cart() {
               </button>
             </div>
 
-            <p className="text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)] min-w-[55px] text-right">
+            <p className="text-sm font-bold text-[var(--c-text)] min-w-[55px] text-right">
               {cartItem.item.price * cartItem.quantity}₽
             </p>
 
@@ -77,8 +77,8 @@ export function Cart() {
       </div>
 
       <div className="flex items-center justify-between pt-4 border-t border-white/10">
-        <span className="text-[var(--tg-theme-hint-color,#888)] font-medium">Итого:</span>
-        <span className="text-3xl font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">
+        <span className="text-[var(--c-hint)] font-medium">Итого:</span>
+        <span className="text-3xl font-bold text-[var(--c-text)]">
           {total}₽
         </span>
       </div>

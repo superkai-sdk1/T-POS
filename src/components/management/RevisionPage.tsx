@@ -213,7 +213,7 @@ export function RevisionPage() {
   if (isLoading) {
     return (
       <div className="text-center py-20">
-        <div className="w-8 h-8 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-8 h-8 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
       </div>
     );
   }
@@ -226,12 +226,12 @@ export function RevisionPage() {
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <button onClick={handleTryExit} className="w-10 h-10 rounded-xl card flex items-center justify-center hover:bg-white/10 transition-colors active:scale-95 shrink-0">
-            <ArrowLeft className="w-5 h-5 text-[var(--tg-theme-text-color,#e0e0e0)]" />
+            <ArrowLeft className="w-5 h-5 text-[var(--c-text)]" />
           </button>
           <div className="flex-1">
-            <h2 className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">Новая ревизия</h2>
+            <h2 className="text-lg font-bold text-[var(--c-text)]">Новая ревизия</h2>
             {changes.length > 0 && (
-              <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">{changes.length} расхождений</p>
+              <p className="text-xs text-[var(--c-hint)]">{changes.length} расхождений</p>
             )}
           </div>
         </div>
@@ -271,13 +271,13 @@ export function RevisionPage() {
           <input
             type="text"
             placeholder="Поиск позиции..."
-            className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] placeholder:text-white/30"
+            className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-white/30"
             value={createSearch}
             onChange={(e) => setCreateSearch(e.target.value)}
           />
         </div>
 
-        <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">
+        <p className="text-xs text-[var(--c-hint)]">
           Введите фактическое количество для каждой позиции
         </p>
 
@@ -290,7 +290,7 @@ export function RevisionPage() {
             return (
               <div key={item.id} className={`flex items-center gap-3 p-2.5 rounded-xl ${hasChange ? (diff < 0 ? 'bg-red-500/5 border border-red-500/20' : 'bg-emerald-500/5 border border-emerald-500/20') : 'card'}`}>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{item.name}</p>
+                  <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{item.name}</p>
                   <div className="flex items-center gap-2">
                     <p className="text-[10px] text-white/30">Система: {item.stock_quantity}</p>
                     {hasChange && (
@@ -327,7 +327,7 @@ export function RevisionPage() {
               </div>
               <div className="flex justify-between text-[13px]">
                 <span className="text-white/50">На сумму</span>
-                <span className="font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{fmtCur(draftSummary.shortageCost + draftSummary.surplusCost)}</span>
+                <span className="font-bold text-[var(--c-text)]">{fmtCur(draftSummary.shortageCost + draftSummary.surplusCost)}</span>
               </div>
             </div>
             <Button fullWidth size="lg" onClick={handleCreateRevision}>
@@ -362,7 +362,7 @@ export function RevisionPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-[var(--tg-theme-hint-color,#888)]">{revisions.length} документов</p>
+        <p className="text-xs text-[var(--c-hint)]">{revisions.length} документов</p>
         <Button size="lg" onClick={() => { setIsCreating(true); loadItems(); }}>
           <Plus className="w-5 h-5" />
           Новая
@@ -372,7 +372,7 @@ export function RevisionPage() {
       {revisions.length === 0 ? (
         <div className="text-center py-16">
           <ClipboardList className="w-16 h-16 text-white/5 mx-auto mb-4" />
-          <p className="text-[var(--tg-theme-hint-color,#888)]">Нет ревизий</p>
+          <p className="text-[var(--c-hint)]">Нет ревизий</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -389,8 +389,8 @@ export function RevisionPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">{formatDate(r.created_at)}</span>
-                      <span className="text-xs text-[var(--tg-theme-hint-color,#888)]">{formatTime(r.created_at)}</span>
+                      <span className="font-semibold text-[13px] text-[var(--c-text)]">{formatDate(r.created_at)}</span>
+                      <span className="text-xs text-[var(--c-hint)]">{formatTime(r.created_at)}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-xs text-white/40">{r.items_count} поз.</span>
@@ -419,18 +419,18 @@ export function RevisionPage() {
             <div className="p-2.5 rounded-xl card space-y-2">
               <div className="flex items-center justify-between text-[13px]">
                 <span className="text-white/50 flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Дата</span>
-                <span className="text-[var(--tg-theme-text-color,#e0e0e0)]">{new Date(selectedRevision.created_at).toLocaleString('ru-RU')}</span>
+                <span className="text-[var(--c-text)]">{new Date(selectedRevision.created_at).toLocaleString('ru-RU')}</span>
               </div>
               {selectedRevision.creator && (
                 <div className="flex items-center justify-between text-[13px]">
                   <span className="text-white/50 flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Кто проводил</span>
-                  <span className="text-[var(--tg-theme-text-color,#e0e0e0)]">{selectedRevision.creator.nickname}</span>
+                  <span className="text-[var(--c-text)]">{selectedRevision.creator.nickname}</span>
                 </div>
               )}
               {selectedRevision.note && (
                 <div className="text-[13px]">
                   <span className="text-white/50">Примечание:</span>
-                  <span className="text-[var(--tg-theme-text-color,#e0e0e0)] ml-2">{selectedRevision.note}</span>
+                  <span className="text-[var(--c-text)] ml-2">{selectedRevision.note}</span>
                 </div>
               )}
             </div>
@@ -471,7 +471,7 @@ export function RevisionPage() {
                   {detailItems.filter((ri) => ri.diff < 0).map((ri) => (
                     <div key={ri.id} className="flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/10">
                       <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{ri.item?.name}</p>
+                        <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{ri.item?.name}</p>
                         <p className="text-[10px] text-white/30">Было: {ri.expected_qty} → Факт: {ri.actual_qty}</p>
                       </div>
                       <div className="text-right shrink-0">
@@ -491,7 +491,7 @@ export function RevisionPage() {
                   {detailItems.filter((ri) => ri.diff > 0).map((ri) => (
                     <div key={ri.id} className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
                       <div className="min-w-0 flex-1">
-                        <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{ri.item?.name}</p>
+                        <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{ri.item?.name}</p>
                         <p className="text-[10px] text-white/30">Было: {ri.expected_qty} → Факт: {ri.actual_qty}</p>
                       </div>
                       <div className="text-right shrink-0">

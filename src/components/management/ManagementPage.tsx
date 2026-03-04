@@ -56,7 +56,7 @@ export function ManagementPage({ initialScreen }: ManagementPageProps) {
   if (screen === 'menu') {
     return (
       <div className="space-y-3">
-        <h2 className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">Управление</h2>
+        <h2 className="text-lg font-bold text-[var(--c-text)]">Управление</h2>
         <div className="space-y-1 lg:grid lg:grid-cols-2 xl:grid-cols-3 lg:gap-2 lg:space-y-0 stagger-children">
           {menuItems.map((item) => (
             <button
@@ -68,7 +68,7 @@ export function ManagementPage({ initialScreen }: ManagementPageProps) {
                 <item.icon className={`w-4 h-4 ${item.color.split(' ')[1]}`} />
               </div>
               <div className="flex-1 text-left min-w-0">
-                <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">{item.label}</p>
+                <p className="font-semibold text-[13px] text-[var(--c-text)]">{item.label}</p>
                 <p className="text-[10px] text-white/25">{item.desc}</p>
               </div>
               <ChevronRight className="w-3.5 h-3.5 text-white/12 shrink-0" />
@@ -86,9 +86,9 @@ export function ManagementPage({ initialScreen }: ManagementPageProps) {
           onClick={() => setScreen('menu')}
           className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center active:scale-90 transition-transform shrink-0"
         >
-          <ArrowLeft className="w-4 h-4 text-[var(--tg-theme-text-color,#e0e0e0)]" />
+          <ArrowLeft className="w-4 h-4 text-[var(--c-text)]" />
         </button>
-        <h2 className="text-lg font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{screenLabel}</h2>
+        <h2 className="text-lg font-bold text-[var(--c-text)]">{screenLabel}</h2>
       </div>
 
       {screen === 'menuEditor' && <MenuEditor />}
@@ -161,7 +161,7 @@ function InventoryFull() {
                   <Package className={`w-3.5 h-3.5 ${isCritical ? 'text-red-400' : 'text-white/35'}`} />
                 </div>
                 <div className="min-w-0">
-                  <p className="font-medium text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
+                  <p className="font-medium text-[13px] text-[var(--c-text)] truncate">
                     {item.name}
                   </p>
                   <div className="flex gap-1 mt-0.5">
@@ -171,7 +171,7 @@ function InventoryFull() {
                 </div>
               </div>
               <div className="text-right shrink-0 ml-2">
-                <p className={`text-base font-black tabular-nums ${isCritical ? 'text-red-400' : 'text-[var(--tg-theme-text-color,#e0e0e0)]'}`}>
+                <p className={`text-base font-black tabular-nums ${isCritical ? 'text-red-400' : 'text-[var(--c-text)]'}`}>
                   {item.stock_quantity}
                 </p>
                 {item.min_threshold > 0 && (

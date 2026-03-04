@@ -300,7 +300,7 @@ export function MenuEditor() {
   if (isLoading || catLoading) {
     return (
       <div className="text-center py-20">
-        <div className="w-8 h-8 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin mx-auto" />
+        <div className="w-8 h-8 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
       </div>
     );
   }
@@ -313,7 +313,7 @@ export function MenuEditor() {
         {/* Header */}
         <div className="flex items-center gap-3">
           <div className="p-2.5 px-4 rounded-xl card text-center">
-            <span className="text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)]">{items.length}</span>
+            <span className="text-sm font-bold text-[var(--c-text)]">{items.length}</span>
             <span className="text-xs text-white/40 ml-1.5">позиций</span>
           </div>
           <div className="p-2.5 px-4 rounded-xl bg-emerald-500/10 text-center">
@@ -333,7 +333,7 @@ export function MenuEditor() {
           <input
             type="text"
             placeholder="Поиск по названию..."
-            className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] placeholder:text-white/30"
+            className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-white/30"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -384,7 +384,7 @@ export function MenuEditor() {
                         <Icon className="w-5 h-5 text-white/70" />
                       </div>
                       <div className="flex-1 min-w-0 text-left">
-                        <p className="text-[13px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
+                        <p className="text-[13px] font-semibold text-[var(--c-text)] truncate">
                           {cat.name}
                         </p>
                         <p className="text-[11px] text-white/40 mt-0.5">
@@ -444,7 +444,7 @@ export function MenuEditor() {
                                 <ChildIcon className="w-4 h-4 text-white/50" />
                               </div>
                               <div className="flex-1 text-left">
-                                <p className="text-xs font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">{child.name}</p>
+                                <p className="text-xs font-medium text-[var(--c-text)]">{child.name}</p>
                                 <p className="text-[10px] text-white/30">{childCount} позиций</p>
                               </div>
                               <ChevronRight className="w-3.5 h-3.5 text-white/15" />
@@ -497,7 +497,7 @@ export function MenuEditor() {
               <div className="flex items-center gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
                 {(() => { const I = getIconComponent(deleteCatTarget.icon_name); return <I className="w-5 h-5 text-red-400 shrink-0" />; })()}
                 <div>
-                  <p className="text-[13px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">{deleteCatTarget.name}</p>
+                  <p className="text-[13px] font-semibold text-[var(--c-text)]">{deleteCatTarget.name}</p>
                   <p className="text-xs text-white/40">{countForCategory(deleteCatTarget)} позиций</p>
                 </div>
               </div>
@@ -528,7 +528,7 @@ export function MenuEditor() {
           <ArrowLeft className="w-5 h-5 text-white/60" />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-[var(--tg-theme-text-color,#e0e0e0)] truncate">
+          <p className="text-sm font-bold text-[var(--c-text)] truncate">
             {activeCategory?.name || 'Все позиции'}
           </p>
           <p className="text-[11px] text-white/40">{filteredItems.length} позиций</p>
@@ -544,7 +544,7 @@ export function MenuEditor() {
         <div className="flex gap-1.5 overflow-x-auto scrollbar-none -mx-1 px-1">
           <button
             onClick={() => {/* already showing all for this category */}}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-[var(--tg-theme-button-color,#6c5ce7)]/15 text-[var(--tg-theme-button-color,#6c5ce7)] shrink-0"
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-[var(--c-accent)]/15 text-[var(--c-accent)] shrink-0"
           >
             Все
           </button>
@@ -570,7 +570,7 @@ export function MenuEditor() {
         <input
           type="text"
           placeholder="Поиск по названию..."
-          className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] placeholder:text-white/30"
+          className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-white/30"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -587,7 +587,7 @@ export function MenuEditor() {
 
       {filteredItems.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-[var(--tg-theme-hint-color,#888)]">
+          <p className="text-[var(--c-hint)]">
             {search ? 'Ничего не найдено' : 'Нет позиций в этом разделе'}
           </p>
           <Button size="sm" className="mt-3" onClick={openCreate}>
@@ -624,7 +624,7 @@ export function MenuEditor() {
                 className="w-full flex flex-col items-center gap-2 py-6 rounded-xl border-2 border-dashed border-white/10 hover:border-white/20 text-white/40 transition-all active:scale-[0.98]"
               >
                 {isUploading ? (
-                  <div className="w-6 h-6 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin" />
+                  <div className="w-6 h-6 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <Upload className="w-6 h-6" />
                 )}
@@ -661,7 +661,7 @@ export function MenuEditor() {
                       isChild ? 'ml-3' : ''
                     } ${
                       form.category === cat.slug
-                        ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white'
+                        ? 'bg-[var(--c-accent)] text-white'
                         : 'card text-white/50'
                     }`}
                   >
@@ -682,7 +682,7 @@ export function MenuEditor() {
               form.is_active ? 'bg-emerald-500/10 border-emerald-500/30' : 'card border-white/10'
             }`}
           >
-            <span className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">
+            <span className="text-[13px] font-medium text-[var(--c-text)]">
               {form.is_active ? 'Отображается в меню' : 'Скрыт из меню'}
             </span>
             <div className={`w-10 h-6 rounded-full transition-colors relative ${form.is_active ? 'bg-emerald-500' : 'bg-white/20'}`}>
@@ -717,7 +717,7 @@ export function MenuEditor() {
                 </div>
               )}
               <div>
-                <p className="text-[13px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)]">{deleteTarget.name}</p>
+                <p className="text-[13px] font-semibold text-[var(--c-text)]">{deleteTarget.name}</p>
                 <p className="text-xs text-red-400">{deleteTarget.price}₽</p>
               </div>
             </div>
@@ -787,9 +787,9 @@ function ItemsList({
             </div>
 
             <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{item.name}</p>
+              <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{item.name}</p>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-xs font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">{item.price}₽</span>
+                <span className="text-xs font-bold text-[var(--c-accent)]">{item.price}₽</span>
                 {item.min_threshold > 0 && (
                   <span className="text-[10px] text-white/30">ост: {item.stock_quantity}</span>
                 )}
@@ -884,7 +884,7 @@ function CategoryEditorDrawer({
             className="flex items-center gap-2 p-3 rounded-xl card active:scale-[0.98] transition-all w-full"
           >
             {(() => { const I = getIconComponent(form.icon_name); return <I className="w-5 h-5 text-white/70" />; })()}
-            <span className="text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)]">{form.icon_name}</span>
+            <span className="text-[13px] text-[var(--c-text)]">{form.icon_name}</span>
             <ChevronRight className={`w-4 h-4 text-white/30 ml-auto transition-transform ${showIcons ? 'rotate-90' : ''}`} />
           </button>
           {showIcons && (
@@ -897,7 +897,7 @@ function CategoryEditorDrawer({
                     onClick={() => { setForm((prev) => ({ ...prev, icon_name: iconName })); setShowIcons(false); }}
                     className={`w-full aspect-square rounded-xl flex items-center justify-center transition-all active:scale-90 ${
                       form.icon_name === iconName
-                        ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white'
+                        ? 'bg-[var(--c-accent)] text-white'
                         : 'bg-white/5 text-white/40 hover:text-white/70'
                     }`}
                   >
@@ -917,7 +917,7 @@ function CategoryEditorDrawer({
               onClick={() => setForm((prev) => ({ ...prev, parent_id: null }))}
               className={`px-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${
                 !form.parent_id
-                  ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white'
+                  ? 'bg-[var(--c-accent)] text-white'
                   : 'card text-white/50'
               }`}
             >
@@ -931,7 +931,7 @@ function CategoryEditorDrawer({
                   onClick={() => setForm((prev) => ({ ...prev, parent_id: cat.id }))}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${
                     form.parent_id === cat.id
-                      ? 'bg-[var(--tg-theme-button-color,#6c5ce7)] text-white'
+                      ? 'bg-[var(--c-accent)] text-white'
                       : 'card text-white/50'
                   }`}
                 >

@@ -124,6 +124,22 @@ server {
         proxy_read_timeout 300s;
     }
 
+    location /sb/ {
+        proxy_pass https://dscadajjthbcrullhwtx.supabase.co/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host dscadajjthbcrullhwtx.supabase.co;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_ssl_server_name on;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+    }
+
     location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot)$ {
         expires 30d;
         add_header Cache-Control "public, immutable";
@@ -158,6 +174,22 @@ server {
 
     location / {
         try_files \$uri \$uri/ /wallet.html;
+    }
+
+    location /sb/ {
+        proxy_pass https://dscadajjthbcrullhwtx.supabase.co/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host dscadajjthbcrullhwtx.supabase.co;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_ssl_server_name on;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
     }
 
     location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot)$ {
@@ -255,6 +287,30 @@ ensure_nginx_proxy() {
         proxy_read_timeout 300s;\
     }' "$conf"
     success "Proxy для update-server добавлен"
+  fi
+}
+
+ensure_supabase_proxy() {
+  local conf="$1"
+  if [ -f "$conf" ] && ! grep -q 'location /sb/' "$conf" 2>/dev/null; then
+    info "Добавление Supabase proxy в nginx (обход блокировок)..."
+    sed -i '/location \/ {/i \
+    location /sb/ {\
+        proxy_pass https://dscadajjthbcrullhwtx.supabase.co/;\
+        proxy_http_version 1.1;\
+        proxy_set_header Upgrade $http_upgrade;\
+        proxy_set_header Connection "upgrade";\
+        proxy_set_header Host dscadajjthbcrullhwtx.supabase.co;\
+        proxy_set_header X-Real-IP $remote_addr;\
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\
+        proxy_set_header X-Forwarded-Proto $scheme;\
+        proxy_ssl_server_name on;\
+        proxy_buffering off;\
+        proxy_cache off;\
+        proxy_read_timeout 86400s;\
+        proxy_send_timeout 86400s;\
+    }' "$conf"
+    success "Supabase proxy добавлен"
   fi
 }
 
@@ -389,6 +445,8 @@ if [ "$MODE" = "update" ]; then
   echo ""
   setup_update_server "$INSTALL_DIR"
   ensure_nginx_proxy "$NGINX_CONF"
+  ensure_supabase_proxy "$NGINX_CONF"
+  ensure_supabase_proxy "$WALLET_NGINX_CONF"
 
   # ── Wallet Bot ──
 

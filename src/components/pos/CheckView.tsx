@@ -296,16 +296,16 @@ export function CheckView({ onBack }: CheckViewProps) {
   return (
     <div className="flex flex-col min-h-[calc(100vh-8rem)]">
       {/* Sticky header */}
-      <div className="sticky top-0 z-20 -mx-4 px-4 py-2 bg-[var(--tg-theme-bg-color,#0f0f23)]/95 backdrop-blur-sm border-b border-white/5 mb-3">
+      <div className="sticky top-0 z-20 -mx-4 px-4 py-2 bg-[var(--c-bg)]/95 backdrop-blur-sm border-b border-white/5 mb-3">
         <div className="flex items-center gap-2">
           <button
             onClick={handleBack}
             className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center active:scale-90 transition-transform shrink-0"
           >
-            <ArrowLeft className="w-4 h-4 text-[var(--tg-theme-text-color,#e0e0e0)]" />
+            <ArrowLeft className="w-4 h-4 text-[var(--c-text)]" />
           </button>
           <div className="flex-1 min-w-0">
-            <h2 className="text-[13px] font-bold text-[var(--tg-theme-text-color,#e0e0e0)] truncate leading-tight">
+            <h2 className="text-[13px] font-bold text-[var(--c-text)] truncate leading-tight">
               {activeCheck.space
                 ? activeCheck.space.name
                 : (() => {
@@ -316,14 +316,14 @@ export function CheckView({ onBack }: CheckViewProps) {
                   })()
               }
             </h2>
-            <p className="text-[10px] text-[var(--tg-theme-hint-color,#888)] leading-tight">
+            <p className="text-[10px] text-[var(--c-hint)] leading-tight">
               {activeCheck.space && activeCheck.player && <>{activeCheck.player.nickname}{activeCheck.guest_names ? `, ${activeCheck.guest_names}` : ''} · </>}
               {new Date(activeCheck.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
               {cartCount > 0 && <> · {cartCount} поз.</>}
             </p>
           </div>
           {total > 0 && (
-            <span className="text-base font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums shrink-0">
+            <span className="text-base font-black text-[var(--c-text)] tabular-nums shrink-0">
               {fmtCur(total)}
             </span>
           )}
@@ -375,7 +375,7 @@ export function CheckView({ onBack }: CheckViewProps) {
             onChange={(e) => handleNoteChange(e.target.value)}
             placeholder="Комментарий к чеку..."
             rows={2}
-            className="w-full px-3 py-2 rounded-xl bg-white/4 border border-white/6 text-sm text-[var(--tg-theme-text-color,#e0e0e0)] placeholder:text-white/15 focus:border-[var(--tg-theme-button-color,#6c5ce7)]/30 focus:outline-none resize-none transition-all"
+            className="w-full px-3 py-2 rounded-xl bg-white/4 border border-white/6 text-sm text-[var(--c-text)] placeholder:text-white/15 focus:border-[var(--c-accent)]/30 focus:outline-none resize-none transition-all"
           />
         </div>
       )}
@@ -387,11 +387,12 @@ export function CheckView({ onBack }: CheckViewProps) {
             <div className="w-16 h-16 rounded-2xl bg-white/3 flex items-center justify-center mx-auto mb-3">
               <ShoppingBag className="w-8 h-8 text-white/6" />
             </div>
-            <p className="text-[var(--tg-theme-hint-color,#888)] text-sm font-medium">Чек пока пуст</p>
+            <p className="text-[var(--c-hint)] text-sm font-medium">Чек пока пуст</p>
             <p className="text-xs text-white/15 mt-1 mb-5">Добавьте позиции из меню</p>
             <button
               onClick={openMenu}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--tg-theme-button-color,#6c5ce7)] text-white text-sm font-semibold active:scale-95 transition-transform shadow-lg shadow-[var(--tg-theme-button-color,#6c5ce7)]/15"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold active:scale-95 transition-transform"
+              style={{ background: 'linear-gradient(135deg, #6c5ce7, #7c6cf7)', boxShadow: '0 4px 20px rgba(108,92,231,0.3)' }}
             >
               <Plus className="w-4 h-4" />
               Открыть меню
@@ -404,9 +405,9 @@ export function CheckView({ onBack }: CheckViewProps) {
                 key={ci.item.id}
                 onDelete={() => { hapticFeedback('medium'); removeFromCart(ci.item.id); }}
               >
-                <div className="flex items-center gap-2.5 py-2 px-1 bg-[var(--tg-theme-bg-color,#0f0f23)]">
+                <div className="flex items-center gap-2.5 py-2 px-1 bg-[var(--c-bg)]">
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate leading-tight">
+                    <p className="text-[13px] font-medium text-[var(--c-text)] truncate leading-tight">
                       {ci.item.name}
                     </p>
                     <p className="text-[11px] text-white/25 mt-0.5 tabular-nums">{fmtCur(ci.item.price)}</p>
@@ -419,7 +420,7 @@ export function CheckView({ onBack }: CheckViewProps) {
                     >
                       <Minus className="w-3 h-3 text-white/50" />
                     </button>
-                    <span className="w-6 text-center text-xs font-bold text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums">
+                    <span className="w-6 text-center text-xs font-bold text-[var(--c-text)] tabular-nums">
                       {ci.quantity}
                     </span>
                     <button
@@ -430,7 +431,7 @@ export function CheckView({ onBack }: CheckViewProps) {
                     </button>
                   </div>
 
-                  <p className="text-[13px] font-bold text-[var(--tg-theme-text-color,#e0e0e0)] min-w-[48px] text-right tabular-nums">
+                  <p className="text-[13px] font-bold text-[var(--c-text)] min-w-[48px] text-right tabular-nums">
                     {fmtCur(ci.item.price * ci.quantity)}
                   </p>
                 </div>
@@ -493,7 +494,7 @@ export function CheckView({ onBack }: CheckViewProps) {
           </button>
           <div className="flex-1 min-w-0">
             {cartCount > 0 && (
-              <p className="text-xl font-black text-[var(--tg-theme-text-color,#e0e0e0)] tabular-nums leading-none">
+              <p className="text-xl font-black text-[var(--c-text)] tabular-nums leading-none">
                 {fmtCur(total)}
               </p>
             )}
@@ -501,7 +502,8 @@ export function CheckView({ onBack }: CheckViewProps) {
           {cartCount > 0 && (
             <button
               onClick={() => { hapticFeedback('medium'); setShowPayment(true); }}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--tg-theme-button-color,#6c5ce7)] text-white font-bold text-sm active:scale-[0.96] transition-transform shadow-lg shadow-[var(--tg-theme-button-color,#6c5ce7)]/20 animate-pop-in"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold text-sm active:scale-[0.96] transition-transform animate-pop-in"
+              style={{ background: 'linear-gradient(135deg, #6c5ce7, #7c6cf7)', boxShadow: '0 4px 20px rgba(108,92,231,0.3)' }}
             >
               <CreditCard className="w-4 h-4" />
               Оплата
@@ -523,7 +525,7 @@ export function CheckView({ onBack }: CheckViewProps) {
             placeholder="Поиск..."
             value={menuSearch}
             onChange={(e) => setMenuSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/5 border border-white/6 text-sm text-[var(--tg-theme-text-color,#e0e0e0)] placeholder:text-white/15 focus:outline-none focus:border-[var(--tg-theme-button-color,#6c5ce7)]/25 transition-colors"
+            className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/5 border border-white/6 text-sm text-[var(--c-text)] placeholder:text-white/15 focus:outline-none focus:border-[var(--c-accent)]/25 transition-colors"
           />
         </div>
 
@@ -532,7 +534,7 @@ export function CheckView({ onBack }: CheckViewProps) {
           <button
             onClick={() => setMenuCategory(null)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all active:scale-95 shrink-0 ${
-              !menuCategory ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/15 text-[var(--tg-theme-button-color,#6c5ce7)]' : 'bg-white/5 text-white/35'
+              !menuCategory ? 'bg-[var(--c-accent)]/15 text-[var(--c-accent)]' : 'bg-white/5 text-white/35'
             }`}
           >
             Все
@@ -544,7 +546,7 @@ export function CheckView({ onBack }: CheckViewProps) {
                 key={cat.id}
                 onClick={() => setMenuCategory(cat.slug)}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all active:scale-95 shrink-0 ${
-                  menuCategory === cat.slug ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/15 text-[var(--tg-theme-button-color,#6c5ce7)]' : 'bg-white/5 text-white/35'
+                  menuCategory === cat.slug ? 'bg-[var(--c-accent)]/15 text-[var(--c-accent)]' : 'bg-white/5 text-white/35'
                 }`}
               >
                 <CatIcon className="w-3 h-3" />
@@ -568,7 +570,7 @@ export function CheckView({ onBack }: CheckViewProps) {
                 }`}
               >
                 {inCart && (
-                  <div className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-[var(--tg-theme-button-color,#6c5ce7)] flex items-center justify-center text-[10px] font-bold text-white shadow animate-pop-in">
+                  <div className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-[var(--c-accent)] flex items-center justify-center text-[10px] font-bold text-white shadow animate-pop-in">
                     {inCart.quantity}
                   </div>
                 )}
@@ -578,10 +580,10 @@ export function CheckView({ onBack }: CheckViewProps) {
                   </div>
                 )}
                 <div className="p-2.5">
-                  <p className="font-medium text-[12px] text-[var(--tg-theme-text-color,#e0e0e0)] leading-tight line-clamp-2">
+                  <p className="font-medium text-[12px] text-[var(--c-text)] leading-tight line-clamp-2">
                     {item.name}
                   </p>
-                  <p className="text-sm font-black text-[var(--tg-theme-button-color,#6c5ce7)] mt-1 tabular-nums">
+                  <p className="text-sm font-black text-[var(--c-accent)] mt-1 tabular-nums">
                     {fmtCur(item.price)}
                   </p>
                   {item.min_threshold > 0 && (
@@ -621,7 +623,7 @@ export function CheckView({ onBack }: CheckViewProps) {
             const qtyDiscounts = discountsList.filter((d) => d.min_quantity && d.min_quantity > 0);
 
             return manualDiscounts.length === 0 && qtyDiscounts.length === 0 ? (
-              <p className="text-xs text-[var(--tg-theme-hint-color,#888)] text-center py-6">Нет активных скидок</p>
+              <p className="text-xs text-[var(--c-hint)] text-center py-6">Нет активных скидок</p>
             ) : (
               <>
                 {manualDiscounts.length > 0 && (
@@ -638,7 +640,7 @@ export function CheckView({ onBack }: CheckViewProps) {
                             <Percent className={`w-3.5 h-3.5 ${d.type === 'percentage' ? 'text-violet-400' : 'text-emerald-400'}`} />
                           </div>
                           <div className="flex-1 text-left">
-                            <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)]">{d.name}</p>
+                            <p className="text-[13px] font-medium text-[var(--c-text)]">{d.name}</p>
                             <p className="text-[11px] text-white/25">
                               {d.type === 'percentage' ? `-${d.value}%` : `-${d.value}₽`}
                               {d.type === 'percentage' && subtotal > 0 && (
@@ -655,7 +657,7 @@ export function CheckView({ onBack }: CheckViewProps) {
                         <div className="space-y-1 max-h-[30vh] overflow-y-auto">
                           {cart.map((ci) => (
                             <div key={ci.item.id} className="p-2 rounded-xl bg-white/3">
-                              <p className="text-[11px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] mb-1.5">{ci.item.name} ({fmtCur(ci.item.price * ci.quantity)})</p>
+                              <p className="text-[11px] font-medium text-[var(--c-text)] mb-1.5">{ci.item.name} ({fmtCur(ci.item.price * ci.quantity)})</p>
                               <div className="flex gap-1 flex-wrap">
                                 {manualDiscounts.map((d) => (
                                   <button
@@ -691,7 +693,7 @@ export function CheckView({ onBack }: CheckViewProps) {
                               <Percent className="w-3.5 h-3.5 text-amber-400" />
                             </div>
                             <div className="flex-1 text-left min-w-0">
-                              <p className="text-[13px] font-medium text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{d.name}</p>
+                              <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{d.name}</p>
                               <p className="text-[10px] text-white/25">
                                 от {d.min_quantity} шт · {d.type === 'percentage' ? `-${d.value}%` : `-${d.value}₽`}
                               </p>
@@ -733,7 +735,7 @@ export function CheckView({ onBack }: CheckViewProps) {
 
           {isPlayerSearching && (
             <div className="flex justify-center py-3">
-              <div className="w-5 h-5 border-2 border-[var(--tg-theme-button-color,#6c5ce7)] border-t-transparent rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin" />
             </div>
           )}
 
@@ -744,13 +746,13 @@ export function CheckView({ onBack }: CheckViewProps) {
                 onClick={() => handlePlayerForTariff(player)}
                 className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/5 transition-colors active:scale-[0.98]"
               >
-                <div className="w-8 h-8 rounded-lg bg-[var(--tg-theme-button-color,#6c5ce7)]/10 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">
+                <div className="w-8 h-8 rounded-lg bg-[var(--c-accent)]/10 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-bold text-[var(--c-accent)]">
                     {player.nickname?.charAt(0).toUpperCase()}
                   </span>
                 </div>
                 <div className="text-left flex-1 min-w-0">
-                  <p className="font-semibold text-[13px] text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{player.nickname}</p>
+                  <p className="font-semibold text-[13px] text-[var(--c-text)] truncate">{player.nickname}</p>
                   <div className="flex gap-1 mt-0.5">
                     {player.client_tier === 'resident' && <span className="text-[10px] text-emerald-400 font-medium">Резидент</span>}
                     {player.client_tier === 'student' && <span className="text-[10px] text-blue-400 font-medium">Студент</span>}
@@ -762,7 +764,7 @@ export function CheckView({ onBack }: CheckViewProps) {
               </button>
             ))}
             {playerSearch.length > 0 && !isPlayerSearching && playerResults.length === 0 && (
-              <p className="text-xs text-center text-[var(--tg-theme-hint-color,#888)] py-6">Никого не найдено</p>
+              <p className="text-xs text-center text-[var(--c-hint)] py-6">Никого не найдено</p>
             )}
             {playerSearch.length === 0 && (
               <p className="text-xs text-center text-white/20 py-6">Введите ник игрока</p>
@@ -781,13 +783,13 @@ export function CheckView({ onBack }: CheckViewProps) {
         {selectedPlayer && (
           <div className="space-y-4">
             <div className="flex items-center gap-3 p-3 rounded-xl card">
-              <div className="w-10 h-10 rounded-xl bg-[var(--tg-theme-button-color,#6c5ce7)]/10 flex items-center justify-center shrink-0">
-                <span className="text-sm font-bold text-[var(--tg-theme-button-color,#6c5ce7)]">
+              <div className="w-10 h-10 rounded-xl bg-[var(--c-accent)]/10 flex items-center justify-center shrink-0">
+                <span className="text-sm font-bold text-[var(--c-accent)]">
                   {selectedPlayer.nickname?.charAt(0).toUpperCase()}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-bold text-[var(--tg-theme-text-color,#e0e0e0)] truncate">{selectedPlayer.nickname}</p>
+                <p className="text-[13px] font-bold text-[var(--c-text)] truncate">{selectedPlayer.nickname}</p>
                 {selectedPlayer.client_tier === 'resident' && <span className="text-[10px] text-emerald-400">Резидент</span>}
                 {selectedPlayer.client_tier === 'student' && <span className="text-[10px] text-blue-400">Студент</span>}
               </div>
@@ -803,7 +805,7 @@ export function CheckView({ onBack }: CheckViewProps) {
                     onClick={() => { setSelectedTariff(key); hapticFeedback('light'); }}
                     className={`relative flex flex-col items-center gap-1 p-3 rounded-xl border transition-all active:scale-[0.97] ${
                       isSelected
-                        ? 'bg-[var(--tg-theme-button-color,#6c5ce7)]/10 border-[var(--tg-theme-button-color,#6c5ce7)]/30'
+                        ? 'bg-[var(--c-accent)]/10 border-[var(--c-accent)]/30'
                         : 'card border-white/6'
                     }`}
                   >
@@ -824,12 +826,12 @@ export function CheckView({ onBack }: CheckViewProps) {
                        <User className="w-4 h-4 text-white/40" />}
                     </div>
                     <span className={`text-xs font-semibold ${
-                      isSelected ? 'text-[var(--tg-theme-button-color,#6c5ce7)]' : 'text-[var(--tg-theme-text-color,#e0e0e0)]'
+                      isSelected ? 'text-[var(--c-accent)]' : 'text-[var(--c-text)]'
                     }`}>
                       {info.label}
                     </span>
                     <span className={`text-sm font-black tabular-nums ${
-                      isSelected ? 'text-[var(--tg-theme-button-color,#6c5ce7)]' : 'text-white/50'
+                      isSelected ? 'text-[var(--c-accent)]' : 'text-white/50'
                     }`}>
                       {info.price}₽
                     </span>
@@ -860,7 +862,7 @@ export function CheckView({ onBack }: CheckViewProps) {
           <div className="flex gap-2">
             <button
               onClick={() => setShowCancelConfirm(false)}
-              className="flex-1 py-2.5 rounded-xl bg-white/5 text-[13px] font-semibold text-[var(--tg-theme-text-color,#e0e0e0)] active:scale-[0.97] transition-transform"
+              className="flex-1 py-2.5 rounded-xl bg-white/5 text-[13px] font-semibold text-[var(--c-text)] active:scale-[0.97] transition-transform"
             >
               Нет
             </button>

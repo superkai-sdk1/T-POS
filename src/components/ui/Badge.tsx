@@ -14,7 +14,7 @@ const variants = {
   success: 'bg-emerald-500/12 text-emerald-400 border border-emerald-500/8',
   warning: 'bg-amber-500/12 text-amber-400 border border-amber-500/8',
   danger: 'bg-red-500/12 text-red-400 border border-red-500/8',
-  accent: 'bg-[var(--tg-theme-button-color,#6c5ce7)]/12 text-[var(--tg-theme-button-color,#6c5ce7)] border border-[var(--tg-theme-button-color,#6c5ce7)]/8',
+  accent: 'bg-[var(--c-accent)]/12 text-[var(--c-accent)] border border-[var(--c-accent)]/8',
 };
 
 const sizes = {

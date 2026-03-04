@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --tg-theme-bg-color: #0f0f23;
-  --tg-theme-text-color: #e0e0e0;
-  --tg-theme-hint-color: #888888;
-  --tg-theme-link-color: #6c5ce7;
-  --tg-theme-button-color: #6c5ce7;
-  --tg-theme-button-text-color: #ffffff;
-  --tg-theme-secondary-bg-color: #16162e;
+  --c-bg: #0f0f23;
+  --c-bg2: #16162e;
+  --c-text: #e0e0e0;
+  --c-hint: #888888;
+  --c-accent: #6c5ce7;
+  --c-accent-text: #ffffff;
+  --c-accent-glow: rgba(108, 92, 231, 0.15);
 
   --tg-safe-top: 0px;
   --tg-safe-bottom: 0px;
@@ -46,8 +46,8 @@ body {
   overflow-y: auto;
   overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
-  background-color: var(--tg-theme-bg-color, #0f0f23);
-  color: var(--tg-theme-text-color, #e0e0e0);
+  background-color: var(--c-bg);
+  color: var(--c-text);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   padding-left: var(--safe-left);
@@ -198,21 +198,22 @@ input[type="number"] {
 
 /* ── Card System ── */
 .card {
-  background: rgba(255, 255, 255, 0.035);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 1rem;
-  transition: background 0.1s, transform 0.1s;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 
 .card-interactive {
-  background: rgba(255, 255, 255, 0.035);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 1rem;
-  transition: background 0.1s, transform 0.1s;
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 .card-interactive:active {
   transform: scale(0.975);
-  background: rgba(255, 255, 255, 0.055);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.035));
+  box-shadow: 0 0 0 1px rgba(108, 92, 231, 0.08);
 }
 
 /* ── Tap micro-interaction ── */
@@ -225,17 +226,18 @@ input[type="number"] {
 
 /* ── Glass ── */
 .glass {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: rgba(22, 22, 46, 0.6);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .glass-strong {
-  background: rgba(15, 15, 35, 0.92);
-  backdrop-filter: blur(32px);
-  -webkit-backdrop-filter: blur(32px);
+  background: rgba(15, 15, 35, 0.94);
+  backdrop-filter: blur(40px) saturate(1.5);
+  -webkit-backdrop-filter: blur(40px) saturate(1.5);
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.2);
 }
 
 /* ── Staggered children (faster) ── */
