@@ -204,7 +204,7 @@ export const useAuthStore = create<AuthState>()(
 
       skipPinSetup: () => set({ needsPinSetup: false }),
 
-      logout: () => set({ user: null, needsPinSetup: false, error: null }),
+      logout: () => set({ user: null, rememberedUserId: null, rememberedNickname: null, needsPinSetup: false, error: null }),
 
       forgetUser: () => set({
         user: null,
