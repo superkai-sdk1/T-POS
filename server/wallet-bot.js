@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createServer } from 'node:http';
 import { createClient } from '@supabase/supabase-js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -390,62 +391,113 @@ async function setupLinkApprovals() {
   console.log('Subscribed to link approvals');
 }
 
-let offset = 0;
+const WEBHOOK_PORT = parseInt(env.WALLET_BOT_PORT || process.env.WALLET_BOT_PORT || '3001', 10);
+const POS_DOMAIN = env.POS_DOMAIN || process.env.POS_DOMAIN || 'cloudtitan.ru';
+const WEBHOOK_PATH = `/webhook/wallet-bot-${BOT_TOKEN.split(':')[0]}`;
 
-async function poll() {
+async function handleUpdate(update) {
+  try {
+    if (update.message?.text?.startsWith('/start')) {
+      await handleStart(update.message);
+    } else if (update.callback_query) {
+      await handleCallback(update.callback_query);
+    }
+  } catch (err) {
+    console.error('Error handling update:', err);
+  }
+}
+
+function startWebhookServer() {
+  const server = createServer((req, res) => {
+    if (req.method === 'POST' && req.url === WEBHOOK_PATH) {
+      let body = '';
+      req.on('data', (chunk) => { body += chunk; });
+      req.on('end', () => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end('{"ok":true}');
+        try {
+          const update = JSON.parse(body);
+          handleUpdate(update);
+        } catch (err) {
+          console.error('Failed to parse update:', err);
+        }
+      });
+    } else if (req.method === 'GET' && req.url === '/health') {
+      res.writeHead(200);
+      res.end('OK');
+    } else {
+      res.writeHead(404);
+      res.end('Not found');
+    }
+  });
+
+  server.listen(WEBHOOK_PORT, '127.0.0.1', () => {
+    console.log(`Webhook server listening on 127.0.0.1:${WEBHOOK_PORT}`);
+  });
+}
+
+async function registerWebhook() {
+  const webhookUrl = `https://${POS_DOMAIN}${WEBHOOK_PATH}`;
+  const result = await tg('setWebhook', {
+    url: webhookUrl,
+    allowed_updates: ['message', 'callback_query'],
+    drop_pending_updates: false,
+  });
+  if (result.ok) {
+    console.log(`Webhook registered: ${webhookUrl}`);
+  } else {
+    console.error('Failed to register webhook:', result);
+    console.log('Falling back to polling...');
+    fallbackPoll();
+  }
+}
+
+let pollOffset = 0;
+
+async function fallbackPoll() {
+  console.log('Starting fallback polling...');
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   while (true) {
     try {
-      const res = await fetch(`${API}/getUpdates?offset=${offset}&timeout=30`);
+      const res = await fetch(`${API}/getUpdates?offset=${pollOffset}&timeout=30`);
       const json = await res.json();
-
-      if (!json.ok || !json.result) {
-        await sleep(3000);
-        continue;
-      }
-
+      if (!json.ok || !json.result) { await sleep(3000); continue; }
       for (const update of json.result) {
-        offset = update.update_id + 1;
-        try {
-          if (update.message?.text?.startsWith('/start')) {
-            await handleStart(update.message);
-          } else if (update.callback_query) {
-            await handleCallback(update.callback_query);
-          }
-        } catch (err) {
-          console.error('Error handling update:', err);
-        }
+        pollOffset = update.update_id + 1;
+        await handleUpdate(update);
       }
-    } catch (err) {
-      console.error('Polling error:', err);
+    } catch {
       await sleep(5000);
     }
   }
 }
 
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
 async function main() {
   console.log('TITAN Wallet Bot starting...');
 
-  await tg('setMyCommands', {
-    commands: [{ command: 'start', description: 'Открыть кошелёк' }],
-  });
+  try {
+    await tg('setMyCommands', {
+      commands: [{ command: 'start', description: 'Открыть кошелёк' }],
+    });
 
-  await tg('setChatMenuButton', {
-    menu_button: {
-      type: 'web_app',
-      text: 'TITAN Wallet',
-      web_app: { url: WEBAPP_URL },
-    },
-  });
+    await tg('setChatMenuButton', {
+      menu_button: {
+        type: 'web_app',
+        text: 'TITAN Wallet',
+        web_app: { url: WEBAPP_URL },
+      },
+    });
+  } catch (err) {
+    console.error('Warning: Could not set bot commands:', err.message);
+  }
 
   await setupBonusNotifications();
   await setupLinkApprovals();
 
-  console.log('TITAN Wallet Bot ready — polling...');
-  poll();
+  startWebhookServer();
+  await registerWebhook();
+
+  console.log('TITAN Wallet Bot ready');
 }
 
 main().catch((err) => {

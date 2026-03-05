@@ -124,6 +124,14 @@ server {
         proxy_read_timeout 300s;
     }
 
+    location /webhook/ {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header Host \$host;
+    }
+
     location /sb/ {
         resolver 8.8.8.8 1.1.1.1 valid=300s;
         resolver_timeout 5s;
@@ -297,6 +305,22 @@ ensure_nginx_proxy() {
         proxy_read_timeout 300s;\
     }' "$conf"
     success "Proxy для update-server добавлен"
+  fi
+}
+
+ensure_webhook_proxy() {
+  local conf="$1"
+  if [ -f "$conf" ] && ! grep -q 'location /webhook/' "$conf" 2>/dev/null; then
+    info "Добавление webhook proxy для wallet-bot в nginx..."
+    sed -i '/location \/ {/i \
+    location /webhook/ {\
+        proxy_pass http://127.0.0.1:3001;\
+        proxy_http_version 1.1;\
+        proxy_set_header X-Real-IP $remote_addr;\
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\
+        proxy_set_header Host $host;\
+    }' "$conf"
+    success "Webhook proxy добавлен"
   fi
 }
 
