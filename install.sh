@@ -136,8 +136,8 @@ server {
         resolver 8.8.8.8 1.1.1.1 valid=300s;
         resolver_timeout 5s;
         set \$supabase https://dscadajjthbcrullhwtx.supabase.co;
-        proxy_pass \$supabase\$request_uri;
         rewrite ^/sb/(.*) /\$1 break;
+        proxy_pass \$supabase;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -193,8 +193,8 @@ server {
         resolver 8.8.8.8 1.1.1.1 valid=300s;
         resolver_timeout 5s;
         set \$supabase https://dscadajjthbcrullhwtx.supabase.co;
-        proxy_pass \$supabase\$request_uri;
         rewrite ^/sb/(.*) /\$1 break;
+        proxy_pass \$supabase;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -333,8 +333,8 @@ ensure_supabase_proxy() {
         resolver 8.8.8.8 1.1.1.1 valid=300s;\
         resolver_timeout 5s;\
         set $supabase https://dscadajjthbcrullhwtx.supabase.co;\
-        proxy_pass $supabase$request_uri;\
         rewrite ^/sb/(.*) /$1 break;\
+        proxy_pass $supabase;\
         proxy_http_version 1.1;\
         proxy_set_header Upgrade $http_upgrade;\
         proxy_set_header Connection "upgrade";\
