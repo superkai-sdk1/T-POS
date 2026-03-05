@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { getTelegramWebApp, initTelegramApp } from '@/lib/telegram';
+import QRCode from 'qrcode';
 
 const supabaseUrl = import.meta.env.PROD
   ? `${window.location.origin}/sb`
@@ -381,71 +382,103 @@ export function WalletApp() {
 }
 
 function WalletCard({ profile }: { profile: Profile }) {
+  const [qrUrl, setQrUrl] = useState<string>('');
+  const [showQR, setShowQR] = useState(false);
+
+  useEffect(() => {
+    QRCode.toDataURL(profile.id, {
+      width: 200,
+      margin: 1,
+      color: { dark: '#ffffff', light: '#00000000' },
+    }).then(setQrUrl).catch(() => {});
+  }, [profile.id]);
+
   return (
-    <div className="animate-fade-in-up" style={{ animationDelay: '0ms' }}>
-      <div
-        className="relative overflow-hidden rounded-2xl p-5 pb-6"
-        style={{
-          background: 'linear-gradient(135deg, #1a1a3e 0%, #0d0d2b 40%, #151538 100%)',
-          boxShadow: '0 0 30px rgba(108, 92, 231, 0.15), 0 8px 32px rgba(0, 0, 0, 0.4)',
-          animation: 'card-glow 4s ease-in-out infinite',
-        }}
-      >
-        <div className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-[0.07]"
-          style={{ background: 'radial-gradient(circle, #6c5ce7, transparent 70%)', transform: 'translate(20%, -30%)' }} />
-        <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full opacity-[0.05]"
-          style={{ background: 'radial-gradient(circle, #a29bfe, transparent 70%)', transform: 'translate(-20%, 30%)' }} />
-        <div className="absolute inset-0 opacity-[0.03]"
-          style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255,255,255,0.05) 20px, rgba(255,255,255,0.05) 21px)' }} />
+    <>
+      <div className="animate-fade-in-up" style={{ animationDelay: '0ms' }}>
+        <div
+          className="relative overflow-hidden rounded-2xl p-5 pb-6"
+          style={{
+            background: 'linear-gradient(135deg, #1a1a3e 0%, #0d0d2b 40%, #151538 100%)',
+            boxShadow: '0 0 30px rgba(108, 92, 231, 0.15), 0 8px 32px rgba(0, 0, 0, 0.4)',
+            animation: 'card-glow 4s ease-in-out infinite',
+          }}
+        >
+          <div className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-[0.07]"
+            style={{ background: 'radial-gradient(circle, #6c5ce7, transparent 70%)', transform: 'translate(20%, -30%)' }} />
+          <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full opacity-[0.05]"
+            style={{ background: 'radial-gradient(circle, #a29bfe, transparent 70%)', transform: 'translate(-20%, 30%)' }} />
+          <div className="absolute inset-0 opacity-[0.03]"
+            style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255,255,255,0.05) 20px, rgba(255,255,255,0.05) 21px)' }} />
 
-        <div className="relative flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2.5">
-            <img src="/icons/wallet.svg" alt="TITAN Wallet" className="w-8 h-8 rounded-lg" />
+          <div className="relative flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2.5">
+              <img src="/icons/wallet.svg" alt="TITAN Wallet" className="w-8 h-8 rounded-lg" />
+              <div>
+                <p className="text-[11px] font-semibold tracking-[0.15em] text-white/40 uppercase">TITAN</p>
+                <p className="text-[13px] font-bold text-white/90 -mt-0.5">Wallet</p>
+              </div>
+            </div>
+            <div className={`text-[10px] font-semibold uppercase tracking-wider ${tierColor[profile.client_tier] || 'text-white/50'}`}>
+              {tierLabel[profile.client_tier] || profile.client_tier}
+            </div>
+          </div>
+
+          <div className="relative mb-5">
+            <p className="text-[10px] font-medium text-white/30 uppercase tracking-wider mb-1">Бонусный баланс</p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-4xl font-bold text-white" style={{ fontFeatureSettings: "'tnum'" }}>
+                {fmt(profile.bonus_points)}
+              </p>
+              <p className="text-lg font-medium text-white/30">баллов</p>
+            </div>
+          </div>
+
+          <div className="relative flex items-end justify-between">
             <div>
-              <p className="text-[11px] font-semibold tracking-[0.15em] text-white/40 uppercase">TITAN</p>
-              <p className="text-[13px] font-bold text-white/90 -mt-0.5">Wallet</p>
+              <p className="text-[10px] text-white/25 uppercase tracking-wider mb-0.5">Владелец</p>
+              <p className="text-sm font-semibold text-white/80">{profile.nickname}</p>
             </div>
+            {profile.balance < 0 ? (
+              <div className="text-right">
+                <p className="text-[10px] text-red-400/60 uppercase tracking-wider mb-0.5">Долг</p>
+                <p className="text-sm font-bold text-red-400">{fmt(Math.abs(profile.balance))}₽</p>
+              </div>
+            ) : (
+              <div className="text-right">
+                <p className="text-[10px] text-white/25 uppercase tracking-wider mb-0.5">Баланс</p>
+                <p className="text-sm font-semibold text-white/60">{fmt(profile.balance)}₽</p>
+              </div>
+            )}
           </div>
-          <div className={`text-[10px] font-semibold uppercase tracking-wider ${tierColor[profile.client_tier] || 'text-white/50'}`}>
-            {tierLabel[profile.client_tier] || profile.client_tier}
-          </div>
-        </div>
 
-        <div className="relative mb-5">
-          <p className="text-[10px] font-medium text-white/30 uppercase tracking-wider mb-1">Бонусный баланс</p>
-          <div className="flex items-baseline gap-2">
-            <p className="text-4xl font-bold text-white" style={{ fontFeatureSettings: "'tnum'" }}>
-              {fmt(profile.bonus_points)}
-            </p>
-            <p className="text-lg font-medium text-white/30">баллов</p>
-          </div>
-        </div>
-
-        <div className="relative flex items-end justify-between">
-          <div>
-            <p className="text-[10px] text-white/25 uppercase tracking-wider mb-0.5">Владелец</p>
-            <p className="text-sm font-semibold text-white/80">{profile.nickname}</p>
-          </div>
-          {profile.balance < 0 ? (
-            <div className="text-right">
-              <p className="text-[10px] text-red-400/60 uppercase tracking-wider mb-0.5">Долг</p>
-              <p className="text-sm font-bold text-red-400">{fmt(Math.abs(profile.balance))}₽</p>
-            </div>
-          ) : (
-            <div className="text-right">
-              <p className="text-[10px] text-white/25 uppercase tracking-wider mb-0.5">Баланс</p>
-              <p className="text-sm font-semibold text-white/60">{fmt(profile.balance)}₽</p>
-            </div>
+          {qrUrl && (
+            <button
+              onClick={() => setShowQR(!showQR)}
+              className="absolute right-4 top-[52%] -translate-y-1/2 active:scale-90 transition-transform"
+            >
+              <img src={qrUrl} alt="QR" className="w-14 h-14 opacity-20 hover:opacity-40 transition-opacity" />
+            </button>
           )}
         </div>
-
-        <div className="absolute right-5 top-[52%] -translate-y-1/2 opacity-[0.06]">
-          <svg width="60" height="60" viewBox="0 0 24 24" fill="currentColor" className="text-white">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1" fill="none"/>
-          </svg>
-        </div>
       </div>
-    </div>
+
+      {showQR && qrUrl && (
+        <div
+          className="animate-fade-in-up rounded-2xl p-6 text-center"
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.06)',
+          }}
+        >
+          <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-3">Ваш QR-код</p>
+          <div className="inline-block p-4 rounded-xl bg-white">
+            <img src={qrUrl} alt="QR Code" className="w-48 h-48" style={{ filter: 'invert(1)' }} />
+          </div>
+          <p className="text-[10px] text-white/20 mt-3">Покажите кассиру для идентификации</p>
+        </div>
+      )}
+    </>
   );
 }
 

@@ -23,6 +23,7 @@ export interface Profile {
   client_tier: ClientTier;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface InventoryItem {
@@ -122,6 +123,7 @@ export interface ShiftCheckDetail {
 export interface CartItem {
   item: InventoryItem;
   quantity: number;
+  modifiers?: { id: string; name: string; price: number }[];
 }
 
 export interface Supply {
@@ -305,6 +307,19 @@ export interface Certificate {
   created_at: string;
   creator?: { nickname: string };
   user?: { nickname: string };
+}
+
+export type ExpenseCategory = 'rent' | 'utilities' | 'salary' | 'other';
+
+export interface Expense {
+  id: string;
+  category: ExpenseCategory;
+  amount: number;
+  description: string | null;
+  expense_date: string;
+  created_by: string | null;
+  created_at: string;
+  creator?: { nickname: string };
 }
 
 export type RefundType = 'full' | 'partial';

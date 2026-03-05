@@ -25,7 +25,7 @@ interface POSState {
   createCheck: (playerId: string | null, spaceId?: string | null) => Promise<Check | null>;
   updateCheckNote: (note: string) => Promise<void>;
   selectCheck: (check: Check) => Promise<void>;
-  addToCart: (item: InventoryItem) => void;
+  addToCart: (item: InventoryItem, modifiers?: { id: string; name: string; price: number }[]) => void;
   removeFromCart: (itemId: string) => void;
   updateCartQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
@@ -198,16 +198,23 @@ export const usePOSStore = create<POSState>((set, get) => ({
     set({ checkItems: items, cart, appliedDiscounts: discounts, isLoading: false });
   },
 
-  addToCart: (item: InventoryItem) => {
+  addToCart: (item: InventoryItem, modifiers?: { id: string; name: string; price: number }[]) => {
     const currentCart = get().cart;
-    const idx = currentCart.findIndex((c) => c.item.id === item.id);
+    const modKey = modifiers && modifiers.length > 0
+      ? modifiers.map((m) => m.id).sort().join(',')
+      : '';
+    const idx = currentCart.findIndex((c) => {
+      if (c.item.id !== item.id) return false;
+      const cKey = (c.modifiers || []).map((m) => m.id).sort().join(',');
+      return cKey === modKey;
+    });
     let newCart: CartItem[];
     if (idx >= 0) {
       newCart = currentCart.map((c, i) =>
         i === idx ? { ...c, quantity: c.quantity + 1 } : c
       );
     } else {
-      newCart = [...currentCart, { item, quantity: 1 }];
+      newCart = [...currentCart, { item, quantity: 1, modifiers: modifiers || undefined }];
     }
     set({ cart: newCart });
   },
@@ -231,7 +238,10 @@ export const usePOSStore = create<POSState>((set, get) => ({
   clearCart: () => set({ cart: [] }),
 
   getCartTotal: () => {
-    const subtotal = get().cart.reduce((sum, c) => sum + c.item.price * c.quantity, 0);
+    const subtotal = get().cart.reduce((sum, c) => {
+      const modPrice = (c.modifiers || []).reduce((ms, m) => ms + m.price, 0);
+      return sum + (c.item.price + modPrice) * c.quantity;
+    }, 0);
     const discountTotal = get().getDiscountTotal();
     return Math.max(0, subtotal - discountTotal);
   },
@@ -342,9 +352,38 @@ export const usePOSStore = create<POSState>((set, get) => ({
       item: Array.isArray(ci.item) ? ci.item[0] : ci.item,
     }));
     const loadedItems = normalizedItems.filter((ci: any) => ci.item) as CheckItem[];
-    const newCart: CartItem[] = loadedItems.map((ci) => ({ item: ci.item!, quantity: ci.quantity }));
-    const oldFp = get().cart.map((c) => `${c.item.id}:${c.quantity}`).sort().join('|');
-    const newFp = newCart.map((c) => `${c.item.id}:${c.quantity}`).sort().join('|');
+
+    let modMap: Record<string, { id: string; name: string; price: number }[]> = {};
+    if (loadedItems.length > 0) {
+      const ciIds = loadedItems.map((ci) => ci.id);
+      const { data: cimRows } = await supabase
+        .from('check_item_modifiers')
+        .select('check_item_id, modifier_id, price_at_time, modifier:modifiers(name)')
+        .in('check_item_id', ciIds);
+      if (cimRows) {
+        for (const row of cimRows) {
+          if (!modMap[row.check_item_id]) modMap[row.check_item_id] = [];
+          modMap[row.check_item_id].push({
+            id: row.modifier_id,
+            name: (row.modifier as any)?.name || '?',
+            price: row.price_at_time || 0,
+          });
+        }
+      }
+    }
+
+    const newCart: CartItem[] = loadedItems.map((ci) => ({
+      item: ci.item!,
+      quantity: ci.quantity,
+      modifiers: modMap[ci.id] || undefined,
+    }));
+
+    const mkFp = (c: CartItem[]) => c.map((ci) => {
+      const mids = (ci.modifiers || []).map((m) => m.id).sort().join('+');
+      return `${ci.item.id}:${ci.quantity}:${mids}`;
+    }).sort().join('|');
+    const oldFp = mkFp(get().cart);
+    const newFp = mkFp(newCart);
     const cartChanged = oldFp !== newFp;
 
     if (!checkChanged && !cartChanged) return;
@@ -365,33 +404,16 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const { activeCheck, cart } = get();
     if (!activeCheck) return true;
 
-    const fp = cart.map((c) => `${c.item.id}:${c.quantity}`).sort().join('|');
-    if (fp === _lastCartFingerprint) return true;
+    const modKey = cart.map((c) => {
+      const mids = (c.modifiers || []).map((m) => m.id).sort().join('+');
+      return `${c.item.id}:${c.quantity}:${mids}`;
+    }).sort().join('|');
+    if (modKey === _lastCartFingerprint) return true;
 
     let success = false;
     const doSave = async () => {
       _savingCart = true;
       try {
-        const { data: existingCIs } = await supabase
-          .from('check_items')
-          .select('id, item_id')
-          .eq('check_id', activeCheck.id);
-
-        let savedMods: { item_id: string; modifier_id: string; price_at_time: number }[] = [];
-        if (existingCIs && existingCIs.length > 0) {
-          const ciIds = existingCIs.map((ci: any) => ci.id);
-          const { data: mods } = await supabase
-            .from('check_item_modifiers')
-            .select('check_item_id, modifier_id, price_at_time')
-            .in('check_item_id', ciIds);
-          if (mods && mods.length > 0) {
-            savedMods = mods.map((m: any) => {
-              const ci = existingCIs.find((c: any) => c.id === m.check_item_id);
-              return { item_id: ci?.item_id, modifier_id: m.modifier_id, price_at_time: m.price_at_time };
-            });
-          }
-        }
-
         await supabase.from('check_items').delete().eq('check_id', activeCheck.id);
         if (cart.length > 0) {
           const rows = cart.map((c) => ({
@@ -406,12 +428,15 @@ export const usePOSStore = create<POSState>((set, get) => ({
             return;
           }
 
-          if (savedMods.length > 0 && newCIs && newCIs.length > 0) {
+          if (newCIs) {
             const modRows: { check_item_id: string; modifier_id: string; price_at_time: number }[] = [];
-            for (const sm of savedMods) {
-              const newCI = newCIs.find((ci: any) => ci.item_id === sm.item_id);
-              if (newCI) {
-                modRows.push({ check_item_id: newCI.id, modifier_id: sm.modifier_id, price_at_time: sm.price_at_time });
+            for (let i = 0; i < cart.length; i++) {
+              const ci = cart[i];
+              if (!ci.modifiers || ci.modifiers.length === 0) continue;
+              const newCI = newCIs[i];
+              if (!newCI) continue;
+              for (const mod of ci.modifiers) {
+                modRows.push({ check_item_id: newCI.id, modifier_id: mod.id, price_at_time: mod.price });
               }
             }
             if (modRows.length > 0) {
@@ -419,7 +444,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
             }
           }
         }
-        _lastCartFingerprint = fp;
+        _lastCartFingerprint = modKey;
         success = true;
       } finally {
         setTimeout(() => { _savingCart = false; }, 600);

@@ -445,6 +445,22 @@ if [ "$MODE" = "update" ]; then
 
   success "Проект собран"
 
+  # ── Apply idempotent DB migrations ──
+
+  SUPABASE_URL=$(read_env_value "$INSTALL_DIR/.env" "VITE_SUPABASE_URL") || true
+  SUPABASE_ANON_KEY=$(read_env_value "$INSTALL_DIR/.env" "VITE_SUPABASE_ANON_KEY") || true
+
+  if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ] && [ -f "$INSTALL_DIR/supabase/migration.sql" ]; then
+    echo ""
+    warn "═══════════════════════════════════════════"
+    warn " Если это первое обновление до v1.1+ —"
+    warn " выполните SQL из supabase/migration.sql"
+    warn " в Supabase SQL Editor (Dashboard → SQL)."
+    warn " Все команды идемпотентны (IF NOT EXISTS)."
+    warn "═══════════════════════════════════════════"
+    echo ""
+  fi
+
   # ── .env: auto-fill defaults silently ──
 
   echo ""

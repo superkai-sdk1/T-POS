@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { Badge } from '@/components/ui/Badge';
 import {
   Package, Truck, ClipboardList, Users, AlertTriangle, Wallet, Star, Banknote, UtensilsCrossed, UserCircle,
-  ChevronRight, ArrowLeft, Percent, Info, RotateCcw, SlidersHorizontal, Ticket,
+  ChevronRight, ArrowLeft, Percent, Info, RotateCcw, SlidersHorizontal, Ticket, Receipt,
 } from 'lucide-react';
 import type { InventoryItem } from '@/types';
 import { SupplyPage } from '@/components/supply/SupplyPage';
@@ -19,8 +19,9 @@ import { AboutSystem } from './AboutSystem';
 import { RefundsManager } from './RefundsManager';
 import { ModifiersManager } from './ModifiersManager';
 import { CertificatesManager } from './CertificatesManager';
+import { ExpensesManager } from './ExpensesManager';
 
-type Screen = 'menu' | 'inventory' | 'supplies' | 'revision' | 'debtors' | 'staff' | 'bonus' | 'cash' | 'menuEditor' | 'clients' | 'discounts' | 'refunds' | 'modifiers' | 'certificates' | 'about';
+type Screen = 'menu' | 'inventory' | 'supplies' | 'revision' | 'debtors' | 'staff' | 'bonus' | 'cash' | 'menuEditor' | 'clients' | 'discounts' | 'refunds' | 'modifiers' | 'certificates' | 'expenses' | 'about';
 
 const categoryLabels: Record<string, string> = {
   drinks: 'Напитки', food: 'Еда', bar: 'Снеки', hookah: 'Кальяны', services: 'Услуги',
@@ -37,6 +38,7 @@ const menuItems: { id: Screen; label: string; desc: string; icon: typeof Package
   { id: 'bonus', label: 'Бонусы', desc: 'Баллы и настройки', icon: Star, color: 'bg-yellow-500/10 text-yellow-400' },
   { id: 'certificates', label: 'Сертификаты', desc: 'Подарочные сертификаты', icon: Ticket, color: 'bg-amber-500/10 text-amber-400' },
   { id: 'cash', label: 'Инкассация', desc: 'Операции с наличными', icon: Banknote, color: 'bg-cyan-500/10 text-cyan-400' },
+  { id: 'expenses', label: 'Расходы', desc: 'Аренда, коммуналка, зарплаты', icon: Receipt, color: 'bg-red-500/10 text-red-400' },
   { id: 'refunds', label: 'Возвраты', desc: 'Полные и частичные возвраты', icon: RotateCcw, color: 'bg-rose-500/10 text-rose-400' },
   { id: 'debtors', label: 'Должники', desc: 'Управление долгами', icon: Wallet, color: 'bg-red-500/10 text-red-400' },
   { id: 'staff', label: 'Персонал', desc: 'Сотрудники и доступы', icon: Users, color: 'bg-violet-500/10 text-violet-400' },
@@ -103,6 +105,7 @@ export function ManagementPage({ initialScreen }: ManagementPageProps) {
       {screen === 'discounts' && <DiscountsManager />}
       {screen === 'modifiers' && <ModifiersManager />}
       {screen === 'certificates' && <CertificatesManager />}
+      {screen === 'expenses' && <ExpensesManager />}
       {screen === 'refunds' && <RefundsManager />}
       {screen === 'debtors' && <DebtorsManager />}
       {screen === 'staff' && <StaffManager />}

@@ -65,7 +65,6 @@ export function CheckView({ onBack }: CheckViewProps) {
   const [availableModifiers, setAvailableModifiers] = useState<Modifier[]>([]);
   const [selectedModifierIds, setSelectedModifierIds] = useState<string[]>([]);
   const modifierCacheRef = useRef<Map<string, Modifier[]>>(new Map());
-  const [cartModifiers, setCartModifiers] = useState<Record<string, { name: string; price: number }[]>>({});
 
   useEffect(() => {
     setNote(activeCheck?.note || '');
@@ -129,37 +128,16 @@ export function CheckView({ onBack }: CheckViewProps) {
     return () => clearInterval(iv);
   }, [activeCheck?.space, activeCheck?.created_at]);
 
-  const cartSubtotal = cart.reduce((s, c) => s + c.item.price * c.quantity, 0);
+  const cartSubtotal = cart.reduce((s, c) => {
+    const modPrice = (c.modifiers || []).reduce((ms, m) => ms + m.price, 0);
+    return s + (c.item.price + modPrice) * c.quantity;
+  }, 0);
   const spaceRental = activeCheck?.space?.hourly_rate ? rentalAmount : 0;
   const total = getCartTotal() + spaceRental;
   const discountTotal = getDiscountTotal();
   const subtotal = cartSubtotal + spaceRental;
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
 
-  useEffect(() => {
-    if (!activeCheck) return;
-    (async () => {
-      const { data: ciRows } = await supabase
-        .from('check_items')
-        .select('id, item_id')
-        .eq('check_id', activeCheck.id);
-      if (!ciRows || ciRows.length === 0) { setCartModifiers({}); return; }
-      const ciIds = ciRows.map((r: any) => r.id);
-      const { data: cimRows } = await supabase
-        .from('check_item_modifiers')
-        .select('check_item_id, price_at_time, modifier:modifiers(name)')
-        .in('check_item_id', ciIds);
-      const map: Record<string, { name: string; price: number }[]> = {};
-      for (const row of cimRows || []) {
-        const itemId = ciRows.find((ci: any) => ci.id === row.check_item_id)?.item_id;
-        if (!itemId) continue;
-        if (!map[itemId]) map[itemId] = [];
-        const modName = (row.modifier as any)?.name || '?';
-        map[itemId].push({ name: modName, price: row.price_at_time || 0 });
-      }
-      setCartModifiers(map);
-    })();
-  }, [activeCheck?.id, cart]);
 
   const [quantityDiscounts, setQuantityDiscounts] = useState<Discount[]>([]);
   const autoApplyingRef = useRef(false);
@@ -253,6 +231,7 @@ export function CheckView({ onBack }: CheckViewProps) {
         .from('profiles')
         .select('*')
         .ilike('nickname', `%${query}%`)
+        .is('deleted_at', null)
         .limit(20);
       setPlayerResults((data as Profile[]) || []);
       setIsPlayerSearching(false);
@@ -319,29 +298,16 @@ export function CheckView({ onBack }: CheckViewProps) {
     }
   };
 
-  const confirmModifiers = async () => {
-    if (!modifierItem || !activeCheck) return;
-    addToCart(modifierItem);
-    setShowModifiers(false);
-
-    if (selectedModifierIds.length > 0) {
-      await saveCartToDb();
-      const { data: ciRow } = await supabase
-        .from('check_items')
-        .select('id')
-        .eq('check_id', activeCheck.id)
-        .eq('item_id', modifierItem.id)
-        .order('id', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (ciRow) {
-        const rows = selectedModifierIds.map((mid) => {
+  const confirmModifiers = () => {
+    if (!modifierItem) return;
+    const mods = selectedModifierIds.length > 0
+      ? selectedModifierIds.map((mid) => {
           const mod = availableModifiers.find((m) => m.id === mid);
-          return { check_item_id: ciRow.id, modifier_id: mid, price_at_time: mod?.price || 0 };
-        });
-        await supabase.from('check_item_modifiers').insert(rows);
-      }
-    }
+          return { id: mid, name: mod?.name || '?', price: mod?.price || 0 };
+        })
+      : undefined;
+    addToCart(modifierItem, mods);
+    setShowModifiers(false);
     setModifierItem(null);
   };
 
@@ -480,9 +446,13 @@ export function CheckView({ onBack }: CheckViewProps) {
           </div>
         ) : (
           <div className="space-y-1 stagger-children">
-            {cart.map((ci) => (
+            {cart.map((ci, cartIdx) => {
+              const modPrice = (ci.modifiers || []).reduce((s, m) => s + m.price, 0);
+              const unitPrice = ci.item.price + modPrice;
+              const cartKey = ci.item.id + ((ci.modifiers || []).map((m) => m.id).sort().join(','));
+              return (
               <SwipeableRow
-                key={ci.item.id}
+                key={cartKey || cartIdx}
                 onDelete={() => { hapticFeedback('medium'); removeFromCart(ci.item.id); }}
               >
                 <div className="flex items-center gap-2.5 py-2 px-1 bg-[var(--c-bg)]">
@@ -491,9 +461,9 @@ export function CheckView({ onBack }: CheckViewProps) {
                       {ci.item.name}
                     </p>
                     <p className="text-[11px] text-white/25 mt-0.5 tabular-nums">{fmtCur(ci.item.price)}</p>
-                    {cartModifiers[ci.item.id] && cartModifiers[ci.item.id].length > 0 && (
+                    {ci.modifiers && ci.modifiers.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {cartModifiers[ci.item.id].map((m, idx) => (
+                        {ci.modifiers.map((m, idx) => (
                           <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400">
                             {m.name}{m.price > 0 ? ` +${m.price}₽` : ''}
                           </span>
@@ -521,11 +491,12 @@ export function CheckView({ onBack }: CheckViewProps) {
                   </div>
 
                   <p className="text-[13px] font-bold text-[var(--c-text)] min-w-[48px] text-right tabular-nums">
-                    {fmtCur(ci.item.price * ci.quantity)}
+                    {fmtCur(unitPrice * ci.quantity)}
                   </p>
                 </div>
               </SwipeableRow>
-            ))}
+              );
+            })}
 
             {appliedDiscounts.length > 0 && (
               <div className="space-y-0.5 mt-1">

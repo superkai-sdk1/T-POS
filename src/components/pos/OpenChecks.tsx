@@ -86,6 +86,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         .from('profiles')
         .select('*')
         .ilike('nickname', `%${query}%`)
+        .is('deleted_at', null)
         .limit(20);
       setPlayers((data as Profile[]) || []);
       setIsSearching(false);

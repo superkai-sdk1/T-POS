@@ -95,6 +95,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
   const [supplies, setSupplies] = useState<Supply[]>([]);
   const [cashOps, setCashOps] = useState<CashOperation[]>([]);
+  const [opExpenses, setOpExpenses] = useState<{ amount: number; expense_date: string }[]>([]);
 
   const [reportDays, setReportDays] = useState<ReportDay[]>([]);
   const [selectedDayIdx, setSelectedDayIdx] = useState(0);
@@ -213,7 +214,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
   const loadAll = async () => {
     setIsLoading(true);
-    await Promise.all([loadChecks(), loadCheckItems(), loadDebtors(), loadSupplies(), loadCashOps(), loadItemCosts()]);
+    await Promise.all([loadChecks(), loadCheckItems(), loadDebtors(), loadSupplies(), loadCashOps(), loadItemCosts(), loadOpExpenses()]);
     setIsLoading(false);
   };
 
@@ -291,6 +292,14 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       .select('id, type, amount, created_at')
       .order('created_at', { ascending: false });
     if (data) setCashOps(data as CashOperation[]);
+  };
+
+  const loadOpExpenses = async () => {
+    const { data } = await supabase
+      .from('expenses')
+      .select('amount, expense_date')
+      .order('expense_date', { ascending: false });
+    if (data) setOpExpenses(data);
   };
 
   const loadTransactions = async () => {
@@ -389,8 +398,15 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       else if (closedAt >= prevMonthStart) prevMonthCOGS += itemCost;
     }
 
-    const monthExpenses = Math.round(monthCOGS);
-    const prevMonthExpenses = Math.round(prevMonthCOGS);
+    let monthOpEx = 0, prevMonthOpEx = 0;
+    for (const e of opExpenses) {
+      const d = new Date(e.expense_date + 'T00:00:00');
+      if (d >= monthStart) monthOpEx += Number(e.amount);
+      else if (d >= prevMonthStart) prevMonthOpEx += Number(e.amount);
+    }
+
+    const monthExpenses = Math.round(monthCOGS) + Math.round(monthOpEx);
+    const prevMonthExpenses = Math.round(prevMonthCOGS) + Math.round(prevMonthOpEx);
 
     const monthNetIncome = stats.month - monthExpenses;
     const prevMonthNetIncome = stats.prevMonth - prevMonthExpenses;
@@ -405,13 +421,14 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       monthSupplyCost,
       monthCOGS: Math.round(monthCOGS),
       prevMonthCOGS: Math.round(prevMonthCOGS),
+      monthOpEx: Math.round(monthOpEx),
       monthInkassation,
       monthNetIncome,
       prevMonthNetIncome,
       marginPct,
       netGrowth,
     };
-  }, [supplies, cashOps, stats, checks, checkItemStats, itemCostMap, monthStart, prevMonthStart]);
+  }, [supplies, cashOps, opExpenses, stats, checks, checkItemStats, itemCostMap, monthStart, prevMonthStart]);
 
   const dailyRevenue = useMemo((): DailyRevenue[] => {
     const days: DailyRevenue[] = [];
@@ -1226,7 +1243,7 @@ interface StatsData {
 }
 interface FinData {
   monthExpenses: number; prevMonthExpenses: number; monthSupplyCost: number;
-  monthCOGS: number; prevMonthCOGS: number;
+  monthCOGS: number; prevMonthCOGS: number; monthOpEx: number;
   monthInkassation: number; monthNetIncome: number; prevMonthNetIncome: number;
   marginPct: number; netGrowth: number;
 }
@@ -1384,12 +1401,13 @@ function DetailScreen(props: DetailProps) {
         {header}
         <div className="p-4 rounded-xl bg-red-500/6 border border-red-500/10 text-center">
           <p className="text-3xl font-black text-red-400 tabular-nums">{fmtCur(f.monthExpenses)}</p>
-          <p className="text-[11px] text-white/30 mt-1">себестоимость проданного за месяц</p>
+          <p className="text-[11px] text-white/30 mt-1">общие расходы за месяц</p>
         </div>
         <div className="p-3 rounded-xl card">
           <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">Детализация</h3>
           {f.monthCOGS > 0 && statRow('Себестоимость проданного', f.monthCOGS, 'text-orange-400')}
-          {statRow('Закупки (поставки)', totalSupplyCost, 'text-red-400')}
+          {f.monthOpEx > 0 && statRow('Операционные расходы', f.monthOpEx, 'text-red-400')}
+          {statRow('Закупки (поставки)', totalSupplyCost, 'text-red-400/60')}
           {totalInkassation > 0 && statRow('Инкассация', totalInkassation, 'text-amber-400')}
         </div>
         <div>
@@ -1430,6 +1448,7 @@ function DetailScreen(props: DetailProps) {
           <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">P&L</h3>
           {statRow('Выручка', s.month, 'text-emerald-400')}
           {f.monthCOGS > 0 && statRow('Себестоимость проданного', -f.monthCOGS, 'text-orange-400')}
+          {f.monthOpEx > 0 && statRow('Операционные расходы', -f.monthOpEx, 'text-red-400')}
           <div className="border-t-2 border-white/10 mt-1 pt-1">
             {statRow('Чистая прибыль', f.monthNetIncome, f.monthNetIncome >= 0 ? 'text-emerald-400' : 'text-red-400')}
           </div>

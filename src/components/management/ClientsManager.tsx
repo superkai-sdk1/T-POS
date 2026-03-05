@@ -66,6 +66,7 @@ export function ClientsManager() {
       .from('profiles')
       .select('*')
       .eq('role', 'client')
+      .is('deleted_at', null)
       .order('nickname');
     if (data) setClients(data as Profile[]);
   }, []);
@@ -189,7 +190,7 @@ export function ClientsManager() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    await supabase.from('profiles').delete().eq('id', deleteTarget.id);
+    await supabase.from('profiles').update({ deleted_at: new Date().toISOString() }).eq('id', deleteTarget.id);
     hapticNotification('success');
     setDeleteTarget(null);
     loadClients();

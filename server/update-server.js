@@ -92,7 +92,8 @@ const server = http.createServer((req, res) => {
         try { execSync('chown -R www-data:www-data dist', { cwd: PROJECT_DIR }); } catch {}
         try { execSync('chown -R www-data:www-data dist-wallet', { cwd: PROJECT_DIR }); } catch {}
         try { execSync('systemctl restart tpos-wallet-bot', { timeout: 5000 }); } catch {}
-        send({ type: 'complete', message: 'Обновление завершено' });
+        try { execSync('systemctl restart tpos-update', { timeout: 5000 }); } catch {}
+        send({ type: 'complete', message: 'Обновление завершено. Если добавлены новые таблицы — выполните SQL из supabase/migration.sql в Supabase Dashboard.' });
         res.end();
         updateInProgress = false;
         return;

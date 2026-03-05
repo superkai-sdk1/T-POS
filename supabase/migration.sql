@@ -802,6 +802,31 @@ alter table certificates enable row level security;
 create policy "certificates_all" on certificates for all to anon, authenticated using (true) with check (true);
 
 -- ==============================
+-- Operating Expenses (rent, utilities, salaries)
+-- ==============================
+create table if not exists expenses (
+  id uuid primary key default gen_random_uuid(),
+  category text not null check (category in ('rent', 'utilities', 'salary', 'other')),
+  amount numeric not null,
+  description text,
+  expense_date date not null default current_date,
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_expenses_date on expenses(expense_date);
+create index if not exists idx_expenses_category on expenses(category);
+alter table expenses enable row level security;
+create policy "expenses_all" on expenses for all to anon, authenticated using (true) with check (true);
+
+alter publication supabase_realtime add table expenses;
+alter table expenses replica identity full;
+
+-- ==============================
+-- Soft delete for profiles
+-- ==============================
+alter table profiles add column if not exists deleted_at timestamptz default null;
+
+-- ==============================
 -- Default PINs for staff
 -- ==============================
 update profiles set pin = '0000' where nickname = 'Салим' and pin is null;

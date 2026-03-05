@@ -7,8 +7,8 @@ import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import { usePOSStore, type PaymentPortion } from '@/store/pos';
 import { supabase } from '@/lib/supabase';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
-import { Banknote, CreditCard, Clock, Star, Split, Plus, Minus, ArrowLeft } from 'lucide-react';
-import type { PaymentMethod, Profile } from '@/types';
+import { Banknote, CreditCard, Clock, Star, Split, Plus, Minus, ArrowLeft, Ticket } from 'lucide-react';
+import type { PaymentMethod, Profile, Certificate } from '@/types';
 
 interface PaymentDrawerProps {
   open: boolean;
@@ -24,7 +24,7 @@ const methodConfig: { method: PaymentMethod; label: string; icon: typeof Banknot
   { method: 'debt', label: 'В долг', icon: Clock, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/15' },
 ];
 
-type PayScreen = 'main' | 'bonus' | 'split';
+type PayScreen = 'main' | 'bonus' | 'split' | 'certificate';
 
 export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: PaymentDrawerProps) {
   const { activeCheck, getCartTotal, closeCheck } = usePOSStore();
@@ -35,6 +35,10 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
   const [splitPayments, setSplitPayments] = useState<PaymentPortion[]>([]);
   const [splitMethod, setSplitMethod] = useState<PaymentMethod>('cash');
   const [splitAmount, setSplitAmount] = useState('');
+  const [certCode, setCertCode] = useState('');
+  const [certError, setCertError] = useState('');
+  const [appliedCert, setAppliedCert] = useState<Certificate | null>(null);
+  const [certLoading, setCertLoading] = useState(false);
 
   const total = getCartTotal() + spaceRental;
 
@@ -57,6 +61,9 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
       setBonusAmount(0);
       setSplitPayments([]);
       setSplitAmount('');
+      setCertCode('');
+      setCertError('');
+      setAppliedCert(null);
     }
   }, [open, activeCheck]);
 
@@ -120,6 +127,45 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
     setIsProcessing(true);
     const bu = splitPayments.filter((p) => p.method === 'bonus').reduce((s, p) => s + p.amount, 0);
     const ok = await closeCheck(splitPayments, bu, spaceRental);
+    setIsProcessing(false);
+    if (ok) { hapticNotification('success'); onSuccess(); }
+  };
+
+  const lookupCertificate = async () => {
+    if (!certCode.trim()) return;
+    setCertLoading(true);
+    setCertError('');
+    const { data, error } = await supabase
+      .from('certificates')
+      .select('*')
+      .eq('code', certCode.trim().toUpperCase())
+      .maybeSingle();
+    setCertLoading(false);
+    if (error || !data) { setCertError('Сертификат не найден'); return; }
+    if (data.is_used) { setCertError('Сертификат уже использован'); return; }
+    if ((data.balance || data.nominal) <= 0) { setCertError('Баланс сертификата 0'); return; }
+    setAppliedCert(data as Certificate);
+  };
+
+  const handleCertPay = async (remainderMethod: PaymentMethod) => {
+    if (!appliedCert || !activeCheck) return;
+    setIsProcessing(true);
+    const certBalance = appliedCert.balance ?? appliedCert.nominal;
+    const certAmount = Math.min(certBalance, total);
+    const remainder = total - certAmount;
+
+    await supabase
+      .from('certificates')
+      .update({
+        balance: certBalance - certAmount,
+        is_used: certBalance - certAmount <= 0,
+        used_by: activeCheck.player_id || null,
+      })
+      .eq('id', appliedCert.id);
+
+    const payments: PaymentPortion[] = [{ method: 'cash' as PaymentMethod, amount: certAmount }];
+    if (remainder > 0) payments.push({ method: remainderMethod, amount: remainder });
+    const ok = await closeCheck(payments, 0, spaceRental);
     setIsProcessing(false);
     if (ok) { hapticNotification('success'); onSuccess(); }
   };
@@ -219,13 +265,22 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
               </button>
             )}
 
-            <button
-              onClick={() => { hapticFeedback('light'); setScreen('split'); setSplitPayments([]); setSplitAmount(''); }}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/4 text-xs font-semibold text-white/30 active:scale-[0.98] transition-transform"
-            >
-              <Split className="w-3.5 h-3.5" />
-              Разделить оплату
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { hapticFeedback('light'); setScreen('split'); setSplitPayments([]); setSplitAmount(''); }}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/4 text-xs font-semibold text-white/30 active:scale-[0.98] transition-transform"
+              >
+                <Split className="w-3.5 h-3.5" />
+                Разделить
+              </button>
+              <button
+                onClick={() => { hapticFeedback('light'); setScreen('certificate'); setCertCode(''); setCertError(''); setAppliedCert(null); }}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-500/6 border border-violet-500/10 text-xs font-semibold text-violet-400/60 active:scale-[0.98] transition-transform"
+              >
+                <Ticket className="w-3.5 h-3.5" />
+                Сертификат
+              </button>
+            </div>
 
             {activeCheck?.player_id && (
               <p className="text-[10px] text-center text-white/15 font-medium">
@@ -329,6 +384,104 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                 </button>
               </div>
             )}
+          </>
+        )}
+
+        {/* ═══ CERTIFICATE SCREEN ═══ */}
+        {screen === 'certificate' && (
+          <>
+            <button
+              onClick={() => { setScreen('main'); setAppliedCert(null); setCertCode(''); setCertError(''); }}
+              className="flex items-center gap-1.5 text-[12px] font-medium text-white/40 active:text-white/60 -mt-2"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Назад к способам
+            </button>
+
+            <div className="p-4 rounded-xl bg-violet-500/6 border border-violet-500/12 space-y-3">
+              <div className="flex items-center gap-2">
+                <Ticket className="w-5 h-5 text-violet-400" />
+                <span className="text-[13px] font-semibold text-violet-400">Оплата сертификатом</span>
+              </div>
+
+              {!appliedCert ? (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      compact
+                      placeholder="Введите код сертификата"
+                      value={certCode}
+                      onChange={(e) => { setCertCode(e.target.value.toUpperCase()); setCertError(''); }}
+                      className="flex-1 uppercase"
+                    />
+                    <Button size="sm" onClick={lookupCertificate} loading={certLoading} disabled={!certCode.trim()}>
+                      Найти
+                    </Button>
+                  </div>
+                  {certError && (
+                    <p className="text-[11px] text-red-400 font-medium">{certError}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-violet-400/60">Код</span>
+                    <span className="text-[13px] font-bold text-violet-400">{appliedCert.code}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-violet-400/60">Номинал</span>
+                    <span className="text-[13px] font-semibold text-white/70">{fmtCur(appliedCert.nominal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-violet-400/60">Баланс</span>
+                    <span className="text-[13px] font-bold text-emerald-400">{fmtCur(appliedCert.balance ?? appliedCert.nominal)}</span>
+                  </div>
+                  {(() => {
+                    const certBal = appliedCert.balance ?? appliedCert.nominal;
+                    const covers = certBal >= total;
+                    const remainder = total - Math.min(certBal, total);
+                    return (
+                      <>
+                        {covers ? (
+                          <button
+                            onClick={() => handleCertPay('cash')}
+                            disabled={isProcessing}
+                            className="w-full py-3 rounded-xl text-[13px] font-bold text-white active:scale-[0.97] transition-transform disabled:opacity-30"
+                            style={{ background: 'linear-gradient(135deg, #6c5ce7, #7c6cf7)' }}
+                          >
+                            Оплатить {fmtCur(total)}
+                          </button>
+                        ) : (
+                          <div className="space-y-2 pt-1">
+                            <p className="text-[11px] text-center text-white/30">
+                              Списать {fmtCur(certBal)}, остаток {fmtCur(remainder)}:
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                onClick={() => handleCertPay('cash')}
+                                disabled={isProcessing}
+                                className="flex flex-col items-center gap-1 p-2.5 rounded-xl bg-emerald-500/6 border border-emerald-500/10 active:scale-[0.96] transition-transform disabled:opacity-30"
+                              >
+                                <Banknote className="w-4 h-4 text-emerald-400" />
+                                <span className="text-[11px] font-bold text-emerald-400">Наличные</span>
+                              </button>
+                              <button
+                                onClick={() => handleCertPay('card')}
+                                disabled={isProcessing}
+                                className="flex flex-col items-center gap-1 p-2.5 rounded-xl bg-blue-500/6 border border-blue-500/10 active:scale-[0.96] transition-transform disabled:opacity-30"
+                              >
+                                <CreditCard className="w-4 h-4 text-blue-400" />
+                                <span className="text-[11px] font-bold text-blue-400">Карта</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
           </>
         )}
 

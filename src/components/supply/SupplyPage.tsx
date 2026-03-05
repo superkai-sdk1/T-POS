@@ -203,10 +203,13 @@ export function SupplyPage() {
 
   // --- DETAIL / EDIT / DELETE ---
 
+  const [priceChanges, setPriceChanges] = useState<Record<string, { prev: number; delta: number }>>({});
+
   const openDetail = async (supply: Supply) => {
     setSelectedSupply(supply);
     setShowDetail(true);
     setIsEditing(false);
+    setPriceChanges({});
     const { data } = await supabase
       .from('supply_items')
       .select('*, item:inventory(*)')
@@ -216,6 +219,24 @@ export function SupplyPage() {
       item: Array.isArray(si.item) ? si.item[0] : si.item,
     })) as SupplyItem[];
     setDetailItems(items);
+
+    const changes: Record<string, { prev: number; delta: number }> = {};
+    for (const si of items) {
+      const { data: prevItems } = await supabase
+        .from('supply_items')
+        .select('cost_per_unit, supply:supplies!inner(created_at)')
+        .eq('item_id', si.item_id)
+        .neq('supply_id', supply.id)
+        .order('supply(created_at)', { ascending: false })
+        .limit(1);
+      if (prevItems && prevItems.length > 0) {
+        const prevCost = prevItems[0].cost_per_unit;
+        if (prevCost !== si.cost_per_unit) {
+          changes[si.item_id] = { prev: prevCost, delta: si.cost_per_unit - prevCost };
+        }
+      }
+    }
+    setPriceChanges(changes);
   };
 
   const startEdit = () => {
@@ -547,8 +568,10 @@ export function SupplyPage() {
             <div>
               <p className="text-xs font-semibold text-white/50 mb-2">{detailItems.length} позиций</p>
               <div className="space-y-1.5">
-                {detailItems.map((si) => (
-                  <div key={si.id} className="p-3 rounded-xl bg-white/5">
+                {detailItems.map((si) => {
+                  const pc = priceChanges[si.item_id];
+                  return (
+                  <div key={si.id} className={`p-3 rounded-xl ${pc ? (pc.delta > 0 ? 'bg-red-500/5 border border-red-500/10' : 'bg-emerald-500/5 border border-emerald-500/10') : 'bg-white/5'}`}>
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-[var(--c-text)] truncate flex-1 min-w-0">{si.item?.name}</p>
                       <span className="font-bold text-sm text-[var(--c-text)] shrink-0 ml-2">{fmtCur(si.total_cost)}</span>
@@ -557,12 +580,18 @@ export function SupplyPage() {
                       <span>{si.quantity} шт</span>
                       <span>×</span>
                       <span>{si.cost_per_unit}₽/шт</span>
-                      {si.item && si.item.price > 0 && si.cost_per_unit > 0 && (
+                      {pc && (
+                        <span className={`font-semibold ${pc.delta > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                          {pc.delta > 0 ? '↑' : '↓'} {Math.abs(Math.round(pc.delta))}₽ (было {pc.prev}₽)
+                        </span>
+                      )}
+                      {!pc && si.item && si.item.price > 0 && si.cost_per_unit > 0 && (
                         <span className="text-amber-400/70 ml-auto">наценка {Math.round(((si.item.price - si.cost_per_unit) / si.cost_per_unit) * 100)}%</span>
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
