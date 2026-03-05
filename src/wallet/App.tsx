@@ -71,6 +71,10 @@ export function WalletApp() {
   const WELCOME_BONUS = 1000;
 
   const grantWelcomeBonus = useCallback(async (p: Profile) => {
+    // Only for new clients created less than 24 hours ago
+    const hoursSinceCreation = (Date.now() - new Date(p.created_at).getTime()) / 3_600_000;
+    if (hoursSinceCreation > 24) return;
+
     const { data: existing } = await supabase
       .from('bonus_history')
       .select('id')
