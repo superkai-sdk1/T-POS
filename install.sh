@@ -502,7 +502,7 @@ if [ "$MODE" = "update" ]; then
   setup_update_server "$INSTALL_DIR"
 
   if [ -f "${INSTALL_DIR}/server/wallet-bot.js" ]; then
-    local has_bot_token=""
+    has_bot_token=""
     has_bot_token=$(read_env_value "$INSTALL_DIR/.env" "CLIENT_BOT_TOKEN") || true
     if [ -n "$has_bot_token" ]; then
       setup_wallet_bot "$INSTALL_DIR"

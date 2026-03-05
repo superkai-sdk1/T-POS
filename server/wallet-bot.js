@@ -392,7 +392,7 @@ async function setupLinkApprovals() {
 }
 
 const WEBHOOK_PORT = parseInt(env.WALLET_BOT_PORT || process.env.WALLET_BOT_PORT || '3001', 10);
-const POS_DOMAIN = env.POS_DOMAIN || process.env.POS_DOMAIN || 'cloudtitan.ru';
+const POS_DOMAIN = env.POS_DOMAIN || process.env.POS_DOMAIN || 'pos.cloudtitan.ru';
 const WEBHOOK_PATH = `/webhook/wallet-bot-${BOT_TOKEN.split(':')[0]}`;
 
 async function handleUpdate(update) {
