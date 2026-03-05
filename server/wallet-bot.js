@@ -135,6 +135,45 @@ async function handleStart(msg) {
   const tgId = msg.from.id;
   const tgUsername = msg.from.username;
   const tgFirstName = msg.from.first_name;
+  const startParam = msg.text?.split(' ')[1] || '';
+
+  // Deep link: /start link_PROFILE_ID — auto-link from QR code
+  if (startParam.startsWith('link_')) {
+    const profileId = startParam.slice(5);
+    let existing = await findProfileByTgId(tgId);
+    if (existing) {
+      await sendMessage(chatId, welcomeMessage(existing), walletButton());
+      return;
+    }
+
+    const { data: target } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', profileId)
+      .single();
+
+    if (!target) {
+      await sendMessage(chatId, '❌ Профиль не найден.');
+      return;
+    }
+
+    if (target.tg_id && target.tg_id !== String(tgId)) {
+      await sendMessage(chatId, `❌ Профиль <b>${target.nickname}</b> уже привязан к другому Telegram.`);
+      return;
+    }
+
+    await linkTgId(target.id, tgId);
+    if (tgUsername) {
+      await supabase.from('profiles').update({ tg_username: tgUsername.toLowerCase() }).eq('id', target.id);
+    }
+    const linked = { ...target, tg_id: String(tgId) };
+    await sendMessage(
+      chatId,
+      `✅ <b>Привязка выполнена!</b>\n\nТвой профиль: <b>${target.nickname}</b>\n\n` + welcomeMessage(linked),
+      walletButton()
+    );
+    return;
+  }
 
   let profile = await findProfileByTgId(tgId);
 
@@ -364,7 +403,7 @@ async function poll() {
       for (const update of json.result) {
         offset = update.update_id + 1;
         try {
-          if (update.message?.text === '/start') {
+          if (update.message?.text?.startsWith('/start')) {
             await handleStart(update.message);
           } else if (update.callback_query) {
             await handleCallback(update.callback_query);

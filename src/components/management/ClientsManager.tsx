@@ -7,11 +7,14 @@ import { Drawer } from '@/components/ui/Drawer';
 import {
   Search, Plus, Pencil, Trash2, Upload, X, Check, User,
   Phone, Calendar, Star, CreditCard, UserPlus, Cake, GraduationCap, Send,
-  Link, CheckCircle, XCircle,
+  Link, CheckCircle, XCircle, QrCode,
 } from 'lucide-react';
+import QRCode from 'qrcode';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import type { Profile, ClientTier } from '@/types';
+
+const WALLET_BOT_USERNAME = 'titanwalletrobot';
 
 interface LinkRequest {
   id: string;
@@ -60,6 +63,8 @@ export function ClientsManager() {
   const [showDetail, setShowDetail] = useState(false);
   const [detailClient, setDetailClient] = useState<Profile | null>(null);
   const [linkRequests, setLinkRequests] = useState<LinkRequest[]>([]);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [showQr, setShowQr] = useState(false);
 
   const loadClients = useCallback(async () => {
     const { data } = await supabase
@@ -147,6 +152,20 @@ export function ClientsManager() {
     setDetailClient(client);
     setShowDetail(true);
     hapticFeedback('light');
+  };
+
+  const generateQr = async (client: Profile) => {
+    hapticFeedback();
+    const deepLink = `https://t.me/${WALLET_BOT_USERNAME}?start=link_${client.id}`;
+    try {
+      const url = await QRCode.toDataURL(deepLink, {
+        width: 512,
+        margin: 2,
+        color: { dark: '#000000', light: '#ffffff' },
+      });
+      setQrDataUrl(url);
+      setShowQr(true);
+    } catch { /* ignore */ }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -460,6 +479,13 @@ export function ClientsManager() {
                 Редактировать
               </Button>
               <Button
+                variant="secondary"
+                onClick={() => generateQr(detailClient)}
+                title="QR для привязки Telegram"
+              >
+                <QrCode className="w-4 h-4" />
+              </Button>
+              <Button
                 variant="danger"
                 onClick={() => { setShowDetail(false); setDeleteTarget(detailClient); }}
               >
@@ -469,6 +495,36 @@ export function ClientsManager() {
           </div>
         )}
       </Drawer>
+
+      {/* ============ QR CODE MODAL ============ */}
+      {showQr && qrDataUrl && detailClient && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setShowQr(false)}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 max-w-xs w-full mx-4 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-black font-bold text-lg mb-1">{detailClient.nickname}</p>
+            <p className="text-gray-500 text-xs mb-4">Отсканируйте для привязки Telegram</p>
+            <img
+              src={qrDataUrl}
+              alt="QR"
+              className="w-56 h-56 mx-auto rounded-xl"
+            />
+            <p className="text-gray-400 text-[10px] mt-3 break-all">
+              t.me/{WALLET_BOT_USERNAME}?start=link_{detailClient.id.slice(0, 8)}…
+            </p>
+            <button
+              onClick={() => setShowQr(false)}
+              className="mt-4 w-full py-2.5 bg-black text-white rounded-xl text-sm font-medium active:scale-[0.97] transition-transform"
+            >
+              Закрыть
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ============ EDIT / CREATE DRAWER ============ */}
       <Drawer
