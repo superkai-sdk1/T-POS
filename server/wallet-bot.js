@@ -120,11 +120,14 @@ function welcomeMessage(profile) {
   );
 }
 
-function walletButton() {
+function walletButton(linkProfileId) {
+  const url = linkProfileId
+    ? `${WEBAPP_URL}?linkProfile=${linkProfileId}`
+    : WEBAPP_URL;
   return {
     reply_markup: {
       inline_keyboard: [[
-        { text: '💎 Открыть TITAN Wallet', web_app: { url: WEBAPP_URL } },
+        { text: '💎 Открыть TITAN Wallet', web_app: { url } },
       ]],
     },
   };
@@ -170,7 +173,7 @@ async function handleStart(msg) {
     await sendMessage(
       chatId,
       `✅ <b>Привязка выполнена!</b>\n\nТвой профиль: <b>${target.nickname}</b>\n\n` + welcomeMessage(linked),
-      walletButton()
+      walletButton(profileId)
     );
     return;
   }

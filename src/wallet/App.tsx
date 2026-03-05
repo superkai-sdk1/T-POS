@@ -109,6 +109,10 @@ export function WalletApp() {
   }, []);
 
   const loadProfile = useCallback(async (tgId: string, tgUsername?: string) => {
+    // Check for linkProfile URL parameter (from QR deep link via bot)
+    const urlParams = new URLSearchParams(window.location.search);
+    const linkProfileId = urlParams.get('linkProfile');
+
     const { data: byId } = await supabase
       .from('profiles')
       .select('id, nickname, bonus_points, balance, client_tier, photo_url, created_at')
@@ -121,6 +125,27 @@ export function WalletApp() {
       await loadTransactions(byId.id);
       setScreen('wallet');
       return;
+    }
+
+    // Auto-link via QR deep link parameter
+    if (linkProfileId) {
+      const { data: target } = await supabase
+        .from('profiles')
+        .select('id, nickname, bonus_points, balance, client_tier, photo_url, created_at')
+        .eq('id', linkProfileId)
+        .single();
+
+      if (target) {
+        await supabase.from('profiles').update({
+          tg_id: tgId,
+          ...(tgUsername ? { tg_username: tgUsername.replace(/^@/, '').toLowerCase() } : {}),
+        }).eq('id', target.id);
+        setProfile(target as Profile);
+        await grantWelcomeBonus(target as Profile);
+        await loadTransactions(target.id);
+        setScreen('wallet');
+        return;
+      }
     }
 
     if (tgUsername) {
