@@ -260,6 +260,53 @@ export interface CheckPayment {
   amount: number;
 }
 
+export interface Modifier {
+  id: string;
+  name: string;
+  price: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ProductModifier {
+  id: string;
+  product_id: string;
+  modifier_id: string;
+  modifier?: Modifier;
+  product?: InventoryItem;
+}
+
+export interface CheckItemModifier {
+  id: string;
+  check_item_id: string;
+  modifier_id: string;
+  price_at_time: number;
+  modifier?: Modifier;
+}
+
+export interface BonusHistoryEntry {
+  id: string;
+  profile_id: string;
+  amount: number;
+  balance_after: number;
+  reason: string;
+  created_at: string;
+}
+
+export interface Certificate {
+  id: string;
+  code: string;
+  nominal: number;
+  balance: number;
+  is_used: boolean;
+  used_by: string | null;
+  used_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  creator?: { nickname: string };
+  user?: { nickname: string };
+}
+
 export type RefundType = 'full' | 'partial';
 
 export interface Refund {

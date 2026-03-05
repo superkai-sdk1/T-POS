@@ -733,6 +733,75 @@ alter table revisions replica identity full;
 alter table refunds replica identity full;
 
 -- ==============================
+-- Modifiers (add-ons for menu items)
+-- ==============================
+create table if not exists modifiers (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  price numeric not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists product_modifiers (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null references inventory(id) on delete cascade,
+  modifier_id uuid not null references modifiers(id) on delete cascade,
+  unique(product_id, modifier_id)
+);
+
+create table if not exists check_item_modifiers (
+  id uuid primary key default gen_random_uuid(),
+  check_item_id uuid not null references check_items(id) on delete cascade,
+  modifier_id uuid not null references modifiers(id) on delete restrict,
+  price_at_time numeric not null default 0
+);
+
+alter table modifiers enable row level security;
+alter table product_modifiers enable row level security;
+alter table check_item_modifiers enable row level security;
+create policy "modifiers_all" on modifiers for all to anon, authenticated using (true) with check (true);
+create policy "product_modifiers_all" on product_modifiers for all to anon, authenticated using (true) with check (true);
+create policy "check_item_modifiers_all" on check_item_modifiers for all to anon, authenticated using (true) with check (true);
+
+alter publication supabase_realtime add table modifiers;
+alter table modifiers replica identity full;
+
+-- ==============================
+-- Bonus history (audit log for bonus changes)
+-- ==============================
+create table if not exists bonus_history (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references profiles(id) on delete cascade,
+  amount numeric not null,
+  balance_after numeric not null default 0,
+  reason text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_bonus_history_profile on bonus_history(profile_id);
+create index if not exists idx_bonus_history_created_at on bonus_history(created_at);
+alter table bonus_history enable row level security;
+create policy "bonus_history_all" on bonus_history for all to anon, authenticated using (true) with check (true);
+
+-- ==============================
+-- Gift certificates
+-- ==============================
+create table if not exists certificates (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  nominal numeric not null,
+  balance numeric not null,
+  is_used boolean not null default false,
+  used_by uuid references profiles(id),
+  used_at timestamptz,
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_certificates_code on certificates(code);
+alter table certificates enable row level security;
+create policy "certificates_all" on certificates for all to anon, authenticated using (true) with check (true);
+
+-- ==============================
 -- Default PINs for staff
 -- ==============================
 update profiles set pin = '0000' where nickname = 'Салим' and pin is null;

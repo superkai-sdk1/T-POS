@@ -67,6 +67,35 @@ export function WalletApp() {
   const tgUsernameRef = useRef('');
   const tgFirstNameRef = useRef('');
 
+  const WELCOME_BONUS = 1000;
+
+  const grantWelcomeBonus = useCallback(async (p: Profile) => {
+    const { data: existing } = await supabase
+      .from('bonus_history')
+      .select('id')
+      .eq('profile_id', p.id)
+      .eq('reason', 'Приветственный бонус')
+      .limit(1)
+      .maybeSingle();
+    if (existing) return;
+
+    const newBalance = (p.bonus_points || 0) + WELCOME_BONUS;
+    await supabase.from('profiles').update({ bonus_points: newBalance }).eq('id', p.id);
+    await supabase.from('bonus_history').insert({
+      profile_id: p.id,
+      amount: WELCOME_BONUS,
+      balance_after: newBalance,
+      reason: 'Приветственный бонус',
+    });
+    await supabase.from('transactions').insert({
+      type: 'bonus_accrual',
+      amount: WELCOME_BONUS,
+      description: 'Приветственный бонус за первый вход',
+      player_id: p.id,
+    });
+    setProfile({ ...p, bonus_points: newBalance });
+  }, []);
+
   const loadTransactions = useCallback(async (profileId: string) => {
     const { data } = await supabase
       .from('transactions')
@@ -87,6 +116,7 @@ export function WalletApp() {
 
     if (byId) {
       setProfile(byId as Profile);
+      await grantWelcomeBonus(byId as Profile);
       await loadTransactions(byId.id);
       setScreen('wallet');
       return;
@@ -102,6 +132,7 @@ export function WalletApp() {
       if (byUsername) {
         await supabase.from('profiles').update({ tg_id: tgId }).eq('id', byUsername.id);
         setProfile(byUsername as Profile);
+        await grantWelcomeBonus(byUsername as Profile);
         await loadTransactions(byUsername.id);
         setScreen('wallet');
         return;

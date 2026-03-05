@@ -15,7 +15,7 @@ import { supabase } from '@/lib/supabase';
 import { useMenuCategories, getIconComponent, getCategoryColor } from '@/hooks/useMenuCategories';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import type { InventoryItem, Discount, Profile, VisitTariff, ClientTier } from '@/types';
+import type { InventoryItem, Discount, Profile, VisitTariff, ClientTier, Modifier } from '@/types';
 
 const VISIT_ITEMS: Record<VisitTariff, { label: string; price: number; dbName: string }> = {
   regular: { label: 'Гость', price: 700, dbName: 'Игровой вечер Гость' },
@@ -59,6 +59,13 @@ export function CheckView({ onBack }: CheckViewProps) {
   const noteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cartSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingNoteRef = useRef<string | null>(null);
+
+  const [showModifiers, setShowModifiers] = useState(false);
+  const [modifierItem, setModifierItem] = useState<InventoryItem | null>(null);
+  const [availableModifiers, setAvailableModifiers] = useState<Modifier[]>([]);
+  const [selectedModifierIds, setSelectedModifierIds] = useState<string[]>([]);
+  const modifierCacheRef = useRef<Map<string, Modifier[]>>(new Map());
+  const [cartModifiers, setCartModifiers] = useState<Record<string, { name: string; price: number }[]>>({});
 
   useEffect(() => {
     setNote(activeCheck?.note || '');
@@ -128,6 +135,31 @@ export function CheckView({ onBack }: CheckViewProps) {
   const discountTotal = getDiscountTotal();
   const subtotal = cartSubtotal + spaceRental;
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
+
+  useEffect(() => {
+    if (!activeCheck) return;
+    (async () => {
+      const { data: ciRows } = await supabase
+        .from('check_items')
+        .select('id, item_id')
+        .eq('check_id', activeCheck.id);
+      if (!ciRows || ciRows.length === 0) { setCartModifiers({}); return; }
+      const ciIds = ciRows.map((r: any) => r.id);
+      const { data: cimRows } = await supabase
+        .from('check_item_modifiers')
+        .select('check_item_id, price_at_time, modifier:modifiers(name)')
+        .in('check_item_id', ciIds);
+      const map: Record<string, { name: string; price: number }[]> = {};
+      for (const row of cimRows || []) {
+        const itemId = ciRows.find((ci: any) => ci.id === row.check_item_id)?.item_id;
+        if (!itemId) continue;
+        if (!map[itemId]) map[itemId] = [];
+        const modName = (row.modifier as any)?.name || '?';
+        map[itemId].push({ name: modName, price: row.price_at_time || 0 });
+      }
+      setCartModifiers(map);
+    })();
+  }, [activeCheck?.id, cart]);
 
   const [quantityDiscounts, setQuantityDiscounts] = useState<Discount[]>([]);
   const autoApplyingRef = useRef(false);
@@ -262,9 +294,55 @@ export function CheckView({ onBack }: CheckViewProps) {
 
   if (!activeCheck) return null;
 
-  const handleAdd = (item: InventoryItem) => {
+  const handleAdd = async (item: InventoryItem) => {
     hapticFeedback('light');
-    addToCart(item);
+
+    let mods = modifierCacheRef.current.get(item.id);
+    if (mods === undefined) {
+      const { data: links } = await supabase
+        .from('product_modifiers')
+        .select('modifier_id, modifier:modifiers(*)')
+        .eq('product_id', item.id);
+      mods = (links || [])
+        .map((l: any) => l.modifier as Modifier)
+        .filter((m: Modifier) => m && m.is_active);
+      modifierCacheRef.current.set(item.id, mods);
+    }
+
+    if (mods.length > 0) {
+      setModifierItem(item);
+      setAvailableModifiers(mods);
+      setSelectedModifierIds([]);
+      setShowModifiers(true);
+    } else {
+      addToCart(item);
+    }
+  };
+
+  const confirmModifiers = async () => {
+    if (!modifierItem || !activeCheck) return;
+    addToCart(modifierItem);
+    setShowModifiers(false);
+
+    if (selectedModifierIds.length > 0) {
+      await saveCartToDb();
+      const { data: ciRow } = await supabase
+        .from('check_items')
+        .select('id')
+        .eq('check_id', activeCheck.id)
+        .eq('item_id', modifierItem.id)
+        .order('id', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (ciRow) {
+        const rows = selectedModifierIds.map((mid) => {
+          const mod = availableModifiers.find((m) => m.id === mid);
+          return { check_item_id: ciRow.id, modifier_id: mid, price_at_time: mod?.price || 0 };
+        });
+        await supabase.from('check_item_modifiers').insert(rows);
+      }
+    }
+    setModifierItem(null);
   };
 
   const handleBack = async () => {
@@ -413,6 +491,15 @@ export function CheckView({ onBack }: CheckViewProps) {
                       {ci.item.name}
                     </p>
                     <p className="text-[11px] text-white/25 mt-0.5 tabular-nums">{fmtCur(ci.item.price)}</p>
+                    {cartModifiers[ci.item.id] && cartModifiers[ci.item.id].length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {cartModifiers[ci.item.id].map((m, idx) => (
+                          <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400">
+                            {m.name}{m.price > 0 ? ` +${m.price}₽` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-px bg-white/4 rounded-lg">
@@ -599,6 +686,59 @@ export function CheckView({ onBack }: CheckViewProps) {
               </button>
             );
           })}
+        </div>
+      </Drawer>
+
+      {/* Modifiers selection */}
+      <Drawer
+        open={showModifiers}
+        onClose={() => { setShowModifiers(false); setModifierItem(null); }}
+        title={modifierItem ? `Модификаторы: ${modifierItem.name}` : 'Модификаторы'}
+        size="sm"
+      >
+        <div className="space-y-3">
+          {availableModifiers.map((mod) => {
+            const isSelected = selectedModifierIds.includes(mod.id);
+            return (
+              <button
+                key={mod.id}
+                onClick={() => {
+                  hapticFeedback('light');
+                  setSelectedModifierIds((prev) =>
+                    isSelected ? prev.filter((id) => id !== mod.id) : [...prev, mod.id]
+                  );
+                }}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all active:scale-[0.97] ${
+                  isSelected ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/20' : 'card'
+                }`}
+              >
+                <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                  isSelected ? 'bg-[var(--c-accent)]' : 'border border-white/15'
+                }`}>
+                  {isSelected && <Plus className="w-3 h-3 text-white rotate-45" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-[13px] text-[var(--c-text)]">{mod.name}</p>
+                </div>
+                {mod.price > 0 && (
+                  <span className="text-sm font-bold text-[var(--c-accent)] tabular-nums shrink-0">+{fmtCur(mod.price)}</span>
+                )}
+              </button>
+            );
+          })}
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="ghost"
+              onClick={() => { addToCart(modifierItem!); setShowModifiers(false); setModifierItem(null); }}
+              className="flex-1"
+            >
+              Без добавок
+            </Button>
+            <Button onClick={confirmModifiers} className="flex-1">
+              Добавить{selectedModifierIds.length > 0 ? ` (${selectedModifierIds.length})` : ''}
+            </Button>
+          </div>
         </div>
       </Drawer>
 

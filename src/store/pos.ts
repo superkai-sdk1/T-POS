@@ -503,6 +503,14 @@ export const usePOSStore = create<POSState>((set, get) => ({
           player_id: activeCheck.player_id,
           created_by: user?.id,
         });
+        if (player) {
+          await supabase.from('bonus_history').insert({
+            profile_id: activeCheck.player_id,
+            amount: -bonusUsed,
+            balance_after: Math.max(0, player.bonus_points - bonusUsed),
+            reason: 'Списание по чеку',
+          });
+        }
       }
       if (bonusAccrual > 0) {
         await supabase.from('transactions').insert({
@@ -513,6 +521,15 @@ export const usePOSStore = create<POSState>((set, get) => ({
           player_id: activeCheck.player_id,
           created_by: user?.id,
         });
+        if (player) {
+          const newPts = Math.max(0, player.bonus_points - bonusUsed) + bonusAccrual;
+          await supabase.from('bonus_history').insert({
+            profile_id: activeCheck.player_id,
+            amount: bonusAccrual,
+            balance_after: newPts,
+            reason: `Начисление ${bonusRate}% от ${total}₽`,
+          });
+        }
       }
     }
 
