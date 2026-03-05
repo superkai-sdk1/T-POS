@@ -33,7 +33,7 @@ interface POSState {
   getDiscountTotal: () => number;
   applyDiscount: (discountId: string, discountName: string, discountType: 'percentage' | 'fixed', discountValue: number, target: 'check' | 'item', itemId?: string) => Promise<void>;
   removeDiscount: (checkDiscountId: string) => Promise<void>;
-  saveCartToDb: () => Promise<void>;
+  saveCartToDb: () => Promise<boolean>;
   refreshActiveCheck: () => Promise<void>;
   closeCheck: (payments: PaymentPortion[], bonusUsed?: number, spaceRental?: number) => Promise<boolean>;
   cancelCheck: () => Promise<boolean>;
@@ -337,8 +337,8 @@ export const usePOSStore = create<POSState>((set, get) => ({
       prev.status === updatedCheck.status
     );
 
-    const loadedItems = (items || []) as CheckItem[];
-    const newCart = loadedItems.map((ci) => ({ item: ci.item, quantity: ci.quantity }));
+    const loadedItems = (items || []).filter((ci: any) => ci.item) as CheckItem[];
+    const newCart: CartItem[] = loadedItems.map((ci) => ({ item: ci.item!, quantity: ci.quantity }));
     const oldFp = get().cart.map((c) => `${c.item.id}:${c.quantity}`).sort().join('|');
     const newFp = newCart.map((c) => `${c.item.id}:${c.quantity}`).sort().join('|');
     const cartChanged = oldFp !== newFp;
