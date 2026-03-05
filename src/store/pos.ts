@@ -337,7 +337,11 @@ export const usePOSStore = create<POSState>((set, get) => ({
       prev.status === updatedCheck.status
     );
 
-    const loadedItems = (items || []).filter((ci: any) => ci.item) as CheckItem[];
+    const normalizedItems = (items || []).map((ci: any) => ({
+      ...ci,
+      item: Array.isArray(ci.item) ? ci.item[0] : ci.item,
+    }));
+    const loadedItems = normalizedItems.filter((ci: any) => ci.item) as CheckItem[];
     const newCart: CartItem[] = loadedItems.map((ci) => ({ item: ci.item!, quantity: ci.quantity }));
     const oldFp = get().cart.map((c) => `${c.item.id}:${c.quantity}`).sort().join('|');
     const newFp = newCart.map((c) => `${c.item.id}:${c.quantity}`).sort().join('|');
@@ -368,6 +372,26 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const doSave = async () => {
       _savingCart = true;
       try {
+        const { data: existingCIs } = await supabase
+          .from('check_items')
+          .select('id, item_id')
+          .eq('check_id', activeCheck.id);
+
+        let savedMods: { item_id: string; modifier_id: string; price_at_time: number }[] = [];
+        if (existingCIs && existingCIs.length > 0) {
+          const ciIds = existingCIs.map((ci: any) => ci.id);
+          const { data: mods } = await supabase
+            .from('check_item_modifiers')
+            .select('check_item_id, modifier_id, price_at_time')
+            .in('check_item_id', ciIds);
+          if (mods && mods.length > 0) {
+            savedMods = mods.map((m: any) => {
+              const ci = existingCIs.find((c: any) => c.id === m.check_item_id);
+              return { item_id: ci?.item_id, modifier_id: m.modifier_id, price_at_time: m.price_at_time };
+            });
+          }
+        }
+
         await supabase.from('check_items').delete().eq('check_id', activeCheck.id);
         if (cart.length > 0) {
           const rows = cart.map((c) => ({
@@ -376,10 +400,23 @@ export const usePOSStore = create<POSState>((set, get) => ({
             quantity: c.quantity,
             price_at_time: c.item.price,
           }));
-          const { error } = await supabase.from('check_items').insert(rows);
+          const { error, data: newCIs } = await supabase.from('check_items').insert(rows).select('id, item_id');
           if (error) {
             console.error('saveCartToDb insert failed:', error);
             return;
+          }
+
+          if (savedMods.length > 0 && newCIs && newCIs.length > 0) {
+            const modRows: { check_item_id: string; modifier_id: string; price_at_time: number }[] = [];
+            for (const sm of savedMods) {
+              const newCI = newCIs.find((ci: any) => ci.item_id === sm.item_id);
+              if (newCI) {
+                modRows.push({ check_item_id: newCI.id, modifier_id: sm.modifier_id, price_at_time: sm.price_at_time });
+              }
+            }
+            if (modRows.length > 0) {
+              await supabase.from('check_item_modifiers').insert(modRows);
+            }
           }
         }
         _lastCartFingerprint = fp;

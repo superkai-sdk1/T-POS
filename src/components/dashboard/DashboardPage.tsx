@@ -529,15 +529,19 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
     for (const c of dayAnalytics.checks) {
       const amt = c.total_amount || 0;
       if (c.payment_method === 'split' || c.payment_method === 'bonus') {
-        bonus += c.bonus_used || 0;
         const parts = splitBreakdowns[c.id] || [];
-        for (const p of parts) {
-          if (p.method === 'cash') cash += p.amount;
-          else if (p.method === 'card') card += p.amount;
-          else if (p.method === 'debt') debt += p.amount;
-          else if (p.method === 'bonus') bonus += p.amount;
+        if (parts.length > 0) {
+          for (const p of parts) {
+            if (p.method === 'cash') cash += p.amount;
+            else if (p.method === 'card') card += p.amount;
+            else if (p.method === 'debt') debt += p.amount;
+            else if (p.method === 'bonus') bonus += p.amount;
+          }
+        } else if (c.payment_method === 'bonus') {
+          bonus += c.bonus_used || 0;
+        } else {
+          cash += amt;
         }
-        if (parts.length === 0 && c.payment_method !== 'bonus') cash += amt;
       } else {
         bonus += c.bonus_used || 0;
         if (c.payment_method === 'cash') cash += amt;
