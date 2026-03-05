@@ -26,7 +26,7 @@ NGINX_CONF="/etc/nginx/sites-available/tpos"
 NGINX_LINK="/etc/nginx/sites-enabled/tpos"
 WALLET_NGINX_CONF="/etc/nginx/sites-available/tpos-wallet"
 WALLET_NGINX_LINK="/etc/nginx/sites-enabled/tpos-wallet"
-DEFAULT_WALLET_DOMAIN="wallet.cloudtitan.ru"
+DEFAULT_WALLET_DOMAIN=""
 
 info()    { echo -e "${CYAN}[INFO]${NC}  $1"; }
 success() { echo -e "${GREEN}[ OK ]${NC} $1"; }
@@ -99,6 +99,10 @@ grep_safe() {
 
 setup_nginx() {
   local domain="$1" root_dir="$2"
+  local sb_url sb_host
+  sb_url=$(read_env_value "${root_dir}/.env" "VITE_SUPABASE_URL") || true
+  sb_host=$(echo "$sb_url" | sed 's|https://||' | sed 's|/.*||')
+  if [ -z "$sb_host" ]; then sb_host="SUPABASE_HOST.supabase.co"; fi
 
   info "Создание конфигурации nginx для ${domain}..."
 
@@ -135,13 +139,13 @@ server {
     location /sb/ {
         resolver 8.8.8.8 1.1.1.1 valid=300s;
         resolver_timeout 5s;
-        set \$supabase https://dscadajjthbcrullhwtx.supabase.co;
+        set \$supabase https://${sb_host};
         rewrite ^/sb/(.*) /\$1 break;
         proxy_pass \$supabase;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host dscadajjthbcrullhwtx.supabase.co;
+        proxy_set_header Host ${sb_host};
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
@@ -173,6 +177,10 @@ NGINXEOF
 
 setup_wallet_nginx() {
   local wallet_domain="$1" root_dir="$2"
+  local sb_url sb_host
+  sb_url=$(read_env_value "${root_dir}/.env" "VITE_SUPABASE_URL") || true
+  sb_host=$(echo "$sb_url" | sed 's|https://||' | sed 's|/.*||')
+  if [ -z "$sb_host" ]; then sb_host="SUPABASE_HOST.supabase.co"; fi
 
   info "Создание конфигурации nginx для ${wallet_domain}..."
 
@@ -192,13 +200,13 @@ server {
     location /sb/ {
         resolver 8.8.8.8 1.1.1.1 valid=300s;
         resolver_timeout 5s;
-        set \$supabase https://dscadajjthbcrullhwtx.supabase.co;
+        set \$supabase https://${sb_host};
         rewrite ^/sb/(.*) /\$1 break;
         proxy_pass \$supabase;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
-        proxy_set_header Host dscadajjthbcrullhwtx.supabase.co;
+        proxy_set_header Host ${sb_host};
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
@@ -325,20 +333,24 @@ ensure_webhook_proxy() {
 }
 
 ensure_supabase_proxy() {
-  local conf="$1"
+  local conf="$1" root_dir="${2:-$INSTALL_DIR}"
   if [ -f "$conf" ] && ! grep -q 'location /sb/' "$conf" 2>/dev/null; then
-    info "Добавление Supabase proxy в nginx (обход блокировок)..."
+    local sb_url sb_host
+    sb_url=$(read_env_value "${root_dir}/.env" "VITE_SUPABASE_URL") || true
+    sb_host=$(echo "$sb_url" | sed 's|https://||' | sed 's|/.*||')
+    if [ -z "$sb_host" ]; then sb_host="SUPABASE_HOST.supabase.co"; fi
+    info "Добавление Supabase proxy в nginx..."
     sed -i '/location \/ {/i \
     location /sb/ {\
         resolver 8.8.8.8 1.1.1.1 valid=300s;\
         resolver_timeout 5s;\
-        set $supabase https://dscadajjthbcrullhwtx.supabase.co;\
+        set $supabase https://'"$sb_host"';\
         rewrite ^/sb/(.*) /$1 break;\
         proxy_pass $supabase;\
         proxy_http_version 1.1;\
         proxy_set_header Upgrade $http_upgrade;\
         proxy_set_header Connection "upgrade";\
-        proxy_set_header Host dscadajjthbcrullhwtx.supabase.co;\
+        proxy_set_header Host '"$sb_host"';\
         proxy_set_header X-Real-IP $remote_addr;\
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\
         proxy_set_header X-Forwarded-Proto $scheme;\
@@ -489,12 +501,16 @@ if [ "$MODE" = "update" ]; then
 
   echo ""
   WALLET_DOMAIN=$(read_env_value "$INSTALL_DIR/.env" "WALLET_DOMAIN") || true
-  if [ -z "$WALLET_DOMAIN" ]; then
-    WALLET_DOMAIN="$DEFAULT_WALLET_DOMAIN"
+  if [ -z "$WALLET_DOMAIN" ] && [ -n "$DOMAIN" ]; then
+    WALLET_DOMAIN="wallet.${DOMAIN}"
     add_env_key "$INSTALL_DIR/.env" "WALLET_DOMAIN" "$WALLET_DOMAIN"
-    info "WALLET_DOMAIN = ${WALLET_DOMAIN} (по умолчанию)"
-  else
+    info "WALLET_DOMAIN = ${WALLET_DOMAIN} (авто)"
+  elif [ -n "$WALLET_DOMAIN" ]; then
     success "WALLET_DOMAIN = ${WALLET_DOMAIN}"
+  fi
+
+  if [ -n "$DOMAIN" ]; then
+    add_env_key "$INSTALL_DIR/.env" "POS_DOMAIN" "$DOMAIN"
   fi
 
   # ── Services ──
@@ -630,9 +646,10 @@ echo ""
 info "Клиентский кошелёк:"
 
 WALLET_DOMAIN=""
-echo -ne "${BOLD}  Домен для кошелька [${DEFAULT_WALLET_DOMAIN}]: ${NC}"
+DEFAULT_WALLET="wallet.${DOMAIN}"
+echo -ne "${BOLD}  Домен для кошелька [${DEFAULT_WALLET}]: ${NC}"
 read -r WALLET_DOMAIN || true
-WALLET_DOMAIN="${WALLET_DOMAIN:-$DEFAULT_WALLET_DOMAIN}"
+WALLET_DOMAIN="${WALLET_DOMAIN:-$DEFAULT_WALLET}"
 
 echo ""
 echo -ne "${BOLD}Директория установки [${DEFAULT_DIR}]: ${NC}"
@@ -733,6 +750,7 @@ VITE_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
 VITE_TELEGRAM_BOT_TOKEN=${TG_BOT_TOKEN}
 CLIENT_BOT_TOKEN=${CLIENT_TG_TOKEN}
 WALLET_DOMAIN=${WALLET_DOMAIN}
+POS_DOMAIN=${DOMAIN}
 ENVEOF
 success ".env создан"
 

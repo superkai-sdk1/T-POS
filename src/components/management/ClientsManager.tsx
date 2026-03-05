@@ -14,7 +14,7 @@ import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import type { Profile, ClientTier } from '@/types';
 
-const WALLET_BOT_USERNAME = 'titanwalletrobot';
+const WALLET_BOT_USERNAME = (import.meta.env.VITE_WALLET_BOT_USERNAME as string) || 'titanwalletrobot';
 
 interface LinkRequest {
   id: string;

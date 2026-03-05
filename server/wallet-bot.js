@@ -26,7 +26,7 @@ const env = loadEnv();
 const BOT_TOKEN = env.CLIENT_BOT_TOKEN || process.env.CLIENT_BOT_TOKEN;
 const SUPABASE_URL = env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
-const WALLET_DOMAIN = env.WALLET_DOMAIN || process.env.WALLET_DOMAIN || 'wallet.cloudtitan.ru';
+const WALLET_DOMAIN = env.WALLET_DOMAIN || process.env.WALLET_DOMAIN || 'wallet.titanpos.ru';
 const WEBAPP_URL = `https://${WALLET_DOMAIN}`;
 
 if (!BOT_TOKEN || !SUPABASE_URL || !SUPABASE_KEY) {
@@ -392,7 +392,7 @@ async function setupLinkApprovals() {
 }
 
 const WEBHOOK_PORT = parseInt(env.WALLET_BOT_PORT || process.env.WALLET_BOT_PORT || '3001', 10);
-const POS_DOMAIN = env.POS_DOMAIN || process.env.POS_DOMAIN || 'pos.cloudtitan.ru';
+const POS_DOMAIN = env.POS_DOMAIN || process.env.POS_DOMAIN || 'titanpos.ru';
 const WEBHOOK_PATH = `/webhook/wallet-bot-${BOT_TOKEN.split(':')[0]}`;
 
 async function handleUpdate(update) {
