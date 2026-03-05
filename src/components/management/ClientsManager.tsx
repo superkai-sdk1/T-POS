@@ -209,7 +209,23 @@ export function ClientsManager() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    await supabase.from('profiles').update({ deleted_at: new Date().toISOString() }).eq('id', deleteTarget.id);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', deleteTarget.id);
+    if (error) {
+      console.error('Soft delete failed, trying hard delete:', error);
+      const { error: delErr } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', deleteTarget.id);
+      if (delErr) {
+        console.error('Hard delete also failed:', delErr);
+        hapticNotification('error');
+        setDeleteTarget(null);
+        return;
+      }
+    }
     hapticNotification('success');
     setDeleteTarget(null);
     loadClients();
