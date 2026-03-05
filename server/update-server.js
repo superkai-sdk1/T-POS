@@ -101,9 +101,11 @@ const server = http.createServer((req, res) => {
       const step = steps[stepIdx];
       send({ type: 'step', step: stepIdx + 1, total: steps.length, label: step.label });
 
+      const cleanEnv = { ...process.env };
+      delete cleanEnv.NODE_ENV;
       const proc = spawn(step.cmd, step.args, {
         cwd: PROJECT_DIR,
-        env: { ...process.env, NODE_ENV: undefined },
+        env: cleanEnv,
         shell: true,
       });
 

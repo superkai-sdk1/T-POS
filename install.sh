@@ -430,7 +430,7 @@ if [ "$MODE" = "update" ]; then
   fi
 
   info "Установка зависимостей..."
-  npm ci --loglevel=error 2>&1
+  NODE_ENV=development npm ci --include=dev --loglevel=error 2>&1
 
   info "Сборка T-POS..."
   npm run build 2>&1
@@ -697,7 +697,7 @@ ENVEOF
 success ".env создан"
 
 info "npm ci..."
-npm ci --loglevel=error 2>&1
+NODE_ENV=development npm ci --include=dev --loglevel=error 2>&1
 success "Зависимости установлены"
 
 info "Сборка T-POS..."
