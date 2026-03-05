@@ -258,6 +258,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
     let checkItemId: string | null = null;
     if (target === 'item' && itemId) {
+      await get().saveCartToDb();
       const { data: ciRow } = await supabase
         .from('check_items')
         .select('id')
@@ -320,8 +321,13 @@ export const usePOSStore = create<POSState>((set, get) => ({
       space: Array.isArray(checkData.space) ? checkData.space[0] : checkData.space,
     } as Check;
 
+    const { data: items } = await supabase
+      .from('check_items')
+      .select('*, item:inventory(*)')
+      .eq('check_id', activeCheck.id);
+
     const prev = get().activeCheck;
-    if (
+    const checkChanged = !(
       prev &&
       prev.id === updatedCheck.id &&
       prev.note === updatedCheck.note &&
@@ -329,22 +335,36 @@ export const usePOSStore = create<POSState>((set, get) => ({
       prev.player_id === updatedCheck.player_id &&
       prev.space_id === updatedCheck.space_id &&
       prev.status === updatedCheck.status
-    ) {
-      return;
-    }
+    );
 
-    set({ activeCheck: updatedCheck });
+    const loadedItems = (items || []) as CheckItem[];
+    const newCart = loadedItems.map((ci) => ({ item: ci.item, quantity: ci.quantity }));
+    const oldFp = get().cart.map((c) => `${c.item.id}:${c.quantity}`).sort().join('|');
+    const newFp = newCart.map((c) => `${c.item.id}:${c.quantity}`).sort().join('|');
+    const cartChanged = oldFp !== newFp;
+
+    if (!checkChanged && !cartChanged) return;
+
+    const updates: Partial<ReturnType<typeof get>> = {};
+    if (checkChanged) updates.activeCheck = updatedCheck;
+    if (cartChanged) {
+      updates.cart = newCart;
+      updates.checkItems = loadedItems;
+      _lastCartFingerprint = newFp;
+    }
+    set(updates as any);
   },
 
-  saveCartToDb: async () => {
+  saveCartToDb: async (): Promise<boolean> => {
     if (_savePromise) await _savePromise;
 
     const { activeCheck, cart } = get();
-    if (!activeCheck) return;
+    if (!activeCheck) return true;
 
     const fp = cart.map((c) => `${c.item.id}:${c.quantity}`).sort().join('|');
-    if (fp === _lastCartFingerprint) return;
+    if (fp === _lastCartFingerprint) return true;
 
+    let success = false;
     const doSave = async () => {
       _savingCart = true;
       try {
@@ -363,6 +383,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
           }
         }
         _lastCartFingerprint = fp;
+        success = true;
       } finally {
         setTimeout(() => { _savingCart = false; }, 600);
         _savePromise = null;
@@ -371,6 +392,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
     _savePromise = doSave();
     await _savePromise;
+    return success;
   },
 
   cancelCheck: async () => {
@@ -403,7 +425,8 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const total = get().getCartTotal() + spaceRental;
     const discountTotal = get().getDiscountTotal();
 
-    await get().saveCartToDb();
+    const saved = await get().saveCartToDb();
+    if (!saved) return false;
 
     const finalAmount = bonusUsed > 0 ? Math.max(0, total - bonusUsed) : total;
 
@@ -547,3 +570,11 @@ export const usePOSStore = create<POSState>((set, get) => ({
     return true;
   },
 }));
+
+declare global {
+  interface Window { __clearPOSState?: () => void; }
+}
+window.__clearPOSState = () => {
+  usePOSStore.setState({ openChecks: [], activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
+  useShiftStore.setState({ activeShift: null });
+};

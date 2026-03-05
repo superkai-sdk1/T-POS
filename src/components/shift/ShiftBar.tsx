@@ -246,18 +246,19 @@ export function ShiftBar() {
           <div className="w-2 h-2 rounded-full bg-emerald-400" />
           <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-400 animate-ping opacity-50" />
         </div>
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-[11px] font-semibold text-emerald-400">Смена</span>
-          <span className="text-[10px] text-white/25 flex items-center gap-0.5">
-            <Clock className="w-2.5 h-2.5" />{shiftDuration()}
-          </span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-semibold text-emerald-400">Смена</span>
+            <span className="text-[10px] text-white/25 flex items-center gap-0.5">
+              <Clock className="w-2.5 h-2.5" />{shiftDuration()}
+            </span>
+          </div>
           {cashInRegister !== null && (
-            <>
-              <span className="text-white/10">·</span>
-              <span className="text-[10px] text-white/25 flex items-center gap-0.5">
-                <Banknote className="w-2.5 h-2.5" />{fmtCur(cashInRegister)}
-              </span>
-            </>
+            <div className="flex items-center gap-1 mt-0.5">
+              <Banknote className="w-3 h-3 text-white/20" />
+              <span className="text-xs font-bold text-[var(--c-text)] tabular-nums">{fmtCur(cashInRegister)}</span>
+              <span className="text-[9px] text-white/20">в кассе</span>
+            </div>
           )}
         </div>
         <button

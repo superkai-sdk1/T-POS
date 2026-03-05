@@ -497,7 +497,12 @@ export function MenuEditor() {
           {activeCategory && getChildren(activeCategory.id).length > 0 && (
             <div className="flex gap-1.5 overflow-x-auto scrollbar-none -mx-1 px-1">
               <button
-                onClick={() => {}}
+                onClick={() => {
+                  if (activeCategory.parent_id) {
+                    const parent = categories.find((c) => c.id === activeCategory.parent_id);
+                    if (parent) setActiveCategory(parent);
+                  }
+                }}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-[var(--c-accent)]/15 text-[var(--c-accent)] shrink-0"
               >
                 Все

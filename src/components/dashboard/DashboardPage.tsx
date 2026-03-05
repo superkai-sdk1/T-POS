@@ -146,7 +146,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       loadDayAnalytics(reportDays[selectedDayIdx]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDayIdx, reportDays]);
+  }, [selectedDayIdx, reportDays, tab]);
 
   const loadDayAnalytics = async (day: ReportDay) => {
     setAnalyticsLoading(true);
@@ -340,7 +340,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
             else if (p.method === 'debt') debt += p.amount;
             else if (p.method === 'bonus') bonus += p.amount;
           }
-        } else {
+        } else if (c.payment_method !== 'bonus') {
           cash += amt;
         }
       } else if (c.payment_method === 'cash') cash += amt;
@@ -508,11 +508,11 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
   useEffect(() => {
     if (!dayAnalytics) return;
-    const splitChecks = dayAnalytics.checks.filter((c) => c.payment_method === 'split');
-    if (splitChecks.length === 0) { setSplitBreakdowns({}); return; }
+    const mixedChecks = dayAnalytics.checks.filter((c) => c.payment_method === 'split' || c.payment_method === 'bonus');
+    if (mixedChecks.length === 0) { setSplitBreakdowns({}); return; }
 
     (async () => {
-      const ids = splitChecks.map((c) => c.id);
+      const ids = mixedChecks.map((c) => c.id);
       const { data } = await supabase.from('check_payments').select('*').in('check_id', ids);
       const map: Record<string, { method: string; amount: number }[]> = {};
       for (const p of data || []) {
@@ -528,8 +528,8 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
     let cash = 0, card = 0, debt = 0, bonus = 0;
     for (const c of dayAnalytics.checks) {
       const amt = c.total_amount || 0;
-      bonus += c.bonus_used || 0;
-      if (c.payment_method === 'split') {
+      if (c.payment_method === 'split' || c.payment_method === 'bonus') {
+        bonus += c.bonus_used || 0;
         const parts = splitBreakdowns[c.id] || [];
         for (const p of parts) {
           if (p.method === 'cash') cash += p.amount;
@@ -537,10 +537,13 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           else if (p.method === 'debt') debt += p.amount;
           else if (p.method === 'bonus') bonus += p.amount;
         }
-      } else if (c.payment_method === 'cash') cash += amt;
-      else if (c.payment_method === 'card') card += amt;
-      else if (c.payment_method === 'debt') debt += amt;
-      else if (c.payment_method === 'bonus') { /* fully paid by bonus, amt is 0 */ }
+        if (parts.length === 0 && c.payment_method !== 'bonus') cash += amt;
+      } else {
+        bonus += c.bonus_used || 0;
+        if (c.payment_method === 'cash') cash += amt;
+        else if (c.payment_method === 'card') card += amt;
+        else if (c.payment_method === 'debt') debt += amt;
+      }
     }
     const total = cash + card + debt + bonus;
     return { total, cash, card, debt, bonus };
@@ -1460,7 +1463,7 @@ function DetailScreen(props: DetailProps) {
 
   if (detail === 'today') {
     const todayTotal = todayChecks.reduce((a, c) => a + c.total_amount, 0);
-    let todayCash = 0, todayCard = 0, todayDebt = 0;
+    let todayCash = 0, todayCard = 0, todayDebt = 0, todayBonus = 0;
     for (const c of todayChecks) {
       const amt = c.total_amount || 0;
       if (c.payment_method === 'split' || c.payment_method === 'bonus') {
@@ -1469,6 +1472,7 @@ function DetailScreen(props: DetailProps) {
           if (p.method === 'cash') todayCash += p.amount;
           else if (p.method === 'card') todayCard += p.amount;
           else if (p.method === 'debt') todayDebt += p.amount;
+          else if (p.method === 'bonus') todayBonus += p.amount;
         }
       } else if (c.payment_method === 'cash') todayCash += amt;
       else if (c.payment_method === 'card') todayCard += amt;
@@ -1481,20 +1485,22 @@ function DetailScreen(props: DetailProps) {
           <p className="text-3xl font-black text-emerald-400 tabular-nums">{fmtCur(todayTotal)}</p>
           <p className="text-[11px] text-white/30 mt-1">{todayChecks.length} чеков · с {REPORT_DAY_HOUR}:00</p>
         </div>
-        {todayChecks.length > 0 && (
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { label: 'Нал', value: todayCash, color: 'text-emerald-400' },
-              { label: 'Карта', value: todayCard, color: 'text-blue-400' },
-              { label: 'Долг', value: todayDebt, color: 'text-red-400' },
-            ].map((p) => (
+        {todayChecks.length > 0 && (() => {
+          const items = [
+            { label: 'Нал', value: todayCash, color: 'text-emerald-400' },
+            { label: 'Карта', value: todayCard, color: 'text-blue-400' },
+            { label: 'Долг', value: todayDebt, color: 'text-red-400' },
+            { label: 'Бонусы', value: todayBonus, color: 'text-amber-400' },
+          ].filter((p) => p.value > 0);
+          return <div className={`grid gap-2 ${items.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+            {items.map((p) => (
               <div key={p.label} className="p-2.5 rounded-xl card text-center">
                 <p className={`text-sm font-black tabular-nums ${p.color}`}>{fmtCur(p.value)}</p>
                 <p className="text-[9px] text-white/20">{p.label}</p>
               </div>
             ))}
-          </div>
-        )}
+          </div>;
+        })()}
         <div>
           <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Чеки за смену</h3>
           {checkList(todayChecks)}

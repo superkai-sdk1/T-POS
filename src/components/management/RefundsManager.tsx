@@ -103,8 +103,8 @@ export function RefundsManager() {
     setClosedChecks(result);
   }, [activeShift]);
 
-  const tables = useMemo(() => ['refunds'], []);
-  useOnTableChange(tables, loadRefunds);
+  const tables = useMemo(() => ['refunds', 'checks'], []);
+  useOnTableChange(tables, () => { loadRefunds(); loadClosedChecks(); });
 
   useEffect(() => { loadRefunds(); }, [loadRefunds]);
   useEffect(() => { loadClosedChecks(); }, [loadClosedChecks]);

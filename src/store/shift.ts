@@ -176,12 +176,13 @@ export const useShiftStore = create<ShiftState>()(
 
           const { data: items } = await supabase
             .from('check_items')
-            .select('quantity, price_at_time, item:inventory(name, category)')
+            .select('item_id, quantity, price_at_time, item:inventory(name, category)')
             .eq('check_id', c.id);
 
           const checkItems = (items || []).map((ci: Record<string, unknown>) => {
             const item = Array.isArray(ci.item) ? ci.item[0] : ci.item;
             return {
+              item_id: ci.item_id as string,
               name: (item as Record<string, string>)?.name || '?',
               category: (item as Record<string, string>)?.category || '',
               quantity: ci.quantity as number,
@@ -207,7 +208,7 @@ export const useShiftStore = create<ShiftState>()(
           paymentBreakdown[pm].amount += c.total_amount;
 
           for (const ci of checkItems) {
-            const key = ci.name;
+            const key = ci.item_id || ci.name;
             const existing = itemMap.get(key);
             if (existing) {
               existing.quantity += ci.quantity;

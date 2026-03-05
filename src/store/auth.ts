@@ -204,7 +204,10 @@ export const useAuthStore = create<AuthState>()(
 
       skipPinSetup: () => set({ needsPinSetup: false }),
 
-      logout: () => set({ user: null, rememberedUserId: null, rememberedNickname: null, needsPinSetup: false, error: null }),
+      logout: () => {
+        set({ user: null, rememberedUserId: null, rememberedNickname: null, needsPinSetup: false, error: null });
+        if (window.__clearPOSState) window.__clearPOSState();
+      },
 
       forgetUser: () => set({
         user: null,
@@ -233,7 +236,7 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'tpos-auth',
       partialize: (state) => ({
-        user: state.user,
+        user: state.user ? (({ password_hash, pin, ...safe }) => safe)(state.user) : null,
         rememberedUserId: state.rememberedUserId,
         rememberedNickname: state.rememberedNickname,
       }),
