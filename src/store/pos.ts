@@ -16,6 +16,9 @@ interface POSState {
   cart: CartItem[];
   inventory: InventoryItem[];
   appliedDiscounts: CheckDiscount[];
+  openCheckCarts: Record<string, CartItem[]>;
+  openCheckItems: Record<string, CheckItem[]>;
+  openCheckDiscounts: Record<string, CheckDiscount[]>;
   menuCategories: Record<string, any>[];
   isLoading: boolean;
   checksLoaded: boolean;
@@ -56,6 +59,9 @@ export const usePOSStore = create<POSState>((set, get) => ({
   cart: [],
   inventory: [],
   appliedDiscounts: [],
+  openCheckCarts: {},
+  openCheckItems: {},
+  openCheckDiscounts: {},
   menuCategories: [],
   isLoading: false,
   checksLoaded: false,
@@ -98,56 +104,99 @@ export const usePOSStore = create<POSState>((set, get) => ({
     })) as Check[];
 
     if (checks.length === 0) {
-      set({ openChecks: [], checksLoaded: true });
+      set({ openChecks: [], openCheckCarts: {}, openCheckItems: {}, openCheckDiscounts: {}, checksLoaded: true });
       return;
     }
 
     const checkIds = checks.map((c) => c.id);
+
     const { data: allItems } = await supabase
       .from('check_items')
-      .select('check_id, quantity, price_at_time')
+      .select('*, item:inventory(*)')
       .in('check_id', checkIds);
 
-    const totalsMap = new Map<string, number>();
-    for (const ci of allItems || []) {
-      totalsMap.set(
-        ci.check_id,
-        (totalsMap.get(ci.check_id) || 0) + ci.quantity * ci.price_at_time,
-      );
+    const parsedItems = (allItems || []).map((ci) => ({
+      ...ci,
+      item: Array.isArray(ci.item) ? ci.item[0] : ci.item,
+    })) as CheckItem[];
+
+    const checkItemIds = parsedItems.map((ci) => ci.id);
+    let allModifiers: any[] = [];
+    if (checkItemIds.length > 0) {
+      const { data: modRows } = await supabase
+        .from('check_item_modifiers')
+        .select('check_item_id, modifier_id, price_at_time, modifier:modifiers(name)')
+        .in('check_item_id', checkItemIds);
+      allModifiers = modRows || [];
     }
 
     const { data: allDiscounts } = await supabase
       .from('check_discounts')
-      .select('check_id, discount_amount')
+      .select('*, discount:discounts(*)')
       .in('check_id', checkIds);
-    const discountsMap = new Map<string, number>();
-    for (const d of allDiscounts || []) {
-      discountsMap.set(d.check_id, (discountsMap.get(d.check_id) || 0) + d.discount_amount);
+
+    const parsedDiscounts = (allDiscounts || []).map((cd) => ({
+      ...cd,
+      discount: Array.isArray(cd.discount) ? cd.discount[0] : cd.discount,
+    })) as CheckDiscount[];
+
+    const newItemsMap: Record<string, CheckItem[]> = {};
+    const newCartsMap: Record<string, CartItem[]> = {};
+    const newDiscountsMap: Record<string, CheckDiscount[]> = {};
+    const totalsMap = new Map<string, number>();
+    const discountsTotalMap = new Map<string, number>();
+
+    for (const checkId of checkIds) {
+      newItemsMap[checkId] = [];
+      newCartsMap[checkId] = [];
+      newDiscountsMap[checkId] = [];
+      totalsMap.set(checkId, 0);
+      discountsTotalMap.set(checkId, 0);
+    }
+
+    const modMap: Record<string, { id: string; name: string; price: number }[]> = {};
+    for (const row of allModifiers) {
+      if (!modMap[row.check_item_id]) modMap[row.check_item_id] = [];
+      modMap[row.check_item_id].push({
+        id: row.modifier_id,
+        name: (row.modifier as any)?.name || '?',
+        price: row.price_at_time || 0,
+      });
+    }
+
+    for (const ci of parsedItems) {
+      if (!ci.item) continue;
+      newItemsMap[ci.check_id].push(ci);
+
+      const mods = modMap[ci.id];
+      const modTotal = (mods || []).reduce((s, m) => s + m.price, 0);
+      const rowTotal = (ci.item.price + modTotal) * ci.quantity;
+      totalsMap.set(ci.check_id, (totalsMap.get(ci.check_id) || 0) + rowTotal);
+
+      newCartsMap[ci.check_id].push({
+        item: ci.item,
+        quantity: ci.quantity,
+        modifiers: mods,
+      });
+    }
+
+    for (const cd of parsedDiscounts) {
+      newDiscountsMap[cd.check_id].push(cd);
+      discountsTotalMap.set(cd.check_id, (discountsTotalMap.get(cd.check_id) || 0) + cd.discount_amount);
     }
 
     const checksWithTotals = checks.map((check) => ({
       ...check,
-      total_amount: Math.max(0, (totalsMap.get(check.id) || 0) - (discountsMap.get(check.id) || 0)),
+      total_amount: Math.max(0, (totalsMap.get(check.id) || 0) - (discountsTotalMap.get(check.id) || 0)),
     }));
 
-    const prev = get().openChecks;
-    const changed =
-      checksWithTotals.length !== prev.length ||
-      checksWithTotals.some((c, i) =>
-        c.id !== prev[i]?.id ||
-        c.total_amount !== prev[i]?.total_amount ||
-        c.note !== prev[i]?.note ||
-        c.guest_names !== prev[i]?.guest_names ||
-        c.player_id !== prev[i]?.player_id ||
-        c.space_id !== prev[i]?.space_id ||
-        c.status !== prev[i]?.status
-      );
-
-    if (changed) {
-      set({ openChecks: checksWithTotals, checksLoaded: true });
-    } else if (!get().checksLoaded) {
-      set({ checksLoaded: true });
-    }
+    set({
+      openChecks: checksWithTotals,
+      openCheckItems: newItemsMap,
+      openCheckCarts: newCartsMap,
+      openCheckDiscounts: newDiscountsMap,
+      checksLoaded: true
+    });
   },
 
   createCheck: async (playerId: string | null, spaceId?: string | null) => {
@@ -188,31 +237,23 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
   selectCheck: async (check: Check) => {
     _lastCartFingerprint = '';
-    set({ activeCheck: check, isLoading: true, cart: [], appliedDiscounts: [] });
-    const { data } = await supabase
-      .from('check_items')
-      .select('*, item:inventory(*)')
-      .eq('check_id', check.id);
-    const items = (data || []).map((ci) => ({
-      ...ci,
-      item: Array.isArray(ci.item) ? ci.item[0] : ci.item,
-    })) as CheckItem[];
 
-    const cart: CartItem[] = items
-      .filter((ci) => ci.item)
-      .map((ci) => ({ item: ci.item!, quantity: ci.quantity }));
+    const cart = get().openCheckCarts[check.id] || [];
+    const items = get().openCheckItems[check.id] || [];
+    const discounts = get().openCheckDiscounts[check.id] || [];
 
-    const { data: discountsData } = await supabase
-      .from('check_discounts')
-      .select('*, discount:discounts(*)')
-      .eq('check_id', check.id);
-    const discounts = (discountsData || []).map((cd) => ({
-      ...cd,
-      discount: Array.isArray(cd.discount) ? cd.discount[0] : cd.discount,
-    })) as CheckDiscount[];
+    _lastCartFingerprint = cart.map((c) => {
+      const mids = (c.modifiers || []).map((m) => m.id).sort().join('+');
+      return `${c.item.id}:${c.quantity}:${mids}`;
+    }).sort().join('|');
 
-    _lastCartFingerprint = cart.map((c) => `${c.item.id}:${c.quantity}`).sort().join('|');
-    set({ checkItems: items, cart, appliedDiscounts: discounts, isLoading: false });
+    set({
+      activeCheck: check,
+      checkItems: items,
+      cart,
+      appliedDiscounts: discounts,
+      isLoading: false
+    });
   },
 
   addToCart: (item: InventoryItem, modifiers?: { id: string; name: string; price: number }[]) => {
