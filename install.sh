@@ -533,14 +533,18 @@ if [ "$MODE" = "update" ]; then
   # ── Nginx: regenerate configs with all proxy blocks ──
 
   echo ""
-  DOMAIN=""
+  HAS_SSL=""
 
-  if [ -f "$NGINX_CONF" ]; then
+  if [ -z "$DOMAIN" ] && [ -f "$NGINX_CONF" ]; then
     DOMAIN=$(extract_server_name "$NGINX_CONF")
-    HAS_SSL=""
-    if grep -q 'ssl_certificate' "$NGINX_CONF" 2>/dev/null; then
-      HAS_SSL="yes"
-    fi
+  fi
+
+  if [ -f "$NGINX_CONF" ] && grep -q 'ssl_certificate' "$NGINX_CONF" 2>/dev/null; then
+    HAS_SSL="yes"
+  fi
+
+  if [ -z "$DOMAIN" ]; then
+    DOMAIN=$(read_env_value "$INSTALL_DIR/.env" "POS_DOMAIN") || true
   fi
 
   if [ -z "$DOMAIN" ]; then
@@ -562,19 +566,49 @@ if [ "$MODE" = "update" ]; then
 
   fix_and_reload_nginx
 
-  # ── SSL: re-apply non-interactively if was configured ──
+  # ── SSL: re-apply if certificates exist on disk ──
 
-  SSL_EMAIL=$(get_certbot_email) || true
+  HAS_CERT=""
+  if [ -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]; then
+    HAS_CERT="yes"
+  fi
 
-  if [ -n "$HAS_SSL" ] && [ -n "$SSL_EMAIL" ]; then
+  if [ -n "$HAS_CERT" ]; then
     info "Восстановление SSL для ${DOMAIN}..."
-    certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "$SSL_EMAIL" --keep-until-expiring --redirect 2>&1 || warn "SSL для ${DOMAIN} — проверьте вручную"
+
+    # Determine cert-name (may cover both domains or separate)
+    CERT_NAME="$DOMAIN"
+    if [ ! -d "/etc/letsencrypt/live/${DOMAIN}" ]; then
+      # Look for any cert that covers our domain
+      CERT_NAME=$(certbot certificates 2>/dev/null | grep -B2 "${DOMAIN}" | grep "Certificate Name" | head -1 | awk '{print $NF}') || true
+      if [ -z "$CERT_NAME" ]; then CERT_NAME="$DOMAIN"; fi
+    fi
+
+    certbot install --nginx -d "$DOMAIN" --redirect --non-interactive --cert-name "$CERT_NAME" 2>&1 \
+      || warn "SSL для ${DOMAIN} — проверьте вручную: certbot --nginx -d ${DOMAIN}"
+
     if [ -n "$WALLET_DOMAIN" ]; then
-      certbot --nginx -d "$WALLET_DOMAIN" --non-interactive --agree-tos --email "$SSL_EMAIL" --keep-until-expiring --redirect 2>&1 || warn "SSL для ${WALLET_DOMAIN} — проверьте вручную"
+      certbot install --nginx -d "$WALLET_DOMAIN" --redirect --non-interactive --cert-name "$CERT_NAME" 2>&1 \
+        || {
+          # Try wallet-specific cert name as fallback
+          certbot install --nginx -d "$WALLET_DOMAIN" --redirect --non-interactive --cert-name "$WALLET_DOMAIN" 2>&1 \
+            || warn "SSL для ${WALLET_DOMAIN} — проверьте: certbot --nginx -d ${WALLET_DOMAIN}"
+        }
+    fi
+
+    systemctl reload nginx 2>/dev/null || true
+    success "SSL восстановлен"
+  elif [ -n "$HAS_SSL" ]; then
+    info "Восстановление SSL (certbot reinstall)..."
+    certbot --nginx -d "$DOMAIN" --reinstall --redirect --non-interactive 2>&1 \
+      || warn "SSL для ${DOMAIN} — проверьте вручную"
+    if [ -n "$WALLET_DOMAIN" ]; then
+      certbot --nginx -d "$WALLET_DOMAIN" --reinstall --redirect --non-interactive 2>&1 \
+        || warn "SSL для ${WALLET_DOMAIN} — проверьте вручную"
     fi
     systemctl reload nginx 2>/dev/null || true
-  elif [ -z "$HAS_SSL" ]; then
-    warn "SSL не настроен. Настройте вручную: certbot --nginx -d ${DOMAIN}"
+  else
+    warn "SSL не настроен. Настройте: certbot --nginx -d ${DOMAIN} -d ${WALLET_DOMAIN}"
   fi
 
   echo ""
