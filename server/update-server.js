@@ -185,7 +185,7 @@ const server = http.createServer((req, res) => {
             sbFetch('supplies', 'select=total_cost,created_at&order=created_at.desc&limit=50'),
             sbFetch('cash_operations', 'select=type,amount,created_at&order=created_at.desc&limit=50'),
             sbFetch('shifts', 'select=status,cash_start,cash_end,opened_at,closed_at&order=opened_at.desc&limit=10'),
-            sbFetch('events', 'select=id,type,location,date,start_time,status,comment&order=date.desc&limit=50'),
+            sbFetch('events', 'select=id,type,location,date,start_time,status,comment&order=date.desc&limit=100'),
           ]);
 
           // Pre-aggregate data to keep context compact

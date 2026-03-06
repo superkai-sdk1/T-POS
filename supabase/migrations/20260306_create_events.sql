@@ -1,5 +1,6 @@
 -- Create the events table
-CREATE TABLE IF NOT EXISTS public.events (
+DROP TABLE IF EXISTS public.events CASCADE;
+CREATE TABLE public.events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     type TEXT NOT NULL CHECK (type IN ('titan', 'exit')),
     location TEXT, -- Only for 'exit'
@@ -21,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.events (
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 
 -- Simple policy for staff/owners
+DROP POLICY IF EXISTS "Enable all access for authenticated users" ON public.events;
 CREATE POLICY "Enable all access for authenticated users" ON public.events
     FOR ALL USING (auth.role() = 'authenticated');
 
@@ -33,6 +35,7 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_events_updated_at ON public.events;
 CREATE TRIGGER update_events_updated_at
     BEFORE UPDATE ON public.events
     FOR EACH ROW

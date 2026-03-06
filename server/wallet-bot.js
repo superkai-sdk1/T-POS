@@ -395,10 +395,73 @@ const WEBHOOK_PORT = parseInt(env.WALLET_BOT_PORT || process.env.WALLET_BOT_PORT
 const POS_DOMAIN = env.POS_DOMAIN || process.env.POS_DOMAIN || 'titanpos.ru';
 const WEBHOOK_PATH = `/webhook/wallet-bot-${BOT_TOKEN.split(':')[0]}`;
 
+async function handleAiMessage(msg) {
+  const chatId = msg.chat.id;
+  const text = msg.text;
+  const tgId = msg.from.id;
+
+  // Only allow specified owners to use AI
+  if (!OWNER_CHAT_IDS.includes(String(chatId))) {
+    // For non-owners, we can just ignore or send a generic reply if needed
+    // return; 
+  }
+
+  try {
+    const res = await fetch(`http://127.0.0.1:3100/api/ai`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: text }],
+      }),
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      await sendMessage(chatId, `❌ Ошибка ИИ: ${data.error}`);
+      return;
+    }
+
+    const aiResponse = data.response || '';
+
+    // Check if AI returned a JSON action
+    try {
+      const parsed = JSON.parse(aiResponse);
+      if (parsed.action) {
+        // Call the action endpoint
+        const actionRes = await fetch(`http://127.0.0.1:3100/api/ai/action`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: parsed.action,
+            params: parsed.params,
+            staffId: null, // We'd need to map tg_id to staff profile id here
+          }),
+        });
+        const actionData = await actionRes.json();
+        if (actionData.success) {
+          await sendMessage(chatId, `✅ ${actionData.message || 'Готово!'}`);
+        } else {
+          await sendMessage(chatId, `❌ Ошибка действия: ${actionData.error}`);
+        }
+        return;
+      }
+    } catch {
+      // Not a JSON action, just send as text
+    }
+
+    await sendMessage(chatId, aiResponse);
+  } catch (err) {
+    console.error('AI Bot Error:', err);
+    await sendMessage(chatId, '⚠️ Не удалось связаться с сервером ИИ.');
+  }
+}
+
 async function handleUpdate(update) {
   try {
     if (update.message?.text?.startsWith('/start')) {
       await handleStart(update.message);
+    } else if (update.message?.text) {
+      await handleAiMessage(update.message);
     } else if (update.callback_query) {
       await handleCallback(update.callback_query);
     }
