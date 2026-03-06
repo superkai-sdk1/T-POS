@@ -18,18 +18,18 @@ export function Input({ label, error, hint, compact, className = '', ...props }:
       <input
         className={`
           w-full ${compact ? 'px-3 py-2 text-sm' : 'px-3.5 py-2.5'} rounded-xl
-          bg-white/5 border border-white/8
+          bg-[var(--c-surface)] border border-[var(--c-border-strong)]
           text-[var(--c-text)] text-sm
-          placeholder:text-white/20
-          focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/30 focus:border-[var(--c-accent)]/25 focus:bg-white/7
+          placeholder:text-[var(--c-muted)]
+          focus:outline-none focus:ring-2 focus:ring-[rgba(var(--c-accent-rgb),0.3)] focus:border-[rgba(var(--c-accent-rgb),0.25)] focus:bg-[var(--c-surface-hover)]
           transition-all duration-150
-          ${error ? 'border-red-500/40 ring-1 ring-red-500/20' : ''}
+          ${error ? 'border-[var(--c-danger-border)] ring-1 ring-[var(--c-danger-bg)]' : ''}
           ${className}
         `}
         {...props}
       />
-      {error && <p className="mt-1 text-[11px] text-red-400 font-medium">{error}</p>}
-      {hint && !error && <p className="mt-1 text-[11px] text-white/25">{hint}</p>}
+      {error && <p className="mt-1 text-[11px] text-[var(--c-danger)] font-medium">{error}</p>}
+      {hint && !error && <p className="mt-1 text-[11px] text-[var(--c-muted)]">{hint}</p>}
     </div>
   );
 }

@@ -67,12 +67,12 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
             ? 'bg-indigo-500/12'
             : check.player
             ? 'bg-[var(--c-accent)]/10'
-            : 'bg-white/5'
+            : 'bg-[var(--c-surface)]'
         }`}>
           {hasSpace ? (() => { const Icon = spaceIconMap[check.space!.type] || DoorOpen; return <Icon className="w-3.5 h-3.5 text-indigo-400" />; })()
             : check.player
             ? <span className="text-xs font-bold text-[var(--c-accent)]">{check.player.nickname?.charAt(0).toUpperCase()}</span>
-            : <UserX className="w-3.5 h-3.5 text-white/25" />}
+            : <UserX className="w-3.5 h-3.5 text-[var(--c-muted)]" />}
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-[13px] text-[var(--c-text)] truncate leading-tight">
@@ -95,7 +95,7 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
       </div>
 
       <div className="flex items-end justify-between mt-auto">
-        <div className="flex items-center gap-1 text-white/25">
+        <div className="flex items-center gap-1 text-[var(--c-muted)]">
           <Clock className="w-3 h-3" />
           <span className="text-[10px] tabular-nums"><ElapsedTime since={check.created_at} /></span>
         </div>
@@ -292,7 +292,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         <div className="flex gap-2">
           <button
             onClick={() => setShowHistory(true)}
-            className="w-9 h-9 rounded-xl bg-white/5 border border-white/5 flex items-center justify-center hover:bg-white/10 transition-all active:scale-90"
+            className="w-9 h-9 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] flex items-center justify-center hover:bg-[var(--c-surface-hover)] transition-all active:scale-90"
           >
             <History className="w-4 h-4 text-[var(--c-hint)]" />
           </button>
@@ -306,14 +306,14 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
       {!checksLoaded ? (
         <div className="grid grid-cols-2 gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="p-3 rounded-xl bg-white/3 animate-pulse space-y-2 border border-white/5" style={{ opacity: 1 - i * 0.2 }}>
+            <div key={i} className="p-3 rounded-xl bg-[var(--c-surface)] animate-pulse space-y-2 border border-[var(--c-border)]" style={{ opacity: 1 - i * 0.2 }}>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-white/6" />
-                <div className="flex-1"><div className="h-3 w-20 rounded bg-white/6" /></div>
+                <div className="w-8 h-8 rounded-lg bg-[var(--c-surface-hover)]" />
+                <div className="flex-1"><div className="h-3 w-20 rounded bg-[var(--c-surface-hover)]" /></div>
               </div>
               <div className="flex items-end justify-between">
-                <div className="h-2.5 w-12 rounded bg-white/4" />
-                <div className="h-5 w-14 rounded bg-white/6" />
+                <div className="h-2.5 w-12 rounded bg-[var(--c-surface)]" />
+                <div className="h-5 w-14 rounded bg-[var(--c-surface-hover)]" />
               </div>
             </div>
           ))}
@@ -324,12 +324,12 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
             onClick={() => activeShift && setShowNewCheck(true)}
             disabled={!activeShift}
             className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 active:scale-90 transition-transform disabled:opacity-30"
-            style={{ background: 'linear-gradient(135deg, rgba(108,92,231,0.12), rgba(162,155,254,0.06))', border: '1px solid rgba(108,92,231,0.15)', boxShadow: '0 0 30px rgba(108,92,231,0.08)' }}
+            style={{ background: 'linear-gradient(135deg, rgba(var(--c-accent-rgb), 0.12), rgba(var(--c-accent-rgb), 0.06))', border: '1px solid rgba(var(--c-accent-rgb), 0.15)', boxShadow: '0 0 30px rgba(var(--c-accent-rgb), 0.08)' }}
           >
             <Plus className="w-7 h-7 text-[var(--c-accent)] animate-pulse" />
           </button>
           <p className="text-[var(--c-hint)] text-sm font-medium">Нет открытых чеков</p>
-          <p className="text-xs text-white/20 mt-1">
+          <p className="text-xs text-[var(--c-muted)] mt-1">
             {activeShift ? 'Нажмите чтобы создать' : 'Откройте смену для начала'}
           </p>
         </div>
@@ -358,19 +358,19 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               onClick={handleCreateCheckNoClient}
               className="flex flex-col items-center gap-1.5 p-3 rounded-xl card-interactive"
             >
-              <div className="w-9 h-9 rounded-lg bg-white/6 flex items-center justify-center">
-                <UserX className="w-4 h-4 text-white/35" />
+              <div className="w-9 h-9 rounded-lg bg-[var(--c-surface-hover)] flex items-center justify-center">
+                <UserX className="w-4 h-4 text-[var(--c-hint)]" />
               </div>
               <span className="text-[11px] font-semibold text-[var(--c-text)]">Без клиента</span>
             </button>
             <button
               onClick={() => { setShowNewCheck(false); setShowCreateClient(true); }}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-emerald-500/6 border border-emerald-500/10 active:scale-[0.97] transition-transform"
+              className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-[var(--c-success-bg)] border border-[var(--c-success-border)] active:scale-[0.97] transition-transform"
             >
-              <div className="w-9 h-9 rounded-lg bg-emerald-500/12 flex items-center justify-center">
-                <UserPlus className="w-4 h-4 text-emerald-400" />
+              <div className="w-9 h-9 rounded-lg bg-[var(--c-success-bg)] flex items-center justify-center">
+                <UserPlus className="w-4 h-4 text-[var(--c-success)]" />
               </div>
-              <span className="text-[11px] font-semibold text-emerald-400">Новый</span>
+              <span className="text-[11px] font-semibold text-[var(--c-success)]">Новый</span>
             </button>
             <button
               onClick={() => { setShowNewCheck(false); loadSpaces(); }}
@@ -384,13 +384,13 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           </div>
 
           <div className="flex items-center gap-2 py-1">
-            <div className="flex-1 h-px bg-white/6" />
-            <span className="text-[9px] text-white/20 font-semibold tracking-widest">ИЛИ ВЫБЕРИТЕ</span>
-            <div className="flex-1 h-px bg-white/6" />
+            <div className="flex-1 h-px bg-[var(--c-border)]" />
+            <span className="text-[9px] text-[var(--c-muted)] font-semibold tracking-widest">ИЛИ ВЫБЕРИТЕ</span>
+            <div className="flex-1 h-px bg-[var(--c-border)]" />
           </div>
 
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--c-muted)]" />
             <Input
               placeholder="Поиск по нику..."
               value={searchQuery}
@@ -412,7 +412,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               <button
                 key={player.id}
                 onClick={() => handlePlayerSelected(player)}
-                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/5 transition-colors active:scale-[0.98]"
+                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-[var(--c-surface)] transition-colors active:scale-[0.98]"
               >
                 <div className="w-8 h-8 rounded-lg bg-[var(--c-accent)]/10 flex items-center justify-center shrink-0">
                   <span className="text-xs font-bold text-[var(--c-accent)]">
@@ -477,7 +477,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                     className={`relative flex flex-col items-center gap-1 p-3 rounded-xl border transition-all active:scale-[0.97] ${
                       isSelected
                         ? 'bg-[var(--c-accent)]/10 border-[var(--c-accent)]/30'
-                        : 'card border-white/6'
+                        : 'card border-[var(--c-border)]'
                     }`}
                   >
                     {isDefault && (
@@ -486,15 +486,15 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                       </div>
                     )}
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      key === 'resident' ? 'bg-emerald-500/12' :
-                      key === 'student' ? 'bg-blue-500/12' :
-                      key === 'single_game' ? 'bg-amber-500/12' :
-                      'bg-white/6'
+                      key === 'resident' ? 'bg-[var(--c-success-bg)]' :
+                      key === 'student' ? 'bg-[var(--c-info-bg)]' :
+                      key === 'single_game' ? 'bg-[var(--c-warning-bg)]' :
+                      'bg-[var(--c-surface-hover)]'
                     }`}>
-                      {key === 'resident' ? <Star className="w-4 h-4 text-emerald-400" /> :
-                       key === 'student' ? <GraduationCap className="w-4 h-4 text-blue-400" /> :
-                       key === 'single_game' ? <Gamepad2 className="w-4 h-4 text-amber-400" /> :
-                       <User className="w-4 h-4 text-white/40" />}
+                      {                       key === 'resident' ? <Star className="w-4 h-4 text-[var(--c-success)]" /> :
+                       key === 'student' ? <GraduationCap className="w-4 h-4 text-[var(--c-info)]" /> :
+                       key === 'single_game' ? <Gamepad2 className="w-4 h-4 text-[var(--c-warning)]" /> :
+                       <User className="w-4 h-4 text-[var(--c-hint)]" />}
                     </div>
                     <span className={`text-xs font-semibold ${
                       isSelected ? 'text-[var(--c-accent)]' : 'text-[var(--c-text)]'
@@ -502,7 +502,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                       {info.label}
                     </span>
                     <span className={`text-sm font-black tabular-nums ${
-                      isSelected ? 'text-[var(--c-accent)]' : 'text-white/50'
+                      isSelected ? 'text-[var(--c-accent)]' : 'text-[var(--c-hint)]'
                     }`}>
                       {info.price}₽
                     </span>
@@ -537,10 +537,10 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           />
 
           <div>
-            <p className="text-xs font-medium text-white/50 mb-2">Статус</p>
+            <p className="text-xs font-medium text-[var(--c-hint)] mb-2">Статус</p>
             <div className="grid grid-cols-3 gap-1.5">
               {([
-                { key: 'regular' as ClientTier, label: 'Гость', icon: User, color: 'bg-white/6' },
+                { key: 'regular' as ClientTier, label: 'Гость', icon: User, color: 'bg-[var(--c-surface)]' },
                 { key: 'resident' as ClientTier, label: 'Резидент', icon: Star, color: 'bg-emerald-500/12' },
                 { key: 'student' as ClientTier, label: 'Студент', icon: GraduationCap, color: 'bg-blue-500/12' },
               ]).map(({ key, label, icon: Icon, color }) => (
@@ -550,7 +550,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                   className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${
                     newClientTier === key
                       ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/30 text-[var(--c-accent)]'
-                      : 'card border border-white/6 text-white/50'
+                      : 'card border border-[var(--c-border)] text-[var(--c-hint)]'
                   }`}
                 >
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${newClientTier === key ? 'bg-[var(--c-accent)]/15' : color}`}>
@@ -563,7 +563,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           </div>
 
           {createError && (
-            <p className="text-xs text-red-400 bg-red-500/6 rounded-lg px-3 py-2 border border-red-500/8">{createError}</p>
+            <p className="text-xs text-[var(--c-danger)] bg-[var(--c-danger-bg)] rounded-lg px-3 py-2 border border-[var(--c-border)]">{createError}</p>
           )}
           <Button fullWidth onClick={handleCreateClient}>
             <UserPlus className="w-4 h-4" />
@@ -593,7 +593,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                 </div>
                 <div className="flex-1 text-left">
                   <p className="font-semibold text-[13px] text-[var(--c-text)]">{s.name}</p>
-                  <p className="text-[11px] text-white/25">
+                  <p className="text-[11px] text-[var(--c-muted)]">
                     {s.hourly_rate ? `${s.hourly_rate}₽/час` : 'Ручная цена'}
                   </p>
                 </div>

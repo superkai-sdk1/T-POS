@@ -317,25 +317,25 @@ export function RefundsManager() {
       <div className="space-y-3">
         <button
           onClick={() => setScreen('list')}
-          className="flex items-center gap-1.5 text-[11px] text-white/35 font-semibold active:scale-95 transition-transform"
+          className="flex items-center gap-1.5 text-[11px] text-[var(--c-hint)] font-semibold active:scale-95 transition-transform"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Назад к возвратам
         </button>
 
         {!activeShift ? (
           <div className="p-6 text-center card">
-            <AlertTriangle className="w-8 h-8 text-amber-400/40 mx-auto mb-2" />
-            <p className="text-sm text-white/40">Нет активной смены</p>
-            <p className="text-[10px] text-white/20 mt-1">Возвраты возможны только в рамках текущей смены</p>
+            <AlertTriangle className="w-8 h-8 text-[var(--c-warning)] mx-auto mb-2" />
+            <p className="text-sm text-[var(--c-hint)]">Нет активной смены</p>
+            <p className="text-[10px] text-[var(--c-muted)] mt-1">Возвраты возможны только в рамках текущей смены</p>
           </div>
         ) : closedChecks.length === 0 ? (
           <div className="p-6 text-center card">
-            <Receipt className="w-8 h-8 text-white/10 mx-auto mb-2" />
-            <p className="text-sm text-white/40">Нет закрытых чеков в этой смене</p>
+            <Receipt className="w-8 h-8 text-[var(--c-muted)] mx-auto mb-2" />
+            <p className="text-sm text-[var(--c-hint)]">Нет закрытых чеков в этой смене</p>
           </div>
         ) : (
           <div className="space-y-1 stagger-children">
-            <p className="text-[10px] font-semibold text-white/20 uppercase tracking-wider">
+            <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">
               Чеки текущей смены ({closedChecks.length})
             </p>
             {closedChecks.map((check) => (
@@ -344,19 +344,19 @@ export function RefundsManager() {
                 onClick={() => handleSelectCheck(check)}
                 className="w-full flex items-center gap-2.5 p-3 rounded-xl card-interactive"
               >
-                <div className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                  <Receipt className="w-4 h-4 text-white/30" />
+                <div className="w-9 h-9 rounded-lg bg-[var(--c-surface)] flex items-center justify-center shrink-0">
+                  <Receipt className="w-4 h-4 text-[var(--c-hint)]" />
                 </div>
                 <div className="flex-1 text-left min-w-0">
                   <p className="font-semibold text-[13px] text-[var(--c-text)] truncate">
                     {check.player?.nickname || check.guest_names || 'Гость'}
                   </p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[10px] text-white/25">
+                    <span className="text-[10px] text-[var(--c-muted)]">
                       {check.checkItems.length} поз.
                     </span>
-                    <span className="text-white/8">·</span>
-                    <span className="text-[10px] text-white/25">
+                    <span className="text-[var(--c-muted)]">·</span>
+                    <span className="text-[10px] text-[var(--c-muted)]">
                       {check.closed_at ? fmtDate(check.closed_at) : ''}
                     </span>
                   </div>
@@ -364,7 +364,7 @@ export function RefundsManager() {
                 <span className="text-sm font-bold text-[var(--c-text)] tabular-nums shrink-0">
                   {fmtCur(check.total_amount)}
                 </span>
-                <ChevronRight className="w-3.5 h-3.5 text-white/12 shrink-0" />
+                <ChevronRight className="w-3.5 h-3.5 text-[var(--c-muted)] shrink-0" />
               </button>
             ))}
           </div>
@@ -378,7 +378,7 @@ export function RefundsManager() {
       <div className="space-y-3">
         <button
           onClick={() => { setScreen('selectCheck'); setSelectedCheck(null); }}
-          className="flex items-center gap-1.5 text-[11px] text-white/35 font-semibold active:scale-95 transition-transform"
+          className="flex items-center gap-1.5 text-[11px] text-[var(--c-hint)] font-semibold active:scale-95 transition-transform"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Назад к выбору чека
         </button>
@@ -389,7 +389,7 @@ export function RefundsManager() {
               <p className="font-bold text-sm text-[var(--c-text)]">
                 {selectedCheck.player?.nickname || selectedCheck.guest_names || 'Гость'}
               </p>
-              <p className="text-[10px] text-white/25">
+              <p className="text-[10px] text-[var(--c-muted)]">
                 Чек на {fmtCur(selectedCheck.total_amount)}
                 {selectedCheck.bonus_used > 0 && ` (бонусов: ${fmtCur(selectedCheck.bonus_used)})`}
               </p>
@@ -405,8 +405,8 @@ export function RefundsManager() {
             onClick={() => toggleRefundType('full')}
             className={`flex-1 p-2.5 rounded-xl text-center text-[12px] font-bold transition-all ${
               refundType === 'full'
-                ? 'bg-red-500/12 border border-red-500/20 text-red-400'
-                : 'card text-white/35'
+                ? 'bg-[var(--c-danger-bg)] border border-[var(--c-danger-border)] text-[var(--c-danger)]'
+                : 'card text-[var(--c-hint)]'
             }`}
           >
             Полный возврат
@@ -415,8 +415,8 @@ export function RefundsManager() {
             onClick={() => toggleRefundType('partial')}
             className={`flex-1 p-2.5 rounded-xl text-center text-[12px] font-bold transition-all ${
               refundType === 'partial'
-                ? 'bg-amber-500/12 border border-amber-500/20 text-amber-400'
-                : 'card text-white/35'
+                ? 'bg-[var(--c-warning-bg)] border border-[var(--c-warning-border)] text-[var(--c-warning)]'
+                : 'card text-[var(--c-hint)]'
             }`}
           >
             Частичный возврат
@@ -424,7 +424,7 @@ export function RefundsManager() {
         </div>
 
         <div className="space-y-1">
-          <p className="text-[10px] font-semibold text-white/20 uppercase tracking-wider">
+          <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">
             Позиции для возврата
           </p>
           {selectedCheck.checkItems.map((ci) => {
@@ -434,17 +434,17 @@ export function RefundsManager() {
               <div
                 key={ci.id}
                 className={`flex items-center gap-2 p-2.5 rounded-xl transition-all ${
-                  qty > 0 ? 'bg-red-500/5 border border-red-500/10' : 'card'
+                  qty > 0 ? 'bg-[var(--c-danger-bg)] border border-[var(--c-danger-border)]' : 'card'
                 }`}
               >
-                <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                  <Package className="w-3.5 h-3.5 text-white/25" />
+                <div className="w-7 h-7 rounded-lg bg-[var(--c-surface)] flex items-center justify-center shrink-0">
+                  <Package className="w-3.5 h-3.5 text-[var(--c-muted)]" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] font-medium text-[var(--c-text)] truncate">
                     {ci.item?.name || '?'}
                   </p>
-                  <p className="text-[10px] text-white/20">
+                  <p className="text-[10px] text-[var(--c-muted)]">
                     {fmtCur(ci.price_at_time)} × {ci.quantity}
                   </p>
                 </div>
@@ -453,25 +453,25 @@ export function RefundsManager() {
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       onClick={() => updateItemQty(ci.id, -1)}
-                      className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 transition-transform"
+                      className="w-7 h-7 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform"
                     >
-                      <Minus className="w-3 h-3 text-white/40" />
+                      <Minus className="w-3 h-3 text-[var(--c-hint)]" />
                     </button>
                     <span className={`w-6 text-center text-[13px] font-bold tabular-nums ${
-                      qty > 0 ? 'text-red-400' : 'text-white/20'
+                      qty > 0 ? 'text-[var(--c-danger)]' : 'text-[var(--c-muted)]'
                     }`}>
                       {qty}
                     </span>
                     <button
                       onClick={() => updateItemQty(ci.id, 1)}
-                      className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 transition-transform"
+                      className="w-7 h-7 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform"
                     >
-                      <Plus className="w-3 h-3 text-white/40" />
+                      <Plus className="w-3 h-3 text-[var(--c-hint)]" />
                     </button>
                   </div>
                 ) : (
                   <div className="shrink-0">
-                    <CheckIcon className="w-4 h-4 text-red-400" />
+                    <CheckIcon className="w-4 h-4 text-[var(--c-danger)]" />
                   </div>
                 )}
               </div>
@@ -487,10 +487,10 @@ export function RefundsManager() {
           compact
         />
 
-        <div className="p-3 rounded-xl bg-red-500/6 border border-red-500/10 space-y-1">
+        <div className="p-3 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-danger-border)] space-y-1">
           <div className="flex justify-between text-[12px]">
-            <span className="text-white/35">Сумма возврата</span>
-            <span className="font-bold text-red-400 tabular-nums">{fmtCur(refundTotal)}</span>
+            <span className="text-[var(--c-hint)]">Сумма возврата</span>
+            <span className="font-bold text-[var(--c-danger)] tabular-nums">{fmtCur(refundTotal)}</span>
           </div>
           {selectedCheck.player_id && (
             <>
@@ -507,14 +507,14 @@ export function RefundsManager() {
                   <>
                     {bonusDeduct > 0 && (
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-white/25">Списание начисленных бонусов</span>
-                        <span className="text-amber-400 font-semibold tabular-nums">−{bonusDeduct}</span>
+                        <span className="text-[var(--c-muted)]">Списание начисленных бонусов</span>
+                        <span className="text-[var(--c-warning)] font-semibold tabular-nums">−{bonusDeduct}</span>
                       </div>
                     )}
                     {bonusReturn > 0 && (
                       <div className="flex justify-between text-[11px]">
-                        <span className="text-white/25">Возврат использованных бонусов</span>
-                        <span className="text-emerald-400 font-semibold tabular-nums">+{bonusReturn}</span>
+                        <span className="text-[var(--c-muted)]">Возврат использованных бонусов</span>
+                        <span className="text-[var(--c-success)] font-semibold tabular-nums">+{bonusReturn}</span>
                       </div>
                     )}
                   </>
@@ -549,20 +549,20 @@ export function RefundsManager() {
           <RotateCcw className="w-3.5 h-3.5" /> Новый возврат
         </Button>
         {!activeShift && (
-          <span className="text-[10px] text-amber-400/60">Нужна открытая смена</span>
+          <span className="text-[10px] text-[var(--c-warning)]">Нужна открытая смена</span>
         )}
       </div>
 
       {loading ? (
         <div className="space-y-2">
           {[1,2,3].map((i) => (
-            <div key={i} className="h-16 rounded-xl bg-white/3 animate-pulse" />
+            <div key={i} className="h-16 rounded-xl bg-[var(--c-surface)] animate-pulse" />
           ))}
         </div>
       ) : refunds.length === 0 ? (
         <div className="p-8 text-center card">
-          <RotateCcw className="w-8 h-8 text-white/8 mx-auto mb-2" />
-          <p className="text-sm text-white/30">Возвратов пока нет</p>
+          <RotateCcw className="w-8 h-8 text-[var(--c-muted)] mx-auto mb-2" />
+          <p className="text-sm text-[var(--c-hint)]">Возвратов пока нет</p>
         </div>
       ) : (
         <div className="space-y-1 stagger-children">
@@ -573,10 +573,10 @@ export function RefundsManager() {
               className="w-full flex items-center gap-2.5 p-3 rounded-xl card-interactive"
             >
               <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                r.refund_type === 'full' ? 'bg-red-500/10' : 'bg-amber-500/10'
+                r.refund_type === 'full' ? 'bg-[var(--c-danger-bg)]' : 'bg-[var(--c-warning-bg)]'
               }`}>
                 <RotateCcw className={`w-4 h-4 ${
-                  r.refund_type === 'full' ? 'text-red-400' : 'text-amber-400'
+                  r.refund_type === 'full' ? 'text-[var(--c-danger)]' : 'text-[var(--c-warning)]'
                 }`} />
               </div>
               <div className="flex-1 text-left min-w-0">
@@ -589,12 +589,12 @@ export function RefundsManager() {
                   </Badge>
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[10px] text-white/25">{r.creator?.nickname || '?'}</span>
-                  <span className="text-white/8">·</span>
-                  <span className="text-[10px] text-white/25">{fmtDate(r.created_at)}</span>
+                  <span className="text-[10px] text-[var(--c-muted)]">{r.creator?.nickname || '?'}</span>
+                  <span className="text-[var(--c-muted)]">·</span>
+                  <span className="text-[10px] text-[var(--c-muted)]">{fmtDate(r.created_at)}</span>
                 </div>
               </div>
-              <ChevronRight className="w-3.5 h-3.5 text-white/12 shrink-0" />
+              <ChevronRight className="w-3.5 h-3.5 text-[var(--c-muted)] shrink-0" />
             </button>
           ))}
         </div>
@@ -610,31 +610,31 @@ export function RefundsManager() {
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
               <div className="p-2.5 rounded-xl card text-center">
-                <p className="text-base font-black text-red-400 tabular-nums">
+                <p className="text-base font-black text-[var(--c-danger)] tabular-nums">
                   {fmtCur(detailRefund.total_amount)}
                 </p>
-                <p className="text-[9px] text-white/25">Сумма</p>
+                <p className="text-[9px] text-[var(--c-muted)]">Сумма</p>
               </div>
               <div className="p-2.5 rounded-xl card text-center">
                 <Badge variant={detailRefund.refund_type === 'full' ? 'danger' : 'warning'}>
                   {detailRefund.refund_type === 'full' ? 'Полный' : 'Частичный'}
                 </Badge>
-                <p className="text-[9px] text-white/25 mt-1">Тип</p>
+                <p className="text-[9px] text-[var(--c-muted)] mt-1">Тип</p>
               </div>
             </div>
 
             {(detailRefund.bonus_deducted > 0 || detailRefund.bonus_returned > 0) && (
-              <div className="p-2.5 rounded-xl bg-amber-500/5 border border-amber-500/10 space-y-1">
+              <div className="p-2.5 rounded-xl bg-[var(--c-warning-bg)] border border-[var(--c-warning-border)] space-y-1">
                 {detailRefund.bonus_deducted > 0 && (
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-white/30">Бонусов списано</span>
-                    <span className="text-red-400 font-semibold">−{detailRefund.bonus_deducted}</span>
+                    <span className="text-[var(--c-hint)]">Бонусов списано</span>
+                    <span className="text-[var(--c-danger)] font-semibold">−{detailRefund.bonus_deducted}</span>
                   </div>
                 )}
                 {detailRefund.bonus_returned > 0 && (
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-white/30">Бонусов возвращено</span>
-                    <span className="text-emerald-400 font-semibold">+{detailRefund.bonus_returned}</span>
+                    <span className="text-[var(--c-hint)]">Бонусов возвращено</span>
+                    <span className="text-[var(--c-success)] font-semibold">+{detailRefund.bonus_returned}</span>
                   </div>
                 )}
               </div>
@@ -642,10 +642,10 @@ export function RefundsManager() {
 
             {detailItems.length > 0 && (
               <div className="space-y-1">
-                <p className="text-[10px] font-semibold text-white/20 uppercase tracking-wider">Позиции</p>
+                <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">Позиции</p>
                 {detailItems.map((item, i) => (
                   <div key={i} className="flex justify-between p-2 rounded-lg card text-[12px]">
-                    <span className="text-white/50">{item.name} × {item.quantity}</span>
+                    <span className="text-[var(--c-hint)]">{item.name} × {item.quantity}</span>
                     <span className="font-bold text-[var(--c-text)] tabular-nums">{fmtCur(item.price * item.quantity)}</span>
                   </div>
                 ))}
@@ -654,12 +654,12 @@ export function RefundsManager() {
 
             {detailRefund.note && (
               <div className="p-2.5 rounded-xl card">
-                <p className="text-[10px] text-white/20 mb-0.5">Причина</p>
-                <p className="text-[12px] text-white/50">{detailRefund.note}</p>
+                <p className="text-[10px] text-[var(--c-muted)] mb-0.5">Причина</p>
+                <p className="text-[12px] text-[var(--c-hint)]">{detailRefund.note}</p>
               </div>
             )}
 
-            <div className="text-[10px] text-white/15 text-center">
+            <div className="text-[10px] text-[var(--c-muted)] text-center">
               {detailRefund.creator?.nickname} · {fmtDate(detailRefund.created_at)}
             </div>
           </div>

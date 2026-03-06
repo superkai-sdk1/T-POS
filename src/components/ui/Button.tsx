@@ -10,13 +10,13 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles = {
   primary:
-    'text-[var(--c-accent-text)] shadow-md hover:brightness-110 [background:linear-gradient(135deg,#6c5ce7,#7c6cf7)] [box-shadow:0_4px_16px_rgba(108,92,231,0.25)]',
+    'text-[var(--c-accent-text)] shadow-md hover:brightness-110 [background:linear-gradient(135deg,var(--c-accent),var(--c-accent-light))] [box-shadow:0_4px_16px_rgba(var(--c-accent-rgb),0.25)]',
   secondary:
-    'bg-white/6 text-[var(--c-text)] hover:bg-white/10 border border-white/6',
+    'bg-[var(--c-surface)] text-[var(--c-text)] hover:bg-[var(--c-surface-hover)] border border-[var(--c-border)]',
   danger:
-    'bg-red-500/12 text-red-400 hover:bg-red-500/20 border border-red-500/8',
+    'bg-[var(--c-danger-bg)] text-[var(--c-danger)] hover:brightness-125 border border-[var(--c-danger-border)]',
   ghost:
-    'text-[var(--c-accent)] hover:bg-white/5',
+    'text-[var(--c-accent)] hover:bg-[var(--c-surface)]',
 };
 
 const sizeStyles = {

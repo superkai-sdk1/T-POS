@@ -147,7 +147,7 @@ export function DiscountsManager() {
 
       {discounts.length === 0 ? (
         <div className="text-center py-12">
-          <Percent className="w-10 h-10 text-white/8 mx-auto mb-3" />
+          <Percent className="w-10 h-10 text-[var(--c-muted)] mx-auto mb-3" />
           <p className="text-sm text-[var(--c-hint)]">Нет скидок</p>
         </div>
       ) : (
@@ -156,19 +156,19 @@ export function DiscountsManager() {
             <div
               key={d.id}
               className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${
-                d.is_active ? 'card' : 'bg-white/2 border-white/3 opacity-50'
+                d.is_active ? 'card' : 'bg-white/2 border-[var(--c-border)] opacity-50'
               }`}
             >
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                isQuantityDiscount(d) ? 'bg-amber-500/15' :
-                d.type === 'percentage' ? 'bg-violet-500/15' : 'bg-emerald-500/15'
+                isQuantityDiscount(d) ? 'bg-[var(--c-warning-bg)]' :
+                d.type === 'percentage' ? 'bg-[rgba(var(--c-accent-rgb),0.1)]' : 'bg-[var(--c-success-bg)]'
               }`}>
                 {isQuantityDiscount(d) ? (
-                  <Hash className="w-5 h-5 text-amber-400" />
+                  <Hash className="w-5 h-5 text-[var(--c-warning)]" />
                 ) : d.type === 'percentage' ? (
-                  <Percent className="w-5 h-5 text-violet-400" />
+                  <Percent className="w-5 h-5 text-[var(--c-accent)]" />
                 ) : (
-                  <Banknote className="w-5 h-5 text-emerald-400" />
+                  <Banknote className="w-5 h-5 text-[var(--c-success)]" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
@@ -185,7 +185,7 @@ export function DiscountsManager() {
                     </Badge>
                   )}
                   {d.item && (
-                    <span className="text-[10px] text-white/30 truncate max-w-[120px]">{d.item.name}</span>
+                    <span className="text-[10px] text-[var(--c-hint)] truncate max-w-[120px]">{d.item.name}</span>
                   )}
                 </div>
               </div>
@@ -193,7 +193,7 @@ export function DiscountsManager() {
                 <button
                   onClick={() => toggleActive(d)}
                   className={`w-10 h-6 rounded-full transition-colors relative ${
-                    d.is_active ? 'bg-emerald-500' : 'bg-white/15'
+                    d.is_active ? 'bg-emerald-500' : 'bg-[var(--c-surface-hover)]'
                   }`}
                 >
                   <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${
@@ -202,15 +202,15 @@ export function DiscountsManager() {
                 </button>
                 <button
                   onClick={() => openEdit(d)}
-                  className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 transition-transform"
+                  className="w-8 h-8 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform"
                 >
-                  <Edit2 className="w-3.5 h-3.5 text-white/40" />
+                  <Edit2 className="w-3.5 h-3.5 text-[var(--c-hint)]" />
                 </button>
                 <button
                   onClick={() => handleDelete(d.id)}
-                  className="w-8 h-8 rounded-lg bg-red-500/8 flex items-center justify-center active:scale-90 transition-transform"
+                  className="w-8 h-8 rounded-lg bg-[var(--c-danger-bg)] flex items-center justify-center active:scale-90 transition-transform"
                 >
-                  <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                  <Trash2 className="w-3.5 h-3.5 text-[var(--c-danger)]" />
                 </button>
               </div>
             </div>
@@ -235,7 +235,7 @@ export function DiscountsManager() {
           />
 
           <div>
-            <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider mb-2">Тип скидки</p>
+            <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider mb-2">Тип скидки</p>
             <div className="grid grid-cols-2 gap-2">
               {([['percentage', 'Процент', Percent], ['fixed', 'Фиксированная', Banknote]] as const).map(([t, label, Icon]) => (
                 <button
@@ -244,11 +244,11 @@ export function DiscountsManager() {
                   className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all active:scale-[0.97] ${
                     type === t
                       ? 'bg-[var(--c-accent)]/15 border-[var(--c-accent)]/30'
-                      : 'bg-white/3 border-white/8'
+                      : 'bg-[var(--c-surface)] border-[var(--c-border)]'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${type === t ? 'text-[var(--c-accent)]' : 'text-white/30'}`} />
-                  <span className={`text-[13px] font-medium ${type === t ? 'text-[var(--c-text)]' : 'text-white/40'}`}>
+                  <Icon className={`w-4 h-4 ${type === t ? 'text-[var(--c-accent)]' : 'text-[var(--c-hint)]'}`} />
+                  <span className={`text-[13px] font-medium ${type === t ? 'text-[var(--c-text)]' : 'text-[var(--c-hint)]'}`}>
                     {label}
                   </span>
                 </button>
@@ -267,8 +267,8 @@ export function DiscountsManager() {
           />
 
           {/* Quantity-based section */}
-          <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/10 space-y-3">
-            <p className="text-[11px] font-semibold text-amber-400/80">Скидка по количеству (необязательно)</p>
+          <div className="p-3 rounded-xl bg-[var(--c-warning-bg)] border border-[var(--c-warning-border)] space-y-3">
+            <p className="text-[11px] font-semibold text-[var(--c-warning)]">Скидка по количеству (необязательно)</p>
 
             <Input
               label="Мин. количество в чеке"
@@ -281,25 +281,25 @@ export function DiscountsManager() {
             />
 
             <div>
-              <p className="text-xs font-medium text-white/40 mb-1.5">Применить к товару</p>
+              <p className="text-xs font-medium text-[var(--c-hint)] mb-1.5">Применить к товару</p>
               {selectedItemId ? (
                 <div className="flex items-center gap-2 p-2 rounded-xl card">
-                  <Package className="w-4 h-4 text-amber-400 shrink-0" />
+                  <Package className="w-4 h-4 text-[var(--c-warning)] shrink-0" />
                   <span className="text-[13px] text-[var(--c-text)] truncate flex-1">{selectedItemName}</span>
-                  <button onClick={clearItem} className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 shrink-0">
-                    <Trash2 className="w-3 h-3 text-white/40" />
+                  <button onClick={clearItem} className="w-6 h-6 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 shrink-0">
+                    <Trash2 className="w-3 h-3 text-[var(--c-hint)]" />
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={openItemPicker}
-                  className="w-full flex items-center gap-2 p-2.5 rounded-xl border border-dashed border-white/10 text-white/30 hover:text-white/50 hover:border-white/20 transition-all active:scale-[0.98]"
+                  className="w-full flex items-center gap-2 p-2.5 rounded-xl border border-dashed border-[var(--c-border)] text-[var(--c-hint)] hover:text-[var(--c-hint)] hover:border-white/20 transition-all active:scale-[0.98]"
                 >
                   <Search className="w-4 h-4" />
                   <span className="text-xs">Выбрать товар...</span>
                 </button>
               )}
-              <p className="text-[10px] text-white/20 mt-1">
+              <p className="text-[10px] text-[var(--c-muted)] mt-1">
                 Если не выбран — скидка на любые {minQuantity || 'N'} одинаковых позиций
               </p>
             </div>
@@ -320,12 +320,12 @@ export function DiscountsManager() {
       >
         <div className="space-y-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--c-muted)]" />
             <input
               placeholder="Поиск..."
               value={itemSearch}
               onChange={(e) => setItemSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/5 border border-white/6 text-sm text-[var(--c-text)] placeholder:text-white/15 focus:outline-none focus:border-[var(--c-accent)]/25 transition-colors"
+              className="w-full pl-9 pr-3 py-2 rounded-xl bg-[var(--c-surface)] border border-[var(--c-surface-hover)] text-sm text-[var(--c-text)] placeholder:text-[var(--c-muted)] focus:outline-none focus:border-[var(--c-accent)]/25 transition-colors"
               autoFocus
             />
           </div>
@@ -334,18 +334,18 @@ export function DiscountsManager() {
               <button
                 key={item.id}
                 onClick={() => selectItem(item)}
-                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/5 transition-colors active:scale-[0.98]"
+                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-[var(--c-surface-hover)] transition-colors active:scale-[0.98]"
               >
-                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0 overflow-hidden">
+                <div className="w-8 h-8 rounded-lg bg-[var(--c-surface)] flex items-center justify-center shrink-0 overflow-hidden">
                   {item.image_url ? (
                     <img src={item.image_url} className="w-full h-full object-cover" />
                   ) : (
-                    <Package className="w-4 h-4 text-white/30" />
+                    <Package className="w-4 h-4 text-[var(--c-hint)]" />
                   )}
                 </div>
                 <div className="text-left flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{item.name}</p>
-                  <p className="text-[11px] text-white/30 tabular-nums">{item.price}₽</p>
+                  <p className="text-[11px] text-[var(--c-hint)] tabular-nums">{item.price}₽</p>
                 </div>
               </button>
             ))}

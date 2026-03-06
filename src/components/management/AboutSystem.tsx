@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
+import { useThemeStore, THEMES } from '@/store/theme';
 import {
   Download, CheckCircle, AlertCircle, RefreshCw, ExternalLink,
-  GitBranch, Clock, Server, Code2, Sparkles, RotateCcw,
+  GitBranch, Clock, Server, Code2, Sparkles, RotateCcw, Palette,
 } from 'lucide-react';
 
 const UPDATE_API = '/api/system';
@@ -24,6 +25,60 @@ interface LogEntry {
   total?: number;
   text?: string;
   message?: string;
+}
+
+function ThemeSelector() {
+  const { theme, setTheme } = useThemeStore();
+  return (
+    <div className="space-y-2 pt-2 border-t border-[var(--c-border)]">
+      <div className="flex items-center gap-2">
+        <Palette className="w-3.5 h-3.5 text-[var(--c-hint)]" />
+        <p className="text-[10px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">Внешний вид</p>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {THEMES.map((t) => {
+          const active = theme === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTheme(t.id)}
+              className={`relative p-3 rounded-xl transition-all duration-200 active:scale-95 ${
+                active
+                  ? 'ring-2 ring-[var(--c-accent)] bg-[rgba(var(--c-accent-rgb),0.08)]'
+                  : 'card-interactive'
+              }`}
+            >
+              <div className="flex flex-col items-center gap-2">
+                <div
+                  className="w-10 h-10 rounded-xl border-2 flex items-center justify-center"
+                  style={{
+                    background: t.bg,
+                    borderColor: t.accent,
+                    boxShadow: active ? `0 0 12px ${t.accent}40` : 'none',
+                  }}
+                >
+                  <div
+                    className="w-4 h-4 rounded-full"
+                    style={{ background: t.accent }}
+                  />
+                </div>
+                <span className={`text-[11px] font-semibold leading-tight text-center ${
+                  active ? 'text-[var(--c-accent)]' : 'text-[var(--c-text)]'
+                }`}>
+                  {t.name}
+                </span>
+              </div>
+              {active && (
+                <div className="absolute top-1.5 right-1.5">
+                  <CheckCircle className="w-3.5 h-3.5 text-[var(--c-accent)]" />
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export function AboutSystem() {
@@ -148,13 +203,13 @@ export function AboutSystem() {
       {/* System info cards */}
       {infoLoading ? (
         <div className="space-y-2 animate-pulse">
-          {[1, 2, 3].map((i) => <div key={i} className="h-14 rounded-xl bg-white/3" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-14 rounded-xl bg-[var(--c-surface)]" />)}
         </div>
       ) : infoError ? (
-        <div className="p-4 rounded-xl bg-amber-500/6 border border-amber-500/10 text-center space-y-2">
-          <AlertCircle className="w-6 h-6 text-amber-400 mx-auto" />
-          <p className="text-xs text-amber-400">Сервер обновлений недоступен</p>
-          <p className="text-[10px] text-white/25">Убедитесь что update-server запущен на сервере</p>
+        <div className="p-4 rounded-xl bg-[var(--c-warning-bg)] border border-[var(--c-border)] text-center space-y-2">
+          <AlertCircle className="w-6 h-6 text-[var(--c-warning)] mx-auto" />
+          <p className="text-xs text-[var(--c-warning)]">Сервер обновлений недоступен</p>
+          <p className="text-[10px] text-[var(--c-muted)]">Убедитесь что update-server запущен на сервере</p>
           <Button size="sm" variant="secondary" onClick={loadInfo}>
             <RefreshCw className="w-3 h-3" />
             Повторить
@@ -166,45 +221,45 @@ export function AboutSystem() {
             <div className="p-3 rounded-xl card space-y-1">
               <div className="flex items-center gap-1.5">
                 <Code2 className="w-3.5 h-3.5 text-[var(--c-accent)]" />
-                <span className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">Версия</span>
+                <span className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">Версия</span>
               </div>
               <p className="text-lg font-black text-[var(--c-text)] tabular-nums">{info.version}</p>
             </div>
             <div className="p-3 rounded-xl card space-y-1">
               <div className="flex items-center gap-1.5">
-                <GitBranch className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">Ветка</span>
+                <GitBranch className="w-3.5 h-3.5 text-[var(--c-success)]" />
+                <span className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">Ветка</span>
               </div>
               <p className="text-lg font-black text-[var(--c-text)]">{info.git.branch}</p>
             </div>
           </div>
 
           <div className="p-3 rounded-xl card flex items-center gap-3">
-            <Clock className="w-4 h-4 text-white/30 shrink-0" />
+            <Clock className="w-4 h-4 text-[var(--c-hint)] shrink-0" />
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">Последний коммит</p>
+              <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">Последний коммит</p>
               <p className="text-[13px] text-[var(--c-text)]">
                 <span className="font-mono text-[var(--c-accent)]">{info.git.hash}</span>
-                <span className="text-white/25 mx-1.5">·</span>
+                <span className="text-[var(--c-muted)] mx-1.5">·</span>
                 {fmtDate(info.git.date)}
               </p>
             </div>
           </div>
 
           <div className="p-3 rounded-xl card flex items-center gap-3">
-            <Server className="w-4 h-4 text-white/30 shrink-0" />
+            <Server className="w-4 h-4 text-[var(--c-hint)] shrink-0" />
             <div className="flex-1">
-              <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">Node.js</p>
+              <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">Node.js</p>
               <p className="text-[13px] text-[var(--c-text)]">{info.nodeVersion}</p>
             </div>
           </div>
 
           {info.updateAvailable && status === 'idle' && (
-            <div className="p-3 rounded-xl bg-emerald-500/8 border border-emerald-500/15 flex items-center gap-3">
-              <Sparkles className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div className="p-3 rounded-xl bg-[var(--c-success-bg)] border border-[var(--c-border)] flex items-center gap-3">
+              <Sparkles className="w-5 h-5 text-[var(--c-success)] shrink-0" />
               <div className="flex-1">
-                <p className="text-[13px] font-semibold text-emerald-400">Доступно обновление</p>
-                <p className="text-[10px] text-emerald-400/50">{info.behindCount} новых коммитов</p>
+                <p className="text-[13px] font-semibold text-[var(--c-success)]">Доступно обновление</p>
+                <p className="text-[10px] text-[var(--c-hint)]">{info.behindCount} новых коммитов</p>
               </div>
             </div>
           )}
@@ -242,11 +297,11 @@ export function AboutSystem() {
               <span className="text-xs font-semibold text-[var(--c-text)]">
                 {status === 'complete' ? 'Готово' : status === 'error' ? 'Ошибка' : stepLabel}
               </span>
-              <span className="text-[11px] font-bold tabular-nums text-white/40">
+              <span className="text-[11px] font-bold tabular-nums text-[var(--c-hint)]">
                 {status === 'complete' ? '100%' : `${progressPct}%`}
               </span>
             </div>
-            <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
+            <div className="w-full h-2 rounded-full bg-[var(--c-surface)] overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
                   status === 'error' ? 'bg-red-500' : status === 'complete' ? 'bg-emerald-500' : 'bg-[var(--c-accent)]'
@@ -264,17 +319,17 @@ export function AboutSystem() {
               return (
                 <div key={i} className="flex-1 flex items-center gap-1.5">
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
-                    done ? 'bg-emerald-500' : active ? 'bg-[var(--c-accent)]' : 'bg-white/5'
+                    done ? 'bg-emerald-500' : active ? 'bg-[var(--c-accent)]' : 'bg-[var(--c-surface)]'
                   }`}>
                     {done ? (
                       <CheckCircle className="w-3 h-3 text-white" />
                     ) : active ? (
                       <RefreshCw className="w-3 h-3 text-white animate-spin" />
                     ) : (
-                      <span className="text-[9px] font-bold text-white/30">{i + 1}</span>
+                      <span className="text-[9px] font-bold text-[var(--c-hint)]">{i + 1}</span>
                     )}
                   </div>
-                  <span className={`text-[10px] font-medium truncate ${done ? 'text-emerald-400' : active ? 'text-[var(--c-text)]' : 'text-white/20'}`}>
+                  <span className={`text-[10px] font-medium truncate ${done ? 'text-[var(--c-success)]' : active ? 'text-[var(--c-text)]' : 'text-[var(--c-muted)]'}`}>
                     {i === 0 ? 'Git' : i === 1 ? 'npm' : 'Build'}
                   </span>
                 </div>
@@ -283,15 +338,15 @@ export function AboutSystem() {
           </div>
 
           {/* Logs */}
-          <div className="max-h-40 overflow-y-auto rounded-xl bg-black/30 p-3 border border-white/5">
+          <div className="max-h-40 overflow-y-auto rounded-xl bg-black/30 p-3 border border-[var(--c-border)]">
             <div className="space-y-0.5 font-mono text-[10px] leading-relaxed">
               {logs.filter((l) => l.type !== 'step' || l.label).map((log, i) => (
                 <div key={i} className={
                   log.type === 'step' ? 'text-[var(--c-accent)] font-semibold pt-1' :
-                  log.type === 'step_done' ? 'text-emerald-400' :
-                  log.type === 'error' ? 'text-red-400' :
-                  log.type === 'complete' ? 'text-emerald-400 font-semibold' :
-                  'text-white/40'
+                  log.type === 'step_done' ? 'text-[var(--c-success)]' :
+                  log.type === 'error' ? 'text-[var(--c-danger)]' :
+                  log.type === 'complete' ? 'text-[var(--c-success)] font-semibold' :
+                  'text-[var(--c-hint)]'
                 }>
                   {log.type === 'step' && `▸ ${log.label}...`}
                   {log.type === 'step_done' && `✓ ${log.label}`}
@@ -306,9 +361,9 @@ export function AboutSystem() {
 
           {/* Error state */}
           {status === 'error' && (
-            <div className="p-3 rounded-xl bg-red-500/8 border border-red-500/15 text-center space-y-2">
-              <AlertCircle className="w-5 h-5 text-red-400 mx-auto" />
-              <p className="text-xs text-red-400">{errorMsg}</p>
+            <div className="p-3 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-border)] text-center space-y-2">
+              <AlertCircle className="w-5 h-5 text-[var(--c-danger)] mx-auto" />
+              <p className="text-xs text-[var(--c-danger)]">{errorMsg}</p>
               <Button size="sm" variant="secondary" onClick={() => setStatus('idle')}>
                 Назад
               </Button>
@@ -317,11 +372,11 @@ export function AboutSystem() {
 
           {/* Success — offer reload */}
           {status === 'complete' && (
-            <div className="p-4 rounded-xl bg-emerald-500/8 border border-emerald-500/15 text-center space-y-3">
-              <CheckCircle className="w-8 h-8 text-emerald-400 mx-auto" />
+            <div className="p-4 rounded-xl bg-[var(--c-success-bg)] border border-[var(--c-border)] text-center space-y-3">
+              <CheckCircle className="w-8 h-8 text-[var(--c-success)] mx-auto" />
               <div>
-                <p className="text-sm font-bold text-emerald-400">Обновление завершено</p>
-                <p className="text-[11px] text-emerald-400/50 mt-0.5">Перезагрузите приложение для применения</p>
+                <p className="text-sm font-bold text-[var(--c-success)]">Обновление завершено</p>
+                <p className="text-[11px] text-[var(--c-hint)] mt-0.5">Перезагрузите приложение для применения</p>
               </div>
               <Button fullWidth size="lg" onClick={handleReload}>
                 <RotateCcw className="w-4 h-4" />
@@ -332,48 +387,51 @@ export function AboutSystem() {
         </div>
       )}
 
+      {/* Theme selector */}
+      <ThemeSelector />
+
       {/* Developer info */}
-      <div className="space-y-2 pt-2 border-t border-white/5">
-        <p className="text-[10px] font-semibold text-white/20 uppercase tracking-wider">Разработка</p>
+      <div className="space-y-2 pt-2 border-t border-[var(--c-border)]">
+        <p className="text-[10px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">Разработка</p>
 
         <div className="p-3 rounded-xl card flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-500/20 to-purple-500/20 flex items-center justify-center">
-            <span className="text-sm font-bold text-violet-400">K</span>
+          <div className="w-9 h-9 rounded-full bg-[rgba(var(--c-accent-rgb),0.1)] flex items-center justify-center">
+            <span className="text-sm font-bold text-[var(--c-accent)]">K</span>
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-semibold text-[var(--c-text)]">Kai Michaelson</p>
-            <p className="text-[11px] text-white/30">Full-stack developer</p>
+            <p className="text-[11px] text-[var(--c-hint)]">Full-stack developer</p>
           </div>
           <a
             href="https://t.me/thiskai"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center active:scale-90 transition-transform"
+            className="w-8 h-8 rounded-lg bg-[var(--c-info-bg)] flex items-center justify-center active:scale-90 transition-transform"
           >
-            <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
+            <ExternalLink className="w-3.5 h-3.5 text-[var(--c-info)]" />
           </a>
         </div>
 
         <div className="p-3 rounded-xl card flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center">
-            <GitBranch className="w-4 h-4 text-white/30" />
+          <div className="w-9 h-9 rounded-full bg-[var(--c-surface)] flex items-center justify-center">
+            <GitBranch className="w-4 h-4 text-[var(--c-hint)]" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[13px] font-semibold text-[var(--c-text)]">GitHub</p>
-            <p className="text-[11px] text-white/30 truncate">superkai-sdk1/T-POS</p>
+            <p className="text-[11px] text-[var(--c-hint)] truncate">superkai-sdk1/T-POS</p>
           </div>
           <a
             href="https://github.com/superkai-sdk1/T-POS"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 transition-transform"
+            className="w-8 h-8 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform"
           >
-            <ExternalLink className="w-3.5 h-3.5 text-white/30" />
+            <ExternalLink className="w-3.5 h-3.5 text-[var(--c-hint)]" />
           </a>
         </div>
       </div>
 
-      <p className="text-center text-[10px] text-white/10 pb-2">
+      <p className="text-center text-[10px] text-[var(--c-muted)] pb-2">
         T-POS © {new Date().getFullYear()} · Клуб спортивной мафии «Титан»
       </p>
     </div>

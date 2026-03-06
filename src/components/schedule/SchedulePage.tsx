@@ -387,18 +387,18 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
               key={s.id}
               onClick={() => openNewBooking(s)}
               className={`flex-shrink-0 w-[100px] p-2.5 rounded-xl text-center transition-transform active:scale-[0.96] border ${
-                isBusy ? 'bg-amber-500/6 border-amber-500/10' : 'bg-white/3 border-white/5'
+                isBusy ? 'bg-[var(--c-warning-bg)] border-[var(--c-border)]' : 'bg-[var(--c-surface)] border-[var(--c-border)]'
               }`}
             >
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Icon className="w-4 h-4 text-indigo-400" />
-                <div className={`w-1.5 h-1.5 rounded-full ${isBusy ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                <div className={`w-1.5 h-1.5 rounded-full ${isBusy ? 'bg-[var(--c-warning)]' : 'bg-[var(--c-success)]'}`} />
               </div>
               <p className="text-[11px] font-bold text-[var(--c-text)] leading-tight truncate">{s.name}</p>
               {isBusy && busyClient ? (
-                <p className="text-[9px] text-amber-400/60 truncate mt-0.5">{busyClient}</p>
+                <p className="text-[9px] text-[var(--c-hint)] truncate mt-0.5">{busyClient}</p>
               ) : (
-                <p className="text-[9px] text-white/20 mt-0.5">{s.hourly_rate ? `${s.hourly_rate}₽/ч` : 'Своя цена'}</p>
+                <p className="text-[9px] text-[var(--c-muted)] mt-0.5">{s.hourly_rate ? `${s.hourly_rate}₽/ч` : 'Своя цена'}</p>
               )}
             </button>
           );
@@ -409,18 +409,18 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
         >
           <MapPin className="w-4 h-4 text-teal-400 mx-auto mb-1" />
           <p className="text-[11px] font-bold text-[var(--c-text)] leading-tight">Выезд</p>
-          <p className="text-[9px] text-white/20 mt-0.5">Мероприятие</p>
+          <p className="text-[9px] text-[var(--c-muted)] mt-0.5">Мероприятие</p>
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-0.5 rounded-lg bg-white/3">
+      <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--c-surface)]">
         {(['upcoming', 'history'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`flex-1 px-3 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
-              tab === t ? 'bg-[var(--c-accent)] text-white shadow-sm' : 'text-white/30'
+              tab === t ? 'bg-[var(--c-accent)] text-white shadow-sm' : 'text-[var(--c-hint)]'
             }`}
           >
             {t === 'upcoming' ? `Ближайшие (${schedule.length})` : `История (${pastItems.length})`}
@@ -431,7 +431,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
       {/* Grouped list */}
       {displayItems.length === 0 ? (
         <div className="text-center py-14 animate-fade-in">
-          <Calendar className="w-10 h-10 text-white/6 mx-auto mb-2" />
+          <Calendar className="w-10 h-10 text-[var(--c-muted)] mx-auto mb-2" />
           <p className="text-[13px] text-[var(--c-hint)] font-medium">
             {tab === 'upcoming' ? 'Нет предстоящих' : 'Нет истории'}
           </p>
@@ -440,7 +440,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
         <div className="space-y-3">
           {groupedItems.map((group) => (
             <div key={group.label}>
-              <p className="text-[10px] font-semibold text-white/20 uppercase tracking-wider mb-1.5 px-1">{group.label}</p>
+              <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider mb-1.5 px-1">{group.label}</p>
               <div className="space-y-1.5">
                 {group.items.map((item) => {
                   if (item.kind === 'booking') {
@@ -459,7 +459,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                                 <p className="text-[13px] font-semibold text-[var(--c-text)] truncate leading-tight">
                                   {b.space?.name || 'Бронь'}
                                 </p>
-                                <p className="text-[10px] text-white/25">
+                                <p className="text-[10px] text-[var(--c-muted)]">
                                   {fmtTime(b.start_time)}{b.end_time && b.end_time !== b.start_time ? ` — ${fmtTime(b.end_time)}` : ' — ...'}
                                 </p>
                               </div>
@@ -474,7 +474,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                             </div>
                           </div>
                           {b.client && (
-                            <div className="flex items-center gap-1 text-[10px] text-white/30">
+                            <div className="flex items-center gap-1 text-[10px] text-[var(--c-hint)]">
                               <User className="w-3 h-3" />
                               {(b.client as { nickname: string }).nickname}
                             </div>
@@ -487,14 +487,14 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                           {(b.status === 'booked' || b.status === 'active') && (
                             <div className="flex gap-1 pt-0.5">
                               {b.status === 'booked' && (
-                                <button onClick={() => startBooking(b)} className="flex items-center gap-1 px-2 py-1 rounded-md bg-emerald-500/8 text-[10px] font-semibold text-emerald-400 active:scale-95 transition-transform">
+                                <button onClick={() => startBooking(b)} className="flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--c-success-bg)] text-[10px] font-semibold text-[var(--c-success)] active:scale-95 transition-transform">
                                   <Check className="w-2.5 h-2.5" />Начать
                                 </button>
                               )}
-                              <button onClick={() => updateBookingStatus(b.id, 'completed')} className="flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500/8 text-[10px] font-semibold text-blue-400 active:scale-95 transition-transform">
+                              <button onClick={() => updateBookingStatus(b.id, 'completed')} className="flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--c-info-bg)] text-[10px] font-semibold text-[var(--c-info)] active:scale-95 transition-transform">
                                 <Check className="w-2.5 h-2.5" />Готово
                               </button>
-                              <button onClick={() => updateBookingStatus(b.id, 'cancelled')} className="flex items-center gap-1 px-2 py-1 rounded-md bg-red-500/8 text-[10px] font-semibold text-red-400 active:scale-95 transition-transform">
+                              <button onClick={() => updateBookingStatus(b.id, 'cancelled')} className="flex items-center gap-1 px-2 py-1 rounded-md bg-[var(--c-danger-bg)] text-[10px] font-semibold text-[var(--c-danger)] active:scale-95 transition-transform">
                                 <X className="w-2.5 h-2.5" />
                               </button>
                             </div>
@@ -519,7 +519,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                               </div>
                               <div className="min-w-0">
                                 <p className="text-[13px] font-semibold text-[var(--c-text)] truncate leading-tight">{e.name}</p>
-                                <p className="text-[10px] text-white/25">{fmtTime(e.start_time)} — {fmtTime(e.end_time)} · {e.location}</p>
+                                <p className="text-[10px] text-[var(--c-muted)]">{fmtTime(e.start_time)} — {fmtTime(e.end_time)} · {e.location}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
@@ -532,7 +532,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                             </div>
                           </div>
                           {e.check_id && checkTotals[e.check_id]?.status === 'closed' && (
-                            <div className="flex items-center gap-1 text-[10px] text-emerald-400/50 mt-1">
+                            <div className="flex items-center gap-1 text-[10px] text-[var(--c-success)] mt-1">
                               <Check className="w-3 h-3" />Чек закрыт
                             </div>
                           )}
@@ -563,22 +563,22 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                 { label: 'Время', value: `${fmtTime(showEventDetail.start_time)} — ${fmtTime(showEventDetail.end_time)}` },
               ].map(({ label, value }) => (
                 <div key={label} className="flex justify-between text-[13px]">
-                  <span className="text-white/30">{label}</span>
+                  <span className="text-[var(--c-hint)]">{label}</span>
                   <span className="text-[var(--c-text)] font-medium">{value}</span>
                 </div>
               ))}
               <div className="flex justify-between text-[13px]">
-                <span className="text-white/30">Сумма</span>
+                <span className="text-[var(--c-hint)]">Сумма</span>
                 <span className="font-bold text-[var(--c-accent)]">{fmtCur(showEventDetail.amount)}</span>
               </div>
               {showEventDetail.note && (
                 <div className="flex justify-between text-[13px]">
-                  <span className="text-white/30">Примечание</span>
+                  <span className="text-[var(--c-hint)]">Примечание</span>
                   <span className="text-[var(--c-text)] text-right max-w-[60%]">{showEventDetail.note}</span>
                 </div>
               )}
               <div className="flex justify-between items-center text-[13px]">
-                <span className="text-white/30">Статус</span>
+                <span className="text-[var(--c-hint)]">Статус</span>
                 <Badge variant={eventStatusVariants[showEventDetail.status]} size="sm">{eventStatusLabels[showEventDetail.status]}</Badge>
               </div>
             </div>
@@ -601,14 +601,14 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
 
             {showEventDetail.check_id && checkTotals[showEventDetail.check_id] && (
               <div className="p-2.5 rounded-xl card">
-                <p className="text-[10px] text-white/25 mb-1">Привязанный чек</p>
+                <p className="text-[10px] text-[var(--c-muted)] mb-1">Привязанный чек</p>
                 {checkTotals[showEventDetail.check_id].status === 'closed' ? (
                   <div className="flex items-center justify-between">
-                    <span className="text-[13px] text-emerald-400 font-semibold">Закрыт</span>
-                    <span className="text-[13px] font-bold text-emerald-400">{fmtCur(checkTotals[showEventDetail.check_id].total)}</span>
+                    <span className="text-[13px] text-[var(--c-success)] font-semibold">Закрыт</span>
+                    <span className="text-[13px] font-bold text-[var(--c-success)]">{fmtCur(checkTotals[showEventDetail.check_id].total)}</span>
                   </div>
                 ) : (
-                  <p className="text-[13px] text-amber-400 font-semibold">Открыт в кассе</p>
+                  <p className="text-[13px] text-[var(--c-warning)] font-semibold">Открыт в кассе</p>
                 )}
               </div>
             )}
@@ -624,11 +624,11 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
       >
         <div className="space-y-3">
           {!editingEvent && (
-            <div className="flex gap-1 p-0.5 rounded-lg bg-white/3">
+            <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--c-surface)]">
               <button
                 onClick={() => setNewType('booking')}
                 className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
-                  newType === 'booking' ? 'bg-indigo-500/15 text-indigo-300' : 'text-white/30'
+                  newType === 'booking' ? 'bg-indigo-500/15 text-indigo-300' : 'text-[var(--c-hint)]'
                 }`}
               >
                 <DoorOpen className="w-3 h-3" />Бронь
@@ -636,7 +636,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
               <button
                 onClick={() => setNewType('event')}
                 className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
-                  newType === 'event' ? 'bg-teal-500/15 text-teal-300' : 'text-white/30'
+                  newType === 'event' ? 'bg-teal-500/15 text-teal-300' : 'text-[var(--c-hint)]'
                 }`}
               >
                 <MapPin className="w-3 h-3" />Выезд
@@ -648,7 +648,7 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
             <>
               {!selectedSpace && (
                 <div>
-                  <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider mb-1.5">Пространство</p>
+                  <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider mb-1.5">Пространство</p>
                   <div className="grid grid-cols-3 gap-1.5">
                     {spaces.map((s) => {
                       const Icon = spaceIconMap[s.type] || DoorOpen;
@@ -672,18 +672,18 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                     {(() => { const Icon = spaceIconMap[selectedSpace.type] || DoorOpen; return <Icon className="w-4 h-4 text-indigo-400 shrink-0" />; })()}
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-semibold text-[var(--c-text)]">{selectedSpace.name}</p>
-                      <p className="text-[10px] text-white/25">
+                      <p className="text-[10px] text-[var(--c-muted)]">
                         {selectedSpace.hourly_rate ? `${selectedSpace.hourly_rate}₽/ч` : 'Ручной ввод'}
                       </p>
                     </div>
-                    <button onClick={() => setSelectedSpace(null)} className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center active:scale-90">
-                      <X className="w-3 h-3 text-white/25" />
+                    <button onClick={() => setSelectedSpace(null)} className="w-6 h-6 rounded-md bg-[var(--c-surface)] flex items-center justify-center active:scale-90">
+                      <X className="w-3 h-3 text-[var(--c-muted)]" />
                     </button>
                   </div>
 
                   <Input compact type="date" label="Дата" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
                   <TimeInput label="Время начала" value={startTime} onChange={setStartTime} />
-                  <p className="text-[11px] text-white/25 -mt-1 px-1">
+                  <p className="text-[11px] text-[var(--c-muted)] -mt-1 px-1">
                     Конечное время рассчитается при закрытии чека
                   </p>
                   <Input
@@ -697,13 +697,13 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                   />
 
                   <div>
-                    <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider mb-1.5">Клиент</p>
+                    <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider mb-1.5">Клиент</p>
                     {selectedClient ? (
                       <div className="flex items-center gap-2 p-2 rounded-xl card">
                         <User className="w-3.5 h-3.5 text-[var(--c-accent)]" />
                         <span className="text-[13px] font-medium text-[var(--c-text)]">{selectedClient.nickname}</span>
-                        <button onClick={() => setSelectedClient(null)} className="ml-auto w-5 h-5 rounded bg-white/5 flex items-center justify-center active:scale-90">
-                          <X className="w-3 h-3 text-white/25" />
+                        <button onClick={() => setSelectedClient(null)} className="ml-auto w-5 h-5 rounded bg-[var(--c-surface)] flex items-center justify-center active:scale-90">
+                          <X className="w-3 h-3 text-[var(--c-muted)]" />
                         </button>
                       </div>
                     ) : (
@@ -713,9 +713,9 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
                           <div className="space-y-0.5 mt-1 max-h-28 overflow-y-auto">
                             {clients.map((c) => (
                               <button key={c.id} onClick={() => { setSelectedClient(c); setClients([]); setClientSearch(''); }}
-                                className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 text-[13px] text-[var(--c-text)] transition-colors active:scale-[0.98]"
+                                className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-[var(--c-surface-hover)] text-[13px] text-[var(--c-text)] transition-colors active:scale-[0.98]"
                               >
-                                <User className="w-3.5 h-3.5 text-white/25" />
+                                <User className="w-3.5 h-3.5 text-[var(--c-muted)]" />
                                 {c.nickname}
                               </button>
                             ))}

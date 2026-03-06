@@ -53,7 +53,7 @@ export function ShiftHistory() {
     <>
       {shifts.length === 0 ? (
         <div className="text-center py-16">
-          <Calendar className="w-16 h-16 text-white/5 mx-auto mb-4" />
+          <Calendar className="w-16 h-16 text-[var(--c-muted)] mx-auto mb-4" />
           <p className="text-[var(--c-hint)]">Нет закрытых смен</p>
         </div>
       ) : (
@@ -62,7 +62,7 @@ export function ShiftHistory() {
             <button
               key={s.id}
               onClick={() => openAnalytics(s)}
-              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/8 border border-white/5 transition-all active:scale-[0.98]"
+              className="w-full text-left p-4 rounded-2xl bg-[var(--c-surface)] hover:bg-[var(--c-surface-hover)] border border-[var(--c-border)] transition-all active:scale-[0.98]"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -78,14 +78,14 @@ export function ShiftHistory() {
                         {fmtTime(s.opened_at)} — {s.closed_at ? fmtTime(s.closed_at) : '...'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5 text-[10px] text-white/30">
+                    <div className="flex items-center gap-2 mt-0.5 text-[10px] text-[var(--c-hint)]">
                       <span className="flex items-center gap-0.5"><Clock className="w-3 h-3" />{shiftDuration(s)}</span>
                       {s.note && <span className="truncate">· {s.note}</span>}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <ChevronRight className="w-4 h-4 text-white/20" />
+                  <ChevronRight className="w-4 h-4 text-[var(--c-muted)]" />
                 </div>
               </div>
             </button>

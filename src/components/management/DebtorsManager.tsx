@@ -105,22 +105,22 @@ export function DebtorsManager() {
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+      <div className="p-3 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-border)]">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs text-white/40">Общий долг</p>
-            <p className="text-lg font-black text-red-400">{fmtCur(totalDebt)}</p>
+            <p className="text-xs text-[var(--c-hint)]">Общий долг</p>
+            <p className="text-lg font-black text-[var(--c-danger)]">{fmtCur(totalDebt)}</p>
           </div>
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-red-400/50" />
-            <span className="text-[13px] text-white/30">{debtors.length} чел.</span>
+            <AlertTriangle className="w-5 h-5 text-[var(--c-danger)]" />
+            <span className="text-[13px] text-[var(--c-hint)]">{debtors.length} чел.</span>
           </div>
         </div>
       </div>
 
       {debtors.length === 0 ? (
         <div className="text-center py-12">
-          <Wallet className="w-16 h-16 text-white/5 mx-auto mb-4" />
+          <Wallet className="w-16 h-16 text-[var(--c-muted)] mx-auto mb-4" />
           <p className="text-[var(--c-hint)]">Нет должников</p>
         </div>
       ) : (
@@ -136,9 +136,9 @@ export function DebtorsManager() {
               </div>
               <div className="flex-1 min-w-0 text-left">
                 <p className="font-semibold text-[13px] text-[var(--c-text)] truncate">{d.nickname}</p>
-                {d.is_resident && <span className="text-[10px] text-emerald-400">Резидент</span>}
+                {d.is_resident && <span className="text-[10px] text-[var(--c-success)]">Резидент</span>}
               </div>
-              <span className="text-lg font-bold text-red-400 shrink-0">{fmtCur(d.balance)}</span>
+              <span className="text-lg font-bold text-[var(--c-danger)] shrink-0">{fmtCur(d.balance)}</span>
             </button>
           ))}
         </div>
@@ -153,9 +153,9 @@ export function DebtorsManager() {
       >
         {selected && (
           <div className="space-y-4">
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-center">
-              <p className="text-xs text-white/40 mb-1">Текущий долг</p>
-              <p className="text-lg font-black text-red-400">{fmtCur(selected.balance)}</p>
+            <div className="p-3 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-border)] text-center">
+              <p className="text-xs text-[var(--c-hint)] mb-1">Текущий долг</p>
+              <p className="text-lg font-black text-[var(--c-danger)]">{fmtCur(selected.balance)}</p>
             </div>
 
             <Input
@@ -178,14 +178,14 @@ export function DebtorsManager() {
             {Number(amount) > 0 && (
               <div className="p-2.5 rounded-xl card space-y-1.5">
                 <div className="flex justify-between text-[13px]">
-                  <span className="text-white/40">При погашении</span>
-                  <span className={`font-semibold ${selected.balance + Number(amount) >= 0 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                  <span className="text-[var(--c-hint)]">При погашении</span>
+                  <span className={`font-semibold ${selected.balance + Number(amount) >= 0 ? 'text-[var(--c-success)]' : 'text-[var(--c-warning)]'}`}>
                     {fmtCur(selected.balance + Number(amount))}
                   </span>
                 </div>
                 <div className="flex justify-between text-[13px]">
-                  <span className="text-white/40">При увеличении</span>
-                  <span className="font-semibold text-red-400">
+                  <span className="text-[var(--c-hint)]">При увеличении</span>
+                  <span className="font-semibold text-[var(--c-danger)]">
                     {fmtCur(selected.balance - Number(amount))}
                   </span>
                 </div>

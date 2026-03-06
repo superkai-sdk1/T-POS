@@ -31,17 +31,17 @@ const categoryLabels: Record<string, string> = {
 const menuItems: { id: Screen; label: string; desc: string; icon: typeof Package; color: string }[] = [
   { id: 'menuEditor', label: 'Меню', desc: 'Позиции, картинки, разделы', icon: UtensilsCrossed, color: 'bg-orange-500/10 text-orange-400' },
   { id: 'inventory', label: 'Склад', desc: 'Остатки и товары', icon: Package, color: 'bg-blue-500/10 text-blue-400' },
-  { id: 'supplies', label: 'Поставки', desc: 'История и новые поставки', icon: Truck, color: 'bg-emerald-500/10 text-emerald-400' },
-  { id: 'revision', label: 'Ревизия', desc: 'История ревизий', icon: ClipboardList, color: 'bg-amber-500/10 text-amber-400' },
+  { id: 'supplies', label: 'Поставки', desc: 'История и новые поставки', icon: Truck, color: 'bg-[var(--c-success-bg)] text-[var(--c-success)]' },
+  { id: 'revision', label: 'Ревизия', desc: 'История ревизий', icon: ClipboardList, color: 'bg-[var(--c-warning-bg)] text-[var(--c-warning)]' },
   { id: 'clients', label: 'Клиенты', desc: 'Профили, контакты, ДР', icon: UserCircle, color: 'bg-sky-500/10 text-sky-400' },
   { id: 'modifiers', label: 'Модификаторы', desc: 'Сиропы, добавки, опции', icon: SlidersHorizontal, color: 'bg-indigo-500/10 text-indigo-400' },
   { id: 'discounts', label: 'Скидки', desc: 'Процентные и фиксированные', icon: Percent, color: 'bg-pink-500/10 text-pink-400' },
   { id: 'bonus', label: 'Бонусы', desc: 'Баллы и настройки', icon: Star, color: 'bg-yellow-500/10 text-yellow-400' },
-  { id: 'certificates', label: 'Сертификаты', desc: 'Подарочные сертификаты', icon: Ticket, color: 'bg-amber-500/10 text-amber-400' },
+  { id: 'certificates', label: 'Сертификаты', desc: 'Подарочные сертификаты', icon: Ticket, color: 'bg-[var(--c-warning-bg)] text-[var(--c-warning)]' },
   { id: 'cash', label: 'Инкассация', desc: 'Операции с наличными', icon: Banknote, color: 'bg-cyan-500/10 text-cyan-400' },
-  { id: 'expenses', label: 'Расходы', desc: 'Аренда, коммуналка, зарплаты', icon: Receipt, color: 'bg-red-500/10 text-red-400' },
+  { id: 'expenses', label: 'Расходы', desc: 'Аренда, коммуналка, зарплаты', icon: Receipt, color: 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' },
   { id: 'refunds', label: 'Возвраты', desc: 'Полные и частичные возвраты', icon: RotateCcw, color: 'bg-rose-500/10 text-rose-400' },
-  { id: 'debtors', label: 'Должники', desc: 'Управление долгами', icon: Wallet, color: 'bg-red-500/10 text-red-400' },
+  { id: 'debtors', label: 'Должники', desc: 'Управление долгами', icon: Wallet, color: 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' },
   { id: 'staff', label: 'Персонал', desc: 'Сотрудники и доступы', icon: Users, color: 'bg-violet-500/10 text-violet-400' },
   { id: 'about', label: 'О системе', desc: 'Версия, обновление', icon: Info, color: 'bg-gray-500/10 text-gray-400' },
 ];
@@ -83,7 +83,7 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.color.split(' ')[0]}`}>
                 <item.icon className={`w-[18px] h-[18px] ${item.color.split(' ')[1]}`} />
               </div>
-              <p className="font-semibold text-[12px] text-[var(--c-text)] text-left leading-tight">{item.label}</p>
+              <p className="font-semibold text-[12px] text-[var(--c-text)] text-left leading-tight truncate">{item.label}</p>
             </button>
           ))}
         </div>
@@ -98,7 +98,7 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
       <div className="flex items-center gap-2">
         <button
           onClick={() => setScreen('menu')}
-          className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center active:scale-90 transition-transform shrink-0"
+          className="w-9 h-9 rounded-xl bg-[var(--c-surface)] flex items-center justify-center hover:bg-[var(--c-surface-hover)] active:scale-90 transition-transform shrink-0"
         >
           <ArrowLeft className="w-4 h-4 text-[var(--c-text)]" />
         </button>
@@ -147,10 +147,10 @@ function InventoryFull() {
   return (
     <div className="space-y-2">
       {criticalItems.length > 0 && (
-        <div className="p-2.5 rounded-xl bg-red-500/6 border border-red-500/10">
+        <div className="p-2.5 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-border)]">
           <div className="flex items-center gap-2 mb-1.5">
-            <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
-            <span className="text-[11px] font-semibold text-red-400">Критический остаток</span>
+            <AlertTriangle className="w-3.5 h-3.5 text-[var(--c-danger)]" />
+            <span className="text-[11px] font-semibold text-[var(--c-danger)]">Критический остаток</span>
           </div>
           <div className="flex flex-wrap gap-1">
             {criticalItems.map((item) => (
@@ -169,14 +169,14 @@ function InventoryFull() {
             <div
               key={item.id}
               className={`flex items-center justify-between p-2.5 rounded-xl ${
-                isCritical ? 'bg-red-500/6 border border-red-500/10' : 'card'
+                isCritical ? 'bg-[var(--c-danger-bg)] border border-[var(--c-border)]' : 'card'
               }`}
             >
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                  isCritical ? 'bg-red-500/12' : 'bg-white/5'
+                  isCritical ? 'bg-[var(--c-danger-bg)]' : 'bg-[var(--c-surface)]'
                 }`}>
-                  <Package className={`w-3.5 h-3.5 ${isCritical ? 'text-red-400' : 'text-white/35'}`} />
+                  <Package className={`w-3.5 h-3.5 ${isCritical ? 'text-[var(--c-danger)]' : 'text-[var(--c-hint)]'}`} />
                 </div>
                 <div className="min-w-0">
                   <p className="font-medium text-[13px] text-[var(--c-text)] truncate">
@@ -189,11 +189,11 @@ function InventoryFull() {
                 </div>
               </div>
               <div className="text-right shrink-0 ml-2">
-                <p className={`text-base font-black tabular-nums ${isCritical ? 'text-red-400' : 'text-[var(--c-text)]'}`}>
+                <p className={`text-base font-black tabular-nums ${isCritical ? 'text-[var(--c-danger)]' : 'text-[var(--c-text)]'}`}>
                   {item.stock_quantity}
                 </p>
                 {item.min_threshold > 0 && (
-                  <p className="text-[10px] text-white/20">
+                  <p className="text-[10px] text-[var(--c-muted)]">
                     мин: {item.min_threshold}
                   </p>
                 )}

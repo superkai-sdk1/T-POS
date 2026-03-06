@@ -173,14 +173,14 @@ export function ShiftBar() {
   };
 
   const birthdayBanner = birthdayNames.length > 0 ? (
-    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-pink-500/6 border border-pink-500/10 animate-fade-in mb-3">
-      <Cake className="w-4 h-4 text-pink-400 shrink-0" />
+    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] animate-fade-in mb-3">
+      <Cake className="w-4 h-4 text-[var(--c-info)] shrink-0" />
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-bold text-pink-400">День рождения!</p>
-        <p className="text-[10px] text-white/40 truncate">{birthdayNames.join(', ')}</p>
+        <p className="text-[11px] font-bold text-[var(--c-info)]">День рождения!</p>
+        <p className="text-[10px] text-[var(--c-hint)] truncate">{birthdayNames.join(', ')}</p>
       </div>
-      <button onClick={dismissBirthdays} className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center active:scale-90 transition-transform shrink-0">
-        <X className="w-3 h-3 text-white/25" />
+      <button onClick={dismissBirthdays} className="w-6 h-6 rounded-md bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform shrink-0">
+        <X className="w-3 h-3 text-[var(--c-muted)]" />
       </button>
     </div>
   ) : null;
@@ -205,14 +205,14 @@ export function ShiftBar() {
         {birthdayBanner}
         <button
           onClick={handleOpenDrawer}
-          className="w-full flex items-center gap-2.5 p-3 rounded-xl bg-emerald-500/6 border border-emerald-500/10 active:scale-[0.98] transition-transform"
+          className="w-full flex items-center gap-2.5 p-3 rounded-xl bg-[var(--c-success-bg)] border border-[var(--c-success-border)] active:scale-[0.98] transition-transform"
         >
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/12 flex items-center justify-center">
-            <PlayCircle className="w-4 h-4 text-emerald-400" />
+          <div className="w-8 h-8 rounded-lg bg-[var(--c-success-bg)] flex items-center justify-center">
+            <PlayCircle className="w-4 h-4 text-[var(--c-success)]" />
           </div>
           <div className="text-left flex-1">
-            <p className="font-semibold text-[13px] text-emerald-400">Открыть смену</p>
-            <p className="text-[10px] text-white/25">Нажмите для начала работы</p>
+            <p className="font-semibold text-[13px] text-[var(--c-success)]">Открыть смену</p>
+            <p className="text-[10px] text-[var(--c-muted)]">Нажмите для начала работы</p>
           </div>
         </button>
 
@@ -241,30 +241,30 @@ export function ShiftBar() {
   return (
     <>
       {birthdayBanner}
-      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/8">
+      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--c-success-bg)] border border-[var(--c-success-border)]">
         <div className="relative shrink-0">
-          <div className="w-2 h-2 rounded-full bg-emerald-400" />
-          <div className="absolute inset-0 w-2 h-2 rounded-full bg-emerald-400 animate-ping opacity-50" />
+          <div className="w-2 h-2 rounded-full bg-[var(--c-success)]" />
+          <div className="absolute inset-0 w-2 h-2 rounded-full bg-[var(--c-success)] animate-ping opacity-50" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-semibold text-emerald-400">Смена</span>
-            <span className="text-[10px] text-white/25 flex items-center gap-0.5">
+            <span className="text-[11px] font-semibold text-[var(--c-success)]">Смена</span>
+            <span className="text-[10px] text-[var(--c-muted)] flex items-center gap-0.5">
               <Clock className="w-2.5 h-2.5" />{shiftDuration()}
             </span>
           </div>
           {cashInRegister !== null && (
             <div className="flex items-center gap-1 mt-0.5">
-              <Banknote className="w-3 h-3 text-white/20" />
+              <Banknote className="w-3 h-3 text-[var(--c-muted)]" />
               <span className="text-xs font-bold text-[var(--c-text)] tabular-nums">{fmtCur(cashInRegister)}</span>
-              <span className="text-[9px] text-white/20">в кассе</span>
+              <span className="text-[9px] text-[var(--c-muted)]">в кассе</span>
             </div>
           )}
         </div>
         <button
           onClick={handleStartClose}
           disabled={isClosing}
-          className="px-2.5 py-1 rounded-lg bg-red-500/8 text-red-400 text-[11px] font-bold active:scale-90 transition-transform disabled:opacity-40 flex items-center gap-1"
+          className="px-2.5 py-1 rounded-xl bg-[var(--c-danger-bg)] text-[var(--c-danger)] text-[11px] font-bold active:scale-90 transition-transform disabled:opacity-40 flex items-center gap-1"
         >
           {isClosing ? (
             <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
@@ -276,11 +276,11 @@ export function ShiftBar() {
       </div>
 
       {closeError && (
-        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-500/6 border border-red-500/10 animate-fade-in">
-          <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
-          <p className="text-[11px] text-red-400 flex-1">{closeError}</p>
-          <button onClick={() => setCloseError('')} className="w-5 h-5 rounded-md bg-white/5 flex items-center justify-center shrink-0">
-            <X className="w-2.5 h-2.5 text-white/25" />
+        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-border)] animate-fade-in">
+          <AlertTriangle className="w-3.5 h-3.5 text-[var(--c-danger)] shrink-0" />
+          <p className="text-[11px] text-[var(--c-danger)] flex-1">{closeError}</p>
+          <button onClick={() => setCloseError('')} className="w-5 h-5 rounded-md bg-[var(--c-surface)] flex items-center justify-center shrink-0">
+            <X className="w-2.5 h-2.5 text-[var(--c-muted)]" />
           </button>
         </div>
       )}
@@ -292,24 +292,24 @@ export function ShiftBar() {
               <div className="grid grid-cols-3 gap-1.5">
                 <div className="p-2.5 rounded-xl card text-center">
                   <p className="text-base font-black text-[var(--c-accent)] tabular-nums">{analytics.totalChecks}</p>
-                  <p className="text-[9px] text-white/25 font-semibold">Чеков</p>
+                  <p className="text-[9px] text-[var(--c-muted)] font-semibold">Чеков</p>
                 </div>
                 <div className="p-2.5 rounded-xl card text-center">
-                  <p className="text-base font-black text-emerald-400 tabular-nums">{fmtCur(analytics.totalRevenue)}</p>
-                  <p className="text-[9px] text-white/25 font-semibold">Выручка</p>
+                  <p className="text-base font-black text-[var(--c-success)] tabular-nums">{fmtCur(analytics.totalRevenue)}</p>
+                  <p className="text-[9px] text-[var(--c-muted)] font-semibold">Выручка</p>
                 </div>
                 <div className="p-2.5 rounded-xl card text-center">
-                  <p className="text-base font-black text-amber-400 tabular-nums">{fmtCur(analytics.avgCheck)}</p>
-                  <p className="text-[9px] text-white/25 font-semibold">Ср. чек</p>
+                  <p className="text-base font-black text-[var(--c-warning)] tabular-nums">{fmtCur(analytics.avgCheck)}</p>
+                  <p className="text-[9px] text-[var(--c-muted)] font-semibold">Ср. чек</p>
                 </div>
               </div>
 
               {Object.keys(analytics.paymentBreakdown).length > 0 && (
                 <div className="p-2.5 rounded-xl card space-y-1">
-                  <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider mb-1">Оплата</p>
+                  <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider mb-1">Оплата</p>
                   {Object.entries(analytics.paymentBreakdown).map(([method, val]) => (
                     <div key={method} className="flex justify-between text-[13px]">
-                      <span className="text-white/35">{pmLabel(method)} ({val.count})</span>
+                      <span className="text-[var(--c-hint)]">{pmLabel(method)} ({val.count})</span>
                       <span className="font-bold text-[var(--c-text)] tabular-nums">{fmtCur(val.amount)}</span>
                     </div>
                   ))}

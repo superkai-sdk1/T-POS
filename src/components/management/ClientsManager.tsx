@@ -55,11 +55,11 @@ const ClientRow = memo(function ClientRow({ client, onSelect, getAge, isBirthday
       className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive text-left"
     >
       {/* Avatar */}
-      <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 bg-white/10 flex items-center justify-center">
+      <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 bg-[var(--c-surface-hover)] flex items-center justify-center">
         {client.photo_url ? (
           <img src={client.photo_url} alt={client.nickname} className="w-full h-full object-cover" />
         ) : (
-          <User className="w-5 h-5 text-white/30" />
+          <User className="w-5 h-5 text-[var(--c-hint)]" />
         )}
       </div>
 
@@ -77,20 +77,20 @@ const ClientRow = memo(function ClientRow({ client, onSelect, getAge, isBirthday
             <span className="text-[10px] text-sky-400/50">@{client.tg_username}</span>
           )}
           {client.phone && (
-            <span className="text-[10px] text-white/30">{client.phone}</span>
+            <span className="text-[10px] text-[var(--c-hint)]">{client.phone}</span>
           )}
           {client.birthday && (
-            <span className="text-[10px] text-white/25">{getAge(client.birthday)} лет</span>
+            <span className="text-[10px] text-[var(--c-muted)]">{getAge(client.birthday)} лет</span>
           )}
         </div>
       </div>
 
       <div className="text-right shrink-0">
         {client.bonus_points > 0 && (
-          <p className="text-xs font-bold text-amber-400 flex items-center gap-0.5"><Star className="w-3 h-3" />{client.bonus_points}</p>
+          <p className="text-xs font-bold text-[var(--c-warning)] flex items-center gap-0.5"><Star className="w-3 h-3" />{client.bonus_points}</p>
         )}
         {client.balance < 0 && (
-          <p className="text-[10px] text-red-400">{client.balance}₽</p>
+          <p className="text-[10px] text-[var(--c-danger)]">{client.balance}₽</p>
         )}
       </div>
     </button>
@@ -327,26 +327,26 @@ export function ClientsManager() {
       <div className="grid grid-cols-3 gap-2">
         <div className="p-3 rounded-xl bg-[var(--c-accent)]/10 text-center">
           <p className="text-lg font-bold text-[var(--c-accent)]">{clients.length}</p>
-          <p className="text-[10px] text-white/40">Всего</p>
+          <p className="text-[10px] text-[var(--c-hint)]">Всего</p>
         </div>
-        <div className="p-3 rounded-xl bg-emerald-500/10 text-center">
-          <p className="text-lg font-bold text-emerald-400">{totalResidents}</p>
-          <p className="text-[10px] text-white/40">Резиденты</p>
+        <div className="p-3 rounded-xl bg-[var(--c-success-bg)] text-center">
+          <p className="text-lg font-bold text-[var(--c-success)]">{totalResidents}</p>
+          <p className="text-[10px] text-[var(--c-hint)]">Резиденты</p>
         </div>
         <div className="p-3 rounded-xl card text-center">
           <p className="text-lg font-bold text-[var(--c-text)]">{clients.length - totalResidents}</p>
-          <p className="text-[10px] text-white/40">Гости</p>
+          <p className="text-[10px] text-[var(--c-hint)]">Гости</p>
         </div>
       </div>
 
       {/* Search + Add */}
       <div className="flex gap-2">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--c-hint)]" />
           <input
             type="text"
             placeholder="Имя или телефон..."
-            className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-white/30"
+            className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-[var(--c-muted)]"
             value={search}
             onChange={(e) => startTransition(() => setSearch(e.target.value))}
           />
@@ -364,7 +364,7 @@ export function ClientsManager() {
               key={key}
               onClick={() => setFilter(key)}
               className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
-                filter === key ? 'bg-[var(--c-accent)] text-white shadow' : 'text-white/50'
+                filter === key ? 'bg-[var(--c-accent)] text-white shadow' : 'text-[var(--c-hint)]'
               }`}
             >
               {label}
@@ -387,22 +387,22 @@ export function ClientsManager() {
                   {req.tg_first_name || 'Пользователь'}
                   {req.tg_username && <span className="text-sky-400/60 ml-1.5">@{req.tg_username}</span>}
                 </p>
-                <p className="text-[11px] text-white/30 mt-0.5">
-                  хочет привязаться к <span className="text-white/60 font-medium">{(req.profile as unknown as { nickname: string })?.nickname || '?'}</span>
+                <p className="text-[11px] text-[var(--c-hint)] mt-0.5">
+                  хочет привязаться к <span className="text-[var(--c-hint)] font-medium">{(req.profile as unknown as { nickname: string })?.nickname || '?'}</span>
                 </p>
               </div>
               <div className="flex gap-1.5 shrink-0">
                 <button
                   onClick={() => handleApproveLink(req)}
-                  className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center active:scale-90 transition-transform"
+                  className="w-8 h-8 rounded-lg bg-[var(--c-success-bg)] flex items-center justify-center active:scale-90 transition-transform"
                 >
                   <CheckCircle className="w-4 h-4 text-emerald-400" />
                 </button>
                 <button
                   onClick={() => handleRejectLink(req)}
-                  className="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center active:scale-90 transition-transform"
+                  className="w-8 h-8 rounded-lg bg-[var(--c-danger-bg)] flex items-center justify-center active:scale-90 transition-transform"
                 >
-                  <XCircle className="w-4 h-4 text-red-400" />
+                  <XCircle className="w-4 h-4 text-[var(--c-danger)]" />
                 </button>
               </div>
             </div>
@@ -413,7 +413,7 @@ export function ClientsManager() {
       {/* Client list */}
       {filtered.length === 0 ? (
         <div className="text-center py-12">
-          <User className="w-12 h-12 text-white/5 mx-auto mb-3" />
+          <User className="w-12 h-12 text-[var(--c-muted)] mx-auto mb-3" />
           <p className="text-[var(--c-hint)]">
             {search ? 'Никого не найдено' : 'Нет клиентов'}
           </p>
@@ -454,11 +454,11 @@ export function ClientsManager() {
           <div className="space-y-4">
             {/* Photo + name */}
             <div className="flex flex-col items-center gap-3">
-              <div className="w-20 h-20 rounded-full overflow-hidden bg-white/10 flex items-center justify-center">
+              <div className="w-20 h-20 rounded-full overflow-hidden bg-[var(--c-surface-hover)] flex items-center justify-center">
                 {detailClient.photo_url ? (
                   <img src={detailClient.photo_url} alt={detailClient.nickname} className="w-full h-full object-cover" />
                 ) : (
-                  <User className="w-10 h-10 text-white/20" />
+                  <User className="w-10 h-10 text-[var(--c-muted)]" />
                 )}
               </div>
               <div className="text-center">
@@ -474,47 +474,47 @@ export function ClientsManager() {
                 <div className="flex items-center gap-3 p-2.5 rounded-xl card">
                   <Send className="w-4 h-4 text-sky-400/60" />
                   <div className="flex-1">
-                    <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">Telegram</p>
+                    <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">Telegram</p>
                     <p className="text-[13px] text-sky-400">@{detailClient.tg_username}</p>
                   </div>
                 </div>
               )}
               {detailClient.phone && (
                 <div className="flex items-center gap-3 p-2.5 rounded-xl card">
-                  <Phone className="w-4 h-4 text-white/40" />
+                  <Phone className="w-4 h-4 text-[var(--c-hint)]" />
                   <div className="flex-1">
-                    <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">Телефон</p>
+                    <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">Телефон</p>
                     <p className="text-[13px] text-[var(--c-text)]">{detailClient.phone}</p>
                   </div>
                 </div>
               )}
               {detailClient.birthday && (
                 <div className="flex items-center gap-3 p-2.5 rounded-xl card">
-                  <Calendar className="w-4 h-4 text-white/40" />
+                  <Calendar className="w-4 h-4 text-[var(--c-hint)]" />
                   <div className="flex-1">
-                    <p className="text-[10px] font-semibold text-white/25 uppercase tracking-wider">День рождения</p>
+                    <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">День рождения</p>
                     <p className="text-[13px] text-[var(--c-text)]">
                       {formatBirthday(detailClient.birthday)}
-                      <span className="text-white/30 ml-2">({getAge(detailClient.birthday)} лет)</span>
+                      <span className="text-[var(--c-hint)] ml-2">({getAge(detailClient.birthday)} лет)</span>
                     </p>
                   </div>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-2">
-                <div className="p-3 rounded-xl bg-amber-500/10 text-center">
-                  <Star className="w-4 h-4 text-amber-400 mx-auto mb-1" />
-                  <p className="text-lg font-bold text-amber-400">{detailClient.bonus_points}</p>
-                  <p className="text-[10px] text-white/40">Баллов</p>
+                <div className="p-3 rounded-xl bg-[var(--c-warning-bg)] text-center">
+                  <Star className="w-4 h-4 text-[var(--c-warning)] mx-auto mb-1" />
+                  <p className="text-lg font-bold text-[var(--c-warning)]">{detailClient.bonus_points}</p>
+                  <p className="text-[10px] text-[var(--c-hint)]">Баллов</p>
                 </div>
                 <div className="p-2.5 rounded-xl card text-center">
-                  <CreditCard className="w-4 h-4 text-white/40 mx-auto mb-1" />
-                  <p className={`text-lg font-bold ${detailClient.balance < 0 ? 'text-red-400' : 'text-[var(--c-text)]'}`}>
+                  <CreditCard className="w-4 h-4 text-[var(--c-hint)] mx-auto mb-1" />
+                  <p className={`text-lg font-bold ${detailClient.balance < 0 ? 'text-[var(--c-danger)]' : 'text-[var(--c-text)]'}`}>
                     {detailClient.balance}₽
                   </p>
-                  <p className="text-[10px] text-white/40">Баланс</p>
+                  <p className="text-[10px] text-[var(--c-hint)]">Баланс</p>
                 </div>
               </div>
-              <p className="text-[10px] text-white/20 text-center">
+              <p className="text-[10px] text-[var(--c-muted)] text-center">
                 Зарегистрирован: {new Date(detailClient.created_at).toLocaleDateString('ru-RU')}
               </p>
             </div>
@@ -586,11 +586,11 @@ export function ClientsManager() {
           {/* Photo */}
           <div className="flex flex-col items-center gap-3">
             <div className="relative">
-              <div className="w-24 h-24 rounded-full overflow-hidden bg-white/10 flex items-center justify-center">
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-[var(--c-surface-hover)] flex items-center justify-center">
                 {form.photo_url ? (
                   <img src={form.photo_url} alt="Photo" className="w-full h-full object-cover" />
                 ) : (
-                  <User className="w-10 h-10 text-white/20" />
+                  <User className="w-10 h-10 text-[var(--c-muted)]" />
                 )}
               </div>
               {form.photo_url && (
@@ -649,7 +649,7 @@ export function ClientsManager() {
 
           {/* Tier selector */}
           <div>
-            <p className="text-xs font-medium text-white/50 mb-2">Статус клиента</p>
+            <p className="text-xs font-medium text-[var(--c-hint)] mb-2">Статус клиента</p>
             <div className="grid grid-cols-3 gap-1.5">
               {([
                 { key: 'regular' as ClientTier, label: 'Гость', icon: User },
@@ -662,7 +662,7 @@ export function ClientsManager() {
                   className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${
                     form.client_tier === key
                       ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/30 text-[var(--c-accent)]'
-                      : 'card border border-white/6 text-white/50'
+                      : 'card border border-[var(--c-border)] text-[var(--c-hint)]'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -688,17 +688,17 @@ export function ClientsManager() {
       >
         {deleteTarget && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20">
-              <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 flex items-center justify-center shrink-0">
+            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-border)]">
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-[var(--c-surface-hover)] flex items-center justify-center shrink-0">
                 {deleteTarget.photo_url ? (
                   <img src={deleteTarget.photo_url} className="w-full h-full object-cover" />
                 ) : (
-                  <User className="w-5 h-5 text-white/30" />
+                  <User className="w-5 h-5 text-[var(--c-hint)]" />
                 )}
               </div>
               <div>
                 <p className="text-[13px] font-semibold text-[var(--c-text)]">{deleteTarget.nickname}</p>
-                <p className="text-xs text-red-400">Все данные будут утеряны</p>
+                <p className="text-xs text-[var(--c-danger)]">Все данные будут утеряны</p>
               </div>
             </div>
             <div className="flex gap-2">

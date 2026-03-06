@@ -153,13 +153,13 @@ export function BookingsPage() {
               onClick={() => openNew(s)}
               className={`p-3 rounded-2xl text-center transition-all active:scale-[0.96] border ${
                 isBusy
-                  ? 'bg-amber-500/8 border-amber-500/15'
-                  : 'bg-white/5 border-white/5 hover:bg-white/8'
+                  ? 'bg-[var(--c-warning-bg)] border-[var(--c-warning-border)]'
+                  : 'bg-[var(--c-surface)] border-[var(--c-border)] hover:bg-[var(--c-surface-hover)]'
               }`}
             >
               {(() => { const Icon = spaceIconMap[s.type] || DoorOpen; return <Icon className="w-6 h-6 text-indigo-400 mb-1" />; })()}
               <p className="text-xs font-bold text-[var(--c-text)]">{s.name}</p>
-              <p className="text-[10px] text-white/30 mt-0.5">
+              <p className="text-[10px] text-[var(--c-hint)] mt-0.5">
                 {s.hourly_rate ? `${s.hourly_rate}₽/ч` : 'Своя цена'}
               </p>
               {isBusy && <Badge variant="warning" className="mt-1.5">Занято</Badge>}
@@ -183,7 +183,7 @@ export function BookingsPage() {
 
       {filteredBookings.length === 0 ? (
         <div className="text-center py-10">
-          <DoorOpen className="w-10 h-10 text-white/8 mx-auto mb-3" />
+          <DoorOpen className="w-10 h-10 text-[var(--c-muted)] mx-auto mb-3" />
           <p className="text-sm text-[var(--c-hint)]">Нет бронирований на эту дату</p>
         </div>
       ) : (
@@ -197,8 +197,8 @@ export function BookingsPage() {
                     <p className="text-sm font-bold text-[var(--c-text)]">
                       {b.space?.name || 'Пространство'}
                     </p>
-                    <p className="text-[10px] text-white/30">
-                      {fmtTime(b.start_time)} — {fmtTime(b.end_time)}
+<p className="text-[10px] text-[var(--c-hint)]">
+                    {fmtTime(b.start_time)} — {fmtTime(b.end_time)}
                     </p>
                   </div>
                 </div>
@@ -208,23 +208,23 @@ export function BookingsPage() {
                 </div>
               </div>
               {b.client && (
-                <div className="flex items-center gap-1.5 text-xs text-white/40">
+                <div className="flex items-center gap-1.5 text-xs text-[var(--c-hint)]">
                   <User className="w-3 h-3" />
                   {(b.client as { nickname: string }).nickname}
                 </div>
               )}
-              {b.note && <p className="text-xs text-white/25">{b.note}</p>}
+              {b.note && <p className="text-xs text-[var(--c-muted)]">{b.note}</p>}
               {(b.status === 'booked' || b.status === 'active') && (
                 <div className="flex gap-1.5 pt-1">
                   {b.status === 'booked' && (
-                    <button onClick={() => updateStatus(b.id, 'active')} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-[10px] font-semibold text-emerald-400 active:scale-95 transition-all">
+                    <button onClick={() => updateStatus(b.id, 'active')} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--c-success-bg)] text-[10px] font-semibold text-[var(--c-success)] active:scale-95 transition-all">
                       <Check className="w-3 h-3" />Начать
                     </button>
                   )}
-                  <button onClick={() => updateStatus(b.id, 'completed')} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-500/10 text-[10px] font-semibold text-blue-400 active:scale-95 transition-all">
+                  <button onClick={() => updateStatus(b.id, 'completed')} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--c-info-bg)] text-[10px] font-semibold text-[var(--c-info)] active:scale-95 transition-all">
                     <Check className="w-3 h-3" />Завершить
                   </button>
-                  <button onClick={() => updateStatus(b.id, 'cancelled')} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-500/10 text-[10px] font-semibold text-red-400 active:scale-95 transition-all">
+                  <button onClick={() => updateStatus(b.id, 'cancelled')} className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[var(--c-danger-bg)] text-[10px] font-semibold text-[var(--c-danger)] active:scale-95 transition-all">
                     <X className="w-3 h-3" />Отмена
                   </button>
                 </div>
@@ -245,7 +245,7 @@ export function BookingsPage() {
                   <button
                     key={s.id}
                     onClick={() => setSelectedSpace(s)}
-                    className="p-3 rounded-xl bg-white/5 border border-white/5 text-center hover:bg-white/8 transition-all active:scale-95"
+                    className="p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] text-center hover:bg-[var(--c-surface-hover)] transition-all active:scale-95"
                   >
                     {(() => { const Icon = spaceIconMap[s.type] || DoorOpen; return <Icon className="w-5 h-5 text-indigo-400 mb-1" />; })()}
                     <p className="text-xs font-medium text-[var(--c-text)]">{s.name}</p>
@@ -260,12 +260,12 @@ export function BookingsPage() {
                 {(() => { const Icon = spaceIconMap[selectedSpace.type] || DoorOpen; return <Icon className="w-5 h-5 text-indigo-400 shrink-0" />; })()}
                 <div>
                   <p className="text-sm font-bold text-[var(--c-text)]">{selectedSpace.name}</p>
-                  <p className="text-[10px] text-white/30">
+                  <p className="text-[10px] text-[var(--c-hint)]">
                     {selectedSpace.hourly_rate ? `${selectedSpace.hourly_rate}₽/ч · авто-расчет` : 'Ручной ввод суммы'}
                   </p>
                 </div>
-                <button onClick={() => setSelectedSpace(null)} className="ml-auto w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center active:scale-90">
-                  <X className="w-3.5 h-3.5 text-white/30" />
+                <button onClick={() => setSelectedSpace(null)} className="ml-auto w-7 h-7 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90">
+                  <X className="w-3.5 h-3.5 text-[var(--c-hint)]" />
                 </button>
               </div>
 
@@ -290,8 +290,8 @@ export function BookingsPage() {
                   <div className="flex items-center gap-2 p-2.5 rounded-xl glass">
                     <User className="w-4 h-4 text-[var(--c-accent)]" />
                     <span className="text-sm font-medium text-[var(--c-text)]">{selectedClient.nickname}</span>
-                    <button onClick={() => setSelectedClient(null)} className="ml-auto w-6 h-6 rounded bg-white/5 flex items-center justify-center active:scale-90">
-                      <X className="w-3 h-3 text-white/30" />
+                    <button onClick={() => setSelectedClient(null)} className="ml-auto w-6 h-6 rounded bg-[var(--c-surface)] flex items-center justify-center active:scale-90">
+                      <X className="w-3 h-3 text-[var(--c-hint)]" />
                     </button>
                   </div>
                 ) : (
@@ -301,9 +301,9 @@ export function BookingsPage() {
                       <div className="space-y-1 mt-2 max-h-32 overflow-y-auto">
                         {clients.map((c) => (
                           <button key={c.id} onClick={() => { setSelectedClient(c); setClients([]); setClientSearch(''); }}
-                            className="w-full flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/8 text-sm text-[var(--c-text)] transition-all active:scale-[0.98]"
+                            className="w-full flex items-center gap-2 p-2 rounded-lg bg-[var(--c-surface)] hover:bg-[var(--c-surface-hover)] text-sm text-[var(--c-text)] transition-all active:scale-[0.98]"
                           >
-                            <User className="w-4 h-4 text-white/30" />
+                            <User className="w-4 h-4 text-[var(--c-hint)]" />
                             {c.nickname}
                           </button>
                         ))}

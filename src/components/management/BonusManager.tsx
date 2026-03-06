@@ -147,22 +147,22 @@ export function BonusManager() {
     <div className="space-y-4">
       {/* Summary */}
       <div className="grid grid-cols-2 gap-2">
-        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/15 text-center">
-          <p className="text-lg font-bold text-amber-400">{totalBonusPoints}</p>
-          <p className="text-[10px] text-white/40">Всего баллов</p>
+        <div className="p-3 rounded-xl bg-[var(--c-warning-bg)] border border-[var(--c-warning-border)] text-center">
+          <p className="text-lg font-bold text-[var(--c-warning)]">{totalBonusPoints}</p>
+          <p className="text-[10px] text-[var(--c-hint)]">Всего баллов</p>
         </div>
-        <div className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/15 text-center">
-          <p className="text-lg font-bold text-violet-400">{playersWithBonus}</p>
-          <p className="text-[10px] text-white/40">С баллами</p>
+        <div className="p-3 rounded-xl bg-[rgba(var(--c-accent-rgb),0.1)] border border-violet-500/15 text-center">
+          <p className="text-lg font-bold text-[var(--c-accent)]">{playersWithBonus}</p>
+          <p className="text-[10px] text-[var(--c-hint)]">С баллами</p>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 card rounded-xl">
-        <button onClick={() => setTab('players')} className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${tab === 'players' ? 'bg-[var(--c-accent)] text-white shadow' : 'text-white/50 hover:text-white/70'}`}>
+        <button onClick={() => setTab('players')} className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${tab === 'players' ? 'bg-[var(--c-accent)] text-white shadow' : 'text-[var(--c-hint)] hover:text-[var(--c-text)]'}`}>
           <User className="w-4 h-4 inline mr-1.5" />Клиенты
         </button>
-        <button onClick={() => setTab('settings')} className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${tab === 'settings' ? 'bg-[var(--c-accent)] text-white shadow' : 'text-white/50 hover:text-white/70'}`}>
+        <button onClick={() => setTab('settings')} className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${tab === 'settings' ? 'bg-[var(--c-accent)] text-white shadow' : 'text-[var(--c-hint)] hover:text-[var(--c-text)]'}`}>
           <Settings className="w-4 h-4 inline mr-1.5" />Настройки
         </button>
       </div>
@@ -171,10 +171,10 @@ export function BonusManager() {
       {tab === 'players' && (
         <div className="space-y-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--c-hint)]" />
             <input
               type="text" placeholder="Поиск клиента..."
-              className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-white/30"
+              className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-[var(--c-muted)]"
               value={search} onChange={(e) => setSearch(e.target.value)}
             />
           </div>
@@ -187,12 +187,12 @@ export function BonusManager() {
                 className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
               >
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-yellow-500/20 flex items-center justify-center shrink-0">
-                  <Star className="w-4 h-4 text-amber-400" />
+                  <Star className="w-4 h-4 text-[var(--c-warning)]" />
                 </div>
                 <div className="flex-1 text-left min-w-0">
                   <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{p.nickname}</p>
                   {p.balance < 0 && (
-                    <p className="text-[10px] text-red-400">Долг: {Math.abs(p.balance)}₽</p>
+                    <p className="text-[10px] text-[var(--c-danger)]">Долг: {Math.abs(p.balance)}₽</p>
                   )}
                 </div>
                 <Badge variant={p.bonus_points > 0 ? 'success' : 'default'} size="sm">
@@ -211,12 +211,12 @@ export function BonusManager() {
           <div className="flex items-center justify-between p-3 rounded-xl card">
             <div>
               <p className="text-[13px] font-medium text-[var(--c-text)]">Бонусная система</p>
-              <p className="text-xs text-white/40">Начисление при закрытии чеков</p>
+              <p className="text-xs text-[var(--c-hint)]">Начисление при закрытии чеков</p>
             </div>
             <button onClick={() => updateSetting('bonus_enabled', !settings.bonus_enabled)} className="text-[var(--c-accent)]">
               {settings.bonus_enabled
                 ? <ToggleRight className="w-8 h-8" />
-                : <ToggleLeft className="w-8 h-8 text-white/30" />}
+                : <ToggleLeft className="w-8 h-8 text-[var(--c-hint)]" />}
             </button>
           </div>
 
@@ -225,7 +225,7 @@ export function BonusManager() {
               {/* Accrual rate */}
               <div className="p-3 rounded-xl card space-y-2">
                 <p className="text-[13px] font-medium text-[var(--c-text)]">Процент начисления</p>
-                <p className="text-xs text-white/40">Сколько % от суммы чека начисляется в виде баллов</p>
+                <p className="text-xs text-[var(--c-hint)]">Сколько % от суммы чека начисляется в виде баллов</p>
                 <div className="flex items-center gap-3">
                   <input
                     type="range" min="1" max="30" step="1"
@@ -237,7 +237,7 @@ export function BonusManager() {
                     {settings.bonus_accrual_rate}%
                   </span>
                 </div>
-                <p className="text-[10px] text-white/30">
+                <p className="text-[10px] text-[var(--c-hint)]">
                   Пример: чек 1000₽ → начисление {Math.floor(1000 * settings.bonus_accrual_rate / 100)} баллов
                 </p>
               </div>
@@ -245,7 +245,7 @@ export function BonusManager() {
               {/* Min purchase */}
               <div className="p-3 rounded-xl card space-y-2">
                 <p className="text-[13px] font-medium text-[var(--c-text)]">Мин. сумма для начисления</p>
-                <p className="text-xs text-white/40">Не начислять баллы если сумма ниже</p>
+                <p className="text-xs text-[var(--c-hint)]">Не начислять баллы если сумма ниже</p>
                 <Input
                   type="number" placeholder="0₽ (без ограничений)"
                   value={settings.bonus_min_purchase || ''}
@@ -258,12 +258,12 @@ export function BonusManager() {
               <div className="flex items-center justify-between p-3 rounded-xl card">
                 <div>
                   <p className="text-[13px] font-medium text-[var(--c-text)]">Начисление при долге</p>
-                  <p className="text-xs text-white/40">Начислять баллы при оплате «В долг»</p>
+                  <p className="text-xs text-[var(--c-hint)]">Начислять баллы при оплате «В долг»</p>
                 </div>
                 <button onClick={() => updateSetting('bonus_accrual_on_debt', !settings.bonus_accrual_on_debt)} className="text-[var(--c-accent)]">
                   {settings.bonus_accrual_on_debt
                     ? <ToggleRight className="w-8 h-8" />
-                    : <ToggleLeft className="w-8 h-8 text-white/30" />}
+                    : <ToggleLeft className="w-8 h-8 text-[var(--c-hint)]" />}
                 </button>
               </div>
             </>
@@ -287,23 +287,23 @@ export function BonusManager() {
       >
         {selectedPlayer && (
           <div className="space-y-4">
-            <div className="text-center p-6 rounded-xl bg-gradient-to-br from-amber-500/10 to-yellow-500/5 border border-amber-500/20">
-              <Star className="w-10 h-10 text-amber-400 mx-auto mb-2" />
-              <p className="text-3xl font-bold text-amber-400">{selectedPlayer.bonus_points}</p>
-              <p className="text-xs text-white/40 mt-1">баллов</p>
+            <div className="text-center p-6 rounded-xl bg-gradient-to-br from-amber-500/10 to-yellow-500/5 border border-[var(--c-warning-border)]">
+              <Star className="w-10 h-10 text-[var(--c-warning)] mx-auto mb-2" />
+              <p className="text-3xl font-bold text-[var(--c-warning)]">{selectedPlayer.bonus_points}</p>
+              <p className="text-xs text-[var(--c-hint)] mt-1">баллов</p>
             </div>
 
             {/* Action toggle */}
             <div className="flex gap-1 p-1 card rounded-xl">
               <button
                 onClick={() => setBonusAction('add')}
-                className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${bonusAction === 'add' ? 'bg-emerald-500/20 text-emerald-400' : 'text-white/50'}`}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${bonusAction === 'add' ? 'bg-[var(--c-success-bg)] text-[var(--c-success)]' : 'text-[var(--c-hint)]'}`}
               >
                 <Plus className="w-4 h-4" />Начислить
               </button>
               <button
                 onClick={() => setBonusAction('subtract')}
-                className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${bonusAction === 'subtract' ? 'bg-red-500/20 text-red-400' : 'text-white/50'}`}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${bonusAction === 'subtract' ? 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' : 'text-[var(--c-hint)]'}`}
               >
                 <Minus className="w-4 h-4" />Списать
               </button>
@@ -326,12 +326,12 @@ export function BonusManager() {
 
             {bonusAmount && Number(bonusAmount) > 0 && (
               <div className="p-2.5 rounded-xl card text-center">
-                <p className="text-xs text-white/40">Баланс после</p>
+                <p className="text-xs text-[var(--c-hint)]">Баланс после</p>
                 <p className="text-xl font-bold text-[var(--c-text)]">
                   {bonusAction === 'add'
                     ? selectedPlayer.bonus_points + Math.abs(Number(bonusAmount))
                     : Math.max(0, selectedPlayer.bonus_points - Math.abs(Number(bonusAmount)))
-                  } <Star className="w-4 h-4 inline text-amber-400" />
+                  } <Star className="w-4 h-4 inline text-[var(--c-warning)]" />
                 </p>
               </div>
             )}

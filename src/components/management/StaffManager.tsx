@@ -178,7 +178,7 @@ export function StaffManager() {
 
       {staff.length > 3 && (
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--c-hint)]" />
           <Input
             placeholder="Поиск..."
             value={search}
@@ -190,7 +190,7 @@ export function StaffManager() {
 
       {filtered.length === 0 && (
         <div className="text-center py-12">
-          <Users className="w-16 h-16 text-white/5 mx-auto mb-4" />
+          <Users className="w-16 h-16 text-[var(--c-muted)] mx-auto mb-4" />
           <p className="text-[var(--c-hint)]">
             {staff.length === 0 ? 'Нет сотрудников' : 'Никого не найдено'}
           </p>
@@ -207,10 +207,10 @@ export function StaffManager() {
               className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
             >
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                isOwner ? 'bg-amber-500/15' : 'bg-[var(--c-accent)]/15'
+                isOwner ? 'bg-[var(--c-warning-bg)]' : 'bg-[var(--c-accent)]/15'
               }`}>
                 {isOwner ? (
-                  <Crown className="w-4.5 h-4.5 text-amber-400" />
+                  <Crown className="w-4.5 h-4.5 text-[var(--c-warning)]" />
                 ) : (
                   <span className="text-sm font-bold text-[var(--c-accent)]">
                     {p.nickname.charAt(0).toUpperCase()}
@@ -230,7 +230,7 @@ export function StaffManager() {
                   {p.password_hash && <Badge size="sm">Пароль</Badge>}
                 </div>
               </div>
-              <Pencil className="w-4 h-4 text-white/20 shrink-0" />
+              <Pencil className="w-4 h-4 text-[var(--c-muted)] shrink-0" />
             </button>
           );
         })}
@@ -257,7 +257,7 @@ export function StaffManager() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-[38px] text-white/30 hover:text-white/60"
+              className="absolute right-3 top-[38px] text-[var(--c-hint)] hover:text-[var(--c-hint)]"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -271,7 +271,7 @@ export function StaffManager() {
             inputMode="numeric"
           />
           {error && (
-            <p className="text-[13px] text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>
+            <p className="text-[13px] text-[var(--c-danger)] bg-[var(--c-danger-bg)] rounded-lg px-3 py-2">{error}</p>
           )}
           <Button fullWidth size="lg" onClick={handleAdd}>
             <UserPlus className="w-5 h-5" />
@@ -284,9 +284,9 @@ export function StaffManager() {
       <Drawer open={showEdit} onClose={() => { setShowEdit(false); resetForm(); }} title="Редактирование" size="sm">
         <div className="space-y-4">
           {selected?.role === 'owner' && (
-            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-500/8 border border-amber-500/12">
-              <Crown className="w-4 h-4 text-amber-400 shrink-0" />
-              <span className="text-xs font-semibold text-amber-400">Владелец системы</span>
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--c-warning-bg)] border border-[var(--c-border)]">
+              <Crown className="w-4 h-4 text-[var(--c-warning)] shrink-0" />
+              <span className="text-xs font-semibold text-[var(--c-warning)]">Владелец системы</span>
             </div>
           )}
           <Input
@@ -306,7 +306,7 @@ export function StaffManager() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-[38px] text-white/30 hover:text-white/60"
+              className="absolute right-3 top-[38px] text-[var(--c-hint)] hover:text-[var(--c-hint)]"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -320,7 +320,7 @@ export function StaffManager() {
             inputMode="numeric"
           />
           {error && (
-            <p className="text-[13px] text-red-400 bg-red-500/10 rounded-lg px-3 py-2">{error}</p>
+            <p className="text-[13px] text-[var(--c-danger)] bg-[var(--c-danger-bg)] rounded-lg px-3 py-2">{error}</p>
           )}
           <div className="flex gap-2">
             <Button fullWidth onClick={handleSaveEdit}>

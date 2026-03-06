@@ -19,13 +19,13 @@ export function TimeInput({ label, value, onChange, className = '' }: TimeInputP
         </label>
       )}
       <div
-        className={`flex items-center gap-2 px-4 py-3 rounded-xl bg-white/5 border transition-all duration-200 ${
+        className={`flex items-center gap-2 px-4 py-3 rounded-xl bg-[var(--c-surface)] border transition-all duration-200 ${
           focused
-            ? 'border-[var(--c-accent)]/30 ring-2 ring-[var(--c-accent)]/40 bg-white/8'
-            : 'border-white/8'
+            ? 'border-[var(--c-accent)]/30 ring-2 ring-[var(--c-accent)]/40 bg-[var(--c-surface-hover)]'
+            : 'border-[var(--c-border)]'
         }`}
       >
-        <Clock className="w-4 h-4 text-white/25 shrink-0" />
+        <Clock className="w-4 h-4 text-[var(--c-muted)] shrink-0" />
         <input
           type="time"
           value={value}

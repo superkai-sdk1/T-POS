@@ -70,7 +70,7 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
       <div
         className={`absolute inset-0 ${closing ? '' : 'animate-fade-in'}`}
         style={{
-          background: 'rgba(0,0,0,0.5)',
+          background: 'var(--c-overlay)',
           backdropFilter: 'blur(4px)',
           WebkitBackdropFilter: 'blur(4px)',
           opacity,
@@ -97,18 +97,18 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <div className="w-10 h-1 bg-white/15 rounded-full" />
+          <div className="w-10 h-1 bg-[var(--c-muted)] rounded-full" />
         </div>
 
         <div className="flex items-center justify-between px-5 py-2">
           {title && (
-            <h3 className="text-base font-bold text-[var(--c-text)]">
+            <h3 className="text-base font-bold text-[var(--c-text)] truncate min-w-0 flex-1 mr-2">
               {title}
             </h3>
           )}
           <button
             onClick={handleClose}
-            className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors ml-auto active:scale-90"
+            className="w-8 h-8 rounded-full bg-[var(--c-surface)] flex items-center justify-center hover:bg-[var(--c-surface-hover)] transition-colors transition-transform ml-auto active:scale-90"
           >
             <X className="w-4 h-4 text-[var(--c-hint)]" />
           </button>

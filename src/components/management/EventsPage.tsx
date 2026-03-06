@@ -119,7 +119,7 @@ export function EventsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex gap-1 p-1 rounded-xl bg-white/4 border border-white/5">
+        <div className="flex gap-1 p-1 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)]">
           {(['upcoming', 'history'] as const).map((t) => (
             <button
               key={t}
@@ -127,7 +127,7 @@ export function EventsPage() {
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                 tab === t
                   ? 'bg-[var(--c-accent)] text-white'
-                  : 'text-white/40'
+                  : 'text-[var(--c-hint)]'
               }`}
             >
               {t === 'upcoming' ? `Планы (${upcoming.length})` : `История (${history.length})`}
@@ -142,7 +142,7 @@ export function EventsPage() {
 
       {displayEvents.length === 0 ? (
         <div className="text-center py-12">
-          <MapPin className="w-10 h-10 text-white/8 mx-auto mb-3" />
+          <MapPin className="w-10 h-10 text-[var(--c-muted)] mx-auto mb-3" />
           <p className="text-sm text-[var(--c-hint)]">
             {tab === 'upcoming' ? 'Нет запланированных выездов' : 'Нет истории'}
           </p>
@@ -153,7 +153,7 @@ export function EventsPage() {
             <button
               key={e.id}
               onClick={() => setShowDetail(e)}
-              className="w-full text-left p-3.5 rounded-2xl glass hover:bg-white/6 transition-all active:scale-[0.98]"
+              className="w-full text-left p-3.5 rounded-2xl glass hover:bg-[var(--c-surface-hover)] transition-all active:scale-[0.98]"
             >
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -165,7 +165,7 @@ export function EventsPage() {
                   <span className="font-bold text-sm text-[var(--c-accent)] tabular-nums">{fmtCur(e.amount)}</span>
                 </div>
               </div>
-              <div className="flex items-center gap-3 text-[10px] text-white/30">
+              <div className="flex items-center gap-3 text-[10px] text-[var(--c-hint)]">
                 <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />{fmtDate(e.start_time)}</span>
                 <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{fmtTime(e.start_time)} — {fmtTime(e.end_time)}</span>
                 <span>{e.location}</span>
@@ -185,42 +185,42 @@ export function EventsPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
-                <span className="text-white/40">Место</span>
+                <span className="text-[var(--c-hint)]">Место</span>
                 <span className="text-[var(--c-text)] font-medium">{showDetail.location}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-white/40">Дата</span>
+                <span className="text-[var(--c-hint)]">Дата</span>
                 <span className="text-[var(--c-text)]">{fmtDate(showDetail.start_time)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-white/40">Время</span>
+                <span className="text-[var(--c-hint)]">Время</span>
                 <span className="text-[var(--c-text)]">{fmtTime(showDetail.start_time)} — {fmtTime(showDetail.end_time)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-white/40">Сумма</span>
+                <span className="text-[var(--c-hint)]">Сумма</span>
                 <span className="font-bold text-[var(--c-accent)]">{fmtCur(showDetail.amount)}</span>
               </div>
               {showDetail.note && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-white/40">Примечание</span>
+                  <span className="text-[var(--c-hint)]">Примечание</span>
                   <span className="text-[var(--c-text)] text-right max-w-[60%]">{showDetail.note}</span>
                 </div>
               )}
               <div className="flex justify-between text-sm">
-                <span className="text-white/40">Статус</span>
+                <span className="text-[var(--c-hint)]">Статус</span>
                 <Badge variant={statusVariants[showDetail.status]}>{statusLabels[showDetail.status]}</Badge>
               </div>
             </div>
 
             {showDetail.status === 'planned' && (
               <div className="flex gap-2 pt-2">
-                <button onClick={() => openEdit(showDetail)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-white/5 text-sm font-semibold text-[var(--c-text)] active:scale-[0.97] transition-all">
+                <button onClick={() => openEdit(showDetail)} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[var(--c-surface)] text-sm font-semibold text-[var(--c-text)] active:scale-[0.97] transition-all">
                   <Edit2 className="w-4 h-4" />Изменить
                 </button>
-                <button onClick={() => updateStatus(showDetail.id, 'completed')} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-500/10 text-sm font-semibold text-emerald-400 active:scale-[0.97] transition-all">
+                <button onClick={() => updateStatus(showDetail.id, 'completed')} className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-[var(--c-success-bg)] text-sm font-semibold text-[var(--c-success)] active:scale-[0.97] transition-all">
                   <Check className="w-4 h-4" />Завершить
                 </button>
-                <button onClick={() => updateStatus(showDetail.id, 'cancelled')} className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-red-500/10 text-sm font-semibold text-red-400 active:scale-[0.97] transition-all">
+                <button onClick={() => updateStatus(showDetail.id, 'cancelled')} className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[var(--c-danger-bg)] text-sm font-semibold text-[var(--c-danger)] active:scale-[0.97] transition-all">
                   <X className="w-4 h-4" />
                 </button>
               </div>

@@ -228,32 +228,32 @@ export function InkassationPage() {
   }
 
   const typeConfig: Record<string, { label: string; icon: typeof Banknote; color: string; bg: string; sign: string }> = {
-    shift_open: { label: 'Открытие смены', icon: PlayCircle, color: 'text-blue-400', bg: 'bg-blue-500/15', sign: '' },
-    shift_close: { label: 'Закрытие смены', icon: StopCircle, color: 'text-violet-400', bg: 'bg-violet-500/15', sign: '' },
-    inkassation: { label: 'Инкассация', icon: ArrowUpFromLine, color: 'text-red-400', bg: 'bg-red-500/15', sign: '−' },
-    deposit: { label: 'Внесение', icon: ArrowDownToLine, color: 'text-emerald-400', bg: 'bg-emerald-500/15', sign: '+' },
+    shift_open: { label: 'Открытие смены', icon: PlayCircle, color: 'text-[var(--c-info)]', bg: 'bg-[var(--c-info-bg)]', sign: '' },
+    shift_close: { label: 'Закрытие смены', icon: StopCircle, color: 'text-[var(--c-accent)]', bg: 'bg-[rgba(var(--c-accent-rgb),0.1)]', sign: '' },
+    inkassation: { label: 'Инкассация', icon: ArrowUpFromLine, color: 'text-[var(--c-danger)]', bg: 'bg-[var(--c-danger-bg)]', sign: '−' },
+    deposit: { label: 'Внесение', icon: ArrowDownToLine, color: 'text-[var(--c-success)]', bg: 'bg-[var(--c-success-bg)]', sign: '+' },
   };
 
   return (
     <div className="space-y-4">
       {/* Current cash balance */}
-      <div className="p-4 rounded-2xl bg-gradient-to-br from-[var(--c-accent)]/12 to-emerald-500/5 border border-white/5 text-center">
+      <div className="p-4 rounded-2xl bg-gradient-to-br from-[var(--c-accent)]/12 to-[var(--c-success-bg)] border border-[var(--c-border)] text-center">
         <div className="flex items-center justify-center gap-1.5 mb-1">
           <Wallet className="w-4 h-4 text-[var(--c-accent)]" />
-          <span className="text-[11px] text-white/40 font-semibold uppercase tracking-wider">Наличные в кассе</span>
+          <span className="text-[11px] text-[var(--c-hint)] font-semibold uppercase tracking-wider">Наличные в кассе</span>
         </div>
         <p className="text-2xl font-black text-[var(--c-text)] tabular-nums">{fmtCur(currentCash)}</p>
       </div>
 
       {/* Summary */}
       <div className="grid grid-cols-2 gap-2">
-        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/15 text-center">
-          <p className="text-lg font-bold text-red-400">{fmtCur(totalInkassation)}</p>
-          <p className="text-[10px] text-white/40">Изъято всего</p>
+        <div className="p-3 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-danger-border)] text-center">
+          <p className="text-lg font-bold text-[var(--c-danger)]">{fmtCur(totalInkassation)}</p>
+          <p className="text-[10px] text-[var(--c-hint)]">Изъято всего</p>
         </div>
-        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/15 text-center">
-          <p className="text-lg font-bold text-emerald-400">{fmtCur(totalDeposit)}</p>
-          <p className="text-[10px] text-white/40">Внесено всего</p>
+        <div className="p-3 rounded-xl bg-[var(--c-success-bg)] border border-[var(--c-success-border)] text-center">
+          <p className="text-lg font-bold text-[var(--c-success)]">{fmtCur(totalDeposit)}</p>
+          <p className="text-[10px] text-[var(--c-hint)]">Внесено всего</p>
         </div>
       </div>
 
@@ -267,7 +267,7 @@ export function InkassationPage() {
 
       {ledger.length === 0 ? (
         <div className="text-center py-16">
-          <Banknote className="w-16 h-16 text-white/5 mx-auto mb-4" />
+          <Banknote className="w-16 h-16 text-[var(--c-muted)] mx-auto mb-4" />
           <p className="text-[var(--c-hint)]">Нет операций</p>
         </div>
       ) : (
@@ -294,14 +294,14 @@ export function InkassationPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="text-[10px] text-white/25">{formatDate(entry.date)} {formatTime(entry.date)}</span>
-                    {entry.creator && <span className="text-[10px] text-white/25">· {entry.creator}</span>}
-                    {entry.note && <span className="text-[10px] text-white/20 truncate">· {entry.note}</span>}
+                    <span className="text-[10px] text-[var(--c-muted)]">{formatDate(entry.date)} {formatTime(entry.date)}</span>
+                    {entry.creator && <span className="text-[10px] text-[var(--c-muted)]">· {entry.creator}</span>}
+                    {entry.note && <span className="text-[10px] text-[var(--c-muted)] truncate">· {entry.note}</span>}
                   </div>
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-[12px] font-bold text-[var(--c-text)] tabular-nums">{fmtCur(entry.balanceAfter)}</p>
-                  <p className="text-[8px] text-white/20">баланс</p>
+                  <p className="text-[8px] text-[var(--c-muted)]">баланс</p>
                 </div>
                 {isOp && (
                   <button
@@ -309,9 +309,9 @@ export function InkassationPage() {
                       const op = operations.find((o) => o.id === entry.id);
                       if (op) setShowDeleteConfirm(op);
                     }}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-500/10 transition-colors shrink-0"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-[var(--c-danger-bg)] transition-colors shrink-0"
                   >
-                    <Trash2 className="w-3 h-3 text-white/15" />
+                    <Trash2 className="w-3 h-3 text-[var(--c-muted)]" />
                   </button>
                 )}
               </div>
@@ -327,7 +327,7 @@ export function InkassationPage() {
             <button
               onClick={() => setOpType('inkassation')}
               className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
-                opType === 'inkassation' ? 'bg-red-500/20 text-red-400' : 'text-white/50'
+                opType === 'inkassation' ? 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' : 'text-[var(--c-hint)]'
               }`}
             >
               <ArrowUpFromLine className="w-4 h-4" />Изъять
@@ -335,7 +335,7 @@ export function InkassationPage() {
             <button
               onClick={() => setOpType('deposit')}
               className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
-                opType === 'deposit' ? 'bg-emerald-500/20 text-emerald-400' : 'text-white/50'
+                opType === 'deposit' ? 'bg-[var(--c-success-bg)] text-[var(--c-success)]' : 'text-[var(--c-hint)]'
               }`}
             >
               <ArrowDownToLine className="w-4 h-4" />Внести
@@ -343,8 +343,8 @@ export function InkassationPage() {
           </div>
 
           {currentCash > 0 && (
-            <div className="p-2.5 rounded-xl bg-white/3 text-center">
-              <span className="text-[10px] text-white/30">Сейчас в кассе: </span>
+            <div className="p-2.5 rounded-xl bg-[var(--c-surface)] text-center">
+              <span className="text-[10px] text-[var(--c-hint)]">Сейчас в кассе: </span>
               <span className="text-[12px] font-bold text-[var(--c-text)] tabular-nums">{fmtCur(currentCash)}</span>
             </div>
           )}
@@ -367,7 +367,7 @@ export function InkassationPage() {
           />
 
           {activeShift && (
-            <p className="text-[10px] text-white/30 text-center">
+            <p className="text-[10px] text-[var(--c-hint)] text-center">
               Привязка к текущей смене
             </p>
           )}
@@ -396,9 +396,9 @@ export function InkassationPage() {
         {showDeleteConfirm && (
           <div className="space-y-4">
             <div className="p-2.5 rounded-xl card text-center">
-              <p className="text-[13px] text-white/50">{showDeleteConfirm.type === 'inkassation' ? 'Инкассация' : 'Внесение'}</p>
+              <p className="text-[13px] text-[var(--c-hint)]">{showDeleteConfirm.type === 'inkassation' ? 'Инкассация' : 'Внесение'}</p>
               <p className="text-lg font-bold text-[var(--c-text)]">{fmtCur(showDeleteConfirm.amount)}</p>
-              <p className="text-[10px] text-white/30 mt-1">{new Date(showDeleteConfirm.created_at).toLocaleString('ru-RU')}</p>
+              <p className="text-[10px] text-[var(--c-hint)] mt-1">{new Date(showDeleteConfirm.created_at).toLocaleString('ru-RU')}</p>
             </div>
             <div className="flex gap-2">
               <Button fullWidth variant="secondary" onClick={() => setShowDeleteConfirm(null)}>Отмена</Button>

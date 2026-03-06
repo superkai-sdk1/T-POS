@@ -21,14 +21,14 @@ const InventoryRow = React.memo(function InventoryRow({
   return (
     <div
       className={`flex items-center justify-between p-3 rounded-xl ${
-        isCritical ? 'bg-red-500/10 border border-red-500/20' : 'card'
+        isCritical ? 'bg-[var(--c-danger-bg)] border border-red-500/20' : 'card'
       }`}
     >
       <div className="flex items-center gap-3">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-          isCritical ? 'bg-red-500/20' : 'bg-white/10'
+          isCritical ? 'bg-red-500/20' : 'bg-[var(--c-surface-hover)]'
         }`}>
-          <Package className={`w-5 h-5 ${isCritical ? 'text-red-400' : 'text-white/50'}`} />
+          <Package className={`w-5 h-5 ${isCritical ? 'text-[var(--c-danger)]' : 'text-[var(--c-hint)]'}`} />
         </div>
         <div>
           <p className="font-medium text-[13px] text-[var(--c-text)]">
@@ -41,7 +41,7 @@ const InventoryRow = React.memo(function InventoryRow({
         </div>
       </div>
       <div className="text-right">
-        <p className={`text-lg font-bold ${isCritical ? 'text-red-400' : 'text-[var(--c-text)]'}`}>
+        <p className={`text-lg font-bold ${isCritical ? 'text-[var(--c-danger)]' : 'text-[var(--c-text)]'}`}>
           {item.stock_quantity}
         </p>
         {item.min_threshold > 0 && (
@@ -100,10 +100,10 @@ export function InventoryPage() {
       </div>
 
       {criticalItems.length > 0 && (
-        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+        <div className="p-3 rounded-xl bg-[var(--c-danger-bg)] border border-red-500/20">
           <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-4 h-4 text-red-400" />
-            <span className="text-[13px] font-semibold text-red-400">Критический остаток</span>
+            <AlertTriangle className="w-4 h-4 text-[var(--c-danger)]" />
+            <span className="text-[13px] font-semibold text-[var(--c-danger)]">Критический остаток</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {criticalItems.map((item) => (
@@ -116,7 +116,7 @@ export function InventoryPage() {
       )}
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--c-hint)]" />
         <Input
           placeholder="Поиск..."
           value={search}

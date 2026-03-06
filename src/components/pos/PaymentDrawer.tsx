@@ -18,10 +18,10 @@ interface PaymentDrawerProps {
 }
 
 const methodConfig: { method: PaymentMethod; label: string; icon: typeof Banknote; color: string; bg: string }[] = [
-  { method: 'cash', label: 'Наличные', icon: Banknote, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/15' },
-  { method: 'card', label: 'Карта', icon: CreditCard, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/15' },
-  { method: 'bonus', label: 'Бонусы', icon: Star, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/15' },
-  { method: 'debt', label: 'В долг', icon: Clock, color: 'text-red-400', bg: 'bg-red-500/10 border-red-500/15' },
+  { method: 'cash', label: 'Наличные', icon: Banknote, color: 'text-[var(--c-success)]', bg: 'bg-[var(--c-success-bg)] border-[var(--c-success-border)]' },
+  { method: 'card', label: 'Карта', icon: CreditCard, color: 'text-[var(--c-info)]', bg: 'bg-[var(--c-info-bg)] border-[var(--c-info-border)]' },
+  { method: 'bonus', label: 'Бонусы', icon: Star, color: 'text-[var(--c-warning)]', bg: 'bg-[var(--c-warning-bg)] border-[var(--c-warning-border)]' },
+  { method: 'debt', label: 'В долг', icon: Clock, color: 'text-[var(--c-danger)]', bg: 'bg-[var(--c-danger-bg)] border-[var(--c-danger-border)]' },
 ];
 
 type PayScreen = 'main' | 'bonus' | 'split' | 'certificate';
@@ -210,7 +210,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
 
         {/* Total */}
         <div className="text-center py-1">
-          <p className="text-[10px] text-white/25 font-semibold uppercase tracking-wider mb-0.5">К оплате</p>
+          <p className="text-[10px] text-[var(--c-muted)] font-semibold uppercase tracking-wider mb-0.5">К оплате</p>
           <p className="text-4xl font-black text-[var(--c-text)] tabular-nums animate-count-up">
             {fmtCur(total)}
           </p>
@@ -223,30 +223,30 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
               <button
                 onClick={() => handleSimplePay('cash')}
                 disabled={isProcessing}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-emerald-500/6 border border-emerald-500/10 active:scale-[0.96] transition-transform disabled:opacity-30"
+                className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-[var(--c-success-bg)] border border-[var(--c-success-border)] active:scale-[0.96] transition-transform disabled:opacity-30"
               >
-                <Banknote className="w-6 h-6 text-emerald-400" />
-                <span className="text-[12px] font-bold text-emerald-400">Наличные</span>
-                <span className="text-[10px] text-emerald-400/40 tabular-nums">{fmtCur(total)}</span>
+                <Banknote className="w-6 h-6 text-[var(--c-success)]" />
+                <span className="text-[12px] font-bold text-[var(--c-success)]">Наличные</span>
+                <span className="text-[10px] text-[var(--c-hint)] tabular-nums">{fmtCur(total)}</span>
               </button>
               <button
                 onClick={() => handleSimplePay('card')}
                 disabled={isProcessing}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-blue-500/6 border border-blue-500/10 active:scale-[0.96] transition-transform disabled:opacity-30"
+                className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-[var(--c-info-bg)] border border-[var(--c-info-border)] active:scale-[0.96] transition-transform disabled:opacity-30"
               >
-                <CreditCard className="w-6 h-6 text-blue-400" />
-                <span className="text-[12px] font-bold text-blue-400">Карта</span>
-                <span className="text-[10px] text-blue-400/40 tabular-nums">{fmtCur(total)}</span>
+                <CreditCard className="w-6 h-6 text-[var(--c-info)]" />
+                <span className="text-[12px] font-bold text-[var(--c-info)]">Карта</span>
+                <span className="text-[10px] text-[var(--c-hint)] tabular-nums">{fmtCur(total)}</span>
               </button>
               {activeCheck?.player_id && maxBonus > 0 && (
                 <button
                   onClick={openBonusScreen}
                   disabled={isProcessing}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-amber-500/6 border border-amber-500/10 active:scale-[0.96] transition-transform disabled:opacity-30"
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-[var(--c-warning-bg)] border border-[var(--c-warning-border)] active:scale-[0.96] transition-transform disabled:opacity-30"
                 >
-                  <Star className="w-6 h-6 text-amber-400" />
-                  <span className="text-[12px] font-bold text-amber-400">Бонусы</span>
-                  <span className="text-[10px] text-amber-400/40 tabular-nums">до {fmtCur(maxBonus)}</span>
+                  <Star className="w-6 h-6 text-[var(--c-warning)]" />
+                  <span className="text-[12px] font-bold text-[var(--c-warning)]">Бонусы</span>
+                  <span className="text-[10px] text-[var(--c-hint)] tabular-nums">до {fmtCur(maxBonus)}</span>
                 </button>
               )}
             </div>
@@ -255,12 +255,12 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
               <button
                 onClick={() => handleSimplePay('debt')}
                 disabled={isProcessing}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-red-500/6 border border-red-500/8 active:scale-[0.97] transition-transform disabled:opacity-30"
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-danger-border)] active:scale-[0.97] transition-transform disabled:opacity-30"
               >
-                <Clock className="w-5 h-5 text-red-400" />
+                <Clock className="w-5 h-5 text-[var(--c-danger)]" />
                 <div className="flex-1 text-left">
-                  <p className="text-[13px] font-semibold text-red-400">В долг</p>
-                  <p className="text-[10px] text-red-400/40">{fmtCur(total)} на баланс</p>
+                  <p className="text-[13px] font-semibold text-[var(--c-danger)]">В долг</p>
+                  <p className="text-[10px] text-[var(--c-hint)]">{fmtCur(total)} на баланс</p>
                 </div>
               </button>
             )}
@@ -268,14 +268,14 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
             <div className="flex gap-2">
               <button
                 onClick={() => { hapticFeedback('light'); setScreen('split'); setSplitPayments([]); setSplitAmount(''); }}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white/4 text-xs font-semibold text-white/30 active:scale-[0.98] transition-transform"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[var(--c-surface)] text-xs font-semibold text-[var(--c-hint)] active:scale-[0.98] transition-transform"
               >
                 <Split className="w-3.5 h-3.5" />
                 Разделить
               </button>
               <button
                 onClick={() => { hapticFeedback('light'); setScreen('certificate'); setCertCode(''); setCertError(''); setAppliedCert(null); }}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-violet-500/6 border border-violet-500/10 text-xs font-semibold text-violet-400/60 active:scale-[0.98] transition-transform"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[rgba(var(--c-accent-rgb),0.1)] border border-[rgba(var(--c-accent-rgb),0.2)] text-xs font-semibold text-[var(--c-hint)] active:scale-[0.98] transition-transform"
               >
                 <Ticket className="w-3.5 h-3.5" />
                 Сертификат
@@ -283,7 +283,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
             </div>
 
             {activeCheck?.player_id && (
-              <p className="text-[10px] text-center text-white/15 font-medium">
+              <p className="text-[10px] text-center text-[var(--c-muted)] font-medium">
                 Бонусы будут начислены автоматически
               </p>
             )}
@@ -295,43 +295,43 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
           <>
             <button
               onClick={() => { setScreen('main'); setBonusAmount(0); }}
-              className="flex items-center gap-1.5 text-[12px] font-medium text-white/40 active:text-white/60 -mt-2"
+              className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--c-hint)] active:text-[var(--c-hint)] -mt-2"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               Назад к способам
             </button>
 
-            <div className="p-4 rounded-xl bg-amber-500/6 border border-amber-500/12 space-y-3">
+            <div className="p-4 rounded-xl bg-[var(--c-warning-bg)] border border-[var(--c-warning-border)] space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-amber-400/60 uppercase tracking-wider">Списать бонусы</span>
-                <span className="text-[11px] text-amber-400/40">Доступно: {fmtCur(playerInfo?.bonus_points || 0)}</span>
+                <span className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">Списать бонусы</span>
+                <span className="text-[11px] text-[var(--c-hint)]">Доступно: {fmtCur(playerInfo?.bonus_points || 0)}</span>
               </div>
 
               <div className="flex items-center justify-center gap-3">
                 <button
                   onClick={() => adjustBonus(-1)}
                   disabled={bonusAmount <= 0}
-                  className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20"
+                  className="w-10 h-10 rounded-xl bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20"
                 >
-                  <Minus className="w-4 h-4 text-amber-400" />
+                  <Minus className="w-4 h-4 text-[var(--c-warning)]" />
                 </button>
                 <div className="text-center min-w-[100px]">
                   <input
                     type="number"
                     value={bonusAmount}
                     onChange={(e) => setBonusAmount(Math.max(0, Math.min(maxBonus, Number(e.target.value) || 0)))}
-                    className="w-full text-center text-3xl font-black text-amber-400 bg-transparent outline-none tabular-nums"
+                    className="w-full text-center text-3xl font-black text-[var(--c-warning)] bg-transparent outline-none tabular-nums"
                     min={0}
                     max={maxBonus}
                   />
-                  <p className="text-[10px] text-amber-400/30 -mt-0.5">макс. 50% = {fmtCur(maxBonus)}</p>
+                  <p className="text-[10px] text-[var(--c-hint)] -mt-0.5">макс. 50% = {fmtCur(maxBonus)}</p>
                 </div>
                 <button
                   onClick={() => adjustBonus(1)}
                   disabled={bonusAmount >= maxBonus}
-                  className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20"
+                  className="w-10 h-10 rounded-xl bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20"
                 >
-                  <Plus className="w-4 h-4 text-amber-400" />
+                  <Plus className="w-4 h-4 text-[var(--c-warning)]" />
                 </button>
               </div>
 
@@ -342,8 +342,8 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                     onClick={() => { hapticFeedback('light'); setBonusAmount(p); }}
                     className={`px-3 py-1 rounded-lg text-[11px] font-semibold transition-all active:scale-95 ${
                       bonusAmount === p
-                        ? 'bg-amber-500/20 text-amber-400'
-                        : 'bg-white/5 text-white/25'
+                        ? 'bg-[var(--c-warning-bg)] text-[var(--c-warning)]'
+                        : 'bg-[var(--c-surface)] text-[var(--c-muted)]'
                     }`}
                   >
                     {fmtCur(p)}
@@ -354,7 +354,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
 
             {bonusAmount > 0 && bonusRemainder > 0 && (
               <div className="text-center">
-                <p className="text-[11px] text-white/30">Остаток к оплате: <span className="font-bold text-[var(--c-text)]">{fmtCur(bonusRemainder)}</span></p>
+                <p className="text-[11px] text-[var(--c-hint)]">Остаток к оплате: <span className="font-bold text-[var(--c-text)]">{fmtCur(bonusRemainder)}</span></p>
               </div>
             )}
 
@@ -363,24 +363,24 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                 <button
                   onClick={() => handleBonusConfirm('cash')}
                   disabled={isProcessing}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-emerald-500/6 border border-emerald-500/10 active:scale-[0.96] transition-transform disabled:opacity-30"
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-[var(--c-success-bg)] border border-[var(--c-success-border)] active:scale-[0.96] transition-transform disabled:opacity-30"
                 >
-                  <Banknote className="w-5 h-5 text-emerald-400" />
-                  <span className="text-[12px] font-bold text-emerald-400">
+                  <Banknote className="w-5 h-5 text-[var(--c-success)]" />
+                  <span className="text-[12px] font-bold text-[var(--c-success)]">
                     {bonusRemainder > 0 ? 'Остаток нал.' : 'Подтвердить'}
                   </span>
-                  {bonusRemainder > 0 && <span className="text-[10px] text-emerald-400/40 tabular-nums">{fmtCur(bonusRemainder)}</span>}
+                  {bonusRemainder > 0 && <span className="text-[10px] text-[var(--c-hint)] tabular-nums">{fmtCur(bonusRemainder)}</span>}
                 </button>
                 <button
                   onClick={() => handleBonusConfirm('card')}
                   disabled={isProcessing}
-                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-blue-500/6 border border-blue-500/10 active:scale-[0.96] transition-transform disabled:opacity-30"
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-[var(--c-info-bg)] border border-[var(--c-info-border)] active:scale-[0.96] transition-transform disabled:opacity-30"
                 >
-                  <CreditCard className="w-5 h-5 text-blue-400" />
-                  <span className="text-[12px] font-bold text-blue-400">
+                  <CreditCard className="w-5 h-5 text-[var(--c-info)]" />
+                  <span className="text-[12px] font-bold text-[var(--c-info)]">
                     {bonusRemainder > 0 ? 'Остаток карт.' : 'Подтвердить'}
                   </span>
-                  {bonusRemainder > 0 && <span className="text-[10px] text-blue-400/40 tabular-nums">{fmtCur(bonusRemainder)}</span>}
+                  {bonusRemainder > 0 && <span className="text-[10px] text-[var(--c-hint)] tabular-nums">{fmtCur(bonusRemainder)}</span>}
                 </button>
               </div>
             )}
@@ -392,16 +392,16 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
           <>
             <button
               onClick={() => { setScreen('main'); setAppliedCert(null); setCertCode(''); setCertError(''); }}
-              className="flex items-center gap-1.5 text-[12px] font-medium text-white/40 active:text-white/60 -mt-2"
+              className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--c-hint)] active:text-[var(--c-hint)] -mt-2"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               Назад к способам
             </button>
 
-            <div className="p-4 rounded-xl bg-violet-500/6 border border-violet-500/12 space-y-3">
+            <div className="p-4 rounded-xl bg-[rgba(var(--c-accent-rgb),0.1)] border border-[rgba(var(--c-accent-rgb),0.2)] space-y-3">
               <div className="flex items-center gap-2">
-                <Ticket className="w-5 h-5 text-violet-400" />
-                <span className="text-[13px] font-semibold text-violet-400">Оплата сертификатом</span>
+                <Ticket className="w-5 h-5 text-[var(--c-accent)]" />
+                <span className="text-[13px] font-semibold text-[var(--c-accent)]">Оплата сертификатом</span>
               </div>
 
               {!appliedCert ? (
@@ -419,22 +419,22 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                     </Button>
                   </div>
                   {certError && (
-                    <p className="text-[11px] text-red-400 font-medium">{certError}</p>
+                    <p className="text-[11px] text-[var(--c-danger)] font-medium">{certError}</p>
                   )}
                 </div>
               ) : (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-violet-400/60">Код</span>
-                    <span className="text-[13px] font-bold text-violet-400">{appliedCert.code}</span>
+                    <span className="text-[11px] text-[var(--c-hint)]">Код</span>
+                    <span className="text-[13px] font-bold text-[var(--c-accent)]">{appliedCert.code}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-violet-400/60">Номинал</span>
-                    <span className="text-[13px] font-semibold text-white/70">{fmtCur(appliedCert.nominal)}</span>
+                    <span className="text-[11px] text-[var(--c-hint)]">Номинал</span>
+                    <span className="text-[13px] font-semibold text-[var(--c-text)]">{fmtCur(appliedCert.nominal)}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-violet-400/60">Баланс</span>
-                    <span className="text-[13px] font-bold text-emerald-400">{fmtCur(appliedCert.balance ?? appliedCert.nominal)}</span>
+                    <span className="text-[11px] text-[var(--c-hint)]">Баланс</span>
+                    <span className="text-[13px] font-bold text-[var(--c-success)]">{fmtCur(appliedCert.balance ?? appliedCert.nominal)}</span>
                   </div>
                   {(() => {
                     const certBal = appliedCert.balance ?? appliedCert.nominal;
@@ -447,31 +447,31 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                             onClick={() => handleCertPay('cash')}
                             disabled={isProcessing}
                             className="w-full py-3 rounded-xl text-[13px] font-bold text-white active:scale-[0.97] transition-transform disabled:opacity-30"
-                            style={{ background: 'linear-gradient(135deg, #6c5ce7, #7c6cf7)' }}
+                            style={{ background: 'linear-gradient(135deg, var(--c-accent), var(--c-accent-light))' }}
                           >
                             Оплатить {fmtCur(total)}
                           </button>
                         ) : (
                           <div className="space-y-2 pt-1">
-                            <p className="text-[11px] text-center text-white/30">
+                            <p className="text-[11px] text-center text-[var(--c-hint)]">
                               Списать {fmtCur(certBal)}, остаток {fmtCur(remainder)}:
                             </p>
                             <div className="grid grid-cols-2 gap-2">
                               <button
                                 onClick={() => handleCertPay('cash')}
                                 disabled={isProcessing}
-                                className="flex flex-col items-center gap-1 p-2.5 rounded-xl bg-emerald-500/6 border border-emerald-500/10 active:scale-[0.96] transition-transform disabled:opacity-30"
+                                className="flex flex-col items-center gap-1 p-2.5 rounded-xl bg-[var(--c-success-bg)] border border-[var(--c-success-border)] active:scale-[0.96] transition-transform disabled:opacity-30"
                               >
-                                <Banknote className="w-4 h-4 text-emerald-400" />
-                                <span className="text-[11px] font-bold text-emerald-400">Наличные</span>
+                                <Banknote className="w-4 h-4 text-[var(--c-success)]" />
+                                <span className="text-[11px] font-bold text-[var(--c-success)]">Наличные</span>
                               </button>
                               <button
                                 onClick={() => handleCertPay('card')}
                                 disabled={isProcessing}
-                                className="flex flex-col items-center gap-1 p-2.5 rounded-xl bg-blue-500/6 border border-blue-500/10 active:scale-[0.96] transition-transform disabled:opacity-30"
+                                className="flex flex-col items-center gap-1 p-2.5 rounded-xl bg-[var(--c-info-bg)] border border-[var(--c-info-border)] active:scale-[0.96] transition-transform disabled:opacity-30"
                               >
-                                <CreditCard className="w-4 h-4 text-blue-400" />
-                                <span className="text-[11px] font-bold text-blue-400">Карта</span>
+                                <CreditCard className="w-4 h-4 text-[var(--c-info)]" />
+                                <span className="text-[11px] font-bold text-[var(--c-info)]">Карта</span>
                               </button>
                             </div>
                           </div>
@@ -490,7 +490,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
           <>
             <button
               onClick={() => { setScreen('main'); setSplitPayments([]); setSplitAmount(''); }}
-              className="flex items-center gap-1.5 text-[12px] font-medium text-white/40 active:text-white/60 -mt-2"
+              className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--c-hint)] active:text-[var(--c-hint)] -mt-2"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               Назад к способам
@@ -498,12 +498,12 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
 
             <div className="p-3 rounded-xl card">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] text-white/30 font-semibold uppercase tracking-wider">Осталось</span>
-                <span className={`text-lg font-black tabular-nums ${splitRemaining === 0 ? 'text-emerald-400' : 'text-[var(--c-text)]'}`}>
+                <span className="text-[10px] text-[var(--c-hint)] font-semibold uppercase tracking-wider">Осталось</span>
+                <span className={`text-lg font-black tabular-nums ${splitRemaining === 0 ? 'text-[var(--c-success)]' : 'text-[var(--c-text)]'}`}>
                   {fmtCur(splitRemaining)}
                 </span>
               </div>
-              <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden flex">
+              <div className="w-full h-2 rounded-full bg-[var(--c-surface)] overflow-hidden flex">
                 {splitPayments.map((sp, idx) => {
                   const pct = total > 0 ? (sp.amount / total) * 100 : 0;
                   return (
@@ -552,7 +552,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                       className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-all active:scale-95 ${
                         splitMethod === mc.method
                           ? 'bg-[var(--c-accent)]/12 border-[var(--c-accent)]/20 text-[var(--c-accent)]'
-                          : 'bg-white/4 border-white/6 text-white/30'
+                          : 'bg-[var(--c-surface)] border-[var(--c-border)] text-[var(--c-hint)]'
                       }`}
                     >
                       <mc.icon className="w-3 h-3" />
@@ -589,7 +589,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                     <button
                       key={mc.method}
                       onClick={() => addSplitRemainder(mc.method)}
-                      className="flex-1 py-1.5 rounded-lg bg-white/4 text-[10px] font-semibold text-white/20 active:scale-95 transition-transform"
+                      className="flex-1 py-1.5 rounded-lg bg-[var(--c-surface)] text-[10px] font-semibold text-[var(--c-muted)] active:scale-95 transition-transform"
                     >
                       Всё {mc.label.toLowerCase()}
                     </button>

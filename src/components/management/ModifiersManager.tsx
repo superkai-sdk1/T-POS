@@ -134,13 +134,13 @@ export function ModifiersManager() {
   };
 
   if (isLoading) {
-    return <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-xl bg-white/3 animate-pulse" />)}</div>;
+    return <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-xl bg-[var(--c-surface)] animate-pulse" />)}</div>;
   }
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-white/30">{modifiers.length} модификаторов</p>
+        <p className="text-xs text-[var(--c-hint)]">{modifiers.length} модификаторов</p>
         <Button size="sm" onClick={openCreate}>
           <Plus className="w-4 h-4" />
           Добавить
@@ -149,8 +149,8 @@ export function ModifiersManager() {
 
       {modifiers.length === 0 ? (
         <div className="text-center py-10">
-          <p className="text-sm text-white/30">Нет модификаторов</p>
-          <p className="text-xs text-white/15 mt-1">Создайте модификаторы для товаров (сироп, лёд и т.д.)</p>
+          <p className="text-sm text-[var(--c-hint)]">Нет модификаторов</p>
+          <p className="text-xs text-[var(--c-muted)] mt-1">Создайте модификаторы для товаров (сироп, лёд и т.д.)</p>
         </div>
       ) : (
         <div className="space-y-1.5">
@@ -170,25 +170,25 @@ export function ModifiersManager() {
                       )}
                     </div>
                     {productNames.length > 0 ? (
-                      <p className="text-[11px] text-white/30 mt-1 line-clamp-2">
+                      <p className="text-[11px] text-[var(--c-hint)] mt-1 line-clamp-2">
                         {productNames.join(', ')}
                       </p>
                     ) : (
-                      <p className="text-[11px] text-white/15 mt-1 italic">Нет привязанных товаров</p>
+                      <p className="text-[11px] text-[var(--c-muted)] mt-1 italic">Нет привязанных товаров</p>
                     )}
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <button
                       onClick={() => openEdit(mod)}
-                      className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 transition-transform"
+                      className="w-8 h-8 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform"
                     >
-                      <Pencil className="w-3.5 h-3.5 text-white/30" />
+                      <Pencil className="w-3.5 h-3.5 text-[var(--c-hint)]" />
                     </button>
                     <button
                       onClick={() => setShowDeleteConfirm(mod.id)}
-                      className="w-8 h-8 rounded-lg bg-red-500/8 flex items-center justify-center active:scale-90 transition-transform"
+                      className="w-8 h-8 rounded-lg bg-[var(--c-danger-bg)] flex items-center justify-center active:scale-90 transition-transform"
                     >
-                      <Trash2 className="w-3.5 h-3.5 text-red-400/60" />
+                      <Trash2 className="w-3.5 h-3.5 text-[var(--c-danger)]" />
                     </button>
                   </div>
                 </div>
@@ -215,19 +215,19 @@ export function ModifiersManager() {
           />
 
           <div>
-            <label className="block text-xs font-semibold text-white/30 mb-2">
+            <label className="block text-xs font-semibold text-[var(--c-hint)] mb-2">
               Привязка к товарам ({selectedProducts.length} выбрано)
             </label>
             <div className="relative mb-2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--c-muted)]" />
               <input
                 placeholder="Поиск товара..."
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/5 border border-white/6 text-sm text-[var(--c-text)] placeholder:text-white/15 focus:outline-none focus:border-[var(--c-accent)]/25 transition-colors"
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-[var(--c-surface)] border border-[var(--c-surface-hover)] text-sm text-[var(--c-text)] placeholder:text-[var(--c-muted)] focus:outline-none focus:border-[var(--c-accent)]/25 transition-colors"
               />
             </div>
-            <div className="max-h-[40vh] overflow-y-auto space-y-0.5 rounded-xl border border-white/5 p-1">
+            <div className="max-h-[40vh] overflow-y-auto space-y-0.5 rounded-xl border border-[var(--c-border)] p-1">
               {filteredInventory.map((item) => {
                 const isSelected = selectedProducts.includes(item.id);
                 return (
@@ -235,18 +235,18 @@ export function ModifiersManager() {
                     key={item.id}
                     onClick={() => toggleProduct(item.id)}
                     className={`w-full flex items-center gap-2.5 p-2 rounded-lg text-left transition-all active:scale-[0.98] ${
-                      isSelected ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/20' : 'hover:bg-white/3'
+                      isSelected ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/20' : 'hover:bg-[var(--c-surface)]'
                     }`}
                   >
                     <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${
-                      isSelected ? 'bg-[var(--c-accent)]' : 'border border-white/15'
+                      isSelected ? 'bg-[var(--c-accent)]' : 'border border-[var(--c-border)]'
                     }`}>
                       {isSelected && <Check className="w-3 h-3 text-white" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-medium text-[var(--c-text)] truncate">{item.name}</p>
                     </div>
-                    <span className="text-[11px] text-white/20 tabular-nums shrink-0">{item.price}₽</span>
+                    <span className="text-[11px] text-[var(--c-muted)] tabular-nums shrink-0">{item.price}₽</span>
                   </button>
                 );
               })}
@@ -261,7 +261,7 @@ export function ModifiersManager() {
 
       <Drawer open={!!showDeleteConfirm} onClose={() => setShowDeleteConfirm(null)} title="Удалить модификатор?">
         <div className="space-y-4">
-          <p className="text-sm text-white/50">Модификатор будет удалён. Это действие необратимо.</p>
+          <p className="text-sm text-[var(--c-hint)]">Модификатор будет удалён. Это действие необратимо.</p>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => setShowDeleteConfirm(null)} className="flex-1">Отмена</Button>
             <Button variant="danger" onClick={() => showDeleteConfirm && handleDelete(showDeleteConfirm)} className="flex-1">Удалить</Button>

@@ -94,7 +94,7 @@ export function CertificatesManager() {
   const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
 
   if (isLoading) {
-    return <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-xl bg-white/3 animate-pulse" />)}</div>;
+    return <div className="space-y-2">{[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-xl bg-[var(--c-surface)] animate-pulse" />)}</div>;
   }
 
   return (
@@ -102,26 +102,26 @@ export function CertificatesManager() {
       <div className="grid grid-cols-3 gap-2">
         <div className="p-2.5 rounded-xl card text-center">
           <p className="text-lg font-black text-[var(--c-text)] tabular-nums">{stats.active}</p>
-          <p className="text-[9px] text-white/20">Активных</p>
+          <p className="text-[9px] text-[var(--c-muted)]">Активных</p>
         </div>
         <div className="p-2.5 rounded-xl card text-center">
-          <p className="text-lg font-black text-white/30 tabular-nums">{stats.used}</p>
-          <p className="text-[9px] text-white/20">Использовано</p>
+          <p className="text-lg font-black text-[var(--c-hint)] tabular-nums">{stats.used}</p>
+          <p className="text-[9px] text-[var(--c-muted)]">Использовано</p>
         </div>
         <div className="p-2.5 rounded-xl card text-center">
-          <p className="text-lg font-black text-emerald-400 tabular-nums">{fmtCur(stats.remainingBalance)}</p>
-          <p className="text-[9px] text-white/20">Остаток</p>
+          <p className="text-lg font-black text-[var(--c-success)] tabular-nums">{fmtCur(stats.remainingBalance)}</p>
+          <p className="text-[9px] text-[var(--c-muted)]">Остаток</p>
         </div>
       </div>
 
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--c-muted)]" />
           <input
             placeholder="Поиск по коду..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/5 border border-white/6 text-sm text-[var(--c-text)] placeholder:text-white/15 focus:outline-none focus:border-[var(--c-accent)]/25 transition-colors"
+            className="w-full pl-9 pr-3 py-2 rounded-xl bg-[var(--c-surface)] border border-[var(--c-surface-hover)] text-sm text-[var(--c-text)] placeholder:text-[var(--c-muted)] focus:outline-none focus:border-[var(--c-accent)]/25 transition-colors"
           />
         </div>
         <Button size="sm" onClick={() => setShowGenerate(true)}>
@@ -132,15 +132,15 @@ export function CertificatesManager() {
 
       {filtered.length === 0 ? (
         <div className="text-center py-10">
-          <Gift className="w-10 h-10 text-white/6 mx-auto mb-2" />
-          <p className="text-sm text-white/30">Нет сертификатов</p>
+          <Gift className="w-10 h-10 text-[var(--c-muted)] mx-auto mb-2" />
+          <p className="text-sm text-[var(--c-hint)]">Нет сертификатов</p>
         </div>
       ) : (
         <div className="space-y-1">
           {filtered.map((cert) => (
             <div key={cert.id} className={`flex items-center gap-3 p-3 rounded-xl ${cert.is_used ? 'bg-white/2 opacity-50' : 'card'}`}>
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${cert.is_used ? 'bg-white/5' : 'bg-amber-500/10'}`}>
-                <Ticket className={`w-5 h-5 ${cert.is_used ? 'text-white/20' : 'text-amber-400'}`} />
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${cert.is_used ? 'bg-[var(--c-surface)]' : 'bg-[var(--c-warning-bg)]'}`}>
+                <Ticket className={`w-5 h-5 ${cert.is_used ? 'text-[var(--c-muted)]' : 'text-[var(--c-warning)]'}`} />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -151,7 +151,7 @@ export function CertificatesManager() {
                     <Badge size="sm" variant="success">активен</Badge>
                   )}
                 </div>
-                <p className="text-[11px] text-white/25 mt-0.5">
+                <p className="text-[11px] text-[var(--c-muted)] mt-0.5">
                   Номинал: {fmtCur(cert.nominal)}
                   {cert.is_used && cert.user && <> · {cert.user.nickname}</>}
                 </p>
@@ -159,9 +159,9 @@ export function CertificatesManager() {
               {!cert.is_used && (
                 <button
                   onClick={() => setShowDeleteConfirm(cert)}
-                  className="w-8 h-8 rounded-lg bg-red-500/8 flex items-center justify-center active:scale-90 transition-transform shrink-0"
+                  className="w-8 h-8 rounded-lg bg-[var(--c-danger-bg)] flex items-center justify-center active:scale-90 transition-transform shrink-0"
                 >
-                  <Trash2 className="w-3.5 h-3.5 text-red-400/60" />
+                  <Trash2 className="w-3.5 h-3.5 text-[var(--c-danger)]" />
                 </button>
               )}
             </div>
@@ -195,7 +195,7 @@ export function CertificatesManager() {
 
       <Drawer open={!!showDeleteConfirm} onClose={() => setShowDeleteConfirm(null)} title="Удалить сертификат?">
         <div className="space-y-4">
-          <p className="text-sm text-white/50">Сертификат <strong>{showDeleteConfirm?.code}</strong> будет удалён.</p>
+          <p className="text-sm text-[var(--c-hint)]">Сертификат <strong>{showDeleteConfirm?.code}</strong> будет удалён.</p>
           <div className="flex gap-2">
             <Button variant="ghost" onClick={() => setShowDeleteConfirm(null)} className="flex-1">Отмена</Button>
             <Button variant="danger" onClick={() => showDeleteConfirm && handleDelete(showDeleteConfirm)} className="flex-1">Удалить</Button>

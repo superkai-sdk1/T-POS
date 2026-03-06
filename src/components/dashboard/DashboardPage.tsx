@@ -577,15 +577,15 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   if (isLoading) {
     return (
       <div className="space-y-4 animate-pulse">
-        <div className="flex gap-1 p-0.5 rounded-lg bg-white/3">
-          {[1, 2, 3, 4, 5].map((i) => <div key={i} className="flex-1 h-8 rounded-md bg-white/3" />)}
+        <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--c-surface)]">
+          {[1, 2, 3, 4, 5].map((i) => <div key={i} className="flex-1 h-8 rounded-md bg-[var(--c-surface)]" />)}
         </div>
         <div className="grid grid-cols-2 gap-2">
-          {[1, 2, 3, 4].map((i) => <div key={i} className="h-24 rounded-xl bg-white/3" />)}
+          {[1, 2, 3, 4].map((i) => <div key={i} className="h-24 rounded-xl bg-[var(--c-surface)]" />)}
         </div>
-        <div className="h-40 rounded-xl bg-white/3" />
+        <div className="h-40 rounded-xl bg-[var(--c-surface)]" />
         <div className="space-y-2">
-          {[1, 2, 3].map((i) => <div key={i} className="h-12 rounded-xl bg-white/3" style={{ opacity: 1 - i * 0.2 }} />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-12 rounded-xl bg-[var(--c-surface)]" style={{ opacity: 1 - i * 0.2 }} />)}
         </div>
       </div>
     );
@@ -594,7 +594,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   return (
     <div className="space-y-5" {...tabSwipe}>
       {/* Tab switcher */}
-      <div className="flex gap-1 p-0.5 rounded-lg bg-white/3 overflow-x-auto scrollbar-none">
+      <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--c-surface)] overflow-x-auto scrollbar-none">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -602,7 +602,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
             className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap min-w-0 ${
               tab === t.id
                 ? 'bg-[var(--c-accent)] text-white shadow-sm'
-                : 'text-white/30'
+                : 'text-[var(--c-hint)]'
             }`}
           >
             <t.icon className="w-3 h-3 shrink-0" />
@@ -644,12 +644,12 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               className="p-3 rounded-xl bg-gradient-to-br from-[var(--c-accent)]/15 to-purple-900/5 card-interactive text-left col-span-1"
             >
               <div className="flex items-center gap-1 mb-1">
-                <ArrowUpRight className="w-3 h-3 text-emerald-400" />
-                <span className="text-[9px] text-white/30 font-semibold uppercase">Доход</span>
+                <ArrowUpRight className="w-3 h-3 text-[var(--c-success)]" />
+                <span className="text-[9px] text-[var(--c-hint)] font-semibold uppercase">Доход</span>
               </div>
               <p className="text-base font-black text-[var(--c-text)] tabular-nums leading-tight">{fmtCur(stats.month)}</p>
               {stats.monthGrowth !== 0 && (
-                <span className={`text-[9px] font-bold ${stats.monthGrowth > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                <span className={`text-[9px] font-bold ${stats.monthGrowth > 0 ? 'text-[var(--c-success)]' : 'text-[var(--c-danger)]'}`}>
                   {stats.monthGrowth > 0 ? '+' : ''}{stats.monthGrowth}%
                 </span>
               )}
@@ -659,25 +659,25 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               className="p-3 rounded-xl card-interactive text-left col-span-1"
             >
               <div className="flex items-center gap-1 mb-1">
-                <ArrowDownRight className="w-3 h-3 text-red-400" />
-                <span className="text-[9px] text-white/30 font-semibold uppercase">Себест.</span>
+                <ArrowDownRight className="w-3 h-3 text-[var(--c-danger)]" />
+                <span className="text-[9px] text-[var(--c-hint)] font-semibold uppercase">Себест.</span>
               </div>
-              <p className="text-base font-black text-red-400 tabular-nums leading-tight">{fmtCur(financials.monthExpenses)}</p>
-              <span className="text-[9px] text-white/20">подробнее →</span>
+              <p className="text-base font-black text-[var(--c-danger)] tabular-nums leading-tight">{fmtCur(financials.monthExpenses)}</p>
+              <span className="text-[9px] text-[var(--c-muted)]">подробнее →</span>
             </button>
             <button
               onClick={() => setDetail('pnl')}
-              className={`p-3 rounded-xl card-interactive text-left col-span-1 ${financials.monthNetIncome >= 0 ? 'bg-emerald-500/5' : 'bg-red-500/5'}`}
+              className={`p-3 rounded-xl card-interactive text-left col-span-1 ${financials.monthNetIncome >= 0 ? 'bg-[var(--c-success-bg)]' : 'bg-[var(--c-danger-bg)]'}`}
             >
               <div className="flex items-center gap-1 mb-1">
                 <Wallet className="w-3 h-3 text-[var(--c-accent)]" />
-                <span className="text-[9px] text-white/30 font-semibold uppercase">Прибыль</span>
+                <span className="text-[9px] text-[var(--c-hint)] font-semibold uppercase">Прибыль</span>
               </div>
-              <p className={`text-base font-black tabular-nums leading-tight ${financials.monthNetIncome >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              <p className={`text-base font-black tabular-nums leading-tight ${financials.monthNetIncome >= 0 ? 'text-[var(--c-success)]' : 'text-[var(--c-danger)]'}`}>
                 {fmtCur(financials.monthNetIncome)}
               </p>
               {financials.marginPct !== 0 && (
-                <span className="text-[9px] text-white/25">маржа {financials.marginPct}%</span>
+                <span className="text-[9px] text-[var(--c-muted)]">маржа {financials.marginPct}%</span>
               )}
             </button>
           </div>
@@ -686,10 +686,10 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           {stats.month > 0 && (
             <button onClick={() => setDetail('pnl')} className="w-full p-3 rounded-xl card-interactive space-y-2 text-left">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] text-white/30 font-semibold uppercase tracking-wider">Структура за месяц</span>
-                <PieChart className="w-3 h-3 text-white/15" />
+                <span className="text-[10px] text-[var(--c-hint)] font-semibold uppercase tracking-wider">Структура за месяц</span>
+                <PieChart className="w-3 h-3 text-[var(--c-muted)]" />
               </div>
-              <div className="flex h-3 rounded-full overflow-hidden bg-white/5">
+              <div className="flex h-3 rounded-full overflow-hidden bg-[var(--c-surface)]">
                 {financials.monthExpenses > 0 && (
                   <div
                     className="bg-red-500/70 transition-all duration-700"
@@ -706,11 +706,11 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               <div className="flex gap-4 text-[10px]">
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-white/40">Прибыль {financials.marginPct}%</span>
+                  <span className="text-[var(--c-hint)]">Прибыль {financials.marginPct}%</span>
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-red-500/70" />
-                  <span className="text-white/40">Расходы {stats.month > 0 ? 100 - financials.marginPct : 0}%</span>
+                  <span className="text-[var(--c-hint)]">Расходы {stats.month > 0 ? 100 - financials.marginPct : 0}%</span>
                 </span>
               </div>
             </button>
@@ -719,20 +719,20 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           {/* Quick stats grid */}
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: 'Смена', value: stats.today, sub: `${stats.todayCount} чек.`, icon: CalendarDays, color: 'text-emerald-400', action: () => setDetail('today') },
-              { label: 'Неделя', value: stats.week, sub: `${stats.weekCount} чек.`, icon: TrendingUp, color: 'text-blue-400', action: () => setDetail('week') },
-              { label: 'Ср. чек', value: stats.avgCheck, sub: 'за месяц', icon: Receipt, color: 'text-amber-400', action: () => setDetail('avgcheck') },
-              { label: 'Должники', value: debtors.reduce((s, d) => s + Math.abs(d.balance), 0), sub: `${debtors.length} чел.`, icon: AlertCircle, color: 'text-red-400', action: () => nav('management:debtors') },
+              { label: 'Смена', value: stats.today, sub: `${stats.todayCount} чек.`, icon: CalendarDays, color: 'text-[var(--c-success)]', action: () => setDetail('today') },
+              { label: 'Неделя', value: stats.week, sub: `${stats.weekCount} чек.`, icon: TrendingUp, color: 'text-[var(--c-info)]', action: () => setDetail('week') },
+              { label: 'Ср. чек', value: stats.avgCheck, sub: 'за месяц', icon: Receipt, color: 'text-[var(--c-warning)]', action: () => setDetail('avgcheck') },
+              { label: 'Должники', value: debtors.reduce((s, d) => s + Math.abs(d.balance), 0), sub: `${debtors.length} чел.`, icon: AlertCircle, color: 'text-[var(--c-danger)]', action: () => nav('management:debtors') },
             ].map((s) => (
               <button key={s.label} onClick={s.action} className="p-2.5 rounded-xl card-interactive flex items-center gap-2.5 text-left">
-                <div className="w-8 h-8 rounded-lg bg-white/4 flex items-center justify-center shrink-0">
+                <div className="w-8 h-8 rounded-lg bg-[var(--c-surface)] flex items-center justify-center shrink-0">
                   <s.icon className={`w-4 h-4 ${s.color}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-black text-[var(--c-text)] tabular-nums leading-tight">{fmtCur(s.value)}</p>
-                  <p className="text-[9px] text-white/20">{s.sub}</p>
+                  <p className="text-[9px] text-[var(--c-muted)]">{s.sub}</p>
                 </div>
-                <ChevronRight className="w-3 h-3 text-white/10 shrink-0" />
+                <ChevronRight className="w-3 h-3 text-[var(--c-muted)] shrink-0" />
               </button>
             ))}
           </div>
@@ -740,7 +740,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           {/* Expense breakdown */}
           {(financials.monthExpenses > 0 || financials.monthSupplyCost > 0) && (
             <div>
-              <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Затраты за месяц</h3>
+              <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Затраты за месяц</h3>
               <div className="space-y-2">
                 {financials.monthCOGS > 0 && (
                   <button
@@ -748,41 +748,41 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                     className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
                   >
                     <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
-                      <ShoppingBag className="w-4 h-4 text-orange-400" />
+                      <ShoppingBag className="w-4 h-4 text-[var(--c-warning)]" />
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="text-xs text-white/50">Себестоимость проданного</p>
+                      <p className="text-xs text-[var(--c-hint)]">Себестоимость проданного</p>
                     </div>
-                    <span className="font-bold text-sm text-orange-400">{fmtCur(financials.monthCOGS)}</span>
-                    <ChevronRight className="w-3 h-3 text-white/10 shrink-0" />
+                    <span className="font-bold text-sm text-[var(--c-warning)]">{fmtCur(financials.monthCOGS)}</span>
+                    <ChevronRight className="w-3 h-3 text-[var(--c-muted)] shrink-0" />
                   </button>
                 )}
                 <button
                   onClick={() => nav('management:supplies')}
                   className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
-                    <Truck className="w-4 h-4 text-red-400" />
+                  <div className="w-8 h-8 rounded-lg bg-[var(--c-danger-bg)] flex items-center justify-center shrink-0">
+                    <Truck className="w-4 h-4 text-[var(--c-danger)]" />
                   </div>
                   <div className="flex-1 text-left">
-                    <p className="text-xs text-white/50">Закупки (поставки)</p>
+                    <p className="text-xs text-[var(--c-hint)]">Закупки (поставки)</p>
                   </div>
-                  <span className="font-bold text-sm text-red-400">{fmtCur(financials.monthSupplyCost)}</span>
-                  <ChevronRight className="w-3 h-3 text-white/10 shrink-0" />
+                  <span className="font-bold text-sm text-[var(--c-danger)]">{fmtCur(financials.monthSupplyCost)}</span>
+                  <ChevronRight className="w-3 h-3 text-[var(--c-muted)] shrink-0" />
                 </button>
                 {financials.monthInkassation > 0 && (
                   <button
                     onClick={() => nav('management:cash')}
                     className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
-                      <Banknote className="w-4 h-4 text-amber-400" />
+                    <div className="w-8 h-8 rounded-lg bg-[var(--c-warning-bg)] flex items-center justify-center shrink-0">
+                      <Banknote className="w-4 h-4 text-[var(--c-warning)]" />
                     </div>
                     <div className="flex-1 text-left">
-                      <p className="text-xs text-white/50">Инкассация</p>
+                      <p className="text-xs text-[var(--c-hint)]">Инкассация</p>
                     </div>
-                    <span className="font-bold text-sm text-amber-400">{fmtCur(financials.monthInkassation)}</span>
-                    <ChevronRight className="w-3 h-3 text-white/10 shrink-0" />
+                    <span className="font-bold text-sm text-[var(--c-warning)]">{fmtCur(financials.monthInkassation)}</span>
+                    <ChevronRight className="w-3 h-3 text-[var(--c-muted)] shrink-0" />
                   </button>
                 )}
               </div>
@@ -792,13 +792,13 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           {/* Revenue chart */}
           <div>
             <button onClick={() => setDetail('revenue')} className="flex items-center gap-1 mb-2 group">
-              <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Выручка за 7 дней</h3>
-              <ChevronRight className="w-3 h-3 text-white/15 group-hover:text-white/30 transition-colors" />
+              <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">Выручка за 7 дней</h3>
+              <ChevronRight className="w-3 h-3 text-[var(--c-muted)] group-hover:text-[var(--c-hint)] transition-colors" />
             </button>
             <div className="flex items-end gap-1 h-28">
               {dailyRevenue.map((day) => (
                 <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-[9px] text-white/30 font-medium">
+                    <span className="text-[9px] text-[var(--c-hint)] font-medium">
                     {day.total > 0 ? fmt(day.total) : ''}
                   </span>
                   <div className="w-full flex-1 flex items-end">
@@ -807,7 +807,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                       style={{ height: `${Math.max(2, (day.total / maxDaily) * 100)}%` }}
                     />
                   </div>
-                  <span className="text-[10px] text-white/40 font-semibold">{day.label}</span>
+                  <span className="text-[10px] text-[var(--c-hint)] font-semibold">{day.label}</span>
                 </div>
               ))}
             </div>
@@ -816,8 +816,8 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           {/* Payment methods */}
           <div>
             <button onClick={() => setDetail('payments')} className="flex items-center gap-1 mb-2 group">
-              <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Способы оплаты</h3>
-              <ChevronRight className="w-3 h-3 text-white/15 group-hover:text-white/30 transition-colors" />
+              <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">Способы оплаты</h3>
+              <ChevronRight className="w-3 h-3 text-[var(--c-muted)] group-hover:text-[var(--c-hint)] transition-colors" />
             </button>
             <div className="space-y-2.5">
               {[
@@ -829,15 +829,15 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                 const pct = stats.totalPayments > 0 ? (pm.value / stats.totalPayments) * 100 : 0;
                 return (
                   <div key={pm.label} className="flex items-center gap-3">
-                    <pm.icon className="w-4 h-4 text-white/40 shrink-0" />
+                    <pm.icon className="w-4 h-4 text-[var(--c-hint)] shrink-0" />
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-white/60">{pm.label}</span>
+                        <span className="text-xs text-[var(--c-hint)]">{pm.label}</span>
                         <span className="text-xs font-bold text-[var(--c-text)]">
-                          {fmtCur(pm.value)} <span className="text-white/30 font-normal">({Math.round(pct)}%)</span>
+                          {fmtCur(pm.value)} <span className="text-[var(--c-hint)] font-normal">({Math.round(pct)}%)</span>
                         </span>
                       </div>
-                      <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                      <div className="h-1.5 rounded-full bg-[var(--c-surface)] overflow-hidden">
                         <div className={`h-full rounded-full ${pm.color} transition-all duration-700`} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
@@ -851,8 +851,8 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           {categoryBreakdown.length > 0 && (
             <div>
               <button onClick={() => setTab('items')} className="flex items-center gap-1 mb-2 group">
-                <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">По категориям</h3>
-                <ChevronRight className="w-3 h-3 text-white/15 group-hover:text-white/30 transition-colors" />
+              <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">По категориям</h3>
+              <ChevronRight className="w-3 h-3 text-[var(--c-muted)] group-hover:text-[var(--c-hint)] transition-colors" />
               </button>
               <div className="space-y-2">
                 {categoryBreakdown.map((cat, i) => {
@@ -864,8 +864,8 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                       onClick={() => setTab('items')}
                       className="w-full flex items-center gap-3 active:scale-[0.99] transition-transform"
                     >
-                      <span className="text-xs text-white/50 w-16 shrink-0 text-left">{cat.label}</span>
-                      <div className="flex-1 h-5 rounded-md bg-white/5 overflow-hidden">
+                      <span className="text-xs text-[var(--c-hint)] w-16 shrink-0 text-left truncate">{cat.label}</span>
+                        <div className="flex-1 h-5 rounded-md bg-[var(--c-surface)] overflow-hidden">
                         <div
                           className={`h-full rounded-md ${colors[i % colors.length]} flex items-center px-2 transition-all duration-700`}
                           style={{ width: `${(cat.revenue / maxRev) * 100}%` }}
@@ -873,7 +873,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                           <span className="text-[10px] font-bold text-white whitespace-nowrap">{fmtCur(cat.revenue)}</span>
                         </div>
                       </div>
-                      <span className="text-[10px] text-white/30 w-10 text-right">{cat.count} шт</span>
+                      <span className="text-[10px] text-[var(--c-hint)] w-10 text-right">{cat.count} шт</span>
                     </button>
                   );
                 })}
@@ -887,14 +887,14 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               onClick={() => nav('management:debtors')}
               className="w-full flex items-center gap-2 mb-3 group"
             >
-              <AlertCircle className="w-4 h-4 text-red-400" />
+              <AlertCircle className="w-4 h-4 text-[var(--c-danger)]" />
               <h3 className="text-sm font-semibold text-[var(--c-text)]">
                 Должники ({debtors.length})
               </h3>
-              <span className="ml-auto text-xs font-bold text-red-400">
+              <span className="ml-auto text-xs font-bold text-[var(--c-danger)]">
                 {fmtCur(debtors.reduce((s, d) => s + Math.abs(d.balance), 0))}
               </span>
-              <ChevronRight className="w-3.5 h-3.5 text-white/15 group-hover:text-white/30 transition-colors shrink-0" />
+              <ChevronRight className="w-3.5 h-3.5 text-[var(--c-muted)] group-hover:text-[var(--c-hint)] transition-colors shrink-0" />
             </button>
             {debtors.length === 0 ? (
               <p className="text-xs text-[var(--c-hint)] py-4 text-center">Нет должников</p>
@@ -904,10 +904,10 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                   <button
                     key={d.id}
                     onClick={() => nav('management:debtors')}
-                    className="w-full flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/10 active:scale-[0.99] transition-transform"
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-border)] active:scale-[0.99] transition-transform"
                   >
                     <span className="font-medium text-sm text-[var(--c-text)]">{d.nickname}</span>
-                    <span className="font-bold text-sm text-red-400">{fmtCur(d.balance)}</span>
+                    <span className="font-bold text-sm text-[var(--c-danger)]">{fmtCur(d.balance)}</span>
                   </button>
                 ))}
                 {debtors.length > 5 && (
@@ -936,7 +936,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                 <button
                   onClick={() => setSelectedDayIdx((i) => Math.min(i + 1, reportDays.length - 1))}
                   disabled={selectedDayIdx >= reportDays.length - 1}
-                  className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all"
+                  className="w-9 h-9 rounded-xl bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all"
                 >
                   <ChevronLeft className="w-4 h-4 text-[var(--c-text)]" />
                 </button>
@@ -955,7 +955,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                 <button
                   onClick={() => setSelectedDayIdx((i) => Math.max(i - 1, 0))}
                   disabled={selectedDayIdx <= 0}
-                  className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all"
+                  className="w-9 h-9 rounded-xl bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all"
                 >
                   <ChevronRight className="w-4 h-4 text-[var(--c-text)]" />
                 </button>
@@ -967,28 +967,28 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                 <>
                   {/* Summary bar */}
                   {daySummary && (
-                    <div className="p-4 rounded-2xl bg-gradient-to-br from-[var(--c-accent)]/15 to-emerald-500/5 border border-white/5">
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-[var(--c-accent)]/15 to-emerald-500/5 border border-[var(--c-border)]">
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs text-white/40">Итого за смену</span>
+                        <span className="text-xs text-[var(--c-hint)]">Итого за смену</span>
                         <span className="text-xl font-black text-[var(--c-text)]">
                           {fmtCur(daySummary.total)}
                         </span>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         {[
-                          { label: 'Наличные', value: daySummary.cash, icon: Banknote, color: 'text-emerald-400' },
-                          { label: 'Карта', value: daySummary.card, icon: CreditCard, color: 'text-blue-400' },
-                          { label: 'В долг', value: daySummary.debt, icon: HandCoins, color: 'text-red-400' },
-                          { label: 'Бонусы', value: daySummary.bonus, icon: Star, color: 'text-amber-400' },
+                          { label: 'Наличные', value: daySummary.cash, icon: Banknote, color: 'text-[var(--c-success)]' },
+                          { label: 'Карта', value: daySummary.card, icon: CreditCard, color: 'text-[var(--c-info)]' },
+                          { label: 'В долг', value: daySummary.debt, icon: HandCoins, color: 'text-[var(--c-danger)]' },
+                          { label: 'Бонусы', value: daySummary.bonus, icon: Star, color: 'text-[var(--c-warning)]' },
                         ].filter((s) => s.value > 0).map((s) => (
-                          <div key={s.label} className="flex items-center gap-2 p-2 rounded-lg bg-white/5">
+                          <div key={s.label} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--c-surface)]">
                             <s.icon className={`w-3.5 h-3.5 ${s.color} shrink-0`} />
-                            <span className="text-xs text-white/50">{s.label}</span>
+                            <span className="text-xs text-[var(--c-hint)]">{s.label}</span>
                             <span className="ml-auto text-xs font-bold text-[var(--c-text)]">{fmtCur(s.value)}</span>
                           </div>
                         ))}
                       </div>
-                      <p className="text-[10px] text-white/25 mt-2 text-center">
+                      <p className="text-[10px] text-[var(--c-muted)] mt-2 text-center">
                         {dayAnalytics.totalChecks} чеков · ср. {fmtCur(dayAnalytics.avgCheck)}
                       </p>
                     </div>
@@ -997,7 +997,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                   {/* Check cards */}
                   <div className="space-y-2">
                     {dayAnalytics.checks.length === 0 ? (
-                      <p className="text-sm text-white/30 text-center py-8">Нет чеков за эту смену</p>
+                      <p className="text-sm text-[var(--c-hint)] text-center py-8">Нет чеков за эту смену</p>
                     ) : (
                       dayAnalytics.checks.map((c) => {
                         const isExpanded = expandedCheckId === c.id;
@@ -1013,15 +1013,15 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                                 <span className="font-medium text-sm text-[var(--c-text)] truncate">
                                   {c.player_nickname}
                                 </span>
-                                <span className="text-[10px] text-white/30">{fmtTime(c.closed_at)}</span>
+                                <span className="text-[10px] text-[var(--c-hint)]">{fmtTime(c.closed_at)}</span>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 {c.payment_method && (
                                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                                    c.payment_method === 'cash' ? 'bg-emerald-500/15 text-emerald-400' :
-                                    c.payment_method === 'card' ? 'bg-blue-500/15 text-blue-400' :
-                                    c.payment_method === 'debt' ? 'bg-red-500/15 text-red-400' :
-                                    'bg-amber-500/15 text-amber-400'
+                                    c.payment_method === 'cash' ? 'bg-[var(--c-success-bg)] text-[var(--c-success)]' :
+                                    c.payment_method === 'card' ? 'bg-[var(--c-info-bg)] text-[var(--c-info)]' :
+                                    c.payment_method === 'debt' ? 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' :
+                                    'bg-[var(--c-warning-bg)] text-[var(--c-warning)]'
                                   }`}>
                                     {pmLabels[c.payment_method] || c.payment_method}
                                   </span>
@@ -1029,48 +1029,48 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                                 <span className="font-bold text-sm text-[var(--c-accent)]">
                                   {fmtCur(c.bonus_used > 0 ? originalTotal : c.total_amount)}
                                 </span>
-                                <ChevronDown className={`w-4 h-4 text-white/20 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                <ChevronDown className={`w-4 h-4 text-[var(--c-muted)] transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                               </div>
                             </div>
 
                             {isExpanded && (
-                              <div className="mt-3 pt-3 border-t border-white/5 space-y-1.5">
+                              <div className="mt-3 pt-3 border-t border-[var(--c-border)] space-y-1.5">
                                 {c.items.map((item, idx) => (
                                   <div key={idx} className="flex justify-between text-xs">
-                                    <span className="text-white/50">{item.name} × {item.quantity}</span>
-                                    <span className="text-white/40">{fmtCur(item.quantity * item.price)}</span>
+                                    <span className="text-[var(--c-hint)]">{item.name} × {item.quantity}</span>
+                                    <span className="text-[var(--c-hint)]">{fmtCur(item.quantity * item.price)}</span>
                                   </div>
                                 ))}
-                                <div className="pt-2 border-t border-white/5 space-y-1">
+                                <div className="pt-2 border-t border-[var(--c-border)] space-y-1">
                                   <div className="flex justify-between text-xs">
-                                    <span className="text-white/40">Сумма</span>
+                                    <span className="text-[var(--c-hint)]">Сумма</span>
                                     <span className="font-semibold text-[var(--c-text)]">{fmtCur(originalTotal)}</span>
                                   </div>
                                   {c.bonus_used > 0 && (
                                     <>
                                       <div className="flex justify-between text-xs">
-                                        <span className="text-amber-400/70">Оплачено бонусами</span>
-                                        <span className="font-semibold text-amber-400">-{fmtCur(c.bonus_used)}</span>
+                                        <span className="text-[var(--c-warning)]/70">Оплачено бонусами</span>
+                                        <span className="font-semibold text-[var(--c-warning)]">-{fmtCur(c.bonus_used)}</span>
                                       </div>
                                       <div className="flex justify-between text-xs">
-                                        <span className="text-white/40">К оплате ({pmLabels[c.payment_method || ''] || ''})</span>
+                                        <span className="text-[var(--c-hint)]">К оплате ({pmLabels[c.payment_method || ''] || ''})</span>
                                         <span className="font-semibold text-[var(--c-text)]">{fmtCur(c.total_amount)}</span>
                                       </div>
                                     </>
                                   )}
                                   {c.payment_method === 'split' && splitBreakdowns[c.id] ? (
                                     <div className="space-y-0.5">
-                                      <span className="text-xs text-white/40">Разделённая оплата:</span>
+                                      <span className="text-xs text-[var(--c-hint)]">Разделённая оплата:</span>
                                       {splitBreakdowns[c.id].map((sp, si) => (
                                         <div key={si} className="flex justify-between text-xs pl-2">
-                                          <span className="text-white/40">{pmLabels[sp.method] || sp.method}</span>
+                                          <span className="text-[var(--c-hint)]">{pmLabels[sp.method] || sp.method}</span>
                                           <span className="text-[var(--c-text)]">{fmtCur(sp.amount)}</span>
                                         </div>
                                       ))}
                                     </div>
                                   ) : (
                                     <div className="flex justify-between text-xs">
-                                      <span className="text-white/40">Способ оплаты</span>
+                                      <span className="text-[var(--c-hint)]">Способ оплаты</span>
                                       <span className="text-[var(--c-text)]">{pmLabels[c.payment_method || ''] || c.payment_method || '-'}</span>
                                     </div>
                                   )}
@@ -1104,17 +1104,17 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                 return (
                   <div key={item.name} className="flex items-center gap-2.5 p-2.5 rounded-xl card">
                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      i === 0 ? 'bg-amber-500/20 text-amber-400' :
+                      i === 0 ? 'bg-[var(--c-warning-bg)] text-[var(--c-warning)]' :
                       i === 1 ? 'bg-gray-400/20 text-gray-300' :
                       i === 2 ? 'bg-orange-700/20 text-orange-400' :
-                      'bg-white/5 text-white/30'
+                      'bg-[var(--c-surface)] text-[var(--c-hint)]'
                     }`}>
                       {i + 1}
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[var(--c-text)] truncate">{item.name}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <div className="flex-1 h-1 rounded-full bg-white/5 overflow-hidden">
+                        <div className="flex-1 h-1 rounded-full bg-[var(--c-surface)] overflow-hidden">
                           <div
                             className="h-full rounded-full bg-[var(--c-accent)] transition-all duration-500"
                             style={{ width: `${(item.revenue / maxRev) * 100}%` }}
@@ -1124,7 +1124,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold text-[var(--c-text)]">{fmtCur(item.revenue)}</p>
-                      <p className="text-[10px] text-white/30">{item.qty} шт</p>
+                        <p className="text-[10px] text-[var(--c-hint)]">{item.qty} шт</p>
                     </div>
                   </div>
                 );
@@ -1149,17 +1149,17 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                 return (
                   <div key={player.nickname + i} className="flex items-center gap-2.5 p-2.5 rounded-xl card">
                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      i === 0 ? 'bg-amber-500/20 text-amber-400' :
+                      i === 0 ? 'bg-[var(--c-warning-bg)] text-[var(--c-warning)]' :
                       i === 1 ? 'bg-gray-400/20 text-gray-300' :
                       i === 2 ? 'bg-orange-700/20 text-orange-400' :
-                      'bg-white/5 text-white/30'
+                      'bg-[var(--c-surface)] text-[var(--c-hint)]'
                     }`}>
                       {i === 0 ? <Crown className="w-3 h-3" /> : i + 1}
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-[var(--c-text)] truncate">{player.nickname}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <div className="flex-1 h-1 rounded-full bg-white/5 overflow-hidden">
+                        <div className="flex-1 h-1 rounded-full bg-[var(--c-surface)] overflow-hidden">
                           <div
                             className="h-full rounded-full bg-amber-500 transition-all duration-500"
                             style={{ width: `${(player.total / maxTotal) * 100}%` }}
@@ -1170,8 +1170,8 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                     <div className="text-right shrink-0">
                       <p className="text-sm font-bold text-[var(--c-text)]">{fmtCur(player.total)}</p>
                       <div className="flex items-center gap-1 justify-end">
-                        <Hash className="w-2.5 h-2.5 text-white/20" />
-                        <p className="text-[10px] text-white/30">{player.count} чек.</p>
+                        <Hash className="w-2.5 h-2.5 text-[var(--c-muted)]" />
+                        <p className="text-[10px] text-[var(--c-hint)]">{player.count} чек.</p>
                       </div>
                     </div>
                   </div>
@@ -1220,7 +1220,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               {transactions.length >= txLimit && (
                 <button
                   onClick={() => setTxLimit((l) => l + 50)}
-                  className="w-full py-2.5 text-sm text-[var(--c-accent)] hover:bg-white/5 rounded-xl transition-colors font-medium"
+                  className="w-full py-2.5 text-sm text-[var(--c-accent)] hover:bg-[var(--c-surface)] rounded-xl transition-colors font-medium"
                 >
                   Загрузить ещё
                 </button>
@@ -1283,7 +1283,7 @@ function DetailScreen(props: DetailProps) {
 
   const header = (
     <div className="flex items-center gap-2 mb-4">
-      <button onClick={onBack} className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center active:scale-90 transition-transform shrink-0">
+      <button onClick={onBack} className="w-9 h-9 rounded-xl bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform shrink-0">
         <ArrowLeft className="w-4 h-4 text-[var(--c-text)]" />
       </button>
       <h2 className="text-lg font-bold text-[var(--c-text)]">{titleMap[detail || ''] || ''}</h2>
@@ -1297,10 +1297,10 @@ function DetailScreen(props: DetailProps) {
   const monthCashOps = cashOps.filter((op) => new Date(op.created_at) >= monthStart);
 
   const pmIcons: Record<string, { icon: typeof Banknote; color: string; bg: string }> = {
-    cash: { icon: Banknote, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-    card: { icon: CreditCard, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    debt: { icon: HandCoins, color: 'text-red-400', bg: 'bg-red-500/10' },
-    bonus: { icon: Star, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+    cash: { icon: Banknote, color: 'text-[var(--c-success)]', bg: 'bg-[var(--c-success-bg)]' },
+    card: { icon: CreditCard, color: 'text-[var(--c-info)]', bg: 'bg-[var(--c-info-bg)]' },
+    debt: { icon: HandCoins, color: 'text-[var(--c-danger)]', bg: 'bg-[var(--c-danger-bg)]' },
+    bonus: { icon: Star, color: 'text-[var(--c-warning)]', bg: 'bg-[var(--c-warning-bg)]' },
     split: { icon: Receipt, color: 'text-violet-400', bg: 'bg-violet-500/10' },
   };
 
@@ -1323,7 +1323,7 @@ function DetailScreen(props: DetailProps) {
               <p className="text-[13px] font-medium text-[var(--c-text)] truncate">
                 {c.player?.nickname || 'Гость'}
               </p>
-              <p className="text-[10px] text-white/25">
+              <p className="text-[10px] text-[var(--c-muted)]">
                 {showDate ? fmtDateTime(c.closed_at) : new Date(c.closed_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                 {c.payment_method && ` · ${pmLabels[c.payment_method] || c.payment_method}`}
               </p>
@@ -1338,8 +1338,8 @@ function DetailScreen(props: DetailProps) {
   );
 
   const statRow = (label: string, value: number, color = 'text-[var(--c-text)]') => (
-    <div className="flex items-center justify-between py-2 border-b border-white/5 last:border-0">
-      <span className="text-xs text-white/50">{label}</span>
+    <div className="flex items-center justify-between py-2 border-b border-[var(--c-border)] last:border-0">
+      <span className="text-xs text-[var(--c-hint)]">{label}</span>
       <span className={`text-sm font-bold tabular-nums ${color}`}>{fmtCur(value)}</span>
     </div>
   );
@@ -1355,7 +1355,7 @@ function DetailScreen(props: DetailProps) {
         {header}
         <div className="p-4 rounded-xl bg-gradient-to-br from-[var(--c-accent)]/12 to-purple-900/5 card text-center">
           <p className="text-3xl font-black text-[var(--c-text)] tabular-nums">{fmtCur(s.month)}</p>
-          <p className="text-[11px] text-white/30 mt-1">{s.monthCount} чеков · ср. {fmtCur(s.avgCheck)}</p>
+          <p className="text-[11px] text-[var(--c-hint)] mt-1">{s.monthCount} чеков · ср. {fmtCur(s.avgCheck)}</p>
           {s.monthGrowth !== 0 && (
             <Badge variant={s.monthGrowth > 0 ? 'success' : 'danger'} size="sm" className="mt-2">
               {s.monthGrowth > 0 ? '+' : ''}{s.monthGrowth}% к прошлому месяцу
@@ -1363,30 +1363,30 @@ function DetailScreen(props: DetailProps) {
           )}
         </div>
         <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">По дням (7 дней)</h3>
+          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">По дням (7 дней)</h3>
           <div className="flex items-end gap-1 h-24">
             {props.dailyRevenue.map((day) => {
               const maxD = Math.max(...props.dailyRevenue.map((d) => d.total), 1);
               return (
                 <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-[8px] text-white/30">{day.total > 0 ? fmt(day.total) : ''}</span>
+                  <span className="text-[8px] text-[var(--c-hint)]">{day.total > 0 ? fmt(day.total) : ''}</span>
                   <div className="w-full flex-1 flex items-end">
                     <div className="w-full rounded-t-md bg-[var(--c-accent)] min-h-[2px]" style={{ height: `${Math.max(2, (day.total / maxD) * 100)}%` }} />
                   </div>
-                  <span className="text-[9px] text-white/40 font-semibold">{day.label}</span>
+                  <span className="text-[9px] text-[var(--c-hint)] font-semibold">{day.label}</span>
                 </div>
               );
             })}
           </div>
         </div>
         <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">По способам оплаты</h3>
+          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-1">По способам оплаты</h3>
           {Object.entries(pmBreakdown).sort((a, b) => b[1] - a[1]).map(([method, val]) => statRow(pmLabels[method] || method, val))}
         </div>
         <div>
-          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Чеки за месяц ({monthChecks.length})</h3>
+          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Чеки за месяц ({monthChecks.length})</h3>
           {checkList(monthChecks.slice(0, 30), true)}
-          {monthChecks.length > 30 && <p className="text-[10px] text-white/20 text-center pt-2">и ещё {monthChecks.length - 30}...</p>}
+          {monthChecks.length > 30 && <p className="text-[10px] text-[var(--c-muted)] text-center pt-2">и ещё {monthChecks.length - 30}...</p>}
         </div>
       </div>
     );
@@ -1399,33 +1399,33 @@ function DetailScreen(props: DetailProps) {
       <div className="space-y-4">
         {header}
         <div className="p-4 rounded-xl bg-red-500/6 border border-red-500/10 text-center">
-          <p className="text-3xl font-black text-red-400 tabular-nums">{fmtCur(f.monthExpenses)}</p>
-          <p className="text-[11px] text-white/30 mt-1">общие расходы за месяц</p>
+          <p className="text-3xl font-black text-[var(--c-danger)] tabular-nums">{fmtCur(f.monthExpenses)}</p>
+          <p className="text-[11px] text-[var(--c-hint)] mt-1">общие расходы за месяц</p>
         </div>
         <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">Детализация</h3>
-          {f.monthCOGS > 0 && statRow('Себестоимость проданного', f.monthCOGS, 'text-orange-400')}
-          {f.monthOpEx > 0 && statRow('Операционные расходы', f.monthOpEx, 'text-red-400')}
-          {statRow('Закупки (поставки)', totalSupplyCost, 'text-red-400/60')}
-          {totalInkassation > 0 && statRow('Инкассация', totalInkassation, 'text-amber-400')}
+          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-1">Детализация</h3>
+          {f.monthCOGS > 0 && statRow('Себестоимость проданного', f.monthCOGS, 'text-[var(--c-warning)]')}
+          {f.monthOpEx > 0 && statRow('Операционные расходы', f.monthOpEx, 'text-[var(--c-danger)]')}
+          {statRow('Закупки (поставки)', totalSupplyCost, 'text-[var(--c-danger)]')}
+          {totalInkassation > 0 && statRow('Инкассация', totalInkassation, 'text-[var(--c-warning)]')}
         </div>
         <div>
-          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Поставки</h3>
+          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Поставки</h3>
           <div className="space-y-1.5">
             {monthSupplies.length === 0 ? (
               <p className="text-xs text-[var(--c-hint)] text-center py-6">Нет поставок</p>
             ) : monthSupplies.map((sup) => (
               <button key={sup.id} onClick={() => onNavigate('management:supplies')} className="w-full flex items-center gap-2.5 p-2.5 rounded-xl card-interactive">
                 <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
-                  <Truck className="w-3.5 h-3.5 text-red-400" />
+                  <Truck className="w-3.5 h-3.5 text-[var(--c-danger)]" />
                 </div>
                 <div className="flex-1 text-left min-w-0">
                   <p className="text-[13px] font-medium text-[var(--c-text)]">
                     {new Date(sup.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </div>
-                <span className="font-bold text-sm text-red-400 tabular-nums shrink-0">{fmtCur(sup.total_cost)}</span>
-                <ChevronRight className="w-3 h-3 text-white/10 shrink-0" />
+                <span className="font-bold text-sm text-[var(--c-danger)] tabular-nums shrink-0">{fmtCur(sup.total_cost)}</span>
+                <ChevronRight className="w-3 h-3 text-[var(--c-muted)] shrink-0" />
               </button>
             ))}
           </div>
@@ -1439,45 +1439,45 @@ function DetailScreen(props: DetailProps) {
       <div className="space-y-4">
         {header}
         <div className={`p-4 rounded-xl text-center ${f.monthNetIncome >= 0 ? 'bg-emerald-500/6 border border-emerald-500/10' : 'bg-red-500/6 border border-red-500/10'}`}>
-          <p className="text-[11px] text-white/30 mb-1">Чистая прибыль</p>
-          <p className={`text-3xl font-black tabular-nums ${f.monthNetIncome >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{fmtCur(f.monthNetIncome)}</p>
-          <p className="text-[11px] text-white/25 mt-1">маржа {f.marginPct}%</p>
+          <p className="text-[11px] text-[var(--c-hint)] mb-1">Чистая прибыль</p>
+          <p className={`text-3xl font-black tabular-nums ${f.monthNetIncome >= 0 ? 'text-[var(--c-success)]' : 'text-[var(--c-danger)]'}`}>{fmtCur(f.monthNetIncome)}</p>
+          <p className="text-[11px] text-[var(--c-muted)] mt-1">маржа {f.marginPct}%</p>
         </div>
         <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">P&L</h3>
-          {statRow('Выручка', s.month, 'text-emerald-400')}
-          {f.monthCOGS > 0 && statRow('Себестоимость проданного', -f.monthCOGS, 'text-orange-400')}
-          {f.monthOpEx > 0 && statRow('Операционные расходы', -f.monthOpEx, 'text-red-400')}
-          <div className="border-t-2 border-white/10 mt-1 pt-1">
-            {statRow('Чистая прибыль', f.monthNetIncome, f.monthNetIncome >= 0 ? 'text-emerald-400' : 'text-red-400')}
+          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-1">P&L</h3>
+          {statRow('Выручка', s.month, 'text-[var(--c-success)]')}
+          {f.monthCOGS > 0 && statRow('Себестоимость проданного', -f.monthCOGS, 'text-[var(--c-warning)]')}
+          {f.monthOpEx > 0 && statRow('Операционные расходы', -f.monthOpEx, 'text-[var(--c-danger)]')}
+          <div className="border-t-2 border-[var(--c-border)] mt-1 pt-1">
+            {statRow('Чистая прибыль', f.monthNetIncome, f.monthNetIncome >= 0 ? 'text-[var(--c-success)]' : 'text-[var(--c-danger)]')}
           </div>
         </div>
         <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">Движение средств</h3>
-          {statRow('Закупки (поставки)', f.monthSupplyCost, 'text-red-400')}
-          {f.monthInkassation > 0 && statRow('Инкассация', f.monthInkassation, 'text-amber-400')}
+          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-1">Движение средств</h3>
+          {statRow('Закупки (поставки)', f.monthSupplyCost, 'text-[var(--c-danger)]')}
+          {f.monthInkassation > 0 && statRow('Инкассация', f.monthInkassation, 'text-[var(--c-warning)]')}
         </div>
         {s.month > 0 && (
           <div className="p-3 rounded-xl card space-y-2">
-            <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Визуализация</h3>
-            <div className="flex h-4 rounded-full overflow-hidden bg-white/5">
+            <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">Визуализация</h3>
+            <div className="flex h-4 rounded-full overflow-hidden bg-[var(--c-surface)]">
               {f.monthExpenses > 0 && <div className="bg-red-500/70" style={{ width: `${(f.monthExpenses / s.month) * 100}%` }} />}
               <div className="bg-emerald-500" style={{ width: `${Math.max(0, (f.monthNetIncome / s.month) * 100)}%` }} />
             </div>
-            <div className="flex justify-between text-[10px] text-white/30">
+            <div className="flex justify-between text-[10px] text-[var(--c-hint)]">
               <span>Расходы {100 - f.marginPct}%</span>
               <span>Прибыль {f.marginPct}%</span>
             </div>
           </div>
         )}
         <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">Сравнение с прошлым месяцем</h3>
+          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-1">Сравнение с прошлым месяцем</h3>
           {statRow('Выручка (этот)', s.month)}
-          {statRow('Выручка (прошлый)', s.prevMonth, 'text-white/40')}
-          {statRow('Расходы (этот)', f.monthExpenses, 'text-red-400')}
-          {statRow('Расходы (прошлый)', f.prevMonthExpenses, 'text-white/40')}
-          {statRow('Прибыль (этот)', f.monthNetIncome, f.monthNetIncome >= 0 ? 'text-emerald-400' : 'text-red-400')}
-          {statRow('Прибыль (прошлый)', f.prevMonthNetIncome, 'text-white/40')}
+          {statRow('Выручка (прошлый)', s.prevMonth, 'text-[var(--c-hint)]')}
+          {statRow('Расходы (этот)', f.monthExpenses, 'text-[var(--c-danger)]')}
+          {statRow('Расходы (прошлый)', f.prevMonthExpenses, 'text-[var(--c-hint)]')}
+          {statRow('Прибыль (этот)', f.monthNetIncome, f.monthNetIncome >= 0 ? 'text-[var(--c-success)]' : 'text-[var(--c-danger)]')}
+          {statRow('Прибыль (прошлый)', f.prevMonthNetIncome, 'text-[var(--c-hint)]')}
         </div>
       </div>
     );
@@ -1504,27 +1504,27 @@ function DetailScreen(props: DetailProps) {
       <div className="space-y-4">
         {header}
         <div className="p-4 rounded-xl bg-emerald-500/6 border border-emerald-500/10 text-center">
-          <p className="text-3xl font-black text-emerald-400 tabular-nums">{fmtCur(todayTotal)}</p>
-          <p className="text-[11px] text-white/30 mt-1">{todayChecks.length} чеков · с {REPORT_DAY_HOUR}:00</p>
+          <p className="text-3xl font-black text-[var(--c-success)] tabular-nums">{fmtCur(todayTotal)}</p>
+          <p className="text-[11px] text-[var(--c-hint)] mt-1">{todayChecks.length} чеков · с {REPORT_DAY_HOUR}:00</p>
         </div>
         {todayChecks.length > 0 && (() => {
           const items = [
-            { label: 'Нал', value: todayCash, color: 'text-emerald-400' },
-            { label: 'Карта', value: todayCard, color: 'text-blue-400' },
-            { label: 'Долг', value: todayDebt, color: 'text-red-400' },
-            { label: 'Бонусы', value: todayBonus, color: 'text-amber-400' },
+            { label: 'Нал', value: todayCash, color: 'text-[var(--c-success)]' },
+            { label: 'Карта', value: todayCard, color: 'text-[var(--c-info)]' },
+            { label: 'Долг', value: todayDebt, color: 'text-[var(--c-danger)]' },
+            { label: 'Бонусы', value: todayBonus, color: 'text-[var(--c-warning)]' },
           ].filter((p) => p.value > 0);
           return <div className={`grid gap-2 ${items.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
             {items.map((p) => (
               <div key={p.label} className="p-2.5 rounded-xl card text-center">
                 <p className={`text-sm font-black tabular-nums ${p.color}`}>{fmtCur(p.value)}</p>
-                <p className="text-[9px] text-white/20">{p.label}</p>
+                <p className="text-[9px] text-[var(--c-muted)]">{p.label}</p>
               </div>
             ))}
           </div>;
         })()}
         <div>
-          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Чеки за смену</h3>
+          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Чеки за смену</h3>
           {checkList(todayChecks)}
         </div>
       </div>
@@ -1538,30 +1538,30 @@ function DetailScreen(props: DetailProps) {
       <div className="space-y-4">
         {header}
         <div className="p-4 rounded-xl bg-blue-500/6 border border-blue-500/10 text-center">
-          <p className="text-3xl font-black text-blue-400 tabular-nums">{fmtCur(weekTotal)}</p>
-          <p className="text-[11px] text-white/30 mt-1">{weekChecks.length} чеков · ср. {fmtCur(weekAvg)}</p>
+          <p className="text-3xl font-black text-[var(--c-info)] tabular-nums">{fmtCur(weekTotal)}</p>
+          <p className="text-[11px] text-[var(--c-hint)] mt-1">{weekChecks.length} чеков · ср. {fmtCur(weekAvg)}</p>
         </div>
         <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">По дням</h3>
+          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">По дням</h3>
           <div className="flex items-end gap-1 h-24">
             {props.dailyRevenue.map((day) => {
               const maxD = Math.max(...props.dailyRevenue.map((d) => d.total), 1);
               return (
                 <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-[8px] text-white/30">{day.total > 0 ? fmt(day.total) : ''}</span>
+                  <span className="text-[8px] text-[var(--c-hint)]">{day.total > 0 ? fmt(day.total) : ''}</span>
                   <div className="w-full flex-1 flex items-end">
                     <div className="w-full rounded-t-md bg-blue-500 min-h-[2px]" style={{ height: `${Math.max(2, (day.total / maxD) * 100)}%` }} />
                   </div>
-                  <span className="text-[9px] text-white/40 font-semibold">{day.label}</span>
+                  <span className="text-[9px] text-[var(--c-hint)] font-semibold">{day.label}</span>
                 </div>
               );
             })}
           </div>
         </div>
         <div>
-          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-2">Чеки за неделю ({weekChecks.length})</h3>
+          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Чеки за неделю ({weekChecks.length})</h3>
           {checkList(weekChecks.slice(0, 30), true)}
-          {weekChecks.length > 30 && <p className="text-[10px] text-white/20 text-center pt-2">и ещё {weekChecks.length - 30}...</p>}
+          {weekChecks.length > 30 && <p className="text-[10px] text-[var(--c-muted)] text-center pt-2">и ещё {weekChecks.length - 30}...</p>}
         </div>
       </div>
     );
@@ -1586,42 +1586,42 @@ function DetailScreen(props: DetailProps) {
       <div className="space-y-4">
         {header}
         <div className="p-4 rounded-xl bg-amber-500/6 border border-amber-500/10 text-center">
-          <p className="text-3xl font-black text-amber-400 tabular-nums">{fmtCur(avg)}</p>
-          <p className="text-[11px] text-white/30 mt-1">средний чек за месяц</p>
+          <p className="text-3xl font-black text-[var(--c-warning)] tabular-nums">{fmtCur(avg)}</p>
+          <p className="text-[11px] text-[var(--c-hint)] mt-1">средний чек за месяц</p>
         </div>
         <div className="grid grid-cols-3 gap-2">
           <div className="p-2.5 rounded-xl card text-center">
             <p className="text-sm font-black text-[var(--c-text)] tabular-nums">{fmtCur(minCheck)}</p>
-            <p className="text-[9px] text-white/20">Мин.</p>
+            <p className="text-[9px] text-[var(--c-muted)]">Мин.</p>
           </div>
           <div className="p-2.5 rounded-xl card text-center">
             <p className="text-sm font-black text-[var(--c-text)] tabular-nums">{fmtCur(median)}</p>
-            <p className="text-[9px] text-white/20">Медиана</p>
+            <p className="text-[9px] text-[var(--c-muted)]">Медиана</p>
           </div>
           <div className="p-2.5 rounded-xl card text-center">
             <p className="text-sm font-black text-[var(--c-text)] tabular-nums">{fmtCur(maxCheck)}</p>
-            <p className="text-[9px] text-white/20">Макс.</p>
+            <p className="text-[9px] text-[var(--c-muted)]">Макс.</p>
           </div>
         </div>
         <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-3">Распределение чеков</h3>
+          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-3">Распределение чеков</h3>
           <div className="flex items-end gap-1.5 h-24">
             {histogram.map((b) => (
               <div key={b.label} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[8px] text-white/30">{b.count > 0 ? b.count : ''}</span>
+                <span className="text-[8px] text-[var(--c-hint)]">{b.count > 0 ? b.count : ''}</span>
                 <div className="w-full flex-1 flex items-end">
                   <div className="w-full rounded-t-md bg-amber-500/70 min-h-[2px]" style={{ height: `${Math.max(2, (b.count / maxBucket) * 100)}%` }} />
                 </div>
-                <span className="text-[8px] text-white/30">{b.label}</span>
+                <span className="text-[8px] text-[var(--c-hint)]">{b.label}</span>
               </div>
             ))}
           </div>
         </div>
         <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-1">Статистика</h3>
+          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-1">Статистика</h3>
           {statRow('Всего чеков', s.monthCount)}
           {statRow('Общая выручка', s.month)}
-          {statRow('Средний чек', avg, 'text-amber-400')}
+          {statRow('Средний чек', avg, 'text-[var(--c-warning)]')}
           {statRow('Медианный чек', median)}
           {statRow('Мин. чек', minCheck)}
           {statRow('Макс. чек', maxCheck)}
@@ -1650,12 +1650,12 @@ function DetailScreen(props: DetailProps) {
         {header}
         <div className="p-4 rounded-xl card text-center">
           <p className="text-3xl font-black text-[var(--c-text)] tabular-nums">{fmtCur(totalPm)}</p>
-          <p className="text-[11px] text-white/30 mt-1">{monthChecks.length} чеков за месяц</p>
+          <p className="text-[11px] text-[var(--c-hint)] mt-1">{monthChecks.length} чеков за месяц</p>
         </div>
         {totalPm > 0 && (
-          <div className="flex h-4 rounded-full overflow-hidden bg-white/5">
+          <div className="flex h-4 rounded-full overflow-hidden bg-[var(--c-surface)]">
             {sorted.map(([method, val]) => (
-              <div key={method} className={pmColors[method] || 'bg-white/20'} style={{ width: `${(val.total / totalPm) * 100}%` }} />
+              <div key={method} className={pmColors[method] || 'bg-[var(--c-muted)]'} style={{ width: `${(val.total / totalPm) * 100}%` }} />
             ))}
           </div>
         )}
@@ -1671,12 +1671,12 @@ function DetailScreen(props: DetailProps) {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-[var(--c-text)]">{pmLabels[method] || method}</p>
-                    <p className="text-[10px] text-white/25">{val.count} чеков · {pct}%</p>
+                    <p className="text-[10px] text-[var(--c-muted)]">{val.count} чеков · {pct}%</p>
                   </div>
                   <span className="text-lg font-black text-[var(--c-text)] tabular-nums">{fmtCur(val.total)}</span>
                 </div>
-                <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
-                  <div className={`h-full rounded-full ${pmColors[method] || 'bg-white/20'}`} style={{ width: `${pct}%` }} />
+                <div className="h-1.5 rounded-full bg-[var(--c-surface)] overflow-hidden">
+                  <div className={`h-full rounded-full ${pmColors[method] || 'bg-[var(--c-muted)]'}`} style={{ width: `${pct}%` }} />
                 </div>
               </div>
             );
@@ -1686,5 +1686,5 @@ function DetailScreen(props: DetailProps) {
     );
   }
 
-  return <div>{header}<p className="text-white/30 text-sm text-center py-8">Раздел в разработке</p></div>;
+  return <div>{header}<p className="text-[var(--c-hint)] text-sm text-center py-8">Раздел в разработке</p></div>;
 }

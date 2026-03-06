@@ -312,11 +312,11 @@ export function MenuEditor() {
           <div className="flex items-center gap-3">
             <div className="p-2.5 px-4 rounded-xl card text-center">
               <span className="text-sm font-bold text-[var(--c-text)]">{items.length}</span>
-              <span className="text-xs text-white/40 ml-1.5">позиций</span>
+              <span className="text-xs text-[var(--c-hint)] ml-1.5">позиций</span>
             </div>
-            <div className="p-2.5 px-4 rounded-xl bg-emerald-500/10 text-center">
-              <span className="text-sm font-bold text-emerald-400">{categories.length}</span>
-              <span className="text-xs text-white/40 ml-1.5">разделов</span>
+            <div className="p-2.5 px-4 rounded-xl bg-[var(--c-success-bg)] text-center">
+              <span className="text-sm font-bold text-[var(--c-success)]">{categories.length}</span>
+              <span className="text-xs text-[var(--c-hint)] ml-1.5">разделов</span>
             </div>
             <div className="flex-1" />
             <Button size="sm" variant="secondary" onClick={() => openCreateCategory()}>
@@ -326,11 +326,11 @@ export function MenuEditor() {
           </div>
 
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--c-hint)]" />
             <input
               type="text"
               placeholder="Поиск по названию..."
-              className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-white/30"
+              className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-[var(--c-muted)]"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -358,16 +358,16 @@ export function MenuEditor() {
                         <button
                           onClick={() => moveCategoryOrder(cat, 'up')}
                           disabled={idx === 0}
-                          className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
+                          className="w-6 h-6 rounded-lg bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
                         >
-                          <ChevronUp className="w-3 h-3 text-white/50" />
+                          <ChevronUp className="w-3 h-3 text-[var(--c-hint)]" />
                         </button>
                         <button
                           onClick={() => moveCategoryOrder(cat, 'down')}
                           disabled={idx === topCategories.length - 1}
-                          className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
+                          className="w-6 h-6 rounded-lg bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
                         >
-                          <ChevronDown className="w-3 h-3 text-white/50" />
+                          <ChevronDown className="w-3 h-3 text-[var(--c-hint)]" />
                         </button>
                       </div>
 
@@ -375,31 +375,31 @@ export function MenuEditor() {
                         onClick={() => { setActiveCategory(cat); setViewMode('items'); }}
                         className={`flex-1 flex items-center gap-3 p-3 rounded-xl card-interactive bg-gradient-to-r ${getCategoryColor(idx)}`}
                       >
-                        <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                          <Icon className="w-5 h-5 text-white/70" />
+                        <div className="w-10 h-10 rounded-xl bg-[var(--c-surface-hover)] flex items-center justify-center shrink-0">
+                          <Icon className="w-5 h-5 text-[var(--c-text)]" />
                         </div>
                         <div className="flex-1 min-w-0 text-left">
                           <p className="text-[13px] font-semibold text-[var(--c-text)] truncate">{cat.name}</p>
-                          <p className="text-[11px] text-white/40 mt-0.5">
+                          <p className="text-[11px] text-[var(--c-hint)] mt-0.5">
                             {count} {count === 1 ? 'позиция' : count < 5 ? 'позиции' : 'позиций'}
                             {children.length > 0 && ` · ${children.length} подразделов`}
                           </p>
                         </div>
-                        <ChevronRight className="w-4 h-4 text-white/20 shrink-0" />
+                        <ChevronRight className="w-4 h-4 text-[var(--c-muted)] shrink-0" />
                       </button>
 
                       <div className="flex flex-col gap-0.5 shrink-0">
                         <button
                           onClick={() => openEditCategory(cat)}
-                          className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 transition-all"
+                          className="w-6 h-6 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-all"
                         >
-                          <Pencil className="w-3 h-3 text-white/50" />
+                          <Pencil className="w-3 h-3 text-[var(--c-hint)]" />
                         </button>
                         <button
                           onClick={() => setDeleteCatTarget(cat)}
-                          className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 transition-all"
+                          className="w-6 h-6 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-all"
                         >
-                          <Trash2 className="w-3 h-3 text-red-400/60" />
+                          <Trash2 className="w-3 h-3 text-[var(--c-danger)]" />
                         </button>
                       </div>
                     </div>
@@ -415,37 +415,37 @@ export function MenuEditor() {
                                 <button
                                   onClick={() => moveCategoryOrder(child, 'up')}
                                   disabled={childIdx === 0}
-                                  className="w-5 h-5 rounded bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
+                                  className="w-5 h-5 rounded bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
                                 >
-                                  <ChevronUp className="w-2.5 h-2.5 text-white/50" />
+                                  <ChevronUp className="w-2.5 h-2.5 text-[var(--c-hint)]" />
                                 </button>
                                 <button
                                   onClick={() => moveCategoryOrder(child, 'down')}
                                   disabled={childIdx === children.length - 1}
-                                  className="w-5 h-5 rounded bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
+                                  className="w-5 h-5 rounded bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
                                 >
-                                  <ChevronDown className="w-2.5 h-2.5 text-white/50" />
+                                  <ChevronDown className="w-2.5 h-2.5 text-[var(--c-hint)]" />
                                 </button>
                               </div>
                               <button
                                 onClick={() => { setActiveCategory(child); setViewMode('items'); }}
                                 className="flex-1 flex items-center gap-2.5 p-2.5 rounded-xl card-interactive"
                               >
-                                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center">
-                                  <ChildIcon className="w-4 h-4 text-white/50" />
+                                <div className="w-8 h-8 rounded-lg bg-[var(--c-surface)] flex items-center justify-center">
+                                  <ChildIcon className="w-4 h-4 text-[var(--c-hint)]" />
                                 </div>
                                 <div className="flex-1 text-left">
                                   <p className="text-xs font-medium text-[var(--c-text)]">{child.name}</p>
-                                  <p className="text-[10px] text-white/30">{childCount} позиций</p>
+                                  <p className="text-[10px] text-[var(--c-hint)]">{childCount} позиций</p>
                                 </div>
-                                <ChevronRight className="w-3.5 h-3.5 text-white/15" />
+                                <ChevronRight className="w-3.5 h-3.5 text-[var(--c-muted)]" />
                               </button>
                               <div className="flex flex-col gap-0.5 shrink-0">
-                                <button onClick={() => openEditCategory(child)} className="w-5 h-5 rounded bg-white/5 flex items-center justify-center active:scale-90 transition-all">
-                                  <Pencil className="w-2.5 h-2.5 text-white/50" />
+                                <button onClick={() => openEditCategory(child)} className="w-5 h-5 rounded bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-all">
+                                  <Pencil className="w-2.5 h-2.5 text-[var(--c-hint)]" />
                                 </button>
-                                <button onClick={() => setDeleteCatTarget(child)} className="w-5 h-5 rounded bg-white/5 flex items-center justify-center active:scale-90 transition-all">
-                                  <Trash2 className="w-2.5 h-2.5 text-red-400/60" />
+                                <button onClick={() => setDeleteCatTarget(child)} className="w-5 h-5 rounded bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-all">
+                                  <Trash2 className="w-2.5 h-2.5 text-[var(--c-danger)]" />
                                 </button>
                               </div>
                             </div>
@@ -457,7 +457,7 @@ export function MenuEditor() {
                     <div className="ml-10 mt-1">
                       <button
                         onClick={() => openCreateCategory(cat.id)}
-                        className="flex items-center gap-1.5 text-[11px] text-white/25 hover:text-white/50 transition-colors py-1"
+                        className="flex items-center gap-1.5 text-[11px] text-[var(--c-muted)] hover:text-[var(--c-hint)] transition-colors py-1"
                       >
                         <Plus className="w-3 h-3" />
                         Подраздел
@@ -475,15 +475,15 @@ export function MenuEditor() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => { setViewMode('categories'); setActiveCategory(null); setSearch(''); }}
-              className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center active:scale-90 transition-all shrink-0"
+              className="w-9 h-9 rounded-xl bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-all shrink-0"
             >
-              <ArrowLeft className="w-5 h-5 text-white/60" />
+              <ArrowLeft className="w-5 h-5 text-[var(--c-hint)]" />
             </button>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-[var(--c-text)] truncate">
                 {activeCategory?.name || 'Все позиции'}
               </p>
-              <p className="text-[11px] text-white/40">{filteredItems.length} позиций</p>
+              <p className="text-[11px] text-[var(--c-hint)]">{filteredItems.length} позиций</p>
             </div>
             <Button size="sm" onClick={openCreate}>
               <Plus className="w-4 h-4" />
@@ -510,7 +510,7 @@ export function MenuEditor() {
                   <button
                     key={sub.id}
                     onClick={() => setActiveCategory(sub)}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-white/5 text-white/35 active:scale-95 shrink-0 transition-all"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-[var(--c-surface)] text-[var(--c-hint)] active:scale-95 shrink-0 transition-all"
                   >
                     <SubIcon className="w-3 h-3" />
                     {sub.name}
@@ -521,11 +521,11 @@ export function MenuEditor() {
           )}
 
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--c-hint)]" />
             <input
               type="text"
               placeholder="Поиск по названию..."
-              className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-white/30"
+              className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-[var(--c-muted)]"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -563,7 +563,7 @@ export function MenuEditor() {
       >
         <div className="space-y-4">
           <div>
-            <p className="text-xs font-medium text-white/50 mb-2">Изображение</p>
+            <p className="text-xs font-medium text-[var(--c-hint)] mb-2">Изображение</p>
             {form.image_url ? (
               <div className="relative w-full aspect-[3/2] rounded-xl overflow-hidden card">
                 <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" />
@@ -578,7 +578,7 @@ export function MenuEditor() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
-                className="w-full flex flex-col items-center gap-2 py-6 rounded-xl border-2 border-dashed border-white/10 hover:border-white/20 text-white/40 transition-all active:scale-[0.98]"
+                className="w-full flex flex-col items-center gap-2 py-6 rounded-xl border-2 border-dashed border-[var(--c-border)] hover:border-[var(--c-border)] text-[var(--c-hint)] transition-all active:scale-[0.98]"
               >
                 {isUploading ? (
                   <div className="w-6 h-6 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin" />
@@ -604,7 +604,7 @@ export function MenuEditor() {
           <Input label="Цена (₽)" type="number" placeholder="0" value={form.price} onChange={(e) => updateField('price', e.target.value)} min={0} />
 
           <div>
-            <p className="text-xs font-medium text-white/50 mb-2">Раздел</p>
+            <p className="text-xs font-medium text-[var(--c-hint)] mb-2">Раздел</p>
             <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto">
               {categories.map((cat) => {
                 const Icon = getIconComponent(cat.icon_name);
@@ -618,7 +618,7 @@ export function MenuEditor() {
                     } ${
                       form.category === cat.slug
                         ? 'bg-[var(--c-accent)] text-white'
-                        : 'card text-white/50'
+                        : 'card text-[var(--c-hint)]'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -634,13 +634,13 @@ export function MenuEditor() {
           <button
             onClick={() => updateField('is_active', !form.is_active)}
             className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all active:scale-[0.98] ${
-              form.is_active ? 'bg-emerald-500/10 border-emerald-500/30' : 'card border-white/10'
+              form.is_active ? 'bg-[var(--c-success-bg)] border-emerald-500/30' : 'card border-[var(--c-border)]'
             }`}
           >
             <span className="text-[13px] font-medium text-[var(--c-text)]">
               {form.is_active ? 'Отображается в меню' : 'Скрыт из меню'}
             </span>
-            <div className={`w-10 h-6 rounded-full transition-colors relative ${form.is_active ? 'bg-emerald-500' : 'bg-white/20'}`}>
+            <div className={`w-10 h-6 rounded-full transition-colors relative ${form.is_active ? 'bg-emerald-500' : 'bg-[var(--c-muted)]'}`}>
               <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${form.is_active ? 'left-5' : 'left-1'}`} />
             </div>
           </button>
@@ -662,30 +662,30 @@ export function MenuEditor() {
       <Drawer open={!!deleteTarget} onClose={() => { setDeleteTarget(null); setDeleteError(''); }} title="Удалить позицию?" size="sm">
         {deleteTarget && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-[var(--c-danger-bg)] border border-red-500/20">
               {deleteTarget.image_url ? (
                 <img src={deleteTarget.image_url} className="w-12 h-12 rounded-xl object-cover" />
               ) : (
-                <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center">
-                  <Package className="w-5 h-5 text-white/40" />
+                <div className="w-12 h-12 rounded-xl bg-[var(--c-surface-hover)] flex items-center justify-center">
+                  <Package className="w-5 h-5 text-[var(--c-hint)]" />
                 </div>
               )}
               <div>
                 <p className="text-[13px] font-semibold text-[var(--c-text)]">{deleteTarget.name}</p>
-                <p className="text-xs text-red-400">{deleteTarget.price}₽</p>
+                <p className="text-xs text-[var(--c-danger)]">{deleteTarget.price}₽</p>
               </div>
             </div>
 
             {deleteError ? (
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
-                <p className="text-xs text-amber-400">{deleteError}</p>
+              <div className="p-3 rounded-xl bg-[var(--c-warning-bg)] border border-amber-500/20">
+                <p className="text-xs text-[var(--c-warning)]">{deleteError}</p>
                 <Button fullWidth size="sm" variant="secondary" className="mt-3" onClick={deactivateAndClose}>
                   <EyeOff className="w-4 h-4" />
                   Скрыть вместо удаления
                 </Button>
               </div>
             ) : (
-              <p className="text-xs text-white/40 text-center">
+              <p className="text-xs text-[var(--c-hint)] text-center">
                 Позиция будет удалена из меню. Это действие нельзя отменить.
               </p>
             )}
@@ -711,14 +711,14 @@ export function MenuEditor() {
       <Drawer open={!!deleteCatTarget} onClose={() => setDeleteCatTarget(null)} title="Удалить раздел?" size="sm">
         {deleteCatTarget && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-              {(() => { const I = getIconComponent(deleteCatTarget.icon_name); return <I className="w-5 h-5 text-red-400 shrink-0" />; })()}
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-[var(--c-danger-bg)] border border-red-500/20">
+              {(() => { const I = getIconComponent(deleteCatTarget.icon_name); return <I className="w-5 h-5 text-[var(--c-danger)] shrink-0" />; })()}
               <div>
                 <p className="text-[13px] font-semibold text-[var(--c-text)]">{deleteCatTarget.name}</p>
-                <p className="text-xs text-white/40">{countForCategory(deleteCatTarget)} позиций</p>
+                <p className="text-xs text-[var(--c-hint)]">{countForCategory(deleteCatTarget)} позиций</p>
               </div>
             </div>
-            <p className="text-xs text-white/40 text-center">
+            <p className="text-xs text-[var(--c-hint)] text-center">
               Позиции будут перемещены в другой раздел. Подразделы станут основными.
             </p>
             <div className="flex gap-2">
@@ -760,14 +760,14 @@ function ItemsList({
           <div
             key={item.id}
             className={`flex items-center gap-2 p-2.5 rounded-xl transition-all ${
-              item.is_active ? 'card' : 'bg-white/[0.02] opacity-50'
+              item.is_active ? 'card' : 'bg-[var(--c-surface)] opacity-50'
             }`}
           >
-            <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-white/10 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-[var(--c-surface-hover)] flex items-center justify-center">
               {item.image_url ? (
                 <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
               ) : (
-                <CatIcon className="w-5 h-5 text-white/40" />
+                <CatIcon className="w-5 h-5 text-[var(--c-hint)]" />
               )}
             </div>
 
@@ -776,7 +776,7 @@ function ItemsList({
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="text-xs font-bold text-[var(--c-accent)]">{item.price}₽</span>
                 {item.min_threshold > 0 && (
-                  <span className="text-[10px] text-white/30">ост: {item.stock_quantity}</span>
+                  <span className="text-[10px] text-[var(--c-hint)]">ост: {item.stock_quantity}</span>
                 )}
                 {!item.is_active && <Badge variant="default" size="sm">Скрыт</Badge>}
               </div>
@@ -787,16 +787,16 @@ function ItemsList({
                 <button
                   onClick={() => onMove(item, 'up')}
                   disabled={posInCategory === 0}
-                  className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
+                  className="w-7 h-7 rounded-lg bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
                 >
-                  <ChevronUp className="w-3.5 h-3.5 text-white/50" />
+                  <ChevronUp className="w-3.5 h-3.5 text-[var(--c-hint)]" />
                 </button>
                 <button
                   onClick={() => onMove(item, 'down')}
                   disabled={posInCategory === catItems.length - 1}
-                  className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
+                  className="w-7 h-7 rounded-lg bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-20 active:scale-90 transition-all"
                 >
-                  <ChevronDown className="w-3.5 h-3.5 text-white/50" />
+                  <ChevronDown className="w-3.5 h-3.5 text-[var(--c-hint)]" />
                 </button>
               </div>
             )}
@@ -804,17 +804,17 @@ function ItemsList({
             <div className="flex flex-col gap-0.5 shrink-0">
               <button
                 onClick={() => onEdit(item)}
-                className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 transition-all"
+                className="w-7 h-7 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-all"
               >
-                <Pencil className="w-3.5 h-3.5 text-white/50" />
+                <Pencil className="w-3.5 h-3.5 text-[var(--c-hint)]" />
               </button>
               <button
                 onClick={() => onToggle(item)}
-                className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center active:scale-90 transition-all"
+                className="w-7 h-7 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-all"
               >
                 {item.is_active
-                  ? <EyeOff className="w-3.5 h-3.5 text-white/30" />
-                  : <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                  ? <EyeOff className="w-3.5 h-3.5 text-[var(--c-muted)]" />
+                  : <Eye className="w-3.5 h-3.5 text-[var(--c-success)]" />
                 }
               </button>
             </div>
@@ -863,17 +863,17 @@ function CategoryEditorDrawer({
 
         {/* Icon picker */}
         <div>
-          <p className="text-xs font-medium text-white/50 mb-2">Иконка</p>
+          <p className="text-xs font-medium text-[var(--c-hint)] mb-2">Иконка</p>
           <button
             onClick={() => setShowIcons(!showIcons)}
             className="flex items-center gap-2 p-3 rounded-xl card active:scale-[0.98] transition-all w-full"
           >
-            {(() => { const I = getIconComponent(form.icon_name); return <I className="w-5 h-5 text-white/70" />; })()}
+            {(() => { const I = getIconComponent(form.icon_name); return <I className="w-5 h-5 text-[var(--c-text)]" />; })()}
             <span className="text-[13px] text-[var(--c-text)]">{form.icon_name}</span>
-            <ChevronRight className={`w-4 h-4 text-white/30 ml-auto transition-transform ${showIcons ? 'rotate-90' : ''}`} />
+            <ChevronRight className={`w-4 h-4 text-[var(--c-hint)] ml-auto transition-transform ${showIcons ? 'rotate-90' : ''}`} />
           </button>
           {showIcons && (
-            <div className="grid grid-cols-6 gap-1.5 mt-2 p-2 rounded-xl bg-white/[0.03] max-h-48 overflow-y-auto">
+            <div className="grid grid-cols-6 gap-1.5 mt-2 p-2 rounded-xl bg-[var(--c-surface)] max-h-48 overflow-y-auto">
               {AVAILABLE_ICONS.map((iconName) => {
                 const I = getIconComponent(iconName);
                 return (
@@ -883,7 +883,7 @@ function CategoryEditorDrawer({
                     className={`w-full aspect-square rounded-xl flex items-center justify-center transition-all active:scale-90 ${
                       form.icon_name === iconName
                         ? 'bg-[var(--c-accent)] text-white'
-                        : 'bg-white/5 text-white/40 hover:text-white/70'
+                        : 'bg-[var(--c-surface)] text-[var(--c-hint)] hover:text-[var(--c-text)]'
                     }`}
                   >
                     <I className="w-5 h-5" />
@@ -896,14 +896,14 @@ function CategoryEditorDrawer({
 
         {/* Parent category */}
         <div>
-          <p className="text-xs font-medium text-white/50 mb-2">Родительский раздел</p>
+          <p className="text-xs font-medium text-[var(--c-hint)] mb-2">Родительский раздел</p>
           <div className="flex flex-wrap gap-1.5">
             <button
               onClick={() => setForm((prev) => ({ ...prev, parent_id: null }))}
               className={`px-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${
                 !form.parent_id
                   ? 'bg-[var(--c-accent)] text-white'
-                  : 'card text-white/50'
+                  : 'card text-[var(--c-hint)]'
               }`}
             >
               Нет (основной)
@@ -917,7 +917,7 @@ function CategoryEditorDrawer({
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${
                     form.parent_id === cat.id
                       ? 'bg-[var(--c-accent)] text-white'
-                      : 'card text-white/50'
+                      : 'card text-[var(--c-hint)]'
                   }`}
                 >
                   <I className="w-3.5 h-3.5" />

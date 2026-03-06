@@ -10,11 +10,11 @@ interface BadgeProps {
 }
 
 const variants = {
-  default: 'bg-white/7 text-white/60 border border-white/5',
-  success: 'bg-emerald-500/12 text-emerald-400 border border-emerald-500/8',
-  warning: 'bg-amber-500/12 text-amber-400 border border-amber-500/8',
-  danger: 'bg-red-500/12 text-red-400 border border-red-500/8',
-  accent: 'bg-[var(--c-accent)]/12 text-[var(--c-accent)] border border-[var(--c-accent)]/8',
+  default: 'bg-[var(--c-surface)] text-[var(--c-hint)] border border-[var(--c-border)]',
+  success: 'bg-[var(--c-success-bg)] text-[var(--c-success)] border border-[var(--c-success-border)]',
+  warning: 'bg-[var(--c-warning-bg)] text-[var(--c-warning)] border border-[var(--c-warning-border)]',
+  danger: 'bg-[var(--c-danger-bg)] text-[var(--c-danger)] border border-[var(--c-danger-border)]',
+  accent: 'bg-[rgba(var(--c-accent-rgb),0.1)] text-[var(--c-accent)] border border-[rgba(var(--c-accent-rgb),0.15)]',
 };
 
 const sizes = {

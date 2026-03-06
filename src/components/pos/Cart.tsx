@@ -13,7 +13,7 @@ export function Cart() {
     return (
       <div className="text-center py-10">
         <p className="text-[var(--c-hint)]">Корзина пуста</p>
-        <p className="text-white/30 text-xs mt-1">Выберите товары из меню</p>
+        <p className="text-[var(--c-hint)] text-xs mt-1">Выберите товары из меню</p>
       </div>
     );
   }
@@ -24,7 +24,7 @@ export function Cart() {
         {cart.map((cartItem) => (
           <div
             key={cartItem.item.id}
-            className="flex items-center gap-3 p-3 rounded-xl bg-white/5"
+            className="flex items-center gap-3 p-3 rounded-xl bg-[var(--c-surface)]"
           >
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-[var(--c-text)] truncate">
@@ -41,9 +41,9 @@ export function Cart() {
                   hapticFeedback('light');
                   updateCartQuantity(cartItem.item.id, cartItem.quantity - 1);
                 }}
-                className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors active:scale-90"
+                className="w-9 h-9 rounded-lg bg-[var(--c-surface-hover)] flex items-center justify-center hover:bg-[var(--c-surface-active)] transition-colors active:scale-90"
               >
-                <Minus className="w-4 h-4 text-white/70" />
+                <Minus className="w-4 h-4 text-[var(--c-text)]" />
               </button>
               <span className="w-8 text-center text-sm font-bold text-[var(--c-text)]">
                 {cartItem.quantity}
@@ -53,9 +53,9 @@ export function Cart() {
                   hapticFeedback('light');
                   updateCartQuantity(cartItem.item.id, cartItem.quantity + 1);
                 }}
-                className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors active:scale-90"
+                className="w-9 h-9 rounded-lg bg-[var(--c-surface-hover)] flex items-center justify-center hover:bg-[var(--c-surface-active)] transition-colors active:scale-90"
               >
-                <Plus className="w-4 h-4 text-white/70" />
+                <Plus className="w-4 h-4 text-[var(--c-text)]" />
               </button>
             </div>
 
@@ -68,15 +68,15 @@ export function Cart() {
                 hapticFeedback('medium');
                 removeFromCart(cartItem.item.id);
               }}
-              className="w-9 h-9 rounded-lg bg-red-500/10 flex items-center justify-center hover:bg-red-500/20 transition-colors active:scale-90"
+              className="w-9 h-9 rounded-lg bg-[var(--c-danger-bg)] flex items-center justify-center hover:bg-[var(--c-danger-bg)] transition-colors active:scale-90"
             >
-              <Trash2 className="w-4 h-4 text-red-400" />
+              <Trash2 className="w-4 h-4 text-[var(--c-danger)]" />
             </button>
           </div>
         ))}
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-white/10">
+      <div className="flex items-center justify-between pt-4 border-t border-[var(--c-border)]">
         <span className="text-[var(--c-hint)] font-medium">Итого:</span>
         <span className="text-3xl font-bold text-[var(--c-text)]">
           {total}₽

@@ -101,13 +101,13 @@ export function LoginPage() {
       >
         <div className="absolute inset-0 pointer-events-none" aria-hidden>
           <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full opacity-[0.04]"
-            style={{ background: 'radial-gradient(circle, #6c5ce7, transparent 70%)' }} />
+            style={{ background: 'radial-gradient(circle, var(--c-accent), transparent 70%)' }} />
           <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] rounded-full opacity-[0.03]"
-            style={{ background: 'radial-gradient(circle, #a29bfe, transparent 70%)' }} />
+            style={{ background: 'radial-gradient(circle, var(--c-accent-light), transparent 70%)' }} />
         </div>
 
         <div className="w-full max-w-sm animate-fade-in-up relative z-10">
-          <div className="card p-6 space-y-5" style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.25), 0 0 80px rgba(108,92,231,0.06)' }}>
+          <div className="card p-6 space-y-5" style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.25), 0 0 80px rgba(var(--c-accent-rgb), 0.06)' }}>
             <div className="text-center">
               <img src="/icons/tpos.svg" alt="T-POS" className="w-28 h-auto mx-auto mb-3 drop-shadow-lg" />
               <p className="text-[10px] text-[var(--c-hint)] mt-0.5">
@@ -130,9 +130,9 @@ export function LoginPage() {
 
             {hasTelegram && (
               <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-white/6" />
-                <span className="text-[10px] text-white/30">или</span>
-                <div className="flex-1 h-px bg-white/6" />
+                <div className="flex-1 h-px bg-[var(--c-surface-hover)]" />
+                <span className="text-[10px] text-[var(--c-hint)]">или</span>
+                <div className="flex-1 h-px bg-[var(--c-surface-hover)]" />
               </div>
             )}
 
@@ -156,7 +156,7 @@ export function LoginPage() {
               />
 
               {error && (
-                <p className="text-[13px] text-red-400 text-center bg-red-500/10 rounded-xl px-3 py-1.5 animate-fade-in">
+                <p className="text-[13px] text-[var(--c-danger)] text-center bg-[var(--c-danger-bg)] rounded-xl px-3 py-1.5 animate-fade-in">
                   {error}
                 </p>
               )}
@@ -187,7 +187,7 @@ export function LoginPage() {
                 </button>
                 <button
                   onClick={handleSwitchUser}
-                  className="text-[10px] text-white/30 hover:text-white/50"
+                  className="text-[10px] text-[var(--c-hint)] hover:text-[var(--c-hint)]"
                 >
                   Сменить пользователя
                 </button>
@@ -206,9 +206,9 @@ export function LoginPage() {
     >
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
         <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full opacity-[0.04]"
-          style={{ background: 'radial-gradient(circle, #6c5ce7, transparent 70%)' }} />
+          style={{ background: 'radial-gradient(circle, var(--c-accent), transparent 70%)' }} />
         <div className="absolute bottom-[-15%] right-[-10%] w-[50%] h-[50%] rounded-full opacity-[0.03]"
-          style={{ background: 'radial-gradient(circle, #a29bfe, transparent 70%)' }} />
+          style={{ background: 'radial-gradient(circle, var(--c-accent-light), transparent 70%)' }} />
       </div>
 
       <div className="w-full max-w-md animate-fade-in-up relative z-10">
@@ -227,17 +227,17 @@ export function LoginPage() {
                 className="flex flex-col items-center gap-2 p-4 rounded-xl card-interactive active:scale-[0.96] transition-transform"
               >
                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  isOwner ? 'bg-amber-500/12' : 'bg-[var(--c-accent)]/10'
+                  isOwner ? 'bg-[var(--c-warning-bg)]' : 'bg-[var(--c-accent)]/10'
                 }`}>
                   {isOwner ? (
-                    <Crown className="w-5 h-5 text-amber-400" />
+                    <Crown className="w-5 h-5 text-[var(--c-warning)]" />
                   ) : (
                     <User className="w-5 h-5 text-[var(--c-accent)]" />
                   )}
                 </div>
                 <div className="text-center">
                   <p className="font-semibold text-[13px] text-[var(--c-text)]">{s.nickname}</p>
-                  <p className="text-[9px] text-white/20 mt-0.5">
+                  <p className="text-[9px] text-[var(--c-muted)] mt-0.5">
                     {isOwner ? 'Владелец' : 'Сотрудник'}
                   </p>
                 </div>
@@ -249,7 +249,7 @@ export function LoginPage() {
         <div className="mt-4 text-center">
           <button
             onClick={() => setShowFullLogin(true)}
-            className="text-[12px] text-white/30 hover:text-white/50 transition-colors"
+            className="text-[12px] text-[var(--c-hint)] hover:text-[var(--c-hint)] transition-colors"
           >
             <LogIn className="w-3.5 h-3.5 inline mr-1" />
             Войти по логину и паролю

@@ -352,7 +352,7 @@ export function SupplyPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={handleTryExit}
-            className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors active:scale-95 shrink-0"
+            className="w-10 h-10 rounded-xl bg-[var(--c-surface)] flex items-center justify-center hover:bg-[var(--c-surface-hover)] transition-colors active:scale-95 shrink-0"
           >
             <ArrowLeft className="w-5 h-5 text-[var(--c-text)]" />
           </button>
@@ -375,11 +375,11 @@ export function SupplyPage() {
         {draftItems.length > 0 && (
           <div className="space-y-3">
             {draftItems.map((d, idx) => (
-              <div key={d.item.id} className="p-3 rounded-xl bg-white/5 space-y-2">
+              <div key={d.item.id} className="p-3 rounded-xl bg-[var(--c-surface)] space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-[var(--c-text)] truncate">{d.item.name}</p>
-                    <p className="text-[10px] text-white/30">Остаток: {d.item.stock_quantity} · Цена: {d.item.price}₽</p>
+                    <p className="text-[10px] text-[var(--c-hint)]">Остаток: {d.item.stock_quantity} · Цена: {d.item.price}₽</p>
                   </div>
                   <button onClick={() => removeDraftItem(idx)} className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center active:scale-90">
                     <Trash2 className="w-4 h-4 text-red-400" />
@@ -391,7 +391,7 @@ export function SupplyPage() {
                   <Input type="number" placeholder="Итого" min={0} step="0.01" value={d.totalCost} onChange={(e) => updateDraftItem(idx, 'totalCost', e.target.value)} />
                 </div>
                 {Number(d.totalCost) > 0 && d.item.price > 0 && Number(d.costPerUnit) > 0 && (
-                  <div className="flex gap-3 text-[10px] text-white/30">
+                  <div className="flex gap-3 text-[10px] text-[var(--c-hint)]">
                     <span>Наценка: <span className="text-amber-400 font-semibold">{Math.round(((d.item.price - Number(d.costPerUnit)) / Number(d.costPerUnit)) * 100)}%</span></span>
                     <span>Сумма: <span className="text-emerald-400 font-semibold">{Number(d.totalCost).toFixed(0)}₽</span></span>
                   </div>
@@ -403,7 +403,7 @@ export function SupplyPage() {
 
         <button
           onClick={() => setShowAddItem(true)}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-white/10 text-[var(--c-hint)] hover:border-white/20 hover:text-white/60 transition-all active:scale-[0.98]"
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-[var(--c-border)] text-[var(--c-hint)] hover:border-[var(--c-border-strong)] hover:text-[var(--c-hint)] transition-all active:scale-[0.98]"
         >
           <Plus className="w-4 h-4" />
           <span className="text-sm font-medium">Добавить товар</span>
@@ -412,7 +412,7 @@ export function SupplyPage() {
         {draftItems.length > 0 && (
           <div className="p-3 rounded-xl bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/20">
             <div className="flex justify-between text-sm">
-              <span className="text-white/50">Позиций: {draftItems.length}</span>
+              <span className="text-[var(--c-hint)]">Позиций: {draftItems.length}</span>
               <span className="font-bold text-[var(--c-text)]">Итого: {fmtCur(draftTotal)}</span>
             </div>
           </div>
@@ -431,16 +431,16 @@ export function SupplyPage() {
         <Drawer open={showAddItem} onClose={() => { setShowAddItem(false); setItemSearch(''); }} title="Добавить товар">
           <div className="space-y-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--c-hint)]" />
               <Input placeholder="Поиск..." value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} className="pl-10" autoFocus />
             </div>
             <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
               {filteredInv.filter((i) => !alreadyAddedIds.has(i.id)).map((item) => (
-                <button key={item.id} onClick={() => addInventoryItem(item)} className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all active:scale-[0.98]">
-                  <Package className="w-4 h-4 text-white/30 shrink-0" />
+                <button key={item.id} onClick={() => addInventoryItem(item)} className="w-full flex items-center gap-3 p-3 rounded-xl bg-[var(--c-surface)] hover:bg-[var(--c-surface-hover)] transition-all active:scale-[0.98]">
+                  <Package className="w-4 h-4 text-[var(--c-hint)] shrink-0" />
                   <div className="text-left flex-1 min-w-0">
                     <p className="text-sm font-medium text-[var(--c-text)] truncate">{item.name}</p>
-                    <p className="text-[10px] text-white/30">{categoryLabels[item.category] || item.category} · {item.price}₽</p>
+                    <p className="text-[10px] text-[var(--c-hint)]">{categoryLabels[item.category] || item.category} · {item.price}₽</p>
                   </div>
                   <Badge>Ост: {item.stock_quantity}</Badge>
                 </button>
@@ -456,7 +456,7 @@ export function SupplyPage() {
               <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-semibold text-amber-400">Поставка не сохранена</p>
-                <p className="text-xs text-white/40 mt-1">
+                <p className="text-xs text-[var(--c-hint)] mt-1">
                   {draftItems.length > 0 ? `${draftItems.length} позиций на ${fmtCur(draftTotal)} будут потеряны` : 'Данные будут потеряны'}
                 </p>
               </div>
@@ -492,7 +492,7 @@ export function SupplyPage() {
 
       {supplies.length === 0 ? (
         <div className="text-center py-16">
-          <Truck className="w-16 h-16 text-white/5 mx-auto mb-4" />
+          <Truck className="w-16 h-16 text-[var(--c-muted)] mx-auto mb-4" />
           <p className="text-[var(--c-hint)]">Нет поставок</p>
         </div>
       ) : (
@@ -501,7 +501,7 @@ export function SupplyPage() {
             <button
               key={s.id}
               onClick={() => openDetail(s)}
-              className="w-full text-left p-4 rounded-2xl bg-white/5 hover:bg-white/8 border border-white/5 transition-all active:scale-[0.98]"
+              className="w-full text-left p-4 rounded-2xl bg-[var(--c-surface)] hover:bg-[var(--c-surface-hover)] border border-[var(--c-border)] transition-all active:scale-[0.98]"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -514,14 +514,14 @@ export function SupplyPage() {
                       <span className="text-xs text-[var(--c-hint)]">{formatTime(s.created_at)}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      {s.note && <span className="text-xs text-white/40 truncate">{s.note}</span>}
-                      {s.creator && <span className="text-xs text-white/30">{s.creator.nickname}</span>}
+                      {s.note && <span className="text-xs text-[var(--c-hint)] truncate">{s.note}</span>}
+                      {s.creator && <span className="text-xs text-[var(--c-hint)]">{s.creator.nickname}</span>}
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span className="text-base font-bold text-[var(--c-accent)]">{fmtCur(s.total_cost)}</span>
-                  <ChevronRight className="w-4 h-4 text-white/20" />
+                  <ChevronRight className="w-4 h-4 text-[var(--c-muted)]" />
                 </div>
               </div>
             </button>
@@ -538,20 +538,20 @@ export function SupplyPage() {
         {selectedSupply && !isEditing && (
           <div className="space-y-4">
             {/* Meta */}
-            <div className="p-3 rounded-xl bg-white/5 space-y-2">
+            <div className="p-3 rounded-xl bg-[var(--c-surface)] space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-white/50 flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Дата</span>
+                <span className="text-[var(--c-hint)] flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Дата</span>
                 <span className="text-[var(--c-text)]">{new Date(selectedSupply.created_at).toLocaleString('ru-RU')}</span>
               </div>
               {selectedSupply.creator && (
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-white/50 flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Кто принял</span>
+                  <span className="text-[var(--c-hint)] flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Кто принял</span>
                   <span className="text-[var(--c-text)]">{selectedSupply.creator.nickname}</span>
                 </div>
               )}
               {selectedSupply.note && (
                 <div className="text-sm">
-                  <span className="text-white/50">Примечание:</span>
+                  <span className="text-[var(--c-hint)]">Примечание:</span>
                   <span className="text-[var(--c-text)] ml-2">{selectedSupply.note}</span>
                 </div>
               )}
@@ -561,37 +561,37 @@ export function SupplyPage() {
             <div className="grid grid-cols-2 gap-2">
               <div className="p-3 rounded-xl bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/15 text-center">
                 <p className="text-xl font-bold text-[var(--c-accent)]">{fmtCur(selectedSupply.total_cost)}</p>
-                <p className="text-[10px] text-white/40">Общая сумма</p>
+                <p className="text-[10px] text-[var(--c-hint)]">Общая сумма</p>
               </div>
-              <div className="p-3 rounded-xl bg-white/5 text-center">
+              <div className="p-3 rounded-xl bg-[var(--c-surface)] text-center">
                 <p className="text-xl font-bold text-[var(--c-text)]">{detailTotalQty}</p>
-                <p className="text-[10px] text-white/40">Единиц товара</p>
+                <p className="text-[10px] text-[var(--c-hint)]">Единиц товара</p>
               </div>
             </div>
 
             {/* Items */}
             <div>
-              <p className="text-xs font-semibold text-white/50 mb-2">{detailItems.length} позиций</p>
+              <p className="text-xs font-semibold text-[var(--c-hint)] mb-2">{detailItems.length} позиций</p>
               <div className="space-y-1.5">
                 {detailItems.map((si) => {
                   const pc = priceChanges[si.item_id];
                   return (
-                  <div key={si.id} className={`p-3 rounded-xl ${pc ? (pc.delta > 0 ? 'bg-red-500/5 border border-red-500/10' : 'bg-emerald-500/5 border border-emerald-500/10') : 'bg-white/5'}`}>
+                  <div key={si.id} className={`p-3 rounded-xl ${pc ? (pc.delta > 0 ? 'bg-[var(--c-danger-bg)] border border-red-500/10' : 'bg-[var(--c-success-bg)] border border-emerald-500/10') : 'bg-[var(--c-surface)]'}`}>
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium text-[var(--c-text)] truncate flex-1 min-w-0">{si.item?.name}</p>
                       <span className="font-bold text-sm text-[var(--c-text)] shrink-0 ml-2">{fmtCur(si.total_cost)}</span>
                     </div>
-                    <div className="flex items-center gap-3 mt-1 text-[10px] text-white/30">
+                    <div className="flex items-center gap-3 mt-1 text-[10px] text-[var(--c-hint)]">
                       <span>{si.quantity} шт</span>
                       <span>×</span>
                       <span>{si.cost_per_unit}₽/шт</span>
                       {pc && (
-                        <span className={`font-semibold ${pc.delta > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                        <span className={`font-semibold ${pc.delta > 0 ? 'text-[var(--c-danger)]' : 'text-[var(--c-success)]'}`}>
                           {pc.delta > 0 ? '↑' : '↓'} {Math.abs(Math.round(pc.delta))}₽ (было {pc.prev}₽)
                         </span>
                       )}
                       {!pc && si.item && si.item.price > 0 && si.cost_per_unit > 0 && (
-                        <span className="text-amber-400/70 ml-auto">наценка {Math.round(((si.item.price - si.cost_per_unit) / si.cost_per_unit) * 100)}%</span>
+                        <span className="text-[var(--c-warning)] ml-auto">наценка {Math.round(((si.item.price - si.cost_per_unit) / si.cost_per_unit) * 100)}%</span>
                       )}
                     </div>
                   </div>
@@ -616,7 +616,7 @@ export function SupplyPage() {
           <div className="space-y-4">
             <div className="space-y-3">
               {editItems.map((d, idx) => (
-                <div key={d.item.id} className="p-3 rounded-xl bg-white/5 space-y-2">
+                <div key={d.item.id} className="p-3 rounded-xl bg-[var(--c-surface)] space-y-2">
                   <p className="text-sm font-semibold text-[var(--c-text)] truncate">{d.item.name}</p>
                   <div className="grid grid-cols-3 gap-2">
                     <Input type="number" placeholder="Кол-во" min={1} value={d.quantity} onChange={(e) => updateEditItem(idx, 'quantity', e.target.value)} />
@@ -626,10 +626,10 @@ export function SupplyPage() {
                 </div>
               ))}
             </div>
-            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+            <div className="p-3 rounded-xl bg-[var(--c-success-bg)] border border-emerald-500/20">
               <div className="flex justify-between text-sm">
-                <span className="text-white/50">Итого</span>
-                <span className="font-bold text-emerald-400">{fmtCur(editItems.reduce((s, d) => s + (Number(d.totalCost) || 0), 0))}</span>
+                <span className="text-[var(--c-hint)]">Итого</span>
+                <span className="font-bold text-[var(--c-success)]">{fmtCur(editItems.reduce((s, d) => s + (Number(d.totalCost) || 0), 0))}</span>
               </div>
             </div>
             <div className="flex gap-2">

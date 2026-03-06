@@ -31,7 +31,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
     <div className="h-full bg-[var(--c-bg)] flex flex-col lg:flex-row overflow-hidden">
       {/* Desktop sidebar — compact icon rail */}
       <aside
-        className="hidden lg:flex flex-col w-[68px] shrink-0 fixed top-0 left-0 h-full z-40 border-r border-white/5 items-center"
+        className="hidden lg:flex flex-col w-[68px] shrink-0 fixed top-0 left-0 h-full z-40 border-r border-[var(--c-border)] items-center"
         style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)', background: 'linear-gradient(180deg, var(--c-bg2) 0%, var(--c-bg) 100%)' }}
       >
         <div className="py-4">
@@ -49,7 +49,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                 className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150 tap relative ${
                   isActive
                     ? 'bg-[var(--c-accent)]/12 text-[var(--c-accent)]'
-                    : 'text-[var(--c-hint)] hover:bg-white/5 hover:text-[var(--c-text)]'
+                    : 'text-[var(--c-hint)] hover:bg-[var(--c-surface)] hover:text-[var(--c-text)]'
                 }`}
               >
                 {isActive && (
@@ -70,7 +70,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           <button
             onClick={() => useAuthStore.getState().logout()}
             title="Выход"
-            className="w-11 h-11 rounded-xl flex items-center justify-center text-[var(--c-hint)] hover:bg-red-500/10 hover:text-red-400 transition-all tap"
+            className="w-11 h-11 rounded-xl flex items-center justify-center text-[var(--c-hint)] hover:bg-[var(--c-danger-bg)] hover:text-[var(--c-danger)] transition-all tap"
           >
             <LogOut className="w-5 h-5" />
           </button>
@@ -93,9 +93,9 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
             </div>
             <button
               onClick={() => useAuthStore.getState().logout()}
-              className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center hover:bg-red-500/10 transition-colors group active:scale-90"
+              className="w-8 h-8 rounded-lg bg-[var(--c-surface)] flex items-center justify-center hover:bg-[var(--c-danger-bg)] transition-colors group active:scale-90"
             >
-              <LogOut className="w-3.5 h-3.5 text-[var(--c-hint)] group-hover:text-red-400 transition-colors" />
+              <LogOut className="w-3.5 h-3.5 text-[var(--c-hint)] group-hover:text-[var(--c-danger)] transition-colors" />
             </button>
           </div>
         </header>

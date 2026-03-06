@@ -18,16 +18,16 @@ const SchedulePage = lazy(() => import('@/components/schedule/SchedulePage').the
 function TabFallback() {
   return (
     <div className="space-y-3 animate-pulse">
-      <div className="h-8 w-40 rounded-lg bg-white/5" />
-      <div className="h-4 w-24 rounded bg-white/3" />
+      <div className="h-8 w-40 rounded-lg bg-[var(--c-surface)]" />
+      <div className="h-4 w-24 rounded bg-[var(--c-surface)]" />
       <div className="grid grid-cols-2 gap-2">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-24 rounded-xl bg-white/3" />
+          <div key={i} className="h-24 rounded-xl bg-[var(--c-surface)]" />
         ))}
       </div>
       <div className="space-y-2">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-14 rounded-xl bg-white/3" />
+          <div key={i} className="h-14 rounded-xl bg-[var(--c-surface)]" />
         ))}
       </div>
     </div>
@@ -129,7 +129,7 @@ export default function App() {
             <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
           </div>
           {showCheckView && (
-            <div className="flex-1 overflow-y-auto border-l border-white/5 pl-4">
+            <div className="flex-1 overflow-y-auto border-l border-[var(--c-border)] pl-4">
               <CheckView onBack={() => setShowCheckView(false)} />
             </div>
           )}

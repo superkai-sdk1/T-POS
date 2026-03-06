@@ -83,13 +83,13 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
     >
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
         <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full opacity-[0.04]"
-          style={{ background: 'radial-gradient(circle, #6c5ce7, transparent 70%)' }} />
+          style={{ background: 'radial-gradient(circle, var(--c-accent), transparent 70%)' }} />
       </div>
 
       {onBack && (
         <button
           onClick={onBack}
-          className="absolute p-2 rounded-xl text-white/40 hover:text-white/70 hover:bg-white/5 transition-all duration-150 z-10"
+          className="absolute p-2 rounded-xl text-[var(--c-hint)] hover:text-[var(--c-text)] hover:bg-[var(--c-surface)] transition-all duration-150 z-10"
           style={{ top: 'calc(var(--safe-top) + 1rem)', left: '1rem' }}
         >
           <ArrowLeft className="w-5 h-5" />
@@ -116,15 +116,15 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
                 className={`w-3.5 h-3.5 rounded-full transition-all duration-200 ${
                   pin.length > i
                     ? 'scale-110'
-                    : 'bg-white/10'
+                    : 'bg-[var(--c-surface-hover)]'
                 }`}
-                style={pin.length > i ? { background: 'linear-gradient(135deg, #6c5ce7, #a29bfe)', boxShadow: '0 0 8px rgba(108,92,231,0.4)' } : undefined}
+                style={pin.length > i ? { background: 'linear-gradient(135deg, var(--c-accent), var(--c-accent-light))', boxShadow: '0 0 8px rgba(var(--c-accent-rgb), 0.4)' } : undefined}
               />
             ))}
           </div>
 
           {displayError && (
-            <p className="text-[13px] text-red-400 bg-red-500/10 rounded-xl px-3 py-1.5 text-center animate-fade-in w-full">
+            <p className="text-[13px] text-[var(--c-danger)] bg-[var(--c-danger-bg)] rounded-xl px-3 py-1.5 text-center animate-fade-in w-full">
               {displayError}
             </p>
           )}
@@ -138,7 +138,7 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
                     key={i}
                     onClick={handleDelete}
                     disabled={pin.length === 0 || isLoading}
-                    className="w-14 h-14 rounded-xl flex items-center justify-center text-white/40 hover:bg-white/5 active:bg-white/10 transition-all duration-150 active:scale-90 disabled:opacity-30"
+                    className="w-14 h-14 rounded-xl flex items-center justify-center text-[var(--c-hint)] hover:bg-[var(--c-surface)] active:bg-[var(--c-surface-hover)] transition-all duration-150 active:scale-90 disabled:opacity-30"
                   >
                     <Delete className="w-5 h-5" />
                   </button>
@@ -149,7 +149,7 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
                   key={i}
                   onClick={() => handleDigit(key)}
                   disabled={isLoading}
-                  className="w-14 h-14 rounded-xl bg-white/5 hover:bg-white/10 active:bg-white/15 text-xl font-semibold text-[var(--c-text)] transition-all duration-150 active:scale-90 disabled:opacity-50"
+                  className="w-14 h-14 rounded-xl bg-[var(--c-surface)] hover:bg-[var(--c-surface-hover)] active:bg-[var(--c-surface-hover)] text-xl font-semibold text-[var(--c-text)] transition-all duration-150 active:scale-90 disabled:opacity-50"
                 >
                   {key}
                 </button>

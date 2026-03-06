@@ -230,7 +230,7 @@ export function RevisionPage() {
         {createIndicator && <div style={createIndicator} />}
         {createOverlay && <div style={createOverlay} />}
         <div className="flex items-center gap-3">
-          <button onClick={handleTryExit} className="w-10 h-10 rounded-xl card flex items-center justify-center hover:bg-white/10 transition-colors active:scale-95 shrink-0">
+          <button onClick={handleTryExit} className="w-10 h-10 rounded-xl card flex items-center justify-center hover:bg-[var(--c-surface-hover)] transition-colors active:scale-95 shrink-0">
             <ArrowLeft className="w-5 h-5 text-[var(--c-text)]" />
           </button>
           <div className="flex-1">
@@ -251,20 +251,20 @@ export function RevisionPage() {
         {/* Live summary */}
         {changes.length > 0 && (
           <div className="grid grid-cols-2 gap-2">
-            <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/15">
+            <div className="p-3 rounded-xl bg-[var(--c-danger-bg)] border border-red-500/15">
               <div className="flex items-center gap-1.5 mb-1">
-                <TrendingDown className="w-3.5 h-3.5 text-red-400" />
-                <span className="text-[10px] font-medium text-red-400">Недостача</span>
+                <TrendingDown className="w-3.5 h-3.5 text-[var(--c-danger)]" />
+                <span className="text-[10px] font-medium text-[var(--c-danger)]">Недостача</span>
               </div>
-              <p className="text-lg font-bold text-red-400">{draftSummary.shortageUnits} ед.</p>
+              <p className="text-lg font-bold text-[var(--c-danger)]">{draftSummary.shortageUnits} ед.</p>
               <p className="text-xs text-red-400/60">{draftSummary.shortageCount} поз. · {fmtCur(draftSummary.shortageCost)}</p>
             </div>
-            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/15">
+            <div className="p-3 rounded-xl bg-[var(--c-success-bg)] border border-emerald-500/15">
               <div className="flex items-center gap-1.5 mb-1">
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-[10px] font-medium text-emerald-400">Излишки</span>
+                <TrendingUp className="w-3.5 h-3.5 text-[var(--c-success)]" />
+                <span className="text-[10px] font-medium text-[var(--c-success)]">Излишки</span>
               </div>
-              <p className="text-lg font-bold text-emerald-400">{draftSummary.surplusUnits} ед.</p>
+              <p className="text-lg font-bold text-[var(--c-success)]">{draftSummary.surplusUnits} ед.</p>
               <p className="text-xs text-emerald-400/60">{draftSummary.surplusCount} поз. · {fmtCur(draftSummary.surplusCost)}</p>
             </div>
           </div>
@@ -272,11 +272,11 @@ export function RevisionPage() {
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--c-hint)]" />
           <input
             type="text"
             placeholder="Поиск позиции..."
-            className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-white/30"
+            className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-[var(--c-muted)]"
             value={createSearch}
             onChange={(e) => setCreateSearch(e.target.value)}
           />
@@ -293,13 +293,13 @@ export function RevisionPage() {
             const diff = hasChange ? Number(val) - item.stock_quantity : 0;
             const costImpact = Math.abs(diff) * item.price;
             return (
-              <div key={item.id} className={`flex items-center gap-3 p-2.5 rounded-xl ${hasChange ? (diff < 0 ? 'bg-red-500/5 border border-red-500/20' : 'bg-emerald-500/5 border border-emerald-500/20') : 'card'}`}>
+              <div key={item.id} className={`flex items-center gap-3 p-2.5 rounded-xl ${hasChange ? (diff < 0 ? 'bg-[var(--c-danger-bg)] border border-red-500/20' : 'bg-[var(--c-success-bg)] border border-emerald-500/20') : 'card'}`}>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{item.name}</p>
                   <div className="flex items-center gap-2">
-                    <p className="text-[10px] text-white/30">Система: {item.stock_quantity}</p>
+                    <p className="text-[10px] text-[var(--c-hint)]">Система: {item.stock_quantity}</p>
                     {hasChange && (
-                      <p className={`text-[10px] font-medium ${diff < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                      <p className={`text-[10px] font-medium ${diff < 0 ? 'text-[var(--c-danger)]' : 'text-[var(--c-success)]'}`}>
                         {fmtCur(costImpact)}
                       </p>
                     )}
@@ -314,7 +314,7 @@ export function RevisionPage() {
                   />
                 </div>
                 {hasChange && (
-                  <span className={`text-[13px] font-bold min-w-[40px] text-right ${diff < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                  <span className={`text-[13px] font-bold min-w-[40px] text-right ${diff < 0 ? 'text-[var(--c-danger)]' : 'text-[var(--c-success)]'}`}>
                     {diff > 0 ? '+' : ''}{diff}
                   </span>
                 )}
@@ -325,13 +325,13 @@ export function RevisionPage() {
 
         {changes.length > 0 && (
           <>
-            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 space-y-1">
+            <div className="p-3 rounded-xl bg-[var(--c-warning-bg)] border border-amber-500/20 space-y-1">
               <div className="flex justify-between text-[13px]">
-                <span className="text-white/50">Всего расхождений</span>
-                <span className="font-bold text-amber-400">{changes.length} поз.</span>
+                <span className="text-[var(--c-hint)]">Всего расхождений</span>
+                <span className="font-bold text-[var(--c-warning)]">{changes.length} поз.</span>
               </div>
               <div className="flex justify-between text-[13px]">
-                <span className="text-white/50">На сумму</span>
+                <span className="text-[var(--c-hint)]">На сумму</span>
                 <span className="font-bold text-[var(--c-text)]">{fmtCur(draftSummary.shortageCost + draftSummary.surplusCost)}</span>
               </div>
             </div>
@@ -344,11 +344,11 @@ export function RevisionPage() {
 
         <Drawer open={showExitWarning} onClose={() => setShowExitWarning(false)} title="Выйти из ревизии?" size="sm">
           <div className="space-y-4">
-            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-xl bg-[var(--c-warning-bg)] border border-amber-500/20 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-[var(--c-warning)] shrink-0 mt-0.5" />
               <div>
-                <p className="text-[13px] font-semibold text-amber-400">Ревизия не сохранена</p>
-                <p className="text-xs text-white/40 mt-1">Все введённые данные будут потеряны</p>
+                <p className="text-[13px] font-semibold text-[var(--c-warning)]">Ревизия не сохранена</p>
+                <p className="text-xs text-[var(--c-hint)] mt-1">Все введённые данные будут потеряны</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -376,7 +376,7 @@ export function RevisionPage() {
 
       {revisions.length === 0 ? (
         <div className="text-center py-16">
-          <ClipboardList className="w-16 h-16 text-white/5 mx-auto mb-4" />
+          <ClipboardList className="w-16 h-16 text-[var(--c-muted)] mx-auto mb-4" />
           <p className="text-[var(--c-hint)]">Нет ревизий</p>
         </div>
       ) : (
@@ -389,8 +389,8 @@ export function RevisionPage() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
-                    <ClipboardList className="w-5 h-5 text-amber-400" />
+                  <div className="w-10 h-10 rounded-xl bg-[var(--c-warning-bg)] flex items-center justify-center shrink-0">
+                    <ClipboardList className="w-5 h-5 text-[var(--c-warning)]" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -398,13 +398,13 @@ export function RevisionPage() {
                       <span className="text-xs text-[var(--c-hint)]">{formatTime(r.created_at)}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-white/40">{r.items_count} поз.</span>
-                      <span className="text-xs text-amber-400/70">Δ {r.total_diff} ед.</span>
-                      {r.note && <span className="text-xs text-white/30 truncate">· {r.note}</span>}
+                      <span className="text-xs text-[var(--c-hint)]">{r.items_count} поз.</span>
+                      <span className="text-xs text-[var(--c-warning)]">Δ {r.total_diff} ед.</span>
+                      {r.note && <span className="text-xs text-[var(--c-hint)] truncate">· {r.note}</span>}
                     </div>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-white/20 shrink-0" />
+                <ChevronRight className="w-4 h-4 text-[var(--c-muted)] shrink-0" />
               </div>
             </button>
           ))}
@@ -423,18 +423,18 @@ export function RevisionPage() {
             {/* Meta */}
             <div className="p-2.5 rounded-xl card space-y-2">
               <div className="flex items-center justify-between text-[13px]">
-                <span className="text-white/50 flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Дата</span>
+                <span className="text-[var(--c-hint)] flex items-center gap-1.5"><CalendarDays className="w-3.5 h-3.5" /> Дата</span>
                 <span className="text-[var(--c-text)]">{new Date(selectedRevision.created_at).toLocaleString('ru-RU')}</span>
               </div>
               {selectedRevision.creator && (
                 <div className="flex items-center justify-between text-[13px]">
-                  <span className="text-white/50 flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Кто проводил</span>
+                  <span className="text-[var(--c-hint)] flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Кто проводил</span>
                   <span className="text-[var(--c-text)]">{selectedRevision.creator.nickname}</span>
                 </div>
               )}
               {selectedRevision.note && (
                 <div className="text-[13px]">
-                  <span className="text-white/50">Примечание:</span>
+                  <span className="text-[var(--c-hint)]">Примечание:</span>
                   <span className="text-[var(--c-text)] ml-2">{selectedRevision.note}</span>
                 </div>
               )}
@@ -442,45 +442,45 @@ export function RevisionPage() {
 
             {/* Summary cards */}
             <div className="grid grid-cols-2 gap-2">
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/15">
+              <div className="p-3 rounded-xl bg-[var(--c-danger-bg)] border border-red-500/15">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <TrendingDown className="w-3.5 h-3.5 text-red-400" />
-                  <span className="text-[10px] font-medium text-red-400">Недостача</span>
+                  <TrendingDown className="w-3.5 h-3.5 text-[var(--c-danger)]" />
+                  <span className="text-[10px] font-medium text-[var(--c-danger)]">Недостача</span>
                 </div>
-                <p className="text-lg font-bold text-red-400">{detailSummary.shortageUnits} ед.</p>
+                <p className="text-lg font-bold text-[var(--c-danger)]">{detailSummary.shortageUnits} ед.</p>
                 <p className="text-xs text-red-400/60">{detailSummary.shortageCount} поз. · {fmtCur(detailSummary.shortageCost)}</p>
               </div>
-              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/15">
+              <div className="p-3 rounded-xl bg-[var(--c-success-bg)] border border-emerald-500/15">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-[10px] font-medium text-emerald-400">Излишки</span>
+                  <TrendingUp className="w-3.5 h-3.5 text-[var(--c-success)]" />
+                  <span className="text-[10px] font-medium text-[var(--c-success)]">Излишки</span>
                 </div>
-                <p className="text-lg font-bold text-emerald-400">{detailSummary.surplusUnits} ед.</p>
+                <p className="text-lg font-bold text-[var(--c-success)]">{detailSummary.surplusUnits} ед.</p>
                 <p className="text-xs text-emerald-400/60">{detailSummary.surplusCount} поз. · {fmtCur(detailSummary.surplusCost)}</p>
               </div>
             </div>
 
             {/* Total impact */}
-            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+            <div className="p-2.5 rounded-xl bg-[var(--c-warning-bg)] border border-amber-500/20">
               <div className="flex justify-between text-[13px]">
-                <span className="text-white/50">Общее расхождение</span>
-                <span className="font-bold text-amber-400">{fmtCur(detailSummary.shortageCost + detailSummary.surplusCost)}</span>
+                <span className="text-[var(--c-hint)]">Общее расхождение</span>
+                <span className="font-bold text-[var(--c-warning)]">{fmtCur(detailSummary.shortageCost + detailSummary.surplusCost)}</span>
               </div>
             </div>
 
             {/* Items — shortages first */}
             {detailItems.filter((ri) => ri.diff < 0).length > 0 && (
               <div>
-                <p className="text-[10px] font-semibold text-red-400 uppercase tracking-wider mb-2">Недостача</p>
+                <p className="text-[10px] font-semibold text-[var(--c-danger)] uppercase tracking-wider mb-2">Недостача</p>
                 <div className="space-y-1.5">
                   {detailItems.filter((ri) => ri.diff < 0).map((ri) => (
-                    <div key={ri.id} className="flex items-center justify-between p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+                    <div key={ri.id} className="flex items-center justify-between p-3 rounded-xl bg-[var(--c-danger-bg)] border border-red-500/10">
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{ri.item?.name}</p>
-                        <p className="text-[10px] text-white/30">Было: {ri.expected_qty} → Факт: {ri.actual_qty}</p>
+                        <p className="text-[10px] text-[var(--c-hint)]">Было: {ri.expected_qty} → Факт: {ri.actual_qty}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-bold text-[13px] text-red-400">{ri.diff}</p>
+                        <p className="font-bold text-[13px] text-[var(--c-danger)]">{ri.diff}</p>
                         <p className="text-[10px] text-red-400/60">{fmtCur(Math.abs(ri.diff) * (ri.item?.price || 0))}</p>
                       </div>
                     </div>
@@ -491,16 +491,16 @@ export function RevisionPage() {
 
             {detailItems.filter((ri) => ri.diff > 0).length > 0 && (
               <div>
-                <p className="text-[10px] font-semibold text-emerald-400 uppercase tracking-wider mb-2">Излишки</p>
+                <p className="text-[10px] font-semibold text-[var(--c-success)] uppercase tracking-wider mb-2">Излишки</p>
                 <div className="space-y-1.5">
                   {detailItems.filter((ri) => ri.diff > 0).map((ri) => (
-                    <div key={ri.id} className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
+                    <div key={ri.id} className="flex items-center justify-between p-3 rounded-xl bg-[var(--c-success-bg)] border border-emerald-500/10">
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{ri.item?.name}</p>
-                        <p className="text-[10px] text-white/30">Было: {ri.expected_qty} → Факт: {ri.actual_qty}</p>
+                        <p className="text-[10px] text-[var(--c-hint)]">Было: {ri.expected_qty} → Факт: {ri.actual_qty}</p>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="font-bold text-[13px] text-emerald-400">+{ri.diff}</p>
+                        <p className="font-bold text-[13px] text-[var(--c-success)]">+{ri.diff}</p>
                         <p className="text-[10px] text-emerald-400/60">{fmtCur(ri.diff * (ri.item?.price || 0))}</p>
                       </div>
                     </div>

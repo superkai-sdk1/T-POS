@@ -12,9 +12,9 @@ import type { Expense, ExpenseCategory } from '@/types';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 
 const CATEGORIES: { value: ExpenseCategory; label: string; icon: typeof Building2; color: string }[] = [
-  { value: 'rent', label: 'Аренда', icon: Building2, color: 'text-blue-400 bg-blue-500/10' },
-  { value: 'utilities', label: 'Коммуналка', icon: Zap, color: 'text-amber-400 bg-amber-500/10' },
-  { value: 'salary', label: 'Зарплаты', icon: Users, color: 'text-emerald-400 bg-emerald-500/10' },
+  { value: 'rent', label: 'Аренда', icon: Building2, color: 'text-[var(--c-info)] bg-[var(--c-info-bg)]' },
+  { value: 'utilities', label: 'Коммуналка', icon: Zap, color: 'text-[var(--c-warning)] bg-[var(--c-warning-bg)]' },
+  { value: 'salary', label: 'Зарплаты', icon: Users, color: 'text-[var(--c-success)] bg-[var(--c-success-bg)]' },
   { value: 'other', label: 'Прочее', icon: MoreHorizontal, color: 'text-gray-400 bg-gray-500/10' },
 ];
 
@@ -92,7 +92,7 @@ export function ExpensesManager() {
             type="month"
             value={filterMonth}
             onChange={(e) => setFilterMonth(e.target.value)}
-            className="bg-white/5 border border-white/8 rounded-lg px-2 py-1 text-[12px] text-[var(--c-text)]"
+            className="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-lg px-2 py-1 text-[12px] text-[var(--c-text)]"
           />
         </div>
         <Button size="sm" onClick={() => setShowAdd(true)}>
@@ -102,8 +102,8 @@ export function ExpensesManager() {
 
       <div className="p-3 rounded-xl card">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] text-white/30 font-semibold uppercase tracking-wider">Итого за месяц</span>
-          <span className="text-xl font-black text-red-400 tabular-nums">{fmtCur(totalMonth)}</span>
+          <span className="text-[11px] text-[var(--c-hint)] font-semibold uppercase tracking-wider">Итого за месяц</span>
+          <span className="text-xl font-black text-[var(--c-danger)] tabular-nums">{fmtCur(totalMonth)}</span>
         </div>
         <div className="grid grid-cols-2 gap-1.5">
           {byCategory.map((cat) => (
@@ -111,12 +111,12 @@ export function ExpensesManager() {
               key={cat.value}
               onClick={() => setFilterCat(filterCat === cat.value ? 'all' : cat.value)}
               className={`flex items-center gap-2 p-2 rounded-lg transition-all active:scale-95 ${
-                filterCat === cat.value ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/20' : 'bg-white/3'
+                filterCat === cat.value ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/20' : 'bg-[var(--c-surface)]'
               }`}
             >
               <cat.icon className={`w-3.5 h-3.5 ${cat.color.split(' ')[0]}`} />
               <div className="flex-1 text-left">
-                <p className="text-[10px] text-white/40">{cat.label}</p>
+                <p className="text-[10px] text-[var(--c-hint)]">{cat.label}</p>
                 <p className="text-[12px] font-bold text-[var(--c-text)] tabular-nums">{fmtCur(cat.total)}</p>
               </div>
             </button>
@@ -127,7 +127,7 @@ export function ExpensesManager() {
       <div className="space-y-1">
         {expenses.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-sm text-white/20">Нет расходов за выбранный период</p>
+            <p className="text-sm text-[var(--c-muted)]">Нет расходов за выбранный период</p>
           </div>
         ) : (
           expenses.map((exp) => {
@@ -143,15 +143,15 @@ export function ExpensesManager() {
                       {exp.description || cat.label}
                     </p>
                     <div className="flex gap-1.5 mt-0.5">
-                      <span className="text-[10px] text-white/20">
+                      <span className="text-[10px] text-[var(--c-muted)]">
                         {new Date(exp.expense_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                       </span>
                       {exp.creator?.nickname && (
-                        <span className="text-[10px] text-white/15">· {exp.creator.nickname}</span>
+                        <span className="text-[10px] text-[var(--c-muted)]">· {exp.creator.nickname}</span>
                       )}
                     </div>
                   </div>
-                  <p className="text-[14px] font-bold text-red-400 tabular-nums shrink-0">{fmtCur(Number(exp.amount))}</p>
+                  <p className="text-[14px] font-bold text-[var(--c-danger)] tabular-nums shrink-0">{fmtCur(Number(exp.amount))}</p>
                 </div>
               </SwipeableRow>
             );
@@ -169,11 +169,11 @@ export function ExpensesManager() {
                 className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all active:scale-95 ${
                   category === cat.value
                     ? 'bg-[var(--c-accent)]/10 border-[var(--c-accent)]/20'
-                    : 'bg-white/3 border-white/5'
+                    : 'bg-[var(--c-surface)] border-[var(--c-border)]'
                 }`}
               >
                 <cat.icon className={`w-4 h-4 ${cat.color.split(' ')[0]}`} />
-                <span className={`text-[12px] font-semibold ${category === cat.value ? 'text-[var(--c-accent)]' : 'text-white/50'}`}>
+                <span className={`text-[12px] font-semibold ${category === cat.value ? 'text-[var(--c-accent)]' : 'text-[var(--c-hint)]'}`}>
                   {cat.label}
                 </span>
               </button>
