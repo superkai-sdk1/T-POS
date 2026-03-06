@@ -156,10 +156,10 @@ const server = http.createServer((req, res) => {
     req.on('end', async () => {
       try {
         const { messages, context } = JSON.parse(body);
-        const GROQ_KEY = process.env.GROQ_API_KEY;
+        const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
         const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
         const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
-        const groqUrl = 'https://api.groq.com/openai/v1/chat/completions';
+        const aiUrl = 'https://openrouter.ai/api/v1/chat/completions';
 
         // --- Fetch compact database context from Supabase ---
         let dbContext = '';
@@ -289,44 +289,46 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
           });
         }
 
-        const groqBody = {
-          model: 'llama-3.3-70b-versatile',
+        const aiBody = {
+          model: 'meta-llama/llama-3.3-70b-instruct',
           messages: enrichedMessages,
           temperature: 0.7,
-          max_tokens: 8192,
+          max_tokens: 4096,
         };
 
-        let groqRes;
+        let aiRes;
         let attempts = 0;
         const maxAttempts = 5;
 
         while (attempts < maxAttempts) {
-          groqRes = await fetch(groqUrl, {
+          aiRes = await fetch(aiUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${GROQ_KEY}`,
+              'Authorization': `Bearer ${OPENROUTER_KEY}`,
+              'HTTP-Referer': 'https://tpos.ru', // Optional, for OpenRouter analytics
+              'X-Title': 'T-POS',
             },
-            body: JSON.stringify(groqBody),
+            body: JSON.stringify(aiBody),
           });
 
-          if (groqRes.status === 429 && attempts < maxAttempts - 1) {
+          if (aiRes.status === 429 && attempts < maxAttempts - 1) {
             attempts++;
             const delay = Math.pow(2, attempts) * 1000;
-            console.warn(`Groq 429: Rate limit hit. Retrying in ${delay}ms... (Attempt ${attempts}/${maxAttempts})`);
+            console.warn(`AI 429: Rate limit hit. Retrying in ${delay}ms... (Attempt ${attempts}/${maxAttempts})`);
             await new Promise(r => setTimeout(r, delay));
             continue;
           }
           break;
         }
 
-        const data = await groqRes.json();
+        const data = await aiRes.json();
 
-        if (!groqRes.ok) {
-          console.error('Groq API Error:', data);
+        if (!aiRes.ok) {
+          console.error('AI API Error:', data);
           json(res, {
-            error: `Groq API error: ${groqRes.status}`,
-            details: data.error?.message || 'Unknown error. Если это ошибка 429 — подождите минуту, лимиты Groq временно исчерпаны.',
+            error: `AI API error: ${aiRes.status}`,
+            details: data.error?.message || 'Unknown error. Если это ошибка 429 — подождите минуту, лимиты провайдера временно исчерпаны.',
           }, 200);
           return;
         }
