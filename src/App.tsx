@@ -3,6 +3,7 @@ import { useAuthStore } from '@/store/auth';
 import { usePOSStore } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
+import { supabase } from '@/lib/supabase';
 import { initTelegramApp } from '@/lib/telegram';
 import { LoginPage } from '@/components/auth/LoginPage';
 import { Layout } from '@/components/Layout';
@@ -60,9 +61,34 @@ export default function App() {
         state.saveCartToDb();
       }
     };
+
+    let lastHidden = 0;
+
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') handleBeforeUnload();
+      if (document.visibilityState === 'hidden') {
+        lastHidden = Date.now();
+        handleBeforeUnload();
+      } else if (document.visibilityState === 'visible') {
+        // If was hidden for more than 10 seconds, refresh everything
+        const hiddenDuration = Date.now() - lastHidden;
+        if (hiddenDuration > 10_000) {
+          console.log('[T-POS] Resuming after', Math.round(hiddenDuration / 1000), 's — reloading data');
+          // Reload all critical data
+          usePOSStore.getState().loadInventory();
+          usePOSStore.getState().loadOpenChecks();
+          useShiftStore.getState().loadActiveShift();
+          useAuthStore.getState().refreshProfile();
+          // Refresh active check if any
+          const active = usePOSStore.getState().activeCheck;
+          if (active) usePOSStore.getState().refreshActiveCheck();
+          // Force Supabase realtime reconnect
+          supabase.removeAllChannels().then(() => {
+            window.dispatchEvent(new CustomEvent('tpos:reconnect'));
+          });
+        }
+      }
     };
+
     window.addEventListener('beforeunload', handleBeforeUnload);
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {

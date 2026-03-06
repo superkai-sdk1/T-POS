@@ -119,8 +119,51 @@ export function useRealtimeSync() {
 
     channelRef.current = channel;
 
+    // Re-subscribe after app resume from screen lock
+    const handleReconnect = () => {
+      console.log('[T-POS] Reconnecting realtime channel');
+      if (channelRef.current) {
+        channelRef.current.unsubscribe();
+      }
+      // Small delay to let the old channel clean up
+      setTimeout(() => {
+        const freshChannel = supabase
+          .channel('tpos-realtime-' + Date.now())
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'checks' },
+            () => debounced('checks', () => {
+              usePOSStore.getState().loadOpenChecks();
+              const active = usePOSStore.getState().activeCheck;
+              if (active) usePOSStore.getState().refreshActiveCheck();
+              emitTableChange('checks');
+            }),
+          )
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'check_items' },
+            () => debounced('check_items', () => {
+              if (isSavingCart()) return;
+              usePOSStore.getState().loadOpenChecks();
+              const active = usePOSStore.getState().activeCheck;
+              if (active) usePOSStore.getState().refreshActiveCheck();
+              emitTableChange('check_items');
+            }),
+          )
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' },
+            () => debounced('inventory', () => { usePOSStore.getState().loadInventory(); emitTableChange('inventory'); }),
+          )
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'shifts' },
+            () => debounced('shifts', () => { useShiftStore.getState().loadActiveShift(); emitTableChange('shifts'); }),
+          )
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' },
+            () => debounced('profiles', () => { emitTableChange('profiles'); }),
+          )
+          .subscribe();
+        channelRef.current = freshChannel;
+      }, 500);
+    };
+    window.addEventListener('tpos:reconnect', handleReconnect);
+
     return () => {
       Object.values(debounceTimers).forEach(clearTimeout);
+      window.removeEventListener('tpos:reconnect', handleReconnect);
       channel.unsubscribe();
     };
   }, []);
