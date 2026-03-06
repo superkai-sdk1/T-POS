@@ -4,7 +4,7 @@ import { usePOSStore } from '@/store/pos';
 import { PaymentDrawer } from './PaymentDrawer';
 import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/ui/Drawer';
-import { SwipeableRow } from '@/components/ui/SwipeableRow';
+import { CartSwipeableRow } from '@/components/ui/CartSwipeableRow';
 import {
   ArrowLeft, CreditCard, Plus, Minus, X,
   ShoppingBag,
@@ -91,8 +91,13 @@ const CartItemRow = memo(function CartItemRow({
   const modPrice = (ci.modifiers || []).reduce((s, m) => s + m.price, 0);
   const unitPrice = ci.item.price + modPrice;
   return (
-    <SwipeableRow onDelete={() => { hapticFeedback('medium'); onRemove(ci.item.id); }}>
-      <div className="flex items-center gap-2.5 py-2 px-1 bg-[var(--c-bg)]">
+    <CartSwipeableRow
+      quantity={ci.quantity}
+      onIncrement={() => onUpdateQty(ci.item.id, ci.quantity + 1)}
+      onDecrement={() => onUpdateQty(ci.item.id, Math.max(1, ci.quantity - 1))}
+      onRemove={() => onRemove(ci.item.id)}
+    >
+      <div className="flex items-center gap-2.5 py-2 px-1">
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-medium text-[var(--c-text)] truncate leading-tight">
             {ci.item.name}
@@ -129,7 +134,7 @@ const CartItemRow = memo(function CartItemRow({
           {fmtCur(unitPrice * ci.quantity)}
         </p>
       </div>
-    </SwipeableRow>
+    </CartSwipeableRow>
   );
 });
 
@@ -970,8 +975,8 @@ export function CheckView({ onBack }: CheckViewProps) {
                     key={key}
                     onClick={() => { setSelectedTariff(key); hapticFeedback('light'); }}
                     className={`relative flex flex-col items-center gap-1 p-3 rounded-xl border transition-all active:scale-[0.97] ${isSelected
-                        ? 'bg-[var(--c-accent)]/10 border-[var(--c-accent)]/30'
-                        : 'card border-[var(--c-border)]'
+                      ? 'bg-[var(--c-accent)]/10 border-[var(--c-accent)]/30'
+                      : 'card border-[var(--c-border)]'
                       }`}
                   >
                     {isDefault && (
@@ -980,9 +985,9 @@ export function CheckView({ onBack }: CheckViewProps) {
                       </div>
                     )}
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${key === 'resident' ? 'bg-[var(--c-success-bg)]' :
-                        key === 'student' ? 'bg-[var(--c-info-bg)]' :
-                          key === 'single_game' ? 'bg-[var(--c-warning-bg)]' :
-                            'bg-[var(--c-surface-hover)]'
+                      key === 'student' ? 'bg-[var(--c-info-bg)]' :
+                        key === 'single_game' ? 'bg-[var(--c-warning-bg)]' :
+                          'bg-[var(--c-surface-hover)]'
                       }`}>
                       {key === 'resident' ? <Star className="w-4 h-4 text-[var(--c-success)]" /> :
                         key === 'student' ? <GraduationCap className="w-4 h-4 text-[var(--c-info)]" /> :
