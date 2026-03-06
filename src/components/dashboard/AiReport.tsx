@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button';
 interface AnalyticsContext {
   revenue: number;
   prevRevenue: number;
+  revenueDelta: number;
   netProfit: number;
   marginPct: number;
   totalExpenses: number;
@@ -15,6 +16,7 @@ interface AnalyticsContext {
   totalDebt: number;
   debtorsCount: number;
   retentionRate: number;
+  playerSegments: { new: number; active: number; sleeping: number };
   topProducts: { name: string; revenue: number; qty: number; abcGroup: string }[];
   topPlayers: { nickname: string; total: number; count: number; segment: string }[];
   paymentBreakdown: { cash: number; card: number; debt: number; bonus: number };
@@ -43,11 +45,53 @@ async function callAI(messages: { role: string; content: string }[], context: An
   }
 }
 
-interface Props {
-  context: AnalyticsContext;
+function buildReportPrompt(userName: string): string {
+  return `Ты — профессиональный бизнес-аналитик POS-системы T-POS для развлекательных клубов (мафия-клуб, бар, настольные игры).
+Обращайся к пользователю по имени: ${userName}.
+
+ЗАДАЧА: Сгенерировать подробный, красиво оформленный аналитический отчёт в формате HTML.
+
+ФОРМАТ ОТВЕТА — чистый HTML (БЕЗ \`\`\`html обёртки, БЕЗ markdown). Используй ТОЛЬКО inline-стили.
+
+ОБЯЗАТЕЛЬНЫЕ СЕКЦИИ ОТЧЁТА:
+
+1. **📊 Резюме** — ключевые метрики карточками (выручка, прибыль, маржа, средний чек). Показывай динамику стрелками ▲▼ и процентами.
+
+2. **💰 Финансовый анализ** — разбивка доходов и расходов. Себестоимость vs операционные расходы. Построй горизонтальную bar-chart диаграмму используя div-элементы с inline-стилями и градиентами.
+
+3. **🏆 ABC-анализ товаров** — таблица топ товаров с цветовой маркировкой групп A/B/C. Группа A = зелёный, B = жёлтый, C = красный.
+
+4. **👥 Анализ игроков** — сегментация (новые, активные, спящие) в виде визуальной диаграммы. Топ игроков таблицей.
+
+5. **💳 Способы оплаты** — визуальная полоса-диаграмма (stacked bar) с цветами: наличные=зелёный, карта=синий, долг=красный, бонусы=оранжевый.
+
+6. **⚠️ Проблемы и риски** — красные зоны: если маржа <70%, рост долгов, падение retention, спящие игроки.
+
+7. **💡 Рекомендации** — 3-5 конкретных, действенных советов по увеличению прибыли, привлечению и удержанию клиентов. Основывай на данных.
+
+ПРАВИЛА ВИЗУАЛИЗАЦИИ:
+- Для диаграмм используй div-элементы с inline-стилями: background с linear-gradient, border-radius, ширина в процентах.
+- Карточки метрик: display:flex, gap, padding, border-radius:12px, background с полупрозрачными цветами.
+- Таблицы: border-collapse, padding в ячейках, чередование строк с background.
+- Цвета: рост = #22c55e, падение = #ef4444, нейтрально = #3b82f6, акцент = #a855f7.
+- Все шрифты: font-family: -apple-system, system-ui, sans-serif.
+- Максимальная ширина контента: 100%.
+- НЕ используй внешние скрипты или стили.
+- Текст должен быть на РУССКОМ языке.
+
+Будь детальным, используй реальные цифры из данных. Формат чисел: разделитель тысяч — пробел, валюта — ₽.`;
 }
 
-export const AiReport = memo(function AiReport({ context }: Props) {
+function buildChatPrompt(userName: string, context: AnalyticsContext): string {
+  return `Ты — аналитик T-POS. Отвечай на вопросы по данным клуба. Обращайся к пользователю по имени: ${userName}. Будь краток и точен. Используй цифры из контекста. Отвечай в формате HTML с inline-стилями для красивого форматирования. Контекст данных:\n${JSON.stringify(context)}`;
+}
+
+interface Props {
+  context: AnalyticsContext;
+  userName: string;
+}
+
+export const AiReport = memo(function AiReport({ context, userName }: Props) {
   const [report, setReport] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(true);
@@ -62,23 +106,17 @@ export const AiReport = memo(function AiReport({ context }: Props) {
 
     const systemMsg = {
       role: 'system',
-      content: `Ты — ведущий аналитик клуба спортивной мафии «Титан». Твоя задача — анализировать JSON данные системы T-POS.
-Обращайся к владельцу по имени Астемир.
-Пиши кратко, профессионально, с акцентом на прибыль.
-Выделяй аномалии (например, рост долгов или падение продаж хитов).
-Дай 3 конкретных совета по увеличению выручки на основе данных.
-Если маржа ниже 85%, укажи на это как на критическую проблему.
-Формат: используй эмодзи-разделители. Не используй markdown.`,
+      content: buildReportPrompt(userName),
     };
     const userMsg = {
       role: 'user',
-      content: `Сгенерируй аналитический отчёт по этим данным:\n${JSON.stringify(context, null, 2)}`,
+      content: `Сгенерируй подробный аналитический отчёт по следующим данным:\n${JSON.stringify(context, null, 2)}`,
     };
 
     const text = await callAI([systemMsg, userMsg], context);
     setReport(text);
     setLoading(false);
-  }, [context]);
+  }, [context, userName]);
 
   const sendChat = useCallback(async () => {
     if (!chatInput.trim() || chatLoading) return;
@@ -91,7 +129,7 @@ export const AiReport = memo(function AiReport({ context }: Props) {
 
     const systemMsg = {
       role: 'system',
-      content: `Ты — аналитик T-POS. Отвечай на вопросы по данным клуба мафии «Титан». Будь краток и точен. Используй цифры из контекста. Контекст данных:\n${JSON.stringify(context)}`,
+      content: buildChatPrompt(userName, context),
     };
 
     const apiMessages = [
@@ -103,7 +141,7 @@ export const AiReport = memo(function AiReport({ context }: Props) {
     setChatMessages([...newMessages, { role: 'assistant', content: answer }]);
     setChatLoading(false);
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-  }, [chatInput, chatMessages, chatLoading, context]);
+  }, [chatInput, chatMessages, chatLoading, context, userName]);
 
   return (
     <div className="space-y-4">
@@ -133,8 +171,11 @@ export const AiReport = memo(function AiReport({ context }: Props) {
             {expanded ? <ChevronUp className="w-4 h-4 text-[var(--c-hint)]" /> : <ChevronDown className="w-4 h-4 text-[var(--c-hint)]" />}
           </button>
           {expanded && (
-            <div className="px-4 pb-4 pt-2">
-              <p className="text-sm text-[var(--c-text)] leading-relaxed whitespace-pre-wrap">{report}</p>
+            <div className="px-3 pb-4 pt-2">
+              <div
+                className="ai-report-content text-sm text-[var(--c-text)] leading-relaxed overflow-x-auto"
+                dangerouslySetInnerHTML={{ __html: report }}
+              />
             </div>
           )}
         </div>
@@ -156,12 +197,15 @@ export const AiReport = memo(function AiReport({ context }: Props) {
                     <Bot className="w-3 h-3 text-[var(--c-accent)]" />
                   </div>
                 )}
-                <div className={`max-w-[80%] px-3 py-2 rounded-xl text-sm leading-relaxed ${
-                  msg.role === 'user'
+                <div className={`max-w-[80%] px-3 py-2 rounded-xl text-sm leading-relaxed ${msg.role === 'user'
                     ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)] rounded-tr-sm'
                     : 'bg-[var(--c-surface)] text-[var(--c-text)] rounded-tl-sm'
-                }`}>
-                  {msg.content}
+                  }`}>
+                  {msg.role === 'assistant' ? (
+                    <div dangerouslySetInnerHTML={{ __html: msg.content }} />
+                  ) : (
+                    msg.content
+                  )}
                 </div>
                 {msg.role === 'user' && (
                   <div className="w-6 h-6 rounded-full bg-[var(--c-surface)] flex items-center justify-center shrink-0">

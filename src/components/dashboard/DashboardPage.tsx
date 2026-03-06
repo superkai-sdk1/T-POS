@@ -8,6 +8,7 @@ import { PlayersModule } from './PlayersModule';
 import { AiReport } from './AiReport';
 import { useAnalyticsData } from '@/hooks/useAnalyticsData';
 import { useAnalyticsStore, getReportingDayStart } from '@/store/analytics';
+import { useAuthStore } from '@/store/auth';
 import { supabase } from '@/lib/supabase';
 import {
   BarChart3, Receipt, ShoppingBag, Users, Clock, Sparkles,
@@ -56,6 +57,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   const [tab, setTab] = useState<TabId>('finance');
   const data = useAnalyticsData();
   const { preset } = useAnalyticsStore();
+  const authUser = useAuthStore((s) => s.user);
 
   const tabs: { id: TabId; label: string; icon: typeof BarChart3 }[] = [
     { id: 'finance', label: 'Финансы', icon: BarChart3 },
@@ -67,9 +69,20 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
   const avgCheck = data.checks.length > 0 ? Math.round(data.revenue / data.checks.length) : 0;
 
+  const revenueDelta = data.prevRevenue > 0
+    ? Math.round(((data.revenue - data.prevRevenue) / Math.abs(data.prevRevenue)) * 100)
+    : (data.revenue > 0 ? 100 : 0);
+
+  const playerSegments = useMemo(() => {
+    const segs = { new: 0, active: 0, sleeping: 0 };
+    for (const p of data.playerStats) segs[p.segment]++;
+    return segs;
+  }, [data.playerStats]);
+
   const aiContext = useMemo(() => ({
     revenue: data.revenue,
     prevRevenue: data.prevRevenue,
+    revenueDelta,
     netProfit: data.netProfit,
     marginPct: data.marginPct,
     totalExpenses: data.totalExpenses,
@@ -80,6 +93,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
     totalDebt: data.totalDebt,
     debtorsCount: data.debtors.length,
     retentionRate: data.retentionRate,
+    playerSegments,
     topProducts: data.productStats.slice(0, 10).map((p) => ({
       name: p.name, revenue: p.revenue, qty: p.qty, abcGroup: p.abcGroup,
     })),
@@ -88,7 +102,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
     })),
     paymentBreakdown: data.paymentBreakdown,
     period: preset,
-  }), [data, avgCheck, preset]);
+  }), [data, avgCheck, preset, revenueDelta, playerSegments]);
 
   if (data.isLoading) {
     return (
@@ -109,11 +123,10 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap min-w-0 ${
-              tab === t.id
+            className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap min-w-0 ${tab === t.id
                 ? 'bg-[var(--c-accent)] text-white shadow-sm'
                 : 'text-[var(--c-hint)]'
-            }`}
+              }`}
           >
             <t.icon className="w-3 h-3 shrink-0" />
             {t.label}
@@ -175,7 +188,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       )}
 
       {tab === 'ai' && (
-        <AiReport context={aiContext} />
+        <AiReport context={aiContext} userName={authUser?.nickname || 'Пользователь'} />
       )}
     </div>
   );
@@ -361,12 +374,11 @@ function ChecksTab({ allChecks, checkPaymentsMap }: {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {c.payment_method && (
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                          c.payment_method === 'cash' ? 'bg-[var(--c-success-bg)] text-[var(--c-success)]' :
-                          c.payment_method === 'card' ? 'bg-[var(--c-info-bg)] text-[var(--c-info)]' :
-                          c.payment_method === 'debt' ? 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' :
-                          'bg-[var(--c-warning-bg)] text-[var(--c-warning)]'
-                        }`}>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${c.payment_method === 'cash' ? 'bg-[var(--c-success-bg)] text-[var(--c-success)]' :
+                            c.payment_method === 'card' ? 'bg-[var(--c-info-bg)] text-[var(--c-info)]' :
+                              c.payment_method === 'debt' ? 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' :
+                                'bg-[var(--c-warning-bg)] text-[var(--c-warning)]'
+                          }`}>
                           {pmLabels[c.payment_method] || c.payment_method}
                         </span>
                       )}

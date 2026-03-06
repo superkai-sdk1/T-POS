@@ -156,13 +156,101 @@ const server = http.createServer((req, res) => {
       try {
         const { messages, context } = JSON.parse(body);
         const GROQ_KEY = process.env.GROQ_API_KEY;
+        const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+        const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
         const groqUrl = 'https://api.groq.com/openai/v1/chat/completions';
+
+        // --- Fetch full database context from Supabase ---
+        let dbContext = '';
+        if (SUPABASE_URL && SUPABASE_KEY) {
+          const sbHeaders = {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+          };
+          const sbFetch = (table, query = '') =>
+            fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: sbHeaders })
+              .then((r) => r.ok ? r.json() : [])
+              .catch(() => []);
+
+          const [
+            profiles, checks, checkItems, inventory,
+            expenses, supplies, cashOps, shifts, bookings,
+          ] = await Promise.all([
+            sbFetch('profiles', 'select=id,nickname,role,balance,bonus_points,client_tier,is_resident,phone,created_at,deleted_at&order=created_at.desc&limit=500'),
+            sbFetch('checks', 'select=id,player_id,staff_id,status,total_amount,payment_method,bonus_used,discount_total,closed_at,created_at&status=eq.closed&order=closed_at.desc&limit=500'),
+            sbFetch('check_items', 'select=check_id,item_id,quantity,price_at_time&limit=2000'),
+            sbFetch('inventory', 'select=id,name,category,price,stock_quantity,min_threshold,is_active&order=name'),
+            sbFetch('expenses', 'select=id,category,amount,description,expense_date&order=expense_date.desc&limit=200'),
+            sbFetch('supplies', 'select=id,total_cost,note,created_at&order=created_at.desc&limit=100'),
+            sbFetch('cash_operations', 'select=id,type,amount,note,created_at&order=created_at.desc&limit=100'),
+            sbFetch('shifts', 'select=id,opened_by,closed_by,status,cash_start,cash_end,opened_at,closed_at&order=opened_at.desc&limit=50'),
+            sbFetch('bookings', 'select=id,space_id,client_id,start_time,end_time,rental_amount,status&order=start_time.desc&limit=100'),
+          ]);
+
+          const staff = profiles.filter((p) => p.role === 'owner' || p.role === 'staff');
+          const clients = profiles.filter((p) => p.role === 'client' && !p.deleted_at);
+          const debtors = clients.filter((p) => p.balance < 0);
+
+          dbContext = `\n\n=== ПОЛНЫЙ КОНТЕКСТ БАЗЫ ДАННЫХ T-POS ===
+
+ПЕРСОНАЛ (${staff.length}):
+${JSON.stringify(staff.map((p) => ({ id: p.id, nickname: p.nickname, role: p.role })))}
+
+КЛИЕНТЫ (всего: ${clients.length}, должники: ${debtors.length}):
+${JSON.stringify(clients.slice(0, 100).map((p) => ({ id: p.id, nickname: p.nickname, balance: p.balance, bonus: p.bonus_points, tier: p.client_tier, resident: p.is_resident })))}
+
+ДОЛЖНИКИ:
+${JSON.stringify(debtors.map((p) => ({ nickname: p.nickname, debt: p.balance })))}
+
+ПОСЛЕДНИЕ ЧЕКИ (${checks.length}):
+${JSON.stringify(checks.slice(0, 100))}
+
+ТОВАРЫ/МЕНЮ (${inventory.length}):
+${JSON.stringify(inventory)}
+
+ПОЗИЦИИ ЧЕКОВ (${checkItems.length}):
+${JSON.stringify(checkItems.slice(0, 500))}
+
+РАСХОДЫ (${expenses.length}):
+${JSON.stringify(expenses.slice(0, 50))}
+
+ПОСТАВКИ (${supplies.length}):
+${JSON.stringify(supplies.slice(0, 30))}
+
+КАССОВЫЕ ОПЕРАЦИИ (${cashOps.length}):
+${JSON.stringify(cashOps.slice(0, 30))}
+
+СМЕНЫ (${shifts.length}):
+${JSON.stringify(shifts.slice(0, 20))}
+
+БРОНИРОВАНИЯ (${bookings.length}):
+${JSON.stringify(bookings.slice(0, 30))}
+
+=== КОНЕЦ КОНТЕКСТА ===`;
+        }
+
+        // Inject DB context into system message
+        const enrichedMessages = messages.map((m) => {
+          if (m.role === 'system') {
+            return { ...m, content: m.content + dbContext };
+          }
+          return m;
+        });
+
+        // If no system message exists, add one with DB context
+        if (!enrichedMessages.find((m) => m.role === 'system') && dbContext) {
+          enrichedMessages.unshift({
+            role: 'system',
+            content: `Ты — ИИ-ассистент POS-системы T-POS. У тебя есть полный доступ к данным бизнеса. Отвечай подробно, используя реальные цифры.${dbContext}`,
+          });
+        }
 
         const groqBody = {
           model: 'llama-3.3-70b-versatile',
-          messages,
+          messages: enrichedMessages,
           temperature: 0.7,
-          max_tokens: 2048,
+          max_tokens: 8192,
         };
 
         const groqRes = await fetch(groqUrl, {
@@ -178,7 +266,6 @@ const server = http.createServer((req, res) => {
 
         if (!groqRes.ok) {
           console.error('Groq API Error:', data);
-          // Возвращаем 200, чтобы фронт не видел 502/500, а показал текст ошибки
           json(res, {
             error: `Groq API error: ${groqRes.status}`,
             details: data.error?.message || 'Unknown error',
@@ -190,8 +277,6 @@ const server = http.createServer((req, res) => {
         json(res, { response: text });
       } catch (e) {
         console.error('AI Route Error:', e);
-        // Любая ошибка backend-логики тоже приходит как 200 с текстом,
-        // чтобы на клиенте не падал fetch с 5xx.
         json(res, { error: String(e) }, 200);
       }
     });
