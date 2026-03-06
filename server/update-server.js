@@ -186,7 +186,7 @@ const server = http.createServer((req, res) => {
             sbFetch('supplies', 'select=total_cost,created_at&order=created_at.desc&limit=50'),
             sbFetch('cash_operations', 'select=type,amount,created_at&order=created_at.desc&limit=50'),
             sbFetch('shifts', 'select=status,cash_start,cash_end,opened_at,closed_at&order=opened_at.desc&limit=10'),
-            sbFetch('events', 'select=id,type,location,date,start_time,status,comment&order=date.desc&limit=100'),
+            sbFetch('events', `status=neq.completed&date=gte.${new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0]}&order=date.asc&limit=20`),
           ]);
 
           // Pre-aggregate data to keep context compact
@@ -253,9 +253,11 @@ const server = http.createServer((req, res) => {
 
         // --- Construct System Prompt ---
         const now = new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', dateStyle: 'long', timeStyle: 'short' });
-        const systemPromptHeader = `Ты — ИИ-ассистент POS-системы T-POS.
-СЕЙЧАС: ${now} (Московское время).
-BUILD_ID: 20260306_v5
+        const systemPromptHeader = `СЕЙЧАС (МСК): ${now}.
+ТЕКУЩИЙ ГОД: 2026.
+ИГНОРИРУЙ любые мысли о 2024 годе. Если ты создаешь мероприятие без указания года, ВСЕГДА используй 2026.
+Ты — ИИ-ассистент POS-системы T-POS.
+BUILD_ID: 20260306_v8_ULTRA_FIX
 ВАЖНО: Сегодня 2026 год. Игнорируй любые упоминания 2024 года в истории, если они противоречат здравому смыслу. Все новые мероприятия создавай на 2026 год.
 ИДЕНТИФИКАЦИЯ: Если пользователь спрашивает "кто ты", отвечай что ты ассистент T-POS.
 
