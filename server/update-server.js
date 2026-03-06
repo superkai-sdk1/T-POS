@@ -175,7 +175,7 @@ const server = http.createServer((req, res) => {
 
           const [
             profiles, checks, checkItems, inventory,
-            expenses, supplies, cashOps, shifts,
+            expenses, supplies, cashOps, shifts, events,
           ] = await Promise.all([
             sbFetch('profiles', 'select=id,nickname,role,balance,bonus_points,client_tier,is_resident,created_at,deleted_at&order=created_at.desc&limit=200'),
             sbFetch('checks', 'select=id,player_id,total_amount,payment_method,bonus_used,closed_at&status=eq.closed&order=closed_at.desc&limit=200'),
@@ -244,6 +244,7 @@ const server = http.createServer((req, res) => {
 КАССА: ${JSON.stringify(cashOps.slice(0, 10).map((o) => ({ type: o.type, amount: o.amount })))}
 ПОСЛЕДНИЕ СМЕНЫ: ${JSON.stringify(shifts.slice(0, 5).map((s) => ({ status: s.status, cash_start: s.cash_start, cash_end: s.cash_end, opened: s.opened_at, closed: s.closed_at })))}
 МЕНЮ (все ${inventory.length} позиций): ${JSON.stringify(inventory.map((i) => ({ name: i.name, cat: i.category, price: i.price, stock: i.stock_quantity, active: i.is_active })))}
+МЕРОПРИЯТИЯ (${events.length} всего): ${JSON.stringify(events.slice(0, 10).map((e) => ({ type: e.type, location: e.location, date: e.date, status: e.status })))}
 ===`;
         }
 
@@ -348,7 +349,51 @@ const server = http.createServer((req, res) => {
           });
           const check = await checkRes.json();
           json(res, { success: true, message: `Чек для ${players[0].nickname} создан`, check: check[0] || check });
+          return;
+        }
 
+        if (action === 'create_event') {
+          const eventData = {
+            type: params.type || 'exit',
+            location: params.location || null,
+            date: params.date || new Date().toISOString().split('T')[0],
+            start_time: params.start_time || '18:00',
+            payment_type: params.payment_type || 'fixed',
+            fixed_amount: params.fixed_amount || 0,
+            status: 'planned',
+            comment: params.comment || null,
+            created_by: staffId || null,
+          };
+
+          const eventRes = await fetch(`${SUPABASE_URL}/rest/v1/events`, {
+            method: 'POST',
+            headers: sbHeaders,
+            body: JSON.stringify(eventData),
+          });
+
+          if (!eventRes.ok) {
+            const err = await eventRes.json();
+            json(res, { success: false, error: err.message || 'Ошибка создания мероприятия' });
+            return;
+          }
+
+          const event = await eventRes.json();
+          json(res, {
+            success: true,
+            message: `Мероприятие "${eventData.type === 'titan' ? 'Титан' : eventData.location}" на ${eventData.date} создано`,
+            event: event[0] || event
+          });
+          return;
+        }
+
+        if (action === 'list_events') {
+          const query = params.upcoming ? 'status=neq.completed&date=gte.now()' : '';
+          const eventsRes = await fetch(`${SUPABASE_URL}/rest/v1/events?${query}&order=date.asc,start_time.asc`, {
+            headers: sbHeaders
+          });
+          const events = await eventsRes.json();
+          json(res, { success: true, events });
+          return;
         } else if (action === 'add_items') {
           const { checkId, items } = params; // items: [{ name, quantity }]
           const invRes = await fetch(

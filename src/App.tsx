@@ -14,7 +14,7 @@ import { TabPanel } from '@/components/ui/TabPanel';
 const InventoryPage = lazy(() => import('@/components/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })));
 const ManagementPage = lazy(() => import('@/components/management/ManagementPage').then((m) => ({ default: m.ManagementPage })));
 const DashboardPage = lazy(() => import('@/components/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })));
-const SchedulePage = lazy(() => import('@/components/schedule/SchedulePage').then((m) => ({ default: m.SchedulePage })));
+const EventsPage = lazy(() => import('@/components/events/EventsPage').then((m) => ({ default: m.EventsPage })));
 
 function TabFallback() {
   return (
@@ -46,7 +46,7 @@ export default function App() {
   const prevTabRef = useRef('pos');
   const [showCheckView, setShowCheckView] = useState(false);
   const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(['pos']));
-  const tabOrder = ['pos', 'inventory', 'schedule', 'dashboard', 'management'];
+  const tabOrder = ['pos', 'events', 'inventory', 'dashboard', 'management'];
 
   useRealtimeSync();
 
@@ -168,10 +168,10 @@ export default function App() {
         </TabPanel>
       )}
 
-      {visitedTabs.has('schedule') && (
-        <TabPanel id="schedule" activeTab={activeTab} prevTab={prevTabRef.current} tabOrder={tabOrder}>
+      {visitedTabs.has('events') && (
+        <TabPanel id="events" activeTab={activeTab} prevTab={prevTabRef.current} tabOrder={tabOrder}>
           <Suspense fallback={<TabFallback />}>
-            <SchedulePage onOpenCheck={() => { setActiveTab('pos'); setShowCheckView(true); }} />
+            <EventsPage />
           </Suspense>
         </TabPanel>
       )}

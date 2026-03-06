@@ -75,13 +75,6 @@ export function useRealtimeSync() {
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'bookings' },
-        () => debounced('bookings', () => {
-          emitTableChange('bookings');
-        }),
-      )
-      .on(
-        'postgres_changes',
         { event: '*', schema: 'public', table: 'profiles' },
         () => debounced('profiles', () => {
           emitTableChange('profiles');

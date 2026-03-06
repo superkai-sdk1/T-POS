@@ -213,7 +213,6 @@ export interface CheckDiscount {
 }
 
 export type SpaceType = 'cabin_small' | 'cabin_big' | 'hall';
-export type BookingStatus = 'booked' | 'active' | 'completed' | 'cancelled';
 
 export interface Space {
   id: string;
@@ -223,33 +222,23 @@ export interface Space {
   is_active: boolean;
 }
 
-export interface Booking {
-  id: string;
-  space_id: string;
-  client_id: string | null;
-  check_id: string | null;
-  start_time: string;
-  end_time: string;
-  rental_amount: number;
-  note: string | null;
-  status: BookingStatus;
-  created_by: string | null;
-  created_at: string;
-  space?: Space;
-  client?: Profile;
-}
 
-export type EventStatus = 'planned' | 'completed' | 'cancelled';
+export type EventType = 'titan' | 'exit';
+export type PaymentType = 'fixed' | 'hourly';
+export type EventStatus = 'planned' | 'active' | 'completed';
 
-export interface OffsiteEvent {
+export interface Event {
   id: string;
-  name: string;
-  location: string;
+  type: EventType;
+  location: string | null;
+  date: string;
   start_time: string;
-  end_time: string;
-  amount: number;
-  note: string | null;
+  end_time: string | null;
+  payment_type: PaymentType;
+  fixed_amount: number | null;
   status: EventStatus;
+  comment: string | null;
+  reminders: any;
   check_id: string | null;
   created_by: string | null;
   created_at: string;
