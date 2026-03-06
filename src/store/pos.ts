@@ -16,11 +16,14 @@ interface POSState {
   cart: CartItem[];
   inventory: InventoryItem[];
   appliedDiscounts: CheckDiscount[];
+  menuCategories: Record<string, any>[];
   isLoading: boolean;
   checksLoaded: boolean;
   inventoryLoaded: boolean;
+  categoriesLoaded: boolean;
 
   loadInventory: () => Promise<void>;
+  loadMenuCategories: () => Promise<void>;
   loadOpenChecks: () => Promise<void>;
   createCheck: (playerId: string | null, spaceId?: string | null) => Promise<Check | null>;
   updateCheckNote: (note: string) => Promise<void>;
@@ -53,9 +56,21 @@ export const usePOSStore = create<POSState>((set, get) => ({
   cart: [],
   inventory: [],
   appliedDiscounts: [],
+  menuCategories: [],
   isLoading: false,
   checksLoaded: false,
   inventoryLoaded: false,
+  categoriesLoaded: false,
+
+  loadMenuCategories: async () => {
+    if (get().categoriesLoaded) return;
+    const { data } = await supabase
+      .from('menu_categories')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order');
+    if (data) set({ menuCategories: data, categoriesLoaded: true });
+  },
 
   loadInventory: async () => {
     const { data } = await supabase

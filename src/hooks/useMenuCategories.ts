@@ -39,23 +39,18 @@ export function getCategoryColor(index: number): string {
   return COLOR_PALETTE[index % COLOR_PALETTE.length];
 }
 
+import { usePOSStore } from '@/store/pos';
+
 export function useMenuCategories() {
-  const [categories, setCategories] = useState<MenuCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const categories = usePOSStore((s) => s.menuCategories);
+  const loading = !usePOSStore((s) => s.categoriesLoaded);
+  const reload = usePOSStore((s) => s.loadMenuCategories);
 
-  const load = useCallback(async () => {
-    const { data } = await supabase
-      .from('menu_categories')
-      .select('*')
-      .eq('is_active', true)
-      .order('sort_order');
-    if (data) setCategories(data as MenuCategory[]);
-    setLoading(false);
-  }, []);
+  useEffect(() => {
+    reload();
+  }, [reload]);
 
-  useEffect(() => { load(); }, [load]);
-
-  return { categories, loading, reload: load };
+  return { categories, loading, reload };
 }
 
 export function useAllMenuCategories() {

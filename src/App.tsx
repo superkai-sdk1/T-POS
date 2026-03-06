@@ -115,12 +115,10 @@ export default function App() {
       await leaveCheck();
     }
     prevTabRef.current = activeTab;
-    startTransition(() => {
-      setActiveTab(tab);
-      setShowCheckView(false);
-      setVisitedTabs((prev) => new Set(prev).add(tab));
-      if (tab !== 'management') setManagementScreen(undefined);
-    });
+    setActiveTab(tab);
+    setShowCheckView(false);
+    setVisitedTabs((prev) => new Set(prev).add(tab));
+    if (tab !== 'management') setManagementScreen(undefined);
   }, [showCheckView, activeCheck, leaveCheck, activeTab]);
 
   const handleDashboardNavigate = useCallback((target: string) => {
