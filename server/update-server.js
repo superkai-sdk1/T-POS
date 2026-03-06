@@ -8,6 +8,21 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_DIR = join(__dirname, '..');
 const PORT = 3100;
 
+// Load .env file into process.env
+try {
+  const envFile = readFileSync(join(PROJECT_DIR, '.env'), 'utf-8');
+  for (const line of envFile.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const idx = trimmed.indexOf('=');
+    if (idx > 0) {
+      const key = trimmed.slice(0, idx).trim();
+      const val = trimmed.slice(idx + 1).trim();
+      if (!process.env[key]) process.env[key] = val;
+    }
+  }
+} catch { }
+
 function getVersion() {
   try {
     const pkg = JSON.parse(readFileSync(join(PROJECT_DIR, 'package.json'), 'utf-8'));
