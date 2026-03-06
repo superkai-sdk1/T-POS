@@ -164,7 +164,11 @@ const server = http.createServer((req, res) => {
 
         if (!geminiRes.ok) {
           console.error('Gemini API Error:', data);
-          json(res, { error: `Gemini API error: ${geminiRes.status}`, details: data.error?.message || 'Unknown error' }, 502);
+          // Возвращаем 200, чтобы фронт не видел 502/500, а показал текст ошибки
+          json(res, {
+            error: `Gemini API error: ${geminiRes.status}`,
+            details: data.error?.message || 'Unknown error',
+          }, 200);
           return;
         }
 
@@ -172,7 +176,9 @@ const server = http.createServer((req, res) => {
         json(res, { response: text });
       } catch (e) {
         console.error('AI Route Error:', e);
-        json(res, { error: String(e) }, 500);
+        // Любая ошибка backend-логики тоже приходит как 200 с текстом,
+        // чтобы на клиенте не падал fetch с 5xx.
+        json(res, { error: String(e) }, 200);
       }
     });
     return;
