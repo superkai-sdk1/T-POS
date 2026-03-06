@@ -255,6 +255,7 @@ const server = http.createServer((req, res) => {
         const now = new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', dateStyle: 'long', timeStyle: 'short' });
         const systemPromptHeader = `Ты — ИИ-ассистент POS-системы T-POS.
 СЕЙЧАС: ${now} (Московское время).
+BUILD_ID: 20260306_v5
 ВАЖНО: Сегодня 2026 год. Игнорируй любые упоминания 2024 года в истории, если они противоречат здравому смыслу. Все новые мероприятия создавай на 2026 год.
 ИДЕНТИФИКАЦИЯ: Если пользователь спрашивает "кто ты", отвечай что ты ассистент T-POS.
 
@@ -295,7 +296,7 @@ const server = http.createServer((req, res) => {
 
         let groqRes;
         let attempts = 0;
-        const maxAttempts = 3;
+        const maxAttempts = 5;
 
         while (attempts < maxAttempts) {
           groqRes = await fetch(groqUrl, {
