@@ -78,10 +78,10 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col lg:ml-[68px]">
+      <div className="flex-1 flex flex-col lg:ml-[68px] overflow-hidden">
         {/* Mobile header */}
         <header
-          className="lg:hidden sticky top-0 z-40 px-4 py-2 glass-strong"
+          className="lg:hidden shrink-0 z-40 px-4 py-2 glass-strong"
           style={{ paddingTop: `calc(var(--safe-top) + 0.4rem)` }}
         >
           <div className="flex items-center justify-between max-w-3xl mx-auto">
@@ -100,19 +100,16 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           </div>
         </header>
 
-        <main
-          className="flex-1 px-4 py-3 lg:px-5 lg:py-4 w-full overflow-y-auto overflow-x-hidden overscroll-none"
-          style={{ paddingBottom: 'calc(var(--nav-height) + var(--safe-bottom) + 0.5rem)' }}
-        >
+        <main className="flex-1 px-4 py-3 lg:px-5 lg:py-4 w-full overflow-y-auto overflow-x-hidden overscroll-none">
           {children}
         </main>
 
-        {/* Mobile bottom nav */}
+        {/* Mobile bottom nav — part of flex, not fixed */}
         <nav
-          className="lg:hidden fixed bottom-0 left-0 right-0 z-40 glass-strong"
-          style={{ paddingBottom: 'var(--safe-bottom)', height: 'calc(var(--nav-height) + var(--safe-bottom))' }}
+          className="lg:hidden shrink-0 z-40 glass-strong"
+          style={{ paddingBottom: 'var(--safe-bottom)' }}
         >
-          <div className="flex max-w-3xl mx-auto h-[var(--nav-height)]">
+          <div className="flex max-w-3xl mx-auto" style={{ height: 'var(--nav-height)' }}>
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               return (

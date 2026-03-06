@@ -613,7 +613,7 @@ export function CheckView({ onBack }: CheckViewProps) {
       </div>
 
       {/* Bottom bar */}
-      <div className="fixed left-0 right-0 lg:left-60 z-30 px-4 pb-3 bottom-bar-pos">
+      <div className="sticky bottom-0 z-30 -mx-4 px-4 pb-3 pt-2 bg-gradient-to-t from-[var(--c-bg)] via-[var(--c-bg)] to-transparent">
         <div className="max-w-5xl mx-auto flex gap-2 items-center">
           <button
             onClick={openMenu}
