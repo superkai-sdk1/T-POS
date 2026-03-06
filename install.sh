@@ -500,6 +500,11 @@ if [ "$MODE" = "update" ]; then
   # ── .env: auto-fill defaults silently ──
 
   echo ""
+  DOMAIN=$(read_env_value "$INSTALL_DIR/.env" "POS_DOMAIN") || true
+  if [ -z "$DOMAIN" ] && [ -f "$NGINX_CONF" ]; then
+    DOMAIN=$(extract_server_name "$NGINX_CONF") || true
+  fi
+
   WALLET_DOMAIN=$(read_env_value "$INSTALL_DIR/.env" "WALLET_DOMAIN") || true
   if [ -z "$WALLET_DOMAIN" ] && [ -n "$DOMAIN" ]; then
     WALLET_DOMAIN="wallet.${DOMAIN}"
