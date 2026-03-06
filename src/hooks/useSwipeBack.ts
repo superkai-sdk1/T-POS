@@ -9,8 +9,8 @@ interface SwipeBackConfig {
 
 export function useSwipeBack({
   onBack,
-  edgeWidth = 30,
-  threshold = 80,
+  edgeWidth = 40,
+  threshold = 70,
   enabled = true,
 }: SwipeBackConfig) {
   const startX = useRef(0);
