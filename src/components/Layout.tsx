@@ -47,8 +47,8 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                 onClick={() => onTabChange(tab.id)}
                 title={tab.label}
                 className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150 tap relative ${isActive
-                    ? 'bg-[var(--c-accent)]/12 text-[var(--c-accent)]'
-                    : 'text-[var(--c-hint)] hover:bg-[var(--c-surface)] hover:text-[var(--c-text)]'
+                  ? 'bg-[var(--c-accent)]/12 text-[var(--c-accent)]'
+                  : 'text-[var(--c-hint)] hover:bg-[var(--c-surface)] hover:text-[var(--c-text)]'
                   }`}
               >
                 {isActive && (
@@ -106,7 +106,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
         {/* Mobile bottom nav — part of flex, not fixed */}
         <nav
           className="lg:hidden shrink-0 z-40 glass-strong"
-          style={{ paddingBottom: 'var(--safe-bottom)' }}
+          style={{ paddingBottom: 'max(var(--tg-safe-bottom), calc(env(safe-area-inset-bottom, 0px) * 0.5))' }}
         >
           <div className="flex max-w-3xl mx-auto" style={{ height: 'var(--nav-height)' }}>
             {tabs.map((tab) => {
@@ -116,8 +116,8 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
                   className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all duration-150 active:scale-90 relative shrink-0 min-w-0 ${isActive
-                      ? 'text-[var(--c-accent)]'
-                      : 'text-[var(--c-hint)]'
+                    ? 'text-[var(--c-accent)]'
+                    : 'text-[var(--c-hint)]'
                     }`}
                 >
                   {isActive && (
