@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface DrawerProps {
@@ -65,7 +66,7 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
 
   const opacity = closing ? 0 : dragY > 0 ? Math.max(0, 1 - dragY / 250) : 1;
 
-  return (
+  const drawerContent = (
     <div className="fixed inset-0 z-50 flex items-end lg:items-center lg:justify-center">
       <div
         className={`absolute inset-0 ${closing ? '' : 'animate-fade-in'}`}
@@ -80,9 +81,8 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
       />
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative w-full ${maxH} lg:max-h-[80vh] lg:max-w-lg lg:rounded-2xl rounded-t-2xl overflow-hidden flex flex-col ${
-          closing ? 'animate-slide-down' : 'lg:animate-pop-in animate-slide-up'
-        }`}
+        className={`relative w-full ${maxH} lg:max-h-[80vh] lg:max-w-lg lg:rounded-2xl rounded-t-2xl overflow-hidden flex flex-col ${closing ? 'animate-slide-down' : 'lg:animate-pop-in animate-slide-up'
+          }`}
         style={{
           transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
           transition: dragging ? 'none' : 'transform 0.25s var(--ease-spring)',
@@ -126,4 +126,6 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(drawerContent, document.body) : null;
 }
