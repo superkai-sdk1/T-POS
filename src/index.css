@@ -21,6 +21,8 @@
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --nav-height: 3.5rem;
 }
 
 * {
@@ -266,7 +268,7 @@ input[type="number"] {
 
 /* ── Layout spacing ── */
 .pb-mobile-nav {
-  padding-bottom: calc(4.5rem + var(--safe-bottom));
+  padding-bottom: calc(var(--nav-height) + var(--safe-bottom));
 }
 
 @media (min-width: 1024px) {
@@ -276,7 +278,7 @@ input[type="number"] {
 }
 
 .bottom-bar-pos {
-  bottom: calc(4.5rem + var(--safe-bottom));
+  bottom: calc(var(--nav-height) + var(--safe-bottom));
 }
 
 @media (min-width: 1024px) {
