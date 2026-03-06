@@ -160,7 +160,7 @@ const server = http.createServer((req, res) => {
         const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
         const groqUrl = 'https://api.groq.com/openai/v1/chat/completions';
 
-        // --- Fetch full database context from Supabase ---
+        // --- Fetch compact database context from Supabase ---
         let dbContext = '';
         if (SUPABASE_URL && SUPABASE_KEY) {
           const sbHeaders = {
@@ -175,59 +175,76 @@ const server = http.createServer((req, res) => {
 
           const [
             profiles, checks, checkItems, inventory,
-            expenses, supplies, cashOps, shifts, bookings,
+            expenses, supplies, cashOps, shifts,
           ] = await Promise.all([
-            sbFetch('profiles', 'select=id,nickname,role,balance,bonus_points,client_tier,is_resident,phone,created_at,deleted_at&order=created_at.desc&limit=500'),
-            sbFetch('checks', 'select=id,player_id,staff_id,status,total_amount,payment_method,bonus_used,discount_total,closed_at,created_at&status=eq.closed&order=closed_at.desc&limit=500'),
-            sbFetch('check_items', 'select=check_id,item_id,quantity,price_at_time&limit=2000'),
-            sbFetch('inventory', 'select=id,name,category,price,stock_quantity,min_threshold,is_active&order=name'),
-            sbFetch('expenses', 'select=id,category,amount,description,expense_date&order=expense_date.desc&limit=200'),
-            sbFetch('supplies', 'select=id,total_cost,note,created_at&order=created_at.desc&limit=100'),
-            sbFetch('cash_operations', 'select=id,type,amount,note,created_at&order=created_at.desc&limit=100'),
-            sbFetch('shifts', 'select=id,opened_by,closed_by,status,cash_start,cash_end,opened_at,closed_at&order=opened_at.desc&limit=50'),
-            sbFetch('bookings', 'select=id,space_id,client_id,start_time,end_time,rental_amount,status&order=start_time.desc&limit=100'),
+            sbFetch('profiles', 'select=id,nickname,role,balance,bonus_points,client_tier,is_resident,created_at,deleted_at&order=created_at.desc&limit=200'),
+            sbFetch('checks', 'select=id,player_id,total_amount,payment_method,bonus_used,closed_at&status=eq.closed&order=closed_at.desc&limit=200'),
+            sbFetch('check_items', 'select=check_id,item_id,quantity,price_at_time&limit=1000'),
+            sbFetch('inventory', 'select=id,name,category,price,stock_quantity,is_active&order=name'),
+            sbFetch('expenses', 'select=category,amount,expense_date&order=expense_date.desc&limit=100'),
+            sbFetch('supplies', 'select=total_cost,created_at&order=created_at.desc&limit=50'),
+            sbFetch('cash_operations', 'select=type,amount,created_at&order=created_at.desc&limit=50'),
+            sbFetch('shifts', 'select=status,cash_start,cash_end,opened_at,closed_at&order=opened_at.desc&limit=10'),
           ]);
 
+          // Pre-aggregate data to keep context compact
           const staff = profiles.filter((p) => p.role === 'owner' || p.role === 'staff');
           const clients = profiles.filter((p) => p.role === 'client' && !p.deleted_at);
           const debtors = clients.filter((p) => p.balance < 0);
 
-          dbContext = `\n\n=== ПОЛНЫЙ КОНТЕКСТ БАЗЫ ДАННЫХ T-POS ===
+          // Aggregate product sales from check items
+          const productSales = {};
+          for (const ci of checkItems) {
+            if (!productSales[ci.item_id]) productSales[ci.item_id] = { qty: 0, revenue: 0 };
+            productSales[ci.item_id].qty += ci.quantity;
+            productSales[ci.item_id].revenue += ci.quantity * ci.price_at_time;
+          }
+          const productStats = inventory.map((item) => {
+            const sales = productSales[item.id] || { qty: 0, revenue: 0 };
+            return { name: item.name, category: item.category, price: item.price, stock: item.stock_quantity, sold: sales.qty, revenue: sales.revenue };
+          }).filter((p) => p.sold > 0).sort((a, b) => b.revenue - a.revenue).slice(0, 20);
 
-ПЕРСОНАЛ (${staff.length}):
-${JSON.stringify(staff.map((p) => ({ id: p.id, nickname: p.nickname, role: p.role })))}
+          // Aggregate payment methods
+          const payments = { cash: 0, card: 0, debt: 0, bonus: 0 };
+          let totalRevenue = 0;
+          for (const c of checks) {
+            totalRevenue += c.total_amount || 0;
+            if (c.payment_method && payments.hasOwnProperty(c.payment_method)) {
+              payments[c.payment_method] += c.total_amount || 0;
+            }
+          }
 
-КЛИЕНТЫ (всего: ${clients.length}, должники: ${debtors.length}):
-${JSON.stringify(clients.slice(0, 100).map((p) => ({ id: p.id, nickname: p.nickname, balance: p.balance, bonus: p.bonus_points, tier: p.client_tier, resident: p.is_resident })))}
+          // Aggregate expenses by category
+          const expByCategory = {};
+          for (const e of expenses) {
+            expByCategory[e.category] = (expByCategory[e.category] || 0) + Number(e.amount);
+          }
 
-ДОЛЖНИКИ:
-${JSON.stringify(debtors.map((p) => ({ nickname: p.nickname, debt: p.balance })))}
+          // Top clients by spend
+          const clientSpend = {};
+          for (const c of checks) {
+            if (!c.player_id) continue;
+            clientSpend[c.player_id] = (clientSpend[c.player_id] || 0) + (c.total_amount || 0);
+          }
+          const topClients = clients
+            .map((p) => ({ nickname: p.nickname, balance: p.balance, bonus: p.bonus_points, tier: p.client_tier, spent: clientSpend[p.id] || 0 }))
+            .sort((a, b) => b.spent - a.spent)
+            .slice(0, 20);
 
-ПОСЛЕДНИЕ ЧЕКИ (${checks.length}):
-${JSON.stringify(checks.slice(0, 100))}
-
-ТОВАРЫ/МЕНЮ (${inventory.length}):
-${JSON.stringify(inventory)}
-
-ПОЗИЦИИ ЧЕКОВ (${checkItems.length}):
-${JSON.stringify(checkItems.slice(0, 500))}
-
-РАСХОДЫ (${expenses.length}):
-${JSON.stringify(expenses.slice(0, 50))}
-
-ПОСТАВКИ (${supplies.length}):
-${JSON.stringify(supplies.slice(0, 30))}
-
-КАССОВЫЕ ОПЕРАЦИИ (${cashOps.length}):
-${JSON.stringify(cashOps.slice(0, 30))}
-
-СМЕНЫ (${shifts.length}):
-${JSON.stringify(shifts.slice(0, 20))}
-
-БРОНИРОВАНИЯ (${bookings.length}):
-${JSON.stringify(bookings.slice(0, 30))}
-
-=== КОНЕЦ КОНТЕКСТА ===`;
+          dbContext = `\n\n=== ДАННЫЕ T-POS ===
+ПЕРСОНАЛ: ${JSON.stringify(staff.map((p) => ({ nickname: p.nickname, role: p.role })))}
+КЛИЕНТОВ: ${clients.length}, должников: ${debtors.length}
+ТОП-20 КЛИЕНТОВ: ${JSON.stringify(topClients)}
+ДОЛЖНИКИ: ${JSON.stringify(debtors.map((p) => ({ nickname: p.nickname, debt: p.balance })))}
+ВЫРУЧКА: ${totalRevenue}₽ за ${checks.length} чеков, ср.чек: ${checks.length > 0 ? Math.round(totalRevenue / checks.length) : 0}₽
+ОПЛАТА: ${JSON.stringify(payments)}
+ТОП-20 ТОВАРОВ: ${JSON.stringify(productStats)}
+РАСХОДЫ ПО КАТЕГОРИЯМ: ${JSON.stringify(expByCategory)}
+ПОСТАВКИ: ${supplies.length} шт, сумма: ${supplies.reduce((s, x) => s + (x.total_cost || 0), 0)}₽
+КАССА: ${JSON.stringify(cashOps.slice(0, 10).map((o) => ({ type: o.type, amount: o.amount })))}
+ПОСЛЕДНИЕ СМЕНЫ: ${JSON.stringify(shifts.slice(0, 5).map((s) => ({ status: s.status, cash_start: s.cash_start, cash_end: s.cash_end, opened: s.opened_at, closed: s.closed_at })))}
+МЕНЮ (все ${inventory.length} позиций): ${JSON.stringify(inventory.map((i) => ({ name: i.name, cat: i.category, price: i.price, stock: i.stock_quantity, active: i.is_active })))}
+===`;
         }
 
         // Inject DB context into system message
