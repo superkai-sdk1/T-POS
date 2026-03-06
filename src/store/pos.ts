@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CartItem, Check, CheckItem, CheckDiscount, InventoryItem, PaymentMethod, Space } from '@/types';
+import type { CartItem, Check, CheckItem, CheckDiscount, InventoryItem, PaymentMethod, Space, Modifier } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from './auth';
 import { useShiftStore } from './shift';
@@ -19,6 +19,7 @@ interface POSState {
   openCheckCarts: Record<string, CartItem[]>;
   openCheckItems: Record<string, CheckItem[]>;
   openCheckDiscounts: Record<string, CheckDiscount[]>;
+  productModifiers: Record<string, Modifier[]>;
   menuCategories: Record<string, any>[];
   isLoading: boolean;
   checksLoaded: boolean;
@@ -62,6 +63,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
   openCheckCarts: {},
   openCheckItems: {},
   openCheckDiscounts: {},
+  productModifiers: {},
   menuCategories: [],
   isLoading: false,
   checksLoaded: false,
@@ -79,14 +81,35 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   loadInventory: async () => {
-    const { data } = await supabase
+    const { data: invData } = await supabase
       .from('inventory')
       .select('*')
       .eq('is_active', true)
       .order('category')
       .order('sort_order')
       .order('name');
-    if (data) set({ inventory: data as InventoryItem[], inventoryLoaded: true });
+
+    const { data: modData } = await supabase
+      .from('product_modifiers')
+      .select('product_id, modifier:modifiers(*)');
+
+    const modMap: Record<string, Modifier[]> = {};
+    for (const row of modData || []) {
+      const pid = row.product_id;
+      const mod = Array.isArray(row.modifier) ? row.modifier[0] : row.modifier;
+      if (mod && mod.is_active) {
+        if (!modMap[pid]) modMap[pid] = [];
+        modMap[pid].push(mod as Modifier);
+      }
+    }
+
+    if (invData) {
+      set({
+        inventory: invData as InventoryItem[],
+        productModifiers: modMap,
+        inventoryLoaded: true
+      });
+    }
   },
 
   loadOpenChecks: async () => {
@@ -553,10 +576,10 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   leaveCheck: async () => {
-    await get().saveCartToDb();
+    get().saveCartToDb(); // Fire and forget
     _lastCartFingerprint = '';
     set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
-    await get().loadOpenChecks();
+    get().loadOpenChecks(); // Fire and forget background reload
   },
 
   closeCheck: async (payments: PaymentPortion[], bonusUsed = 0, spaceRental = 0) => {

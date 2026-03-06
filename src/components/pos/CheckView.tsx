@@ -389,35 +389,26 @@ export function CheckView({ onBack }: CheckViewProps) {
       currentGuests.push(selectedPlayer.nickname);
     }
     const newGuestNames = currentGuests.join(', ');
-    await supabase.from('checks').update({ guest_names: newGuestNames }).eq('id', activeCheck.id);
     usePOSStore.setState((s) => ({
       activeCheck: s.activeCheck ? { ...s.activeCheck, guest_names: newGuestNames } : null,
     }));
-
-    await saveCartToDb();
 
     setShowPlayerTariff(false);
     setSelectedPlayer(null);
     setPlayerSearch('');
     setPlayerResults([]);
+
+    supabase.from('checks').update({ guest_names: newGuestNames }).eq('id', activeCheck.id);
+    saveCartToDb();
   };
 
   if (!activeCheck) return null;
 
-  const handleAdd = async (item: InventoryItem) => {
+  const handleAdd = (item: InventoryItem) => {
     hapticFeedback('light');
 
-    let mods = modifierCacheRef.current.get(item.id);
-    if (mods === undefined) {
-      const { data: links } = await supabase
-        .from('product_modifiers')
-        .select('modifier_id, modifier:modifiers(*)')
-        .eq('product_id', item.id);
-      mods = (links || [])
-        .map((l: any) => l.modifier as Modifier)
-        .filter((m: Modifier) => m && m.is_active);
-      modifierCacheRef.current.set(item.id, mods);
-    }
+    const productModifiersMap = usePOSStore.getState().productModifiers;
+    const mods = productModifiersMap[item.id] || [];
 
     if (mods.length > 0) {
       setModifierItem(item);

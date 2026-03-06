@@ -174,7 +174,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
       const visitItem = inventory.find((i) => i.name === tariffInfo.dbName);
       if (visitItem) {
         addToCart(visitItem);
-        await saveCartToDb();
+        saveCartToDb();
       }
       setShowTariff(false);
       setShowNewCheck(false);
