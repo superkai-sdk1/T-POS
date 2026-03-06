@@ -192,7 +192,7 @@ export function BonusManager() {
                 <div className="flex-1 text-left min-w-0">
                   <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{p.nickname}</p>
                   {p.balance < 0 && (
-                    <p className="text-[10px] text-[var(--c-danger)]">Долг: {Math.abs(p.balance)}₽</p>
+                    <p className="text-[10px] text-[var(--c-danger)] truncate">Долг: {Math.abs(p.balance)}₽</p>
                   )}
                 </div>
                 <Badge variant={p.bonus_points > 0 ? 'success' : 'default'} size="sm">

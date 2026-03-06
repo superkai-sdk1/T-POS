@@ -47,9 +47,8 @@ const MenuItem = memo(function MenuItem({
   return (
     <button
       onClick={() => onAdd(item)}
-      className={`relative rounded-xl text-left transition-transform active:scale-[0.96] overflow-hidden ${
-        isCritical ? 'bg-[var(--c-danger-bg)] border border-[var(--c-border)]' : 'card'
-      }`}
+      className={`relative rounded-xl text-left transition-transform active:scale-[0.96] overflow-hidden ${isCritical ? 'bg-[var(--c-danger-bg)] border border-[var(--c-border)]' : 'card'
+        }`}
     >
       {inCartQty > 0 && (
         <div className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-[var(--c-accent)] flex items-center justify-center text-[10px] font-bold text-white shadow animate-pop-in">
@@ -109,24 +108,24 @@ const CartItemRow = memo(function CartItemRow({
             </div>
           )}
         </div>
-        <div className="flex items-center gap-px bg-[var(--c-surface)] rounded-lg">
+        <div className="flex items-center gap-px bg-[var(--c-surface)] rounded-lg shrink-0">
           <button
             onClick={() => { hapticFeedback('light'); onUpdateQty(ci.item.id, ci.quantity - 1); }}
-            className="w-7 h-7 flex items-center justify-center active:bg-[var(--c-surface-hover)] rounded-l-lg transition-colors"
+            className="w-7 h-7 flex items-center justify-center active:bg-[var(--c-surface-hover)] rounded-l-lg transition-colors shrink-0"
           >
             <Minus className="w-3 h-3 text-[var(--c-hint)]" />
           </button>
-          <span className="w-6 text-center text-xs font-bold text-[var(--c-text)] tabular-nums">
+          <span className="w-6 text-center text-xs font-bold text-[var(--c-text)] tabular-nums shrink-0">
             {ci.quantity}
           </span>
           <button
             onClick={() => { hapticFeedback('light'); onUpdateQty(ci.item.id, ci.quantity + 1); }}
-            className="w-7 h-7 flex items-center justify-center active:bg-[var(--c-surface-hover)] rounded-r-lg transition-colors"
+            className="w-7 h-7 flex items-center justify-center active:bg-[var(--c-surface-hover)] rounded-r-lg transition-colors shrink-0"
           >
             <Plus className="w-3 h-3 text-[var(--c-hint)]" />
           </button>
         </div>
-        <p className="text-[13px] font-bold text-[var(--c-text)] min-w-[48px] text-right tabular-nums">
+        <p className="text-[13px] font-bold text-[var(--c-text)] min-w-[48px] text-right tabular-nums shrink-0">
           {fmtCur(unitPrice * ci.quantity)}
         </p>
       </div>
@@ -204,7 +203,7 @@ export function CheckView({ onBack }: CheckViewProps) {
     return () => {
       if (cartSaveTimer.current) clearTimeout(cartSaveTimer.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cart, activeCheckId, debouncedSaveCart]);
 
   useEffect(() => {
@@ -216,7 +215,7 @@ export function CheckView({ onBack }: CheckViewProps) {
       }
       saveCartToDb();
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleNoteChange = (val: string) => {
@@ -309,7 +308,7 @@ export function CheckView({ onBack }: CheckViewProps) {
 
     const timer = setTimeout(run, 300);
     return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cart, quantityDiscounts, activeCheck?.id]);
 
   const handleApplyDiscount = async (d: Discount) => {
@@ -429,9 +428,9 @@ export function CheckView({ onBack }: CheckViewProps) {
     if (!modifierItem) return;
     const mods = selectedModifierIds.length > 0
       ? selectedModifierIds.map((mid) => {
-          const mod = availableModifiers.find((m) => m.id === mid);
-          return { id: mid, name: mod?.name || '?', price: mod?.price || 0 };
-        })
+        const mod = availableModifiers.find((m) => m.id === mid);
+        return { id: mid, name: mod?.name || '?', price: mod?.price || 0 };
+      })
       : undefined;
     addToCart(modifierItem, mods);
     setShowModifiers(false);
@@ -471,11 +470,11 @@ export function CheckView({ onBack }: CheckViewProps) {
               {activeCheck.space
                 ? activeCheck.space.name
                 : (() => {
-                    const names: string[] = [];
-                    if (activeCheck.player?.nickname) names.push(activeCheck.player.nickname);
-                    if (activeCheck.guest_names) names.push(...activeCheck.guest_names.split(', '));
-                    return names.length > 0 ? names.join(', ') : 'Без клиента';
-                  })()
+                  const names: string[] = [];
+                  if (activeCheck.player?.nickname) names.push(activeCheck.player.nickname);
+                  if (activeCheck.guest_names) names.push(...activeCheck.guest_names.split(', '));
+                  return names.length > 0 ? names.join(', ') : 'Без клиента';
+                })()
               }
             </h2>
             <p className="text-[10px] text-[var(--c-hint)] leading-tight">
@@ -492,17 +491,15 @@ export function CheckView({ onBack }: CheckViewProps) {
           <div className="flex gap-1 shrink-0">
             <button
               onClick={() => { loadDiscountsList(); setShowDiscounts(true); }}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 transition-transform ${
-                appliedDiscounts.length > 0 ? 'bg-pink-500/10' : 'bg-[var(--c-surface)]'
-              }`}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 transition-transform ${appliedDiscounts.length > 0 ? 'bg-pink-500/10' : 'bg-[var(--c-surface)]'
+                }`}
             >
               <Percent className={`w-3.5 h-3.5 ${appliedDiscounts.length > 0 ? 'text-pink-400' : 'text-[var(--c-muted)]'}`} />
             </button>
             <button
               onClick={() => setShowNote(!showNote)}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 transition-transform ${
-                note ? 'bg-[var(--c-warning-bg)]' : 'bg-[var(--c-surface)]'
-              }`}
+              className={`w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 transition-transform ${note ? 'bg-[var(--c-warning-bg)]' : 'bg-[var(--c-surface)]'
+                }`}
             >
               <MessageSquare className={`w-3.5 h-3.5 ${note ? 'text-[var(--c-warning)]' : 'text-[var(--c-muted)]'}`} />
             </button>
@@ -669,9 +666,8 @@ export function CheckView({ onBack }: CheckViewProps) {
         <div className="flex gap-1.5 overflow-x-auto scrollbar-none mb-3 -mx-1 px-1">
           <button
             onClick={() => setMenuCategory(null)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all active:scale-95 shrink-0 ${
-              !menuCategory ? 'bg-[var(--c-accent)]/15 text-[var(--c-accent)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
-            }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all active:scale-95 shrink-0 ${!menuCategory ? 'bg-[var(--c-accent)]/15 text-[var(--c-accent)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
+              }`}
           >
             Все
           </button>
@@ -681,9 +677,8 @@ export function CheckView({ onBack }: CheckViewProps) {
               <button
                 key={cat.id}
                 onClick={() => setMenuCategory(cat.slug)}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all active:scale-95 shrink-0 ${
-                  menuCategory === cat.slug ? 'bg-[var(--c-accent)]/15 text-[var(--c-accent)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
-                }`}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all active:scale-95 shrink-0 ${menuCategory === cat.slug ? 'bg-[var(--c-accent)]/15 text-[var(--c-accent)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
+                  }`}
               >
                 <CatIcon className="w-3 h-3" />
                 {cat.name}
@@ -740,13 +735,11 @@ export function CheckView({ onBack }: CheckViewProps) {
                     isSelected ? prev.filter((id) => id !== mod.id) : [...prev, mod.id]
                   );
                 }}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all active:scale-[0.97] ${
-                  isSelected ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/20' : 'card'
-                }`}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all active:scale-[0.97] ${isSelected ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/20' : 'card'
+                  }`}
               >
-                <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${
-                  isSelected ? 'bg-[var(--c-accent)]' : 'border border-[var(--c-muted)]'
-                }`}>
+                <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-[var(--c-accent)]' : 'border border-[var(--c-muted)]'
+                  }`}>
                   {isSelected && <Plus className="w-3 h-3 text-white rotate-45" />}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -810,7 +803,7 @@ export function CheckView({ onBack }: CheckViewProps) {
                           onClick={() => { handleApplyDiscount(d); setShowDiscounts(false); }}
                           className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-[var(--c-surface)] transition-colors active:scale-[0.98]"
                         >
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${d.type === 'percentage' ? 'bg-violet-500/12' : 'bg-[var(--c-success-bg)]'}`}>
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${d.type === 'percentage' ? 'bg-violet-500/12' : 'bg-[var(--c-success-bg)]'}`}>
                             <Percent className={`w-3.5 h-3.5 ${d.type === 'percentage' ? 'text-violet-400' : 'text-[var(--c-success)]'}`} />
                           </div>
                           <div className="flex-1 text-left">
@@ -830,7 +823,7 @@ export function CheckView({ onBack }: CheckViewProps) {
                         <p className="text-[10px] text-[var(--c-muted)] font-semibold uppercase tracking-wider pt-2">На позицию</p>
                         <div className="space-y-1 max-h-[30vh] overflow-y-auto">
                           {cart.map((ci) => (
-                              <div key={ci.item.id} className="p-2 rounded-xl bg-[var(--c-surface)]">
+                            <div key={ci.item.id} className="p-2 rounded-xl bg-[var(--c-surface)]">
                               <p className="text-[11px] font-medium text-[var(--c-text)] mb-1.5">{ci.item.name} ({fmtCur(ci.item.price * ci.quantity)})</p>
                               <div className="flex gap-1 flex-wrap">
                                 {manualDiscounts.map((d) => (
@@ -859,9 +852,8 @@ export function CheckView({ onBack }: CheckViewProps) {
                         return (
                           <div
                             key={d.id}
-                            className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all ${
-                              isApplied ? 'bg-[var(--c-success-bg)] border-[var(--c-success-border)]' : 'bg-[var(--c-surface)] border-[var(--c-border)]'
-                            }`}
+                            className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all ${isApplied ? 'bg-[var(--c-success-bg)] border-[var(--c-success-border)]' : 'bg-[var(--c-surface)] border-[var(--c-border)]'
+                              }`}
                           >
                             <div className="w-8 h-8 rounded-lg bg-[var(--c-warning-bg)] flex items-center justify-center">
                               <Percent className="w-3.5 h-3.5 text-[var(--c-warning)]" />
@@ -977,36 +969,32 @@ export function CheckView({ onBack }: CheckViewProps) {
                   <button
                     key={key}
                     onClick={() => { setSelectedTariff(key); hapticFeedback('light'); }}
-                    className={`relative flex flex-col items-center gap-1 p-3 rounded-xl border transition-all active:scale-[0.97] ${
-                      isSelected
+                    className={`relative flex flex-col items-center gap-1 p-3 rounded-xl border transition-all active:scale-[0.97] ${isSelected
                         ? 'bg-[var(--c-accent)]/10 border-[var(--c-accent)]/30'
                         : 'card border-[var(--c-border)]'
-                    }`}
+                      }`}
                   >
                     {isDefault && (
                       <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
                         <Star className="w-2.5 h-2.5 text-white fill-white" />
                       </div>
                     )}
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      key === 'resident' ? 'bg-[var(--c-success-bg)]' :
-                      key === 'student' ? 'bg-[var(--c-info-bg)]' :
-                      key === 'single_game' ? 'bg-[var(--c-warning-bg)]' :
-                      'bg-[var(--c-surface-hover)]'
-                    }`}>
-                      {                       key === 'resident' ? <Star className="w-4 h-4 text-[var(--c-success)]" /> :
-                       key === 'student' ? <GraduationCap className="w-4 h-4 text-[var(--c-info)]" /> :
-                       key === 'single_game' ? <Gamepad2 className="w-4 h-4 text-[var(--c-warning)]" /> :
-                       <User className="w-4 h-4 text-[var(--c-hint)]" />}
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${key === 'resident' ? 'bg-[var(--c-success-bg)]' :
+                        key === 'student' ? 'bg-[var(--c-info-bg)]' :
+                          key === 'single_game' ? 'bg-[var(--c-warning-bg)]' :
+                            'bg-[var(--c-surface-hover)]'
+                      }`}>
+                      {key === 'resident' ? <Star className="w-4 h-4 text-[var(--c-success)]" /> :
+                        key === 'student' ? <GraduationCap className="w-4 h-4 text-[var(--c-info)]" /> :
+                          key === 'single_game' ? <Gamepad2 className="w-4 h-4 text-[var(--c-warning)]" /> :
+                            <User className="w-4 h-4 text-[var(--c-hint)]" />}
                     </div>
-                    <span className={`text-xs font-semibold ${
-                      isSelected ? 'text-[var(--c-accent)]' : 'text-[var(--c-text)]'
-                    }`}>
+                    <span className={`text-xs font-semibold ${isSelected ? 'text-[var(--c-accent)]' : 'text-[var(--c-text)]'
+                      }`}>
                       {info.label}
                     </span>
-                    <span className={`text-sm font-black tabular-nums ${
-                      isSelected ? 'text-[var(--c-accent)]' : 'text-[var(--c-hint)]'
-                    }`}>
+                    <span className={`text-sm font-black tabular-nums ${isSelected ? 'text-[var(--c-accent)]' : 'text-[var(--c-hint)]'
+                      }`}>
                       {info.price}₽
                     </span>
                   </button>

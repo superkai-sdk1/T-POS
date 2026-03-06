@@ -110,9 +110,8 @@ export function ExpensesManager() {
             <button
               key={cat.value}
               onClick={() => setFilterCat(filterCat === cat.value ? 'all' : cat.value)}
-              className={`flex items-center gap-2 p-2 rounded-lg transition-all active:scale-95 ${
-                filterCat === cat.value ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/20' : 'bg-[var(--c-surface)]'
-              }`}
+              className={`flex items-center gap-2 p-2 rounded-lg transition-all active:scale-95 ${filterCat === cat.value ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/20' : 'bg-[var(--c-surface)]'
+                }`}
             >
               <cat.icon className={`w-3.5 h-3.5 ${cat.color.split(' ')[0]}`} />
               <div className="flex-1 text-left">
@@ -142,12 +141,12 @@ export function ExpensesManager() {
                     <p className="text-[13px] font-medium text-[var(--c-text)] truncate">
                       {exp.description || cat.label}
                     </p>
-                    <div className="flex gap-1.5 mt-0.5">
+                    <div className="flex gap-1.5 mt-0.5 truncate">
                       <span className="text-[10px] text-[var(--c-muted)]">
                         {new Date(exp.expense_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                       </span>
                       {exp.creator?.nickname && (
-                        <span className="text-[10px] text-[var(--c-muted)]">· {exp.creator.nickname}</span>
+                        <span className="text-[10px] text-[var(--c-muted)] truncate">· {exp.creator.nickname}</span>
                       )}
                     </div>
                   </div>
@@ -166,11 +165,10 @@ export function ExpensesManager() {
               <button
                 key={cat.value}
                 onClick={() => { hapticFeedback('light'); setCategory(cat.value); }}
-                className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all active:scale-95 ${
-                  category === cat.value
+                className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all active:scale-95 ${category === cat.value
                     ? 'bg-[var(--c-accent)]/10 border-[var(--c-accent)]/20'
                     : 'bg-[var(--c-surface)] border-[var(--c-border)]'
-                }`}
+                  }`}
               >
                 <cat.icon className={`w-4 h-4 ${cat.color.split(' ')[0]}`} />
                 <span className={`text-[12px] font-semibold ${category === cat.value ? 'text-[var(--c-accent)]' : 'text-[var(--c-hint)]'}`}>

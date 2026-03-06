@@ -14,18 +14,18 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
 
   const tabs = useMemo(() => isOwner()
     ? [
-        { id: 'pos', label: 'Касса', icon: Receipt },
-        { id: 'schedule', label: 'Расписание', icon: CalendarCheck },
-        { id: 'dashboard', label: 'Отчёты', icon: BarChart3 },
-        { id: 'management', label: 'Управление', icon: Settings },
-      ]
+      { id: 'pos', label: 'Касса', icon: Receipt },
+      { id: 'schedule', label: 'Расписание', icon: CalendarCheck },
+      { id: 'dashboard', label: 'Отчёты', icon: BarChart3 },
+      { id: 'management', label: 'Управление', icon: Settings },
+    ]
     : [
-        { id: 'pos', label: 'Касса', icon: Receipt },
-        { id: 'schedule', label: 'Расписание', icon: CalendarCheck },
-        { id: 'inventory', label: 'Остатки', icon: Package },
-        { id: 'dashboard', label: 'Отчёты', icon: BarChart3 },
-      ],
-  [isOwner]);
+      { id: 'pos', label: 'Касса', icon: Receipt },
+      { id: 'schedule', label: 'Расписание', icon: CalendarCheck },
+      { id: 'inventory', label: 'Остатки', icon: Package },
+      { id: 'dashboard', label: 'Отчёты', icon: BarChart3 },
+    ],
+    [isOwner]);
 
   return (
     <div className="h-full bg-[var(--c-bg)] flex flex-col lg:flex-row overflow-hidden">
@@ -46,11 +46,10 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
                 title={tab.label}
-                className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150 tap relative ${
-                  isActive
+                className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-150 tap relative ${isActive
                     ? 'bg-[var(--c-accent)]/12 text-[var(--c-accent)]'
                     : 'text-[var(--c-hint)] hover:bg-[var(--c-surface)] hover:text-[var(--c-text)]'
-                }`}
+                  }`}
               >
                 {isActive && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-[var(--c-accent)]" />
@@ -116,17 +115,16 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                 <button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
-                  className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all duration-150 active:scale-90 relative ${
-                    isActive
+                  className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all duration-150 active:scale-90 relative shrink-0 min-w-0 ${isActive
                       ? 'text-[var(--c-accent)]'
                       : 'text-[var(--c-hint)]'
-                  }`}
+                    }`}
                 >
                   {isActive && (
                     <div className="absolute -top-px left-1/2 -translate-x-1/2 h-[2px] rounded-full bg-[var(--c-accent)] transition-all duration-200" style={{ width: '24px' }} />
                   )}
-                  <tab.icon className={`w-[22px] h-[22px] transition-all duration-150 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.5]'}`} />
-                  <span className={`text-[10px] font-semibold transition-all duration-150 ${isActive ? 'opacity-100' : 'opacity-50'}`}>{tab.label}</span>
+                  <tab.icon className={`w-[22px] h-[22px] shrink-0 transition-all duration-150 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.5]'}`} />
+                  <span className={`text-[10px] font-semibold truncate w-full px-1 transition-all duration-150 ${isActive ? 'opacity-100' : 'opacity-50'}`}>{tab.label}</span>
                 </button>
               );
             })}

@@ -386,9 +386,8 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
             <button
               key={s.id}
               onClick={() => openNewBooking(s)}
-              className={`flex-shrink-0 w-[100px] p-2.5 rounded-xl text-center transition-transform active:scale-[0.96] border ${
-                isBusy ? 'bg-[var(--c-warning-bg)] border-[var(--c-border)]' : 'bg-[var(--c-surface)] border-[var(--c-border)]'
-              }`}
+              className={`flex-shrink-0 w-[100px] p-2.5 rounded-xl text-center transition-transform active:scale-[0.96] border ${isBusy ? 'bg-[var(--c-warning-bg)] border-[var(--c-border)]' : 'bg-[var(--c-surface)] border-[var(--c-border)]'
+                }`}
             >
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Icon className="w-4 h-4 text-indigo-400" />
@@ -419,9 +418,8 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`flex-1 px-3 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
-              tab === t ? 'bg-[var(--c-accent)] text-white shadow-sm' : 'text-[var(--c-hint)]'
-            }`}
+            className={`flex-1 px-3 py-1.5 rounded-md text-[11px] font-semibold transition-all ${tab === t ? 'bg-[var(--c-accent)] text-white shadow-sm' : 'text-[var(--c-hint)]'
+              }`}
           >
             {t === 'upcoming' ? `Ближайшие (${schedule.length})` : `История (${pastItems.length})`}
           </button>
@@ -627,17 +625,15 @@ export function SchedulePage({ onOpenCheck }: SchedulePageProps) {
             <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--c-surface)]">
               <button
                 onClick={() => setNewType('booking')}
-                className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
-                  newType === 'booking' ? 'bg-indigo-500/15 text-indigo-300' : 'text-[var(--c-hint)]'
-                }`}
+                className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all ${newType === 'booking' ? 'bg-indigo-500/15 text-indigo-300' : 'text-[var(--c-hint)]'
+                  }`}
               >
                 <DoorOpen className="w-3 h-3" />Бронь
               </button>
               <button
                 onClick={() => setNewType('event')}
-                className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
-                  newType === 'event' ? 'bg-teal-500/15 text-teal-300' : 'text-[var(--c-hint)]'
-                }`}
+                className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all ${newType === 'event' ? 'bg-teal-500/15 text-teal-300' : 'text-[var(--c-hint)]'
+                  }`}
               >
                 <MapPin className="w-3 h-3" />Выезд
               </button>

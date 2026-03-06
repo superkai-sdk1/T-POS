@@ -380,7 +380,7 @@ export function MenuEditor() {
                         </div>
                         <div className="flex-1 min-w-0 text-left">
                           <p className="text-[13px] font-semibold text-[var(--c-text)] truncate">{cat.name}</p>
-                          <p className="text-[11px] text-[var(--c-hint)] mt-0.5">
+                          <p className="text-[11px] text-[var(--c-hint)] mt-0.5 truncate">
                             {count} {count === 1 ? 'позиция' : count < 5 ? 'позиции' : 'позиций'}
                             {children.length > 0 && ` · ${children.length} подразделов`}
                           </p>
@@ -434,8 +434,8 @@ export function MenuEditor() {
                                 <div className="w-8 h-8 rounded-lg bg-[var(--c-surface)] flex items-center justify-center">
                                   <ChildIcon className="w-4 h-4 text-[var(--c-hint)]" />
                                 </div>
-                                <div className="flex-1 text-left">
-                                  <p className="text-xs font-medium text-[var(--c-text)]">{child.name}</p>
+                                <div className="flex-1 min-w-0 text-left">
+                                  <p className="text-xs font-medium text-[var(--c-text)] truncate">{child.name}</p>
                                   <p className="text-[10px] text-[var(--c-hint)]">{childCount} позиций</p>
                                 </div>
                                 <ChevronRight className="w-3.5 h-3.5 text-[var(--c-muted)]" />
@@ -613,13 +613,11 @@ export function MenuEditor() {
                   <button
                     key={cat.id}
                     onClick={() => updateField('category', cat.slug)}
-                    className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${
-                      isChild ? 'ml-3' : ''
-                    } ${
-                      form.category === cat.slug
+                    className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${isChild ? 'ml-3' : ''
+                      } ${form.category === cat.slug
                         ? 'bg-[var(--c-accent)] text-white'
                         : 'card text-[var(--c-hint)]'
-                    }`}
+                      }`}
                   >
                     <Icon className="w-3.5 h-3.5 shrink-0" />
                     <span className="truncate">{cat.name}</span>
@@ -633,9 +631,8 @@ export function MenuEditor() {
 
           <button
             onClick={() => updateField('is_active', !form.is_active)}
-            className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all active:scale-[0.98] ${
-              form.is_active ? 'bg-[var(--c-success-bg)] border-emerald-500/30' : 'card border-[var(--c-border)]'
-            }`}
+            className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all active:scale-[0.98] ${form.is_active ? 'bg-[var(--c-success-bg)] border-emerald-500/30' : 'card border-[var(--c-border)]'
+              }`}
           >
             <span className="text-[13px] font-medium text-[var(--c-text)]">
               {form.is_active ? 'Отображается в меню' : 'Скрыт из меню'}
@@ -759,9 +756,8 @@ function ItemsList({
         return (
           <div
             key={item.id}
-            className={`flex items-center gap-2 p-2.5 rounded-xl transition-all ${
-              item.is_active ? 'card' : 'bg-[var(--c-surface)] opacity-50'
-            }`}
+            className={`flex items-center gap-2 p-2.5 rounded-xl transition-all ${item.is_active ? 'card' : 'bg-[var(--c-surface)] opacity-50'
+              }`}
           >
             <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-[var(--c-surface-hover)] flex items-center justify-center">
               {item.image_url ? (
@@ -880,11 +876,10 @@ function CategoryEditorDrawer({
                   <button
                     key={iconName}
                     onClick={() => { setForm((prev) => ({ ...prev, icon_name: iconName })); setShowIcons(false); }}
-                    className={`w-full aspect-square rounded-xl flex items-center justify-center transition-all active:scale-90 ${
-                      form.icon_name === iconName
-                        ? 'bg-[var(--c-accent)] text-white'
-                        : 'bg-[var(--c-surface)] text-[var(--c-hint)] hover:text-[var(--c-text)]'
-                    }`}
+                    className={`w-full aspect-square rounded-xl flex items-center justify-center transition-all active:scale-90 ${form.icon_name === iconName
+                      ? 'bg-[var(--c-accent)] text-white'
+                      : 'bg-[var(--c-surface)] text-[var(--c-hint)] hover:text-[var(--c-text)]'
+                      }`}
                   >
                     <I className="w-5 h-5" />
                   </button>
@@ -900,11 +895,10 @@ function CategoryEditorDrawer({
           <div className="flex flex-wrap gap-1.5">
             <button
               onClick={() => setForm((prev) => ({ ...prev, parent_id: null }))}
-              className={`px-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${
-                !form.parent_id
-                  ? 'bg-[var(--c-accent)] text-white'
-                  : 'card text-[var(--c-hint)]'
-              }`}
+              className={`px-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${!form.parent_id
+                ? 'bg-[var(--c-accent)] text-white'
+                : 'card text-[var(--c-hint)]'
+                }`}
             >
               Нет (основной)
             </button>
@@ -914,11 +908,10 @@ function CategoryEditorDrawer({
                 <button
                   key={cat.id}
                   onClick={() => setForm((prev) => ({ ...prev, parent_id: cat.id }))}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${
-                    form.parent_id === cat.id
-                      ? 'bg-[var(--c-accent)] text-white'
-                      : 'card text-[var(--c-hint)]'
-                  }`}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${form.parent_id === cat.id
+                    ? 'bg-[var(--c-accent)] text-white'
+                    : 'card text-[var(--c-hint)]'
+                    }`}
                 >
                   <I className="w-3.5 h-3.5" />
                   {cat.name}

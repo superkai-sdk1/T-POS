@@ -62,28 +62,27 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
       className="card-interactive text-left p-3 flex flex-col gap-2"
     >
       <div className="flex items-center gap-2">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-          hasSpace
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${hasSpace
             ? 'bg-indigo-500/12'
             : check.player
-            ? 'bg-[var(--c-accent)]/10'
-            : 'bg-[var(--c-surface)]'
-        }`}>
+              ? 'bg-[var(--c-accent)]/10'
+              : 'bg-[var(--c-surface)]'
+          }`}>
           {hasSpace ? (() => { const Icon = spaceIconMap[check.space!.type] || DoorOpen; return <Icon className="w-3.5 h-3.5 text-indigo-400" />; })()
             : check.player
-            ? <span className="text-xs font-bold text-[var(--c-accent)]">{check.player.nickname?.charAt(0).toUpperCase()}</span>
-            : <UserX className="w-3.5 h-3.5 text-[var(--c-muted)]" />}
+              ? <span className="text-xs font-bold text-[var(--c-accent)]">{check.player.nickname?.charAt(0).toUpperCase()}</span>
+              : <UserX className="w-3.5 h-3.5 text-[var(--c-muted)]" />}
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-[13px] text-[var(--c-text)] truncate leading-tight">
             {hasSpace
               ? check.space!.name
               : (() => {
-                  const names: string[] = [];
-                  if (check.player?.nickname) names.push(check.player.nickname);
-                  if (check.guest_names) names.push(...check.guest_names.split(', '));
-                  return names.length > 0 ? names.join(', ') : 'Без клиента';
-                })()
+                const names: string[] = [];
+                if (check.player?.nickname) names.push(check.player.nickname);
+                if (check.guest_names) names.push(...check.guest_names.split(', '));
+                return names.length > 0 ? names.join(', ') : 'Без клиента';
+              })()
             }
           </p>
           {hasSpace && check.player && (
@@ -474,36 +473,32 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                   <button
                     key={key}
                     onClick={() => { setSelectedTariff(key); hapticFeedback('light'); }}
-                    className={`relative flex flex-col items-center gap-1 p-3 rounded-xl border transition-all active:scale-[0.97] ${
-                      isSelected
+                    className={`relative flex flex-col items-center gap-1 p-3 rounded-xl border transition-all active:scale-[0.97] ${isSelected
                         ? 'bg-[var(--c-accent)]/10 border-[var(--c-accent)]/30'
                         : 'card border-[var(--c-border)]'
-                    }`}
+                      }`}
                   >
                     {isDefault && (
                       <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
                         <Star className="w-2.5 h-2.5 text-white fill-white" />
                       </div>
                     )}
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      key === 'resident' ? 'bg-[var(--c-success-bg)]' :
-                      key === 'student' ? 'bg-[var(--c-info-bg)]' :
-                      key === 'single_game' ? 'bg-[var(--c-warning-bg)]' :
-                      'bg-[var(--c-surface-hover)]'
-                    }`}>
-                      {                       key === 'resident' ? <Star className="w-4 h-4 text-[var(--c-success)]" /> :
-                       key === 'student' ? <GraduationCap className="w-4 h-4 text-[var(--c-info)]" /> :
-                       key === 'single_game' ? <Gamepad2 className="w-4 h-4 text-[var(--c-warning)]" /> :
-                       <User className="w-4 h-4 text-[var(--c-hint)]" />}
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${key === 'resident' ? 'bg-[var(--c-success-bg)]' :
+                        key === 'student' ? 'bg-[var(--c-info-bg)]' :
+                          key === 'single_game' ? 'bg-[var(--c-warning-bg)]' :
+                            'bg-[var(--c-surface-hover)]'
+                      }`}>
+                      {key === 'resident' ? <Star className="w-4 h-4 text-[var(--c-success)]" /> :
+                        key === 'student' ? <GraduationCap className="w-4 h-4 text-[var(--c-info)]" /> :
+                          key === 'single_game' ? <Gamepad2 className="w-4 h-4 text-[var(--c-warning)]" /> :
+                            <User className="w-4 h-4 text-[var(--c-hint)]" />}
                     </div>
-                    <span className={`text-xs font-semibold ${
-                      isSelected ? 'text-[var(--c-accent)]' : 'text-[var(--c-text)]'
-                    }`}>
+                    <span className={`text-xs font-semibold ${isSelected ? 'text-[var(--c-accent)]' : 'text-[var(--c-text)]'
+                      }`}>
                       {info.label}
                     </span>
-                    <span className={`text-sm font-black tabular-nums ${
-                      isSelected ? 'text-[var(--c-accent)]' : 'text-[var(--c-hint)]'
-                    }`}>
+                    <span className={`text-sm font-black tabular-nums ${isSelected ? 'text-[var(--c-accent)]' : 'text-[var(--c-hint)]'
+                      }`}>
                       {info.price}₽
                     </span>
                   </button>
@@ -547,11 +542,10 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                 <button
                   key={key}
                   onClick={() => setNewClientTier(key)}
-                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${
-                    newClientTier === key
+                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${newClientTier === key
                       ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/30 text-[var(--c-accent)]'
                       : 'card border border-[var(--c-border)] text-[var(--c-hint)]'
-                  }`}
+                    }`}
                 >
                   <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${newClientTier === key ? 'bg-[var(--c-accent)]/15' : color}`}>
                     <Icon className="w-3.5 h-3.5" />

@@ -155,14 +155,12 @@ export function DiscountsManager() {
           {discounts.map((d) => (
             <div
               key={d.id}
-              className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${
-                d.is_active ? 'card' : 'bg-white/2 border-[var(--c-border)] opacity-50'
-              }`}
+              className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${d.is_active ? 'card' : 'bg-white/2 border-[var(--c-border)] opacity-50'
+                }`}
             >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                isQuantityDiscount(d) ? 'bg-[var(--c-warning-bg)]' :
-                d.type === 'percentage' ? 'bg-[rgba(var(--c-accent-rgb),0.1)]' : 'bg-[var(--c-success-bg)]'
-              }`}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isQuantityDiscount(d) ? 'bg-[var(--c-warning-bg)]' :
+                  d.type === 'percentage' ? 'bg-[rgba(var(--c-accent-rgb),0.1)]' : 'bg-[var(--c-success-bg)]'
+                }`}>
                 {isQuantityDiscount(d) ? (
                   <Hash className="w-5 h-5 text-[var(--c-warning)]" />
                 ) : d.type === 'percentage' ? (
@@ -192,13 +190,11 @@ export function DiscountsManager() {
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   onClick={() => toggleActive(d)}
-                  className={`w-10 h-6 rounded-full transition-colors relative ${
-                    d.is_active ? 'bg-emerald-500' : 'bg-[var(--c-surface-hover)]'
-                  }`}
+                  className={`w-10 h-6 rounded-full transition-colors relative ${d.is_active ? 'bg-emerald-500' : 'bg-[var(--c-surface-hover)]'
+                    }`}
                 >
-                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${
-                    d.is_active ? 'left-5' : 'left-1'
-                  }`} />
+                  <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${d.is_active ? 'left-5' : 'left-1'
+                    }`} />
                 </button>
                 <button
                   onClick={() => openEdit(d)}
@@ -241,11 +237,10 @@ export function DiscountsManager() {
                 <button
                   key={t}
                   onClick={() => setType(t)}
-                  className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all active:scale-[0.97] ${
-                    type === t
+                  className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all active:scale-[0.97] ${type === t
                       ? 'bg-[var(--c-accent)]/15 border-[var(--c-accent)]/30'
                       : 'bg-[var(--c-surface)] border-[var(--c-border)]'
-                  }`}
+                    }`}
                 >
                   <Icon className={`w-4 h-4 ${type === t ? 'text-[var(--c-accent)]' : 'text-[var(--c-hint)]'}`} />
                   <span className={`text-[13px] font-medium ${type === t ? 'text-[var(--c-text)]' : 'text-[var(--c-hint)]'}`}>
@@ -285,7 +280,7 @@ export function DiscountsManager() {
               {selectedItemId ? (
                 <div className="flex items-center gap-2 p-2 rounded-xl card">
                   <Package className="w-4 h-4 text-[var(--c-warning)] shrink-0" />
-                  <span className="text-[13px] text-[var(--c-text)] truncate flex-1">{selectedItemName}</span>
+                  <span className="text-[13px] text-[var(--c-text)] truncate flex-1 min-w-0">{selectedItemName}</span>
                   <button onClick={clearItem} className="w-6 h-6 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 shrink-0">
                     <Trash2 className="w-3 h-3 text-[var(--c-hint)]" />
                   </button>

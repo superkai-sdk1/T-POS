@@ -124,11 +124,10 @@ export function EventsPage() {
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                tab === t
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${tab === t
                   ? 'bg-[var(--c-accent)] text-white'
                   : 'text-[var(--c-hint)]'
-              }`}
+                }`}
             >
               {t === 'upcoming' ? `Планы (${upcoming.length})` : `История (${history.length})`}
             </button>
@@ -155,7 +154,7 @@ export function EventsPage() {
               onClick={() => setShowDetail(e)}
               className="w-full text-left p-3.5 rounded-2xl glass hover:bg-[var(--c-surface-hover)] transition-all active:scale-[0.98]"
             >
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between mb-1.5 min-w-0">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   <MapPin className="w-4 h-4 text-teal-400 shrink-0" />
                   <p className="font-bold text-sm text-[var(--c-text)] truncate">{e.name}</p>
