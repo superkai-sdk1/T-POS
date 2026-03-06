@@ -185,6 +185,7 @@ const server = http.createServer((req, res) => {
             sbFetch('supplies', 'select=total_cost,created_at&order=created_at.desc&limit=50'),
             sbFetch('cash_operations', 'select=type,amount,created_at&order=created_at.desc&limit=50'),
             sbFetch('shifts', 'select=status,cash_start,cash_end,opened_at,closed_at&order=opened_at.desc&limit=10'),
+            sbFetch('events', 'select=id,type,location,date,start_time,status,comment&order=date.desc&limit=50'),
           ]);
 
           // Pre-aggregate data to keep context compact
@@ -260,7 +261,18 @@ const server = http.createServer((req, res) => {
         if (!enrichedMessages.find((m) => m.role === 'system') && dbContext) {
           enrichedMessages.unshift({
             role: 'system',
-            content: `Ты — ИИ-ассистент POS-системы T-POS. У тебя есть полный доступ к данным бизнеса. Отвечай подробно, используя реальные цифры.${dbContext}`,
+            content: `Ты — ИИ-ассистент POS-системы T-POS. У тебя есть доступ к инструментам для создания и просмотра мероприятий.
+
+ИНСТРУМЕНТЫ:
+1. create_event: { type: 'titan'|'exit', location: string, date: 'YYYY-MM-DD', start_time: 'HH:mm', payment_type: 'fixed'|'hourly', fixed_amount: number, comment: string }
+2. list_events: { upcoming: boolean }
+3. create_check: { playerNickname: string }
+4. add_items: { checkId: string, items: [{ name: string, quantity: number }] }
+
+Если пользователь просит создать мероприятие, ВЫЗЫВАЙ create_event в формате JSON-ответа: {"action": "create_event", "params": {...}}. 
+Если пользователь спрашивает про планы, ВЫЗЫВАЙ list_events: {"action": "list_events", "params": {"upcoming": true}}.
+
+Отвечай кратко и по делу после выполнения действия.${dbContext}`,
           });
         }
 

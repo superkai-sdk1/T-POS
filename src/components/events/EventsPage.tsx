@@ -80,6 +80,8 @@ export function EventsPage() {
             setShowAddModal(false);
             loadEvents();
         } else {
+            console.error('Create Event Error:', error);
+            alert('Ошибка создания: ' + (error.message || 'Проверьте соединение и наличие таблиц в БД'));
             hapticNotification('error');
         }
         setIsSubmitting(false);
@@ -137,6 +139,9 @@ export function EventsPage() {
             setShowCompletionModal(null);
             loadEvents();
             usePOSStore.getState().loadOpenChecks();
+        } else {
+            console.error('Complete Event Error: No check created');
+            alert('Не удалось создать чек в кассе. Проверьте статус смены.');
         }
         setIsSubmitting(false);
     };
@@ -159,8 +164,8 @@ export function EventsPage() {
                 <button
                     onClick={() => { hapticFeedback('light'); setActiveTab('upcoming'); }}
                     className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'upcoming'
-                            ? 'bg-[var(--c-bg)] text-[var(--c-text)] shadow-sm'
-                            : 'text-[var(--c-hint)] hover:text-[var(--c-text)]'
+                        ? 'bg-[var(--c-bg)] text-[var(--c-text)] shadow-sm'
+                        : 'text-[var(--c-hint)] hover:text-[var(--c-text)]'
                         }`}
                 >
                     Предстоящие
@@ -168,8 +173,8 @@ export function EventsPage() {
                 <button
                     onClick={() => { hapticFeedback('light'); setActiveTab('history'); }}
                     className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'history'
-                            ? 'bg-[var(--c-bg)] text-[var(--c-text)] shadow-sm'
-                            : 'text-[var(--c-hint)] hover:text-[var(--c-text)]'
+                        ? 'bg-[var(--c-bg)] text-[var(--c-text)] shadow-sm'
+                        : 'text-[var(--c-hint)] hover:text-[var(--c-text)]'
                         }`}
                 >
                     История
@@ -381,8 +386,8 @@ export function EventsPage() {
                                                 key={hours}
                                                 onClick={() => setSelectedHours(hours)}
                                                 className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${selectedHours === hours
-                                                        ? 'border-[var(--c-accent)] bg-[var(--c-accent)]/5'
-                                                        : 'border-transparent bg-[var(--c-bg)]'
+                                                    ? 'border-[var(--c-accent)] bg-[var(--c-accent)]/5'
+                                                    : 'border-transparent bg-[var(--c-bg)]'
                                                     }`}
                                             >
                                                 <div className="flex items-center gap-3">
