@@ -289,6 +289,14 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
           });
         }
 
+        if (!OPENROUTER_KEY) {
+          json(res, {
+            error: 'AI API error: Missing Key',
+            details: 'В файле .env на сервере отсутствует OPENROUTER_API_KEY. Пожалуйста, добавьте его.',
+          }, 200);
+          return;
+        }
+
         const aiBody = {
           model: 'meta-llama/llama-3.3-70b-instruct',
           messages: enrichedMessages,
