@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
+import { ListSkeleton } from '@/components/ui/Skeleton';
 import {
   Plus, ChevronUp, ChevronDown, Pencil, Trash2,
   Image as ImageIcon, Eye, EyeOff, Search, Upload, X, Check,
@@ -298,11 +299,7 @@ export function MenuEditor() {
   };
 
   if (isLoading || catLoading) {
-    return (
-      <div className="text-center py-20">
-        <div className="w-8 h-8 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
-      </div>
-    );
+    return <ListSkeleton rows={5} />;
   }
 
   const categoriesView = viewMode === 'categories';

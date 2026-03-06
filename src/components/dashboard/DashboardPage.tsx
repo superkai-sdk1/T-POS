@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useSwipe } from '@/hooks/useSwipe';
 import { Badge } from '@/components/ui/Badge';
+import { ListSkeleton } from '@/components/ui/Skeleton';
 import {
   TrendingUp, Users, AlertCircle, Clock, Receipt,
   Banknote, CreditCard, HandCoins, ShoppingBag,
@@ -961,9 +962,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               </div>
 
               {analyticsLoading ? (
-                <div className="text-center py-10">
-                  <div className="w-6 h-6 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
-                </div>
+                <ListSkeleton rows={4} />
               ) : dayAnalytics ? (
                 <>
                   {/* Summary bar */}

@@ -5,6 +5,7 @@ import type { ShiftAnalytics as SA } from '@/store/shift';
 import type { Shift } from '@/types';
 import { ShiftAnalytics } from './ShiftAnalytics';
 import { Clock, Calendar, ChevronRight, Truck } from 'lucide-react';
+import { ListSkeleton } from '@/components/ui/Skeleton';
 
 export function ShiftHistory() {
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -45,11 +46,7 @@ export function ShiftHistory() {
   };
 
   if (isLoading) {
-    return (
-      <div className="text-center py-20">
-        <div className="w-8 h-8 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
-      </div>
-    );
+    return <ListSkeleton rows={3} />;
   }
 
   return (

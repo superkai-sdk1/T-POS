@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
+import { ListSkeleton } from '@/components/ui/Skeleton';
 import {
   Banknote, Plus, ArrowDownToLine, ArrowUpFromLine,
   Trash2, PlayCircle, StopCircle, Wallet,
@@ -223,11 +224,7 @@ export function InkassationPage() {
   const formatTime = (d: string) => new Date(d).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
   if (isLoading) {
-    return (
-      <div className="text-center py-20">
-        <div className="w-8 h-8 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
-      </div>
-    );
+    return <ListSkeleton rows={4} />;
   }
 
   const typeConfig: Record<string, { label: string; icon: typeof Banknote; color: string; bg: string; sign: string }> = {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, startTransition } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Badge } from '@/components/ui/Badge';
 import {
@@ -61,7 +61,7 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialScreen]);
 
-  const goToMenu = useCallback(() => setScreen('menu'), []);
+  const goToMenu = useCallback(() => startTransition(() => setScreen('menu')), []);
   const { swipeIndicatorStyle, overlayStyle } = useSwipeBack({
     onBack: goToMenu,
     enabled: screen !== 'menu' && isActive,
@@ -77,7 +77,7 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
           {menuItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setScreen(item.id)}
+              onClick={() => startTransition(() => setScreen(item.id))}
               className="flex items-center gap-2.5 p-3 rounded-xl card-interactive"
             >
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.color.split(' ')[0]}`}>

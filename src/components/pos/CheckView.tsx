@@ -80,6 +80,60 @@ const MenuItem = memo(function MenuItem({
   );
 });
 
+const CartItemRow = memo(function CartItemRow({
+  ci,
+  onRemove,
+  onUpdateQty,
+}: {
+  ci: { item: InventoryItem; quantity: number; modifiers?: { id: string; name: string; price: number }[] };
+  onRemove: (id: string) => void;
+  onUpdateQty: (id: string, qty: number) => void;
+}) {
+  const modPrice = (ci.modifiers || []).reduce((s, m) => s + m.price, 0);
+  const unitPrice = ci.item.price + modPrice;
+  return (
+    <SwipeableRow onDelete={() => { hapticFeedback('medium'); onRemove(ci.item.id); }}>
+      <div className="flex items-center gap-2.5 py-2 px-1 bg-[var(--c-bg)]">
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-medium text-[var(--c-text)] truncate leading-tight">
+            {ci.item.name}
+          </p>
+          <p className="text-[11px] text-white/25 mt-0.5 tabular-nums">{fmtCur(ci.item.price)}</p>
+          {ci.modifiers && ci.modifiers.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {ci.modifiers.map((m, idx) => (
+                <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400">
+                  {m.name}{m.price > 0 ? ` +${m.price}₽` : ''}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-px bg-white/4 rounded-lg">
+          <button
+            onClick={() => { hapticFeedback('light'); onUpdateQty(ci.item.id, ci.quantity - 1); }}
+            className="w-7 h-7 flex items-center justify-center active:bg-white/10 rounded-l-lg transition-colors"
+          >
+            <Minus className="w-3 h-3 text-white/50" />
+          </button>
+          <span className="w-6 text-center text-xs font-bold text-[var(--c-text)] tabular-nums">
+            {ci.quantity}
+          </span>
+          <button
+            onClick={() => { hapticFeedback('light'); onUpdateQty(ci.item.id, ci.quantity + 1); }}
+            className="w-7 h-7 flex items-center justify-center active:bg-white/10 rounded-r-lg transition-colors"
+          >
+            <Plus className="w-3 h-3 text-white/50" />
+          </button>
+        </div>
+        <p className="text-[13px] font-bold text-[var(--c-text)] min-w-[48px] text-right tabular-nums">
+          {fmtCur(unitPrice * ci.quantity)}
+        </p>
+      </div>
+    </SwipeableRow>
+  );
+});
+
 interface CheckViewProps {
   onBack: () => void;
 }
@@ -509,54 +563,14 @@ export function CheckView({ onBack }: CheckViewProps) {
         ) : (
           <div className="space-y-1 stagger-children">
             {cart.map((ci, cartIdx) => {
-              const modPrice = (ci.modifiers || []).reduce((s, m) => s + m.price, 0);
-              const unitPrice = ci.item.price + modPrice;
               const cartKey = ci.item.id + ((ci.modifiers || []).map((m) => m.id).sort().join(','));
               return (
-              <SwipeableRow
-                key={cartKey || cartIdx}
-                onDelete={() => { hapticFeedback('medium'); removeFromCart(ci.item.id); }}
-              >
-                <div className="flex items-center gap-2.5 py-2 px-1 bg-[var(--c-bg)]">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-[var(--c-text)] truncate leading-tight">
-                      {ci.item.name}
-                    </p>
-                    <p className="text-[11px] text-white/25 mt-0.5 tabular-nums">{fmtCur(ci.item.price)}</p>
-                    {ci.modifiers && ci.modifiers.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {ci.modifiers.map((m, idx) => (
-                          <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400">
-                            {m.name}{m.price > 0 ? ` +${m.price}₽` : ''}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-px bg-white/4 rounded-lg">
-                    <button
-                      onClick={() => { hapticFeedback('light'); updateCartQuantity(ci.item.id, ci.quantity - 1); }}
-                      className="w-7 h-7 flex items-center justify-center active:bg-white/10 rounded-l-lg transition-colors"
-                    >
-                      <Minus className="w-3 h-3 text-white/50" />
-                    </button>
-                    <span className="w-6 text-center text-xs font-bold text-[var(--c-text)] tabular-nums">
-                      {ci.quantity}
-                    </span>
-                    <button
-                      onClick={() => { hapticFeedback('light'); updateCartQuantity(ci.item.id, ci.quantity + 1); }}
-                      className="w-7 h-7 flex items-center justify-center active:bg-white/10 rounded-r-lg transition-colors"
-                    >
-                      <Plus className="w-3 h-3 text-white/50" />
-                    </button>
-                  </div>
-
-                  <p className="text-[13px] font-bold text-[var(--c-text)] min-w-[48px] text-right tabular-nums">
-                    {fmtCur(unitPrice * ci.quantity)}
-                  </p>
-                </div>
-              </SwipeableRow>
+                <CartItemRow
+                  key={cartKey || cartIdx}
+                  ci={ci}
+                  onRemove={removeFromCart}
+                  onUpdateQty={updateCartQuantity}
+                />
               );
             })}
 

@@ -281,6 +281,20 @@ export const usePOSStore = create<POSState>((set, get) => ({
       if (ciRow) checkItemId = ciRow.id;
     }
 
+    const tempId = crypto.randomUUID();
+    const optimistic = {
+      id: tempId,
+      check_id: activeCheck.id,
+      discount_id: discountId,
+      target,
+      item_id: checkItemId,
+      discount_amount: amount,
+      discount: { id: discountId, name: discountName, type: discountType, value: discountValue } as any,
+    } as CheckDiscount;
+
+    const prev = get().appliedDiscounts;
+    set({ appliedDiscounts: [...prev, optimistic] });
+
     const { data, error } = await supabase
       .from('check_discounts')
       .insert({
@@ -293,12 +307,14 @@ export const usePOSStore = create<POSState>((set, get) => ({
       .select('*, discount:discounts(*)')
       .single();
 
-    if (!error && data) {
+    if (error) {
+      set({ appliedDiscounts: prev });
+    } else if (data) {
       const cd = {
         ...data,
         discount: Array.isArray(data.discount) ? data.discount[0] : data.discount,
       } as CheckDiscount;
-      set({ appliedDiscounts: [...get().appliedDiscounts, cd] });
+      set({ appliedDiscounts: [...prev, cd] });
     }
   },
 

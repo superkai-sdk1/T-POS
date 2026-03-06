@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react';
+import { useEffect, useState, useCallback, useRef, lazy, Suspense, startTransition } from 'react';
 import { useAuthStore } from '@/store/auth';
 import { usePOSStore } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
@@ -89,10 +89,12 @@ export default function App() {
       await leaveCheck();
     }
     prevTabRef.current = activeTab;
-    setActiveTab(tab);
-    setShowCheckView(false);
-    setVisitedTabs((prev) => new Set(prev).add(tab));
-    if (tab !== 'management') setManagementScreen(undefined);
+    startTransition(() => {
+      setActiveTab(tab);
+      setShowCheckView(false);
+      setVisitedTabs((prev) => new Set(prev).add(tab));
+      if (tab !== 'management') setManagementScreen(undefined);
+    });
   }, [showCheckView, activeCheck, leaveCheck, activeTab]);
 
   const handleDashboardNavigate = useCallback((target: string) => {
