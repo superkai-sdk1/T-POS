@@ -14,6 +14,7 @@ import {
 import { hapticFeedback } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase';
 import { useMenuCategories, getIconComponent, getCategoryColor } from '@/hooks/useMenuCategories';
+import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import type { InventoryItem, Discount, Profile, VisitTariff, ClientTier, Modifier } from '@/types';
@@ -114,6 +115,21 @@ export function CheckView({ onBack }: CheckViewProps) {
   const [availableModifiers, setAvailableModifiers] = useState<Modifier[]>([]);
   const [selectedModifierIds, setSelectedModifierIds] = useState<string[]>([]);
   const modifierCacheRef = useRef<Map<string, Modifier[]>>(new Map());
+
+  const handleBack = useCallback(async () => {
+    if (noteTimer.current) clearTimeout(noteTimer.current);
+    if (pendingNoteRef.current !== null) {
+      await updateCheckNote(pendingNoteRef.current);
+      pendingNoteRef.current = null;
+    }
+    if (cartSaveTimer.current) clearTimeout(cartSaveTimer.current);
+    await leaveCheck();
+    onBack();
+  }, [updateCheckNote, leaveCheck, onBack]);
+
+  const { swipeBackHandlers, swipeIndicatorStyle, overlayStyle } = useSwipeBack({
+    onBack: handleBack,
+  });
 
   useEffect(() => {
     setNote(activeCheck?.note || '');
@@ -368,17 +384,6 @@ export function CheckView({ onBack }: CheckViewProps) {
     setModifierItem(null);
   };
 
-  const handleBack = async () => {
-    if (noteTimer.current) clearTimeout(noteTimer.current);
-    if (pendingNoteRef.current !== null) {
-      await updateCheckNote(pendingNoteRef.current);
-      pendingNoteRef.current = null;
-    }
-    if (cartSaveTimer.current) clearTimeout(cartSaveTimer.current);
-    await leaveCheck();
-    onBack();
-  };
-
   const handleCancel = async () => {
     const ok = await cancelCheck();
     if (ok) {
@@ -395,7 +400,9 @@ export function CheckView({ onBack }: CheckViewProps) {
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-8rem)]">
+    <div className="flex flex-col min-h-[calc(100vh-8rem)]" {...swipeBackHandlers}>
+      {swipeIndicatorStyle && <div style={swipeIndicatorStyle} />}
+      {overlayStyle && <div style={overlayStyle} />}
       {/* Sticky header */}
       <div className="sticky top-0 z-20 -mx-4 px-4 py-2 bg-[var(--c-bg)]/95 backdrop-blur-sm border-b border-white/5 mb-3">
         <div className="flex items-center gap-2">

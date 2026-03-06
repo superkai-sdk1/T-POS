@@ -20,6 +20,7 @@ import { RefundsManager } from './RefundsManager';
 import { ModifiersManager } from './ModifiersManager';
 import { CertificatesManager } from './CertificatesManager';
 import { ExpensesManager } from './ExpensesManager';
+import { useSwipeBack } from '@/hooks/useSwipeBack';
 
 type Screen = 'menu' | 'inventory' | 'supplies' | 'revision' | 'debtors' | 'staff' | 'bonus' | 'cash' | 'menuEditor' | 'clients' | 'discounts' | 'refunds' | 'modifiers' | 'certificates' | 'expenses' | 'about';
 
@@ -59,6 +60,12 @@ export function ManagementPage({ initialScreen }: ManagementPageProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialScreen]);
 
+  const goToMenu = useCallback(() => setScreen('menu'), []);
+  const { swipeBackHandlers, swipeIndicatorStyle, overlayStyle } = useSwipeBack({
+    onBack: goToMenu,
+    enabled: screen !== 'menu',
+  });
+
   const screenLabel = menuItems.find((m) => m.id === screen)?.label || 'Управление';
 
   if (screen === 'menu') {
@@ -84,7 +91,9 @@ export function ManagementPage({ initialScreen }: ManagementPageProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" {...swipeBackHandlers}>
+      {swipeIndicatorStyle && <div style={swipeIndicatorStyle} />}
+      {overlayStyle && <div style={overlayStyle} />}
       <div className="flex items-center gap-2">
         <button
           onClick={() => setScreen('menu')}

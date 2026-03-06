@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
+import { useSwipeBack } from '@/hooks/useSwipeBack';
 import type { Supply, SupplyItem, InventoryItem } from '@/types';
 
 interface DraftItem {
@@ -94,6 +95,11 @@ export function SupplyPage() {
     setDraftItems([]);
     setDraftNote('');
   };
+
+  const { swipeBackHandlers: createSwipeHandlers, swipeIndicatorStyle: createIndicator, overlayStyle: createOverlay } = useSwipeBack({
+    onBack: handleTryExit,
+    enabled: isCreating,
+  });
 
   const updateDraftItem = (idx: number, field: keyof DraftItem, value: string) => {
     setDraftItems((prev) => {
@@ -342,7 +348,9 @@ export function SupplyPage() {
   // ==================
   if (isCreating) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4" {...createSwipeHandlers}>
+        {createIndicator && <div style={createIndicator} />}
+        {createOverlay && <div style={createOverlay} />}
         {/* Header */}
         <div className="flex items-center gap-3">
           <button
