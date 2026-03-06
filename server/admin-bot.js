@@ -42,6 +42,7 @@ async function handleAiMessage(msg) {
     const text = msg.text;
 
     try {
+        console.log(`[AdminBot] Sending to AI: "${text}"`);
         const res = await fetch(`http://127.0.0.1:3100/api/ai`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -49,7 +50,15 @@ async function handleAiMessage(msg) {
                 messages: [{ role: 'user', content: text }],
             }),
         });
+
+        if (!res.ok) {
+            console.error(`[AdminBot] AI Server HTTP Error: ${res.status}`);
+            await sendMessage(chatId, `⚠️ Ошибка сервера ИИ (${res.status})`);
+            return;
+        }
+
         const data = await res.json();
+        console.log(`[AdminBot] AI Server Response:`, JSON.stringify(data).slice(0, 100) + '...');
 
         if (data.error) {
             await sendMessage(chatId, `❌ Ошибка ИИ: ${data.error}`);
@@ -61,6 +70,7 @@ async function handleAiMessage(msg) {
         try {
             const parsed = JSON.parse(aiResponse);
             if (parsed.action) {
+                console.log(`[AdminBot] Executing action: ${parsed.action}`);
                 const actionRes = await fetch(`http://127.0.0.1:3100/api/ai/action`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -71,6 +81,7 @@ async function handleAiMessage(msg) {
                     }),
                 });
                 const actionData = await actionRes.json();
+                console.log(`[AdminBot] Action Result:`, actionData);
                 if (actionData.success) {
                     await sendMessage(chatId, `✅ ${actionData.message || 'Готово!'}`);
                 } else {
@@ -82,26 +93,40 @@ async function handleAiMessage(msg) {
 
         await sendMessage(chatId, aiResponse);
     } catch (err) {
-        console.error('Admin Bot Error:', err);
+        console.error('Admin Bot AI Error:', err);
         await sendMessage(chatId, '⚠️ Не удалось связаться с сервером ИИ.');
     }
 }
 
 async function main() {
     console.log('Admin Bot starting...');
+
+    // Clear any previous webhooks to enable polling
+    await tg('deleteWebhook', { drop_pending_updates: true });
+    console.log('Webhook deleted, starting polling...');
+
     let pollOffset = 0;
 
     while (true) {
         try {
             const res = await fetch(`${API}/getUpdates?offset=${pollOffset}&timeout=30`);
             const json = await res.json();
-            if (!json.ok || !json.result) {
+
+            if (!json.ok) {
+                console.error('Telegram API Error:', json);
+                await new Promise(r => setTimeout(r, 5000));
+                continue;
+            }
+
+            if (!json.result) {
                 await new Promise(r => setTimeout(r, 3000));
                 continue;
             }
+
             for (const update of json.result) {
                 pollOffset = update.update_id + 1;
                 if (update.message?.text) {
+                    console.log(`[AdminBot] Message from ${update.message.from.id}: ${update.message.text}`);
                     await handleAiMessage(update.message);
                 }
             }

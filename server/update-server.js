@@ -107,6 +107,7 @@ const server = http.createServer((req, res) => {
         try { execSync('chown -R www-data:www-data dist', { cwd: PROJECT_DIR }); } catch { }
         try { execSync('chown -R www-data:www-data dist-wallet', { cwd: PROJECT_DIR }); } catch { }
         try { execSync('systemctl restart tpos-wallet-bot', { timeout: 5000 }); } catch { }
+        try { execSync('systemctl restart tpos-admin-bot', { timeout: 5000 }); } catch { }
         try { execSync('systemctl restart tpos-update', { timeout: 5000 }); } catch { }
         send({ type: 'complete', message: 'Обновление завершено. Если добавлены новые таблицы — выполните SQL из supabase/migration.sql в Supabase Dashboard.' });
         res.end();
@@ -272,7 +273,10 @@ const server = http.createServer((req, res) => {
 Если пользователь просит создать мероприятие, ВЫЗЫВАЙ create_event в формате JSON-ответа: {"action": "create_event", "params": {...}}. 
 Если пользователь спрашивает про планы, ВЫЗЫВАЙ list_events: {"action": "list_events", "params": {"upcoming": true}}.
 
-Отвечай кратко и по делу после выполнения действия.${dbContext}`,
+ИДЕНТИФИКАЦИЯ: Если пользователь спрашивает "кто ты", отвечай что ты ассистент T-POS.
+СЕЙЧАС: ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', dateStyle: 'long', timeStyle: 'short' })}.
+
+Отвечай кратко и по делу после выполнения действия.\n\n${dbContext}`,
           });
         }
 
@@ -368,7 +372,7 @@ const server = http.createServer((req, res) => {
           const eventData = {
             type: params.type || 'exit',
             location: params.location || null,
-            date: params.date || new Date().toISOString().split('T')[0],
+            date: params.date || new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0],
             start_time: params.start_time || '18:00',
             payment_type: params.payment_type || 'fixed',
             fixed_amount: params.fixed_amount || 0,
@@ -399,7 +403,8 @@ const server = http.createServer((req, res) => {
         }
 
         if (action === 'list_events') {
-          const query = params.upcoming ? 'status=neq.completed&date=gte.now()' : '';
+          const today = new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0];
+          const query = params.upcoming ? `status=neq.completed&date=gte.${today}` : '';
           const eventsRes = await fetch(`${SUPABASE_URL}/rest/v1/events?${query}&order=date.asc,start_time.asc`, {
             headers: sbHeaders
           });

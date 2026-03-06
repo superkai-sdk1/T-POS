@@ -296,7 +296,36 @@ WBEOF
   systemctl daemon-reload
   systemctl enable tpos-wallet-bot --quiet
   systemctl restart tpos-wallet-bot
+  systemctl restart tpos-admin-bot || true # Added restart for admin bot, assuming it might exist
+  systemctl restart tpos-update || true    # Added restart for update server, assuming it might exist
   success "TITAN Wallet Bot запущен"
+}
+
+setup_admin_bot() {
+  local dir="$1"
+  info "Настройка AI Admin Bot..."
+
+  cat > /etc/systemd/system/tpos-admin-bot.service <<ABEOF
+[Unit]
+Description=T-POS AI Admin Bot
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=${dir}
+ExecStart=$(which node) ${dir}/server/admin-bot.js
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
+ABEOF
+
+  systemctl daemon-reload
+  systemctl enable tpos-admin-bot --quiet
+  systemctl restart tpos-admin-bot
+  success "AI Admin Bot запущен"
 }
 
 ensure_nginx_proxy() {
@@ -528,6 +557,10 @@ if [ "$MODE" = "update" ]; then
     if [ -n "$has_bot_token" ]; then
       setup_wallet_bot "$INSTALL_DIR"
     fi
+  fi
+
+  if [ -f "${INSTALL_DIR}/server/admin-bot.js" ]; then
+    setup_admin_bot "$INSTALL_DIR"
   fi
 
   # ── Nginx: regenerate configs with all proxy blocks ──
