@@ -99,7 +99,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-3 lg:px-5 lg:py-4 w-full overflow-y-auto overflow-x-hidden overscroll-none">
+        <main className="flex-1 px-4 py-3 lg:px-5 lg:py-4 w-full overflow-y-auto overflow-x-hidden overscroll-none flex flex-col">
           {children}
         </main>
 

@@ -142,7 +142,7 @@ export default function App() {
     <Layout activeTab={activeTab} onTabChange={handleTabChange}>
       <TabPanel id="pos" activeTab={activeTab} prevTab={prevTabRef.current} tabOrder={tabOrder}>
         {/* Mobile: swap between list and check view */}
-        <div className="lg:hidden">
+        <div className="lg:hidden flex-1 flex flex-col">
           {showCheckView ? (
             <CheckView onBack={() => setShowCheckView(false)} />
           ) : (

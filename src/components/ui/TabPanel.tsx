@@ -27,7 +27,7 @@ export function TabPanel({ id, activeTab, prevTab, tabOrder, children }: TabPane
 
   return (
     <div
-      className={isActive ? `block ${animClass}` : 'hidden'}
+      className={isActive ? `flex-1 flex flex-col ${animClass}` : 'hidden'}
       aria-hidden={!isActive}
     >
       {children}
