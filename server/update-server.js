@@ -300,6 +300,122 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // AI Agent Actions
+  if (url.pathname === '/api/ai/action' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const { action, params, staffId } = JSON.parse(body);
+        const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+        const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+
+        if (!SUPABASE_URL || !SUPABASE_KEY) {
+          json(res, { error: 'Supabase не настроен' }, 200);
+          return;
+        }
+
+        const sbHeaders = {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation',
+        };
+
+        if (action === 'create_check') {
+          // Find player by nickname
+          const playerRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/profiles?nickname=ilike.${encodeURIComponent(params.playerNickname)}&role=eq.client&limit=1`,
+            { headers: sbHeaders }
+          );
+          const players = await playerRes.json();
+          if (!players.length) {
+            json(res, { success: false, error: `Игрок "${params.playerNickname}" не найден` });
+            return;
+          }
+
+          const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/checks`, {
+            method: 'POST',
+            headers: sbHeaders,
+            body: JSON.stringify({
+              player_id: players[0].id,
+              staff_id: staffId || null,
+              status: 'open',
+              total_amount: 0,
+              bonus_used: 0,
+              discount_total: 0,
+            }),
+          });
+          const check = await checkRes.json();
+          json(res, { success: true, message: `Чек для ${players[0].nickname} создан`, check: check[0] || check });
+
+        } else if (action === 'add_items') {
+          const { checkId, items } = params; // items: [{ name, quantity }]
+          const invRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=id,name,price`,
+            { headers: sbHeaders }
+          );
+          const inventory = await invRes.json();
+          const added = [];
+          let totalAdded = 0;
+
+          for (const item of items) {
+            const found = inventory.find((inv) => inv.name.toLowerCase().includes(item.name.toLowerCase()));
+            if (found) {
+              const qty = item.quantity || 1;
+              await fetch(`${SUPABASE_URL}/rest/v1/check_items`, {
+                method: 'POST',
+                headers: sbHeaders,
+                body: JSON.stringify({
+                  check_id: checkId,
+                  item_id: found.id,
+                  quantity: qty,
+                  price_at_time: found.price,
+                }),
+              });
+              added.push({ name: found.name, qty, price: found.price });
+              totalAdded += found.price * qty;
+            }
+          }
+
+          // Update check total
+          if (totalAdded > 0) {
+            await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${checkId}`, {
+              method: 'PATCH',
+              headers: sbHeaders,
+              body: JSON.stringify({ total_amount: totalAdded }),
+            });
+          }
+
+          json(res, { success: true, message: `Добавлено ${added.length} позиций на ${totalAdded}₽`, added });
+
+        } else if (action === 'list_menu') {
+          const invRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=name,category,price,stock_quantity&order=category,name`,
+            { headers: sbHeaders }
+          );
+          const menu = await invRes.json();
+          json(res, { success: true, menu });
+
+        } else if (action === 'list_players') {
+          const plRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/profiles?role=eq.client&deleted_at=is.null&select=nickname,balance,bonus_points,client_tier&order=nickname&limit=50`,
+            { headers: sbHeaders }
+          );
+          const players = await plRes.json();
+          json(res, { success: true, players });
+
+        } else {
+          json(res, { error: `Неизвестное действие: ${action}` }, 200);
+        }
+      } catch (e) {
+        console.error('AI Action Error:', e);
+        json(res, { error: String(e) }, 200);
+      }
+    });
+    return;
+  }
+
   json(res, { error: 'Not found' }, 404);
 });
 

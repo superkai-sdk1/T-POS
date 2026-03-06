@@ -1,6 +1,6 @@
 import { useState, memo } from 'react';
 import { useAnalyticsStore, type PeriodPreset } from '@/store/analytics';
-import { CalendarDays, Filter, ChevronDown, X, Search } from 'lucide-react';
+import { CalendarDays, Filter, X, Search } from 'lucide-react';
 import type { PaymentMethod, Profile } from '@/types';
 
 const PRESETS: { id: PeriodPreset; label: string }[] = [
@@ -24,38 +24,88 @@ interface Props {
 }
 
 export const AnalyticsFilter = memo(function AnalyticsFilter({ admins = [], showSearch }: Props) {
-  const { preset, setPreset, paymentFilter, setPaymentFilter, adminFilter, setAdminFilter, search, setSearch } = useAnalyticsStore();
+  const { preset, setPreset, setCustomRange, paymentFilter, setPaymentFilter, adminFilter, setAdminFilter, search, setSearch } = useAnalyticsStore();
   const [expanded, setExpanded] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const hasFilters = paymentFilter !== null || adminFilter !== null;
+
+  const applyCustomRange = () => {
+    if (dateFrom && dateTo) {
+      const start = new Date(dateFrom + 'T00:00:00');
+      const end = new Date(dateTo + 'T23:59:59');
+      if (start <= end) {
+        setCustomRange(start, end);
+        setShowDatePicker(false);
+      }
+    }
+  };
 
   return (
     <div className="space-y-2">
       {/* Period presets */}
       <div className="flex items-center gap-1 overflow-x-auto scrollbar-none pb-0.5">
-        <CalendarDays className="w-3.5 h-3.5 text-[var(--c-hint)] shrink-0 mr-1" />
         {PRESETS.map((p) => (
           <button
             key={p.id}
-            onClick={() => setPreset(p.id)}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all active:scale-95 ${
-              preset === p.id
+            onClick={() => { setPreset(p.id); setShowDatePicker(false); }}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all active:scale-95 ${preset === p.id && !showDatePicker
                 ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)] shadow-sm'
                 : 'bg-[var(--c-surface)] text-[var(--c-hint)] hover:bg-[var(--c-surface-hover)]'
-            }`}
+              }`}
           >
             {p.label}
           </button>
         ))}
         <button
+          onClick={() => setShowDatePicker(!showDatePicker)}
+          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all active:scale-95 flex items-center gap-1 ${showDatePicker || preset === 'custom'
+              ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)] shadow-sm'
+              : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
+            }`}
+        >
+          <CalendarDays className="w-3 h-3" />
+          Период
+        </button>
+        <button
           onClick={() => setExpanded(!expanded)}
-          className={`ml-auto w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all active:scale-90 ${
-            hasFilters ? 'bg-[rgba(var(--c-accent-rgb),0.1)] text-[var(--c-accent)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
-          }`}
+          className={`ml-auto w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all active:scale-90 ${hasFilters ? 'bg-[rgba(var(--c-accent-rgb),0.1)] text-[var(--c-accent)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
+            }`}
         >
           <Filter className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {/* Date picker */}
+      {showDatePicker && (
+        <div className="p-3 rounded-xl card space-y-2 animate-fade-in-up">
+          <p className="text-[10px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">Выберите период</p>
+          <div className="flex gap-2 items-center">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="flex-1 px-2 py-1.5 text-xs rounded-lg bg-[var(--c-surface)] border border-[var(--c-border)] text-[var(--c-text)] focus:outline-none focus:ring-1 focus:ring-[rgba(var(--c-accent-rgb),0.3)]"
+            />
+            <span className="text-xs text-[var(--c-hint)]">—</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="flex-1 px-2 py-1.5 text-xs rounded-lg bg-[var(--c-surface)] border border-[var(--c-border)] text-[var(--c-text)] focus:outline-none focus:ring-1 focus:ring-[rgba(var(--c-accent-rgb),0.3)]"
+            />
+          </div>
+          <button
+            onClick={applyCustomRange}
+            disabled={!dateFrom || !dateTo}
+            className="w-full py-1.5 rounded-lg text-xs font-semibold bg-[var(--c-accent)] text-[var(--c-accent-text)] disabled:opacity-30 active:scale-[0.98] transition-transform"
+          >
+            Применить
+          </button>
+        </div>
+      )}
 
       {/* Expanded filters */}
       {expanded && (
@@ -66,9 +116,8 @@ export const AnalyticsFilter = memo(function AnalyticsFilter({ admins = [], show
             <div className="flex flex-wrap gap-1.5">
               <button
                 onClick={() => setPaymentFilter(null)}
-                className={`px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
-                  !paymentFilter ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
-                }`}
+                className={`px-2 py-1 rounded-md text-[11px] font-medium transition-all ${!paymentFilter ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
+                  }`}
               >
                 Все
               </button>
@@ -76,9 +125,8 @@ export const AnalyticsFilter = memo(function AnalyticsFilter({ admins = [], show
                 <button
                   key={pm.id}
                   onClick={() => setPaymentFilter(paymentFilter === pm.id ? null : pm.id)}
-                  className={`px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
-                    paymentFilter === pm.id ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
-                  }`}
+                  className={`px-2 py-1 rounded-md text-[11px] font-medium transition-all ${paymentFilter === pm.id ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
+                    }`}
                 >
                   {pm.label}
                 </button>
@@ -93,9 +141,8 @@ export const AnalyticsFilter = memo(function AnalyticsFilter({ admins = [], show
               <div className="flex flex-wrap gap-1.5">
                 <button
                   onClick={() => setAdminFilter(null)}
-                  className={`px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
-                    !adminFilter ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
-                  }`}
+                  className={`px-2 py-1 rounded-md text-[11px] font-medium transition-all ${!adminFilter ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
+                    }`}
                 >
                   Все
                 </button>
@@ -103,9 +150,8 @@ export const AnalyticsFilter = memo(function AnalyticsFilter({ admins = [], show
                   <button
                     key={a.id}
                     onClick={() => setAdminFilter(adminFilter === a.id ? null : a.id)}
-                    className={`px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
-                      adminFilter === a.id ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
-                    }`}
+                    className={`px-2 py-1 rounded-md text-[11px] font-medium transition-all ${adminFilter === a.id ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
+                      }`}
                   >
                     {a.nickname}
                   </button>

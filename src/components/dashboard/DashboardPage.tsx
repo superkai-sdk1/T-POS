@@ -55,15 +55,14 @@ interface ReportDayAnalytics {
 export function DashboardPage({ onNavigate }: DashboardPageProps) {
   const nav = (target: string) => onNavigate?.(target);
   const [tab, setTab] = useState<TabId>('finance');
+  const [analyticsSubTab, setAnalyticsSubTab] = useState<'products' | 'players'>('products');
   const data = useAnalyticsData();
   const { preset } = useAnalyticsStore();
   const authUser = useAuthStore((s) => s.user);
 
   const tabs: { id: TabId; label: string; icon: typeof BarChart3 }[] = [
-    { id: 'finance', label: 'Финансы', icon: BarChart3 },
-    { id: 'checks', label: 'Чеки', icon: Receipt },
-    { id: 'products', label: 'Товары', icon: ShoppingBag },
-    { id: 'players', label: 'Игроки', icon: Users },
+    { id: 'finance', label: 'Обзор', icon: BarChart3 },
+    { id: 'products', label: 'Аналитика', icon: ShoppingBag },
     { id: 'ai', label: 'ИИ', icon: Sparkles },
   ];
 
@@ -108,7 +107,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
     return (
       <div className="space-y-4 animate-pulse">
         <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--c-surface)]">
-          {[1, 2, 3, 4, 5].map((i) => <div key={i} className="flex-1 h-8 rounded-md bg-[var(--c-surface)]" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="flex-1 h-10 rounded-md bg-[var(--c-surface)]" />)}
         </div>
         <ListSkeleton rows={6} />
       </div>
@@ -117,74 +116,94 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
   return (
     <div className="space-y-4">
-      {/* Tab switcher */}
-      <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--c-surface)] overflow-x-auto scrollbar-none">
+      {/* Tab switcher — 3 large tabs */}
+      <div className="flex gap-1.5 p-1 rounded-xl bg-[var(--c-surface)]">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap min-w-0 ${tab === t.id
-                ? 'bg-[var(--c-accent)] text-white shadow-sm'
-                : 'text-[var(--c-hint)]'
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${tab === t.id
+              ? 'bg-[var(--c-accent)] text-white shadow-md'
+              : 'text-[var(--c-hint)]'
               }`}
           >
-            <t.icon className="w-3 h-3 shrink-0" />
+            <t.icon className="w-4 h-4 shrink-0" />
             {t.label}
           </button>
         ))}
       </div>
 
-      {/* Global filter */}
-      <AnalyticsFilter
-        admins={data.admins}
-        showSearch={tab === 'products' || tab === 'players'}
-      />
+      {/* Global filter — shown for non-AI tabs */}
+      {tab !== 'ai' && (
+        <AnalyticsFilter
+          admins={data.admins}
+          showSearch={tab === 'products'}
+        />
+      )}
 
       {/* Tab content */}
       {tab === 'finance' && (
-        <FinanceModule
-          revenue={data.revenue}
-          prevRevenue={data.prevRevenue}
-          netProfit={data.netProfit}
-          prevNetProfit={data.prevNetProfit}
-          marginPct={data.marginPct}
-          totalExpenses={data.totalExpenses}
-          prevTotalExpenses={data.prevTotalExpenses}
-          cogs={data.cogs}
-          periodExpenses={data.periodExpenses}
-          supplyCostInPeriod={data.supplyCostInPeriod}
-          paymentBreakdown={data.paymentBreakdown}
-          debtors={data.debtors}
-          totalDebt={data.totalDebt}
-          checkCount={data.checks.length}
-          prevCheckCount={data.prevChecks.length}
-          avgCheck={avgCheck}
-          delta={data.delta}
-          onNavigate={nav}
-        />
-      )}
-
-      {tab === 'checks' && (
-        <ChecksTab
-          allChecks={data.allChecks}
-          checkPaymentsMap={data.checkPaymentsMap}
-        />
+        <>
+          <FinanceModule
+            revenue={data.revenue}
+            prevRevenue={data.prevRevenue}
+            netProfit={data.netProfit}
+            prevNetProfit={data.prevNetProfit}
+            marginPct={data.marginPct}
+            totalExpenses={data.totalExpenses}
+            prevTotalExpenses={data.prevTotalExpenses}
+            cogs={data.cogs}
+            periodExpenses={data.periodExpenses}
+            supplyCostInPeriod={data.supplyCostInPeriod}
+            paymentBreakdown={data.paymentBreakdown}
+            debtors={data.debtors}
+            totalDebt={data.totalDebt}
+            checkCount={data.checks.length}
+            prevCheckCount={data.prevChecks.length}
+            avgCheck={avgCheck}
+            delta={data.delta}
+            onNavigate={nav}
+          />
+          <div className="mt-4">
+            <ChecksTab
+              allChecks={data.allChecks}
+              checkPaymentsMap={data.checkPaymentsMap}
+            />
+          </div>
+        </>
       )}
 
       {tab === 'products' && (
-        <ProductsModule
-          products={data.productStats}
-          allCheckItems={data.allCheckItems as any}
-          checks={data.checks as any}
-        />
-      )}
-
-      {tab === 'players' && (
-        <PlayersModule
-          players={data.playerStats}
-          retentionRate={data.retentionRate}
-          checks={data.checks as any}
-        />
+        <>
+          {/* Sub-toggle: products / players */}
+          <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--c-surface)]">
+            <button
+              onClick={() => setAnalyticsSubTab('products')}
+              className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-semibold transition-all ${analyticsSubTab === 'products' ? 'bg-[var(--c-bg)] text-[var(--c-text)] shadow-sm' : 'text-[var(--c-hint)]'}`}
+            >
+              <ShoppingBag className="w-3 h-3" /> Товары
+            </button>
+            <button
+              onClick={() => setAnalyticsSubTab('players')}
+              className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-semibold transition-all ${analyticsSubTab === 'players' ? 'bg-[var(--c-bg)] text-[var(--c-text)] shadow-sm' : 'text-[var(--c-hint)]'}`}
+            >
+              <Users className="w-3 h-3" /> Игроки
+            </button>
+          </div>
+          {analyticsSubTab === 'products' ? (
+            <ProductsModule
+              products={data.productStats}
+              allCheckItems={data.allCheckItems as any}
+              checks={data.checks as any}
+            />
+          ) : (
+            <PlayersModule
+              players={data.playerStats}
+              retentionRate={data.retentionRate}
+              checks={data.checks as any}
+            />
+          )}
+        </>
       )}
 
       {tab === 'ai' && (
@@ -375,9 +394,9 @@ function ChecksTab({ allChecks, checkPaymentsMap }: {
                     <div className="flex items-center gap-2 shrink-0">
                       {c.payment_method && (
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${c.payment_method === 'cash' ? 'bg-[var(--c-success-bg)] text-[var(--c-success)]' :
-                            c.payment_method === 'card' ? 'bg-[var(--c-info-bg)] text-[var(--c-info)]' :
-                              c.payment_method === 'debt' ? 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' :
-                                'bg-[var(--c-warning-bg)] text-[var(--c-warning)]'
+                          c.payment_method === 'card' ? 'bg-[var(--c-info-bg)] text-[var(--c-info)]' :
+                            c.payment_method === 'debt' ? 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' :
+                              'bg-[var(--c-warning-bg)] text-[var(--c-warning)]'
                           }`}>
                           {pmLabels[c.payment_method] || c.payment_method}
                         </span>
