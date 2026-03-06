@@ -160,16 +160,18 @@ const server = http.createServer((req, res) => {
           body: JSON.stringify(geminiBody),
         });
 
+        const data = await geminiRes.json();
+
         if (!geminiRes.ok) {
-          const err = await geminiRes.text();
-          json(res, { error: `Gemini API error: ${geminiRes.status}`, details: err }, 502);
+          console.error('Gemini API Error:', data);
+          json(res, { error: `Gemini API error: ${geminiRes.status}`, details: data.error?.message || 'Unknown error' }, 502);
           return;
         }
 
-        const data = await geminiRes.json();
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Нет ответа';
         json(res, { response: text });
       } catch (e) {
+        console.error('AI Route Error:', e);
         json(res, { error: String(e) }, 500);
       }
     });

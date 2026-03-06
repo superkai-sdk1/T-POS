@@ -82,6 +82,10 @@ export default defineConfig({
         target: 'http://127.0.0.1:3100',
         changeOrigin: true,
       },
+      '/api/ai': {
+        target: 'http://127.0.0.1:3100',
+        changeOrigin: true,
+      },
       '/sb': {
         target: process.env.VITE_SUPABASE_URL || 'https://dscadajjthbcrullhwtx.supabase.co',
         changeOrigin: true,
