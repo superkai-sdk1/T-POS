@@ -18,7 +18,7 @@ try {
     if (idx > 0) {
       const key = trimmed.slice(0, idx).trim();
       const val = trimmed.slice(idx + 1).trim();
-      if (!process.env[key]) process.env[key] = val;
+      if (key) process.env[key] = val;
     }
   }
 } catch { }
@@ -325,10 +325,14 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
         const data = await aiRes.json();
 
         if (!aiRes.ok) {
-          console.error('AI API Error:', data);
+          console.error(`AI API Error (${aiRes.status}):`, JSON.stringify(data));
+          let errorDetail = data.error?.message || 'Unknown error';
+          if (aiRes.status === 401) {
+            errorDetail = 'Неверный API ключ OpenRouter. Проверьте .env файл и убедитесь, что ключ скопирован полностью.';
+          }
           json(res, {
             error: `AI API error: ${aiRes.status}`,
-            details: data.error?.message || 'Unknown error. Если это ошибка 429 — подождите минуту, лимиты провайдера временно исчерпаны.',
+            details: errorDetail,
           }, 200);
           return;
         }
