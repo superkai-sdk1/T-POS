@@ -28,7 +28,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   [isOwner]);
 
   return (
-    <div className="min-h-screen bg-[var(--c-bg)] flex flex-col lg:flex-row">
+    <div className="h-full bg-[var(--c-bg)] flex flex-col lg:flex-row overflow-hidden">
       {/* Desktop sidebar — compact icon rail */}
       <aside
         className="hidden lg:flex flex-col w-[68px] shrink-0 fixed top-0 left-0 h-full z-40 border-r border-white/5 items-center"
@@ -100,7 +100,10 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-3 lg:px-5 lg:py-4 w-full pb-mobile-nav">
+        <main
+          className="flex-1 px-4 py-3 lg:px-5 lg:py-4 w-full overflow-y-auto overflow-x-hidden overscroll-none"
+          style={{ paddingBottom: 'calc(var(--nav-height) + var(--safe-bottom) + 0.5rem)' }}
+        >
           {children}
         </main>
 

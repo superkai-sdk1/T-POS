@@ -96,7 +96,7 @@ export function SupplyPage() {
     setDraftNote('');
   };
 
-  const { swipeBackHandlers: createSwipeHandlers, swipeIndicatorStyle: createIndicator, overlayStyle: createOverlay } = useSwipeBack({
+  const { swipeIndicatorStyle: createIndicator, overlayStyle: createOverlay } = useSwipeBack({
     onBack: handleTryExit,
     enabled: isCreating,
   });
@@ -348,7 +348,7 @@ export function SupplyPage() {
   // ==================
   if (isCreating) {
     return (
-      <div className="space-y-4" {...createSwipeHandlers}>
+      <div className="space-y-4">
         {createIndicator && <div style={createIndicator} />}
         {createOverlay && <div style={createOverlay} />}
         {/* Header */}

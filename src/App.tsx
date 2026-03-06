@@ -122,7 +122,7 @@ export default function App() {
           )}
         </div>
         {/* Desktop: split view — list left, check right */}
-        <div className="hidden lg:flex gap-4 h-[calc(100vh-2rem)]">
+        <div className="hidden lg:flex gap-4 h-full">
           <div className={`shrink-0 overflow-y-auto pr-1 ${showCheckView ? 'w-[340px]' : 'flex-1'}`}>
             <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
           </div>
@@ -153,7 +153,7 @@ export default function App() {
       {visitedTabs.has('management') && (
         <TabPanel id="management" activeTab={activeTab} prevTab={prevTabRef.current} tabOrder={tabOrder}>
           <Suspense fallback={<TabFallback />}>
-            <ManagementPage initialScreen={managementScreen} />
+            <ManagementPage initialScreen={managementScreen} isActive={activeTab === 'management'} />
           </Suspense>
         </TabPanel>
       )}

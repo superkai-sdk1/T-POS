@@ -48,9 +48,10 @@ const menuItems: { id: Screen; label: string; desc: string; icon: typeof Package
 
 interface ManagementPageProps {
   initialScreen?: string;
+  isActive?: boolean;
 }
 
-export function ManagementPage({ initialScreen }: ManagementPageProps) {
+export function ManagementPage({ initialScreen, isActive = true }: ManagementPageProps) {
   const [screen, setScreen] = useState<Screen>((initialScreen as Screen) || 'menu');
 
   useEffect(() => {
@@ -61,9 +62,9 @@ export function ManagementPage({ initialScreen }: ManagementPageProps) {
   }, [initialScreen]);
 
   const goToMenu = useCallback(() => setScreen('menu'), []);
-  const { swipeBackHandlers, swipeIndicatorStyle, overlayStyle } = useSwipeBack({
+  const { swipeIndicatorStyle, overlayStyle } = useSwipeBack({
     onBack: goToMenu,
-    enabled: screen !== 'menu',
+    enabled: screen !== 'menu' && isActive,
   });
 
   const screenLabel = menuItems.find((m) => m.id === screen)?.label || 'Управление';
@@ -91,7 +92,7 @@ export function ManagementPage({ initialScreen }: ManagementPageProps) {
   }
 
   return (
-    <div className="space-y-3" {...swipeBackHandlers}>
+    <div className="space-y-3">
       {swipeIndicatorStyle && <div style={swipeIndicatorStyle} />}
       {overlayStyle && <div style={overlayStyle} />}
       <div className="flex items-center gap-2">

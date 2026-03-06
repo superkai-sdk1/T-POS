@@ -127,7 +127,7 @@ export function CheckView({ onBack }: CheckViewProps) {
     onBack();
   }, [updateCheckNote, leaveCheck, onBack]);
 
-  const { swipeBackHandlers, swipeIndicatorStyle, overlayStyle } = useSwipeBack({
+  const { swipeIndicatorStyle, overlayStyle } = useSwipeBack({
     onBack: handleBack,
   });
 
@@ -400,7 +400,7 @@ export function CheckView({ onBack }: CheckViewProps) {
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-8rem)]" {...swipeBackHandlers}>
+    <div className="flex flex-col flex-1">
       {swipeIndicatorStyle && <div style={swipeIndicatorStyle} />}
       {overlayStyle && <div style={overlayStyle} />}
       {/* Sticky header */}
