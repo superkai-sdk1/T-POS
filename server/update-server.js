@@ -250,19 +250,11 @@ const server = http.createServer((req, res) => {
 ===`;
         }
 
-        // Inject DB context into system message
-        const enrichedMessages = messages.map((m) => {
-          if (m.role === 'system') {
-            return { ...m, content: m.content + dbContext };
-          }
-          return m;
-        });
-
-        // If no system message exists, add one with DB context
-        if (!enrichedMessages.find((m) => m.role === 'system') && dbContext) {
-          enrichedMessages.unshift({
-            role: 'system',
-            content: `Ты — ИИ-ассистент POS-системы T-POS. У тебя есть доступ к инструментам для создания и просмотра мероприятий.
+        // --- Construct System Prompt ---
+        const now = new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', dateStyle: 'long', timeStyle: 'short' });
+        const systemPromptHeader = `Ты — ИИ-ассистент POS-системы T-POS.
+СЕЙЧАС: ${now} (Московское время).
+ИДЕНТИФИКАЦИЯ: Если пользователь спрашивает "кто ты", отвечай что ты ассистент T-POS.
 
 ИНСТРУМЕНТЫ:
 1. create_event: { type: 'titan'|'exit', location: string, date: 'YYYY-MM-DD', start_time: 'HH:mm', payment_type: 'fixed'|'hourly', fixed_amount: number, comment: string }
@@ -273,10 +265,22 @@ const server = http.createServer((req, res) => {
 Если пользователь просит создать мероприятие, ВЫЗЫВАЙ create_event в формате JSON-ответа: {"action": "create_event", "params": {...}}. 
 Если пользователь спрашивает про планы, ВЫЗЫВАЙ list_events: {"action": "list_events", "params": {"upcoming": true}}.
 
-ИДЕНТИФИКАЦИЯ: Если пользователь спрашивает "кто ты", отвечай что ты ассистент T-POS.
-СЕЙЧАС: ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', dateStyle: 'long', timeStyle: 'short' })}.
+Отвечай кратко и по делу после выполнения действия.`;
 
-Отвечай кратко и по делу после выполнения действия.\n\n${dbContext}`,
+        // Inject into messages
+        let systemMessageFound = false;
+        const enrichedMessages = messages.map((m) => {
+          if (m.role === 'system') {
+            systemMessageFound = true;
+            return { ...m, content: `${systemPromptHeader}\n\n${m.content}\n\n${dbContext}` };
+          }
+          return m;
+        });
+
+        if (!systemMessageFound) {
+          enrichedMessages.unshift({
+            role: 'system',
+            content: `${systemPromptHeader}\n\n${dbContext}`,
           });
         }
 
