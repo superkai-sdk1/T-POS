@@ -246,7 +246,8 @@ const server = http.createServer((req, res) => {
 КАССА: ${JSON.stringify(cashOps.slice(0, 10).map((o) => ({ type: o.type, amount: o.amount })))}
 ПОСЛЕДНИЕ СМЕНЫ: ${JSON.stringify(shifts.slice(0, 5).map((s) => ({ status: s.status, cash_start: s.cash_start, cash_end: s.cash_end, opened: s.opened_at, closed: s.closed_at })))}
 МЕНЮ (все ${inventory.length} позиций): ${JSON.stringify(inventory.map((i) => ({ name: i.name, cat: i.category, price: i.price, stock: i.stock_quantity, active: i.is_active })))}
-МЕРОПРИЯТИЯ (${events.length} всего): ${JSON.stringify(events.slice(0, 10).map((e) => ({ type: e.type, location: e.location, date: e.date, status: e.status })))}
+МЕРОПРИЯТИЯ (последние 10): ${JSON.stringify(events.slice(0, 10).map((e) => ({ type: e.type, location: e.location, date: e.date, status: e.status })))}
+(ВНИМАНИЕ: Даты в списке могут быть старыми. ИСПОЛЬЗУЙ ТЕКУЩИЙ ГОД ИЗ СЕКЦИИ "СЕЙЧАС" ДЛЯ НОВЫХ ЗАПИСЕЙ!)
 ===`;
         }
 
@@ -254,6 +255,7 @@ const server = http.createServer((req, res) => {
         const now = new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', dateStyle: 'long', timeStyle: 'short' });
         const systemPromptHeader = `Ты — ИИ-ассистент POS-системы T-POS.
 СЕЙЧАС: ${now} (Московское время).
+ВАЖНО: Сегодня 2026 год. Игнорируй любые упоминания 2024 года в истории, если они противоречат здравому смыслу. Все новые мероприятия создавай на 2026 год.
 ИДЕНТИФИКАЦИЯ: Если пользователь спрашивает "кто ты", отвечай что ты ассистент T-POS.
 
 ИНСТРУМЕНТЫ:
@@ -262,10 +264,10 @@ const server = http.createServer((req, res) => {
 3. create_check: { playerNickname: string }
 4. add_items: { checkId: string, items: [{ name: string, quantity: number }] }
 
-Если пользователь просит создать мероприятие, ВЫЗЫВАЙ create_event в формате JSON-ответа: {"action": "create_event", "params": {...}}. 
+Если пользователь просит создать мероприятие, ВЫЗЫВАЙ create_event в формате JSON-ответа: {"action": "create_event", "params": {...}}.
 Если пользователь спрашивает про планы, ВЫЗЫВАЙ list_events: {"action": "list_events", "params": {"upcoming": true}}.
 
-Отвечай кратко и по делу после выполнения действия.`;
+Отвечай кратко и по делу после выполнения действия. (Заменяй 2024 на 2026 везде!)`;
 
         // Inject into messages
         let systemMessageFound = false;
@@ -291,14 +293,29 @@ const server = http.createServer((req, res) => {
           max_tokens: 8192,
         };
 
-        const groqRes = await fetch(groqUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${GROQ_KEY}`,
-          },
-          body: JSON.stringify(groqBody),
-        });
+        let groqRes;
+        let attempts = 0;
+        const maxAttempts = 3;
+
+        while (attempts < maxAttempts) {
+          groqRes = await fetch(groqUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${GROQ_KEY}`,
+            },
+            body: JSON.stringify(groqBody),
+          });
+
+          if (groqRes.status === 429 && attempts < maxAttempts - 1) {
+            attempts++;
+            const delay = Math.pow(2, attempts) * 1000;
+            console.warn(`Groq 429: Rate limit hit. Retrying in ${delay}ms... (Attempt ${attempts}/${maxAttempts})`);
+            await new Promise(r => setTimeout(r, delay));
+            continue;
+          }
+          break;
+        }
 
         const data = await groqRes.json();
 
@@ -306,7 +323,7 @@ const server = http.createServer((req, res) => {
           console.error('Groq API Error:', data);
           json(res, {
             error: `Groq API error: ${groqRes.status}`,
-            details: data.error?.message || 'Unknown error',
+            details: data.error?.message || 'Unknown error. Если это ошибка 429 — подождите минуту, лимиты Groq временно исчерпаны.',
           }, 200);
           return;
         }
