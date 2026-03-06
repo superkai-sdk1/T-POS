@@ -137,8 +137,8 @@ export function BonusManager() {
 
   if (isLoading) {
     return (
-      <div className="text-center py-20">
-        <div className="w-8 h-8 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
+      <div className="space-y-3 py-4">
+        {[1, 2, 3].map((i) => <div key={i} className="h-14 rounded-xl skeleton" />)}
       </div>
     );
   }

@@ -1,16 +1,33 @@
-import type { ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 
 interface TabPanelProps {
   id: string;
   activeTab: string;
+  prevTab?: string;
+  tabOrder?: string[];
   children: ReactNode;
 }
 
-export function TabPanel({ id, activeTab, children }: TabPanelProps) {
+export function TabPanel({ id, activeTab, prevTab, tabOrder, children }: TabPanelProps) {
   const isActive = activeTab === id;
+  const prevActiveRef = useRef<string | null>(null);
+
+  if (isActive && prevActiveRef.current !== id) {
+    prevActiveRef.current = id;
+  }
+
+  let animClass = 'tab-content-enter';
+  if (tabOrder && prevTab && prevTab !== id) {
+    const fromIdx = tabOrder.indexOf(prevTab);
+    const toIdx = tabOrder.indexOf(id);
+    if (fromIdx >= 0 && toIdx >= 0) {
+      animClass = toIdx > fromIdx ? 'tab-enter-right' : 'tab-enter-left';
+    }
+  }
+
   return (
     <div
-      className={isActive ? 'block tab-content-enter' : 'hidden'}
+      className={isActive ? `block ${animClass}` : 'hidden'}
       aria-hidden={!isActive}
     >
       {children}

@@ -165,8 +165,10 @@ export const usePOSStore = create<POSState>((set, get) => ({
   updateCheckNote: async (note: string) => {
     const { activeCheck } = get();
     if (!activeCheck) return;
-    await supabase.from('checks').update({ note }).eq('id', activeCheck.id);
+    const prev = activeCheck.note;
     set({ activeCheck: { ...activeCheck, note } });
+    const { error } = await supabase.from('checks').update({ note }).eq('id', activeCheck.id);
+    if (error) set({ activeCheck: { ...get().activeCheck!, note: prev } });
   },
 
   selectCheck: async (check: Check) => {
@@ -301,8 +303,10 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   removeDiscount: async (checkDiscountId: string) => {
-    await supabase.from('check_discounts').delete().eq('id', checkDiscountId);
-    set({ appliedDiscounts: get().appliedDiscounts.filter((d) => d.id !== checkDiscountId) });
+    const prev = get().appliedDiscounts;
+    set({ appliedDiscounts: prev.filter((d) => d.id !== checkDiscountId) });
+    const { error } = await supabase.from('check_discounts').delete().eq('id', checkDiscountId);
+    if (error) set({ appliedDiscounts: prev });
   },
 
   refreshActiveCheck: async () => {
@@ -458,17 +462,20 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   cancelCheck: async () => {
-    const { activeCheck } = get();
+    const { activeCheck, cart, checkItems, appliedDiscounts } = get();
     if (!activeCheck) return false;
+    const prevFp = _lastCartFingerprint;
     _lastCartFingerprint = '';
+    set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
     await supabase.from('check_discounts').delete().eq('check_id', activeCheck.id);
     await supabase.from('check_items').delete().eq('check_id', activeCheck.id);
     const { error } = await supabase.from('checks').delete().eq('id', activeCheck.id);
     if (error) {
       console.error('cancelCheck error:', error);
+      _lastCartFingerprint = prevFp;
+      set({ activeCheck, cart, checkItems, appliedDiscounts });
       return false;
     }
-    set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
     await get().loadOpenChecks();
     return true;
   },

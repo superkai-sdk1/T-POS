@@ -40,6 +40,7 @@ html {
   overflow: hidden;
   overscroll-behavior: none;
   font-size: 17px;
+  touch-action: manipulation;
 }
 
 @media (min-width: 1024px) {
@@ -94,8 +95,9 @@ input[type="number"] {
 }
 
 @keyframes slide-up {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  0% { transform: translateY(100%); }
+  70% { transform: translateY(-2%); }
+  100% { transform: translateY(0); }
 }
 
 @keyframes slide-down {
@@ -159,7 +161,7 @@ input[type="number"] {
 }
 
 .animate-slide-up {
-  animation: slide-up 0.25s var(--ease-spring);
+  animation: slide-up 0.3s var(--ease-spring);
 }
 
 .animate-slide-down {
@@ -215,17 +217,19 @@ input[type="number"] {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 1rem;
-  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+  transition: background 0.12s, transform 0.12s, box-shadow 0.12s;
+  will-change: transform;
 }
 .card-interactive:active {
   transform: scale(0.975);
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.035));
-  box-shadow: 0 0 0 1px rgba(108, 92, 231, 0.08);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04));
+  box-shadow: 0 0 0 1px rgba(108, 92, 231, 0.15);
 }
 
 /* ── Tap micro-interaction ── */
 .tap {
   transition: transform 0.1s;
+  will-change: transform;
 }
 .tap:active {
   transform: scale(0.97);

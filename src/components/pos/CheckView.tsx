@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, memo, startTransition } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { usePOSStore } from '@/store/pos';
 import { PaymentDrawer } from './PaymentDrawer';
 import { Badge } from '@/components/ui/Badge';
@@ -29,6 +30,54 @@ function tierToTariff(tier: ClientTier | undefined): VisitTariff {
   if (tier === 'student') return 'student';
   return 'regular';
 }
+
+const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
+
+const MenuItem = memo(function MenuItem({
+  item,
+  inCartQty,
+  onAdd,
+}: {
+  item: InventoryItem;
+  inCartQty: number;
+  onAdd: (item: InventoryItem) => void;
+}) {
+  const isCritical = item.stock_quantity <= item.min_threshold && item.min_threshold > 0;
+  return (
+    <button
+      onClick={() => onAdd(item)}
+      className={`relative rounded-xl text-left transition-transform active:scale-[0.96] overflow-hidden ${
+        isCritical ? 'bg-red-500/6 border border-red-500/15' : 'card'
+      }`}
+    >
+      {inCartQty > 0 && (
+        <div className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-[var(--c-accent)] flex items-center justify-center text-[10px] font-bold text-white shadow animate-pop-in">
+          {inCartQty}
+        </div>
+      )}
+      {item.image_url && (
+        <div className="w-full aspect-[4/3] bg-white/3">
+          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+        </div>
+      )}
+      <div className="p-2.5">
+        <p className="font-medium text-[12px] text-[var(--c-text)] leading-tight line-clamp-2">
+          {item.name}
+        </p>
+        <p className="text-sm font-black text-[var(--c-accent)] mt-1 tabular-nums">
+          {fmtCur(item.price)}
+        </p>
+        {item.min_threshold > 0 && (
+          <div className="mt-1">
+            <Badge variant={isCritical ? 'danger' : 'default'} size="sm">
+              Ост: {item.stock_quantity}
+            </Badge>
+          </div>
+        )}
+      </div>
+    </button>
+  );
+});
 
 interface CheckViewProps {
   onBack: () => void;
@@ -221,6 +270,14 @@ export function CheckView({ onBack }: CheckViewProps) {
     return counts;
   }, [inventory]);
 
+  const menuGridRef = useRef<HTMLDivElement>(null);
+  const menuVirtualizer = useVirtualizer({
+    count: Math.ceil(filteredItems.length / 2),
+    getScrollElement: () => menuGridRef.current,
+    estimateSize: () => 140,
+    overscan: 3,
+  });
+
   const searchPlayersForAdd = useCallback((query: string) => {
     setPlayerSearch(query);
     if (playerSearchTimer.current) clearTimeout(playerSearchTimer.current);
@@ -336,8 +393,6 @@ export function CheckView({ onBack }: CheckViewProps) {
     setMenuSearch('');
     setShowMenu(true);
   };
-
-  const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-8rem)]">
@@ -584,7 +639,7 @@ export function CheckView({ onBack }: CheckViewProps) {
           <input
             placeholder="Поиск..."
             value={menuSearch}
-            onChange={(e) => setMenuSearch(e.target.value)}
+            onChange={(e) => startTransition(() => setMenuSearch(e.target.value))}
             className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/5 border border-white/6 text-sm text-[var(--c-text)] placeholder:text-white/15 focus:outline-none focus:border-[var(--c-accent)]/25 transition-colors"
           />
         </div>
@@ -617,46 +672,31 @@ export function CheckView({ onBack }: CheckViewProps) {
         </div>
 
         {/* Items grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 max-h-[55vh] overflow-y-auto stagger-children">
-          {filteredItems.map((item) => {
-            const isCritical = item.stock_quantity <= item.min_threshold && item.min_threshold > 0;
-            const inCart = cart.find((c) => c.item.id === item.id);
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleAdd(item)}
-                className={`relative rounded-xl text-left transition-transform active:scale-[0.96] overflow-hidden ${
-                  isCritical ? 'bg-red-500/6 border border-red-500/15' : 'card'
-                }`}
-              >
-                {inCart && (
-                  <div className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-[var(--c-accent)] flex items-center justify-center text-[10px] font-bold text-white shadow animate-pop-in">
-                    {inCart.quantity}
-                  </div>
-                )}
-                {item.image_url && (
-                  <div className="w-full aspect-[4/3] bg-white/3">
-                    <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
-                  </div>
-                )}
-                <div className="p-2.5">
-                  <p className="font-medium text-[12px] text-[var(--c-text)] leading-tight line-clamp-2">
-                    {item.name}
-                  </p>
-                  <p className="text-sm font-black text-[var(--c-accent)] mt-1 tabular-nums">
-                    {fmtCur(item.price)}
-                  </p>
-                  {item.min_threshold > 0 && (
-                    <div className="mt-1">
-                      <Badge variant={isCritical ? 'danger' : 'default'} size="sm">
-                        Ост: {item.stock_quantity}
-                      </Badge>
-                    </div>
-                  )}
+        <div ref={menuGridRef} className="max-h-[55vh] overflow-y-auto">
+          <div style={{ height: `${menuVirtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
+            {menuVirtualizer.getVirtualItems().map((virtualRow) => {
+              const startIdx = virtualRow.index * 2;
+              const rowItems = filteredItems.slice(startIdx, startIdx + 2);
+              return (
+                <div
+                  key={virtualRow.index}
+                  className="grid grid-cols-2 lg:grid-cols-3 gap-2"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  {rowItems.map((item) => {
+                    const inCart = cart.find((c) => c.item.id === item.id);
+                    return <MenuItem key={item.id} item={item} inCartQty={inCart?.quantity || 0} onAdd={handleAdd} />;
+                  })}
                 </div>
-              </button>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </Drawer>
 

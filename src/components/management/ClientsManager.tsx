@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo, memo, startTransition } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -12,6 +12,7 @@ import {
 import QRCode from 'qrcode';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import type { Profile, ClientTier } from '@/types';
 
 const WALLET_BOT_USERNAME = (import.meta.env.VITE_WALLET_BOT_USERNAME as string) || 'titanwalletrobot';
@@ -46,6 +47,55 @@ const emptyForm: ClientForm = {
   photo_url: '',
   tg_username: '',
 };
+
+const ClientRow = memo(function ClientRow({ client, onSelect, getAge, isBirthdaySoon }: { client: Profile; onSelect: (c: Profile) => void; getAge: (d: string) => number; isBirthdaySoon: (d: string) => boolean }) {
+  return (
+    <button
+      onClick={() => onSelect(client)}
+      className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive text-left"
+    >
+      {/* Avatar */}
+      <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 bg-white/10 flex items-center justify-center">
+        {client.photo_url ? (
+          <img src={client.photo_url} alt={client.nickname} className="w-full h-full object-cover" />
+        ) : (
+          <User className="w-5 h-5 text-white/30" />
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{client.nickname}</p>
+          {client.birthday && isBirthdaySoon(client.birthday) && (
+            <Cake className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+          )}
+        </div>
+        <div className="flex items-center gap-2 mt-0.5">
+          {client.client_tier === 'resident' && <Badge variant="success" size="sm">Резидент</Badge>}
+          {client.client_tier === 'student' && <Badge variant="accent" size="sm">Студент</Badge>}
+          {client.tg_username && (
+            <span className="text-[10px] text-sky-400/50">@{client.tg_username}</span>
+          )}
+          {client.phone && (
+            <span className="text-[10px] text-white/30">{client.phone}</span>
+          )}
+          {client.birthday && (
+            <span className="text-[10px] text-white/25">{getAge(client.birthday)} лет</span>
+          )}
+        </div>
+      </div>
+
+      <div className="text-right shrink-0">
+        {client.bonus_points > 0 && (
+          <p className="text-xs font-bold text-amber-400 flex items-center gap-0.5"><Star className="w-3 h-3" />{client.bonus_points}</p>
+        )}
+        {client.balance < 0 && (
+          <p className="text-[10px] text-red-400">{client.balance}₽</p>
+        )}
+      </div>
+    </button>
+  );
+});
 
 export function ClientsManager() {
   const [clients, setClients] = useState<Profile[]>([]);
@@ -119,6 +169,14 @@ export function ClientsManager() {
     if (filter === 'students') return c.client_tier === 'student';
     if (filter === 'guests') return c.client_tier === 'regular';
     return true;
+  });
+
+  const clientListRef = useRef<HTMLDivElement>(null);
+  const clientVirtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => clientListRef.current,
+    estimateSize: () => 60,
+    overscan: 5,
   });
 
   const totalResidents = clients.filter((c) => c.client_tier === 'resident').length;
@@ -209,26 +267,24 @@ export function ClientsManager() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    const prevClients = clients;
+    setClients((prev) => prev.filter((c) => c.id !== deleteTarget.id));
+    setDeleteTarget(null);
+    hapticNotification('success');
     const { error } = await supabase
       .from('profiles')
       .update({ deleted_at: new Date().toISOString() })
       .eq('id', deleteTarget.id);
     if (error) {
-      console.error('Soft delete failed, trying hard delete:', error);
       const { error: delErr } = await supabase
         .from('profiles')
         .delete()
         .eq('id', deleteTarget.id);
       if (delErr) {
-        console.error('Hard delete also failed:', delErr);
+        setClients(prevClients);
         hapticNotification('error');
-        setDeleteTarget(null);
-        return;
       }
     }
-    hapticNotification('success');
-    setDeleteTarget(null);
-    loadClients();
   };
 
   const formatBirthday = (d: string) => {
@@ -255,8 +311,12 @@ export function ClientsManager() {
 
   if (isLoading) {
     return (
-      <div className="text-center py-20">
-        <div className="w-8 h-8 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin mx-auto" />
+      <div className="space-y-3 py-4">
+        <div className="grid grid-cols-3 gap-2">
+          {[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-xl skeleton" />)}
+        </div>
+        <div className="h-11 rounded-xl skeleton" />
+        {[1, 2, 3, 4, 5].map((i) => <div key={i} className="h-16 rounded-xl skeleton" />)}
       </div>
     );
   }
@@ -288,7 +348,7 @@ export function ClientsManager() {
             placeholder="Имя или телефон..."
             className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-white/30"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => startTransition(() => setSearch(e.target.value))}
           />
         </div>
         <Button onClick={openCreate}>
@@ -351,64 +411,37 @@ export function ClientsManager() {
       )}
 
       {/* Client list */}
-      <div className="space-y-1.5">
-        {filtered.map((client) => (
-          <button
-            key={client.id}
-            onClick={() => openDetail(client)}
-            className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive text-left"
-          >
-            {/* Avatar */}
-            <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 bg-white/10 flex items-center justify-center">
-              {client.photo_url ? (
-                <img src={client.photo_url} alt={client.nickname} className="w-full h-full object-cover" />
-              ) : (
-                <User className="w-5 h-5 text-white/30" />
-              )}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{client.nickname}</p>
-                {client.birthday && isBirthdaySoon(client.birthday) && (
-                  <Cake className="w-3.5 h-3.5 text-pink-400 shrink-0" />
-                )}
-              </div>
-              <div className="flex items-center gap-2 mt-0.5">
-                {client.client_tier === 'resident' && <Badge variant="success" size="sm">Резидент</Badge>}
-                {client.client_tier === 'student' && <Badge variant="accent" size="sm">Студент</Badge>}
-                {client.tg_username && (
-                  <span className="text-[10px] text-sky-400/50">@{client.tg_username}</span>
-                )}
-                {client.phone && (
-                  <span className="text-[10px] text-white/30">{client.phone}</span>
-                )}
-                {client.birthday && (
-                  <span className="text-[10px] text-white/25">{getAge(client.birthday)} лет</span>
-                )}
-              </div>
-            </div>
-
-            <div className="text-right shrink-0">
-              {client.bonus_points > 0 && (
-                <p className="text-xs font-bold text-amber-400 flex items-center gap-0.5"><Star className="w-3 h-3" />{client.bonus_points}</p>
-              )}
-              {client.balance < 0 && (
-                <p className="text-[10px] text-red-400">{client.balance}₽</p>
-              )}
-            </div>
-          </button>
-        ))}
-
-        {filtered.length === 0 && (
-          <div className="text-center py-12">
-            <User className="w-12 h-12 text-white/5 mx-auto mb-3" />
-            <p className="text-[var(--c-hint)]">
-              {search ? 'Никого не найдено' : 'Нет клиентов'}
-            </p>
+      {filtered.length === 0 ? (
+        <div className="text-center py-12">
+          <User className="w-12 h-12 text-white/5 mx-auto mb-3" />
+          <p className="text-[var(--c-hint)]">
+            {search ? 'Никого не найдено' : 'Нет клиентов'}
+          </p>
+        </div>
+      ) : (
+        <div ref={clientListRef} className="overflow-y-auto" style={{ height: Math.min(filtered.length * 60, 500) }}>
+          <div style={{ height: `${clientVirtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
+            {clientVirtualizer.getVirtualItems().map((virtualRow) => {
+              const client = filtered[virtualRow.index];
+              return (
+                <div
+                  key={client.id}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: `${virtualRow.size}px`,
+                    transform: `translateY(${virtualRow.start}px)`,
+                  }}
+                >
+                  <ClientRow client={client} onSelect={openDetail} getAge={getAge} isBirthdaySoon={isBirthdaySoon} />
+                </div>
+              );
+            })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ============ DETAIL DRAWER ============ */}
       <Drawer

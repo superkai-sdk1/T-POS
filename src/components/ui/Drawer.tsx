@@ -68,8 +68,14 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
   return (
     <div className="fixed inset-0 z-50 flex items-end lg:items-center lg:justify-center">
       <div
-        className={`absolute inset-0 bg-black/50 ${closing ? '' : 'animate-fade-in'}`}
-        style={{ opacity, transition: closing ? 'opacity 0.2s' : undefined }}
+        className={`absolute inset-0 ${closing ? '' : 'animate-fade-in'}`}
+        style={{
+          background: 'rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
+          opacity,
+          transition: closing ? 'opacity 0.2s, backdrop-filter 0.2s' : undefined,
+        }}
         onClick={handleClose}
       />
       <div

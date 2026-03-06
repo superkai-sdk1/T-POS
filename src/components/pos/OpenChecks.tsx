@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, memo, startTransition } from 'react';
 import { usePOSStore } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
 import { Button } from '@/components/ui/Button';
@@ -9,7 +9,7 @@ import { ShiftBar } from '@/components/shift/ShiftBar';
 import { ShiftHistory } from '@/components/shift/ShiftHistory';
 import { Plus, Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen, Home, Building2, Warehouse, Star, GraduationCap, Gamepad2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
-import type { Profile, Space, VisitTariff, ClientTier } from '@/types';
+import type { Profile, Space, VisitTariff, ClientTier, Check } from '@/types';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 
 interface OpenChecksProps {
@@ -45,6 +45,72 @@ function ElapsedTime({ since }: { since: string }) {
   return <>{text}</>;
 }
 
+const spaceIconMap: Record<string, typeof Home> = {
+  cabin_small: Home,
+  cabin_big: Building2,
+  hall: Warehouse,
+};
+
+const fmtCur = (n: number) =>
+  new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
+
+const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: Check) => void }) => {
+  const hasSpace = !!check.space;
+  return (
+    <button
+      onClick={() => onSelect(check)}
+      className="card-interactive text-left p-3 flex flex-col gap-2"
+    >
+      <div className="flex items-center gap-2">
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+          hasSpace
+            ? 'bg-indigo-500/12'
+            : check.player
+            ? 'bg-[var(--c-accent)]/10'
+            : 'bg-white/5'
+        }`}>
+          {hasSpace ? (() => { const Icon = spaceIconMap[check.space!.type] || DoorOpen; return <Icon className="w-3.5 h-3.5 text-indigo-400" />; })()
+            : check.player
+            ? <span className="text-xs font-bold text-[var(--c-accent)]">{check.player.nickname?.charAt(0).toUpperCase()}</span>
+            : <UserX className="w-3.5 h-3.5 text-white/25" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold text-[13px] text-[var(--c-text)] truncate leading-tight">
+            {hasSpace
+              ? check.space!.name
+              : (() => {
+                  const names: string[] = [];
+                  if (check.player?.nickname) names.push(check.player.nickname);
+                  if (check.guest_names) names.push(...check.guest_names.split(', '));
+                  return names.length > 0 ? names.join(', ') : 'Без клиента';
+                })()
+            }
+          </p>
+          {hasSpace && check.player && (
+            <p className="text-[10px] text-indigo-400/50 truncate">
+              {check.player.nickname}{check.guest_names ? `, ${check.guest_names}` : ''}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-end justify-between mt-auto">
+        <div className="flex items-center gap-1 text-white/25">
+          <Clock className="w-3 h-3" />
+          <span className="text-[10px] tabular-nums"><ElapsedTime since={check.created_at} /></span>
+        </div>
+        {check.total_amount > 0 ? (
+          <span className="text-base font-black text-[var(--c-text)] tabular-nums leading-none">
+            {fmtCur(check.total_amount)}
+          </span>
+        ) : (
+          <Badge variant="default" size="sm">Пусто</Badge>
+        )}
+      </div>
+    </button>
+  );
+});
+
 export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const { openChecks, loadOpenChecks, createCheck, selectCheck, addToCart, saveCartToDb, inventory, checksLoaded } = usePOSStore();
   const activeShift = useShiftStore((s) => s.activeShift);
@@ -73,7 +139,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const searchPlayers = useCallback((query: string) => {
-    setSearchQuery(query);
+    startTransition(() => setSearchQuery(query));
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     if (query.length < 1) {
       setPlayers([]);
@@ -155,12 +221,6 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     setShowSpaces(true);
   };
 
-  const spaceIconMap: Record<string, typeof Home> = {
-    cabin_small: Home,
-    cabin_big: Building2,
-    hall: Warehouse,
-  };
-
   const handleSelectCheck = async (check: (typeof openChecks)[0]) => {
     hapticFeedback('light');
     await selectCheck(check);
@@ -211,9 +271,6 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
 
   const formatTime = (dateStr: string) =>
     new Date(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-
-  const fmtCur = (n: number) =>
-    new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
 
   const tierBadge = (tier: ClientTier | undefined) => {
     if (tier === 'resident') return <Badge variant="success" size="sm">Резидент</Badge>;
@@ -278,63 +335,9 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         </div>
       ) : (
         <div className="grid gap-2 stagger-children" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
-          {openChecks.map((check) => {
-            const hasSpace = !!check.space;
-            return (
-              <button
-                key={check.id}
-                onClick={() => handleSelectCheck(check)}
-                className="card-interactive text-left p-3 flex flex-col gap-2"
-              >
-                <div className="flex items-center gap-2">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                    hasSpace
-                      ? 'bg-indigo-500/12'
-                      : check.player
-                      ? 'bg-[var(--c-accent)]/10'
-                      : 'bg-white/5'
-                  }`}>
-                    {hasSpace ? (() => { const Icon = spaceIconMap[check.space!.type] || DoorOpen; return <Icon className="w-3.5 h-3.5 text-indigo-400" />; })()
-                      : check.player
-                      ? <span className="text-xs font-bold text-[var(--c-accent)]">{check.player.nickname?.charAt(0).toUpperCase()}</span>
-                      : <UserX className="w-3.5 h-3.5 text-white/25" />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-[13px] text-[var(--c-text)] truncate leading-tight">
-                      {hasSpace
-                        ? check.space!.name
-                        : (() => {
-                            const names: string[] = [];
-                            if (check.player?.nickname) names.push(check.player.nickname);
-                            if (check.guest_names) names.push(...check.guest_names.split(', '));
-                            return names.length > 0 ? names.join(', ') : 'Без клиента';
-                          })()
-                      }
-                    </p>
-                    {hasSpace && check.player && (
-                      <p className="text-[10px] text-indigo-400/50 truncate">
-                        {check.player.nickname}{check.guest_names ? `, ${check.guest_names}` : ''}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-end justify-between mt-auto">
-                  <div className="flex items-center gap-1 text-white/25">
-                    <Clock className="w-3 h-3" />
-                    <span className="text-[10px] tabular-nums"><ElapsedTime since={check.created_at} /></span>
-                  </div>
-                  {check.total_amount > 0 ? (
-                    <span className="text-base font-black text-[var(--c-text)] tabular-nums leading-none">
-                      {fmtCur(check.total_amount)}
-                    </span>
-                  ) : (
-                    <Badge variant="default" size="sm">Пусто</Badge>
-                  )}
-                </div>
-              </button>
-            );
-          })}
+          {openChecks.map((check) => (
+            <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} />
+          ))}
         </div>
       )}
 

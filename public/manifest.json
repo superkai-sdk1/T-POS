@@ -4,7 +4,7 @@
   "description": "POS-система клуба спортивной мафии «Титан»",
   "start_url": "/",
   "display": "standalone",
-  "orientation": "any",
+  "orientation": "portrait",
   "background_color": "#0f0f23",
   "theme_color": "#0f0f23",
   "icons": [
