@@ -78,11 +78,7 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api/system': {
-        target: 'http://127.0.0.1:3100',
-        changeOrigin: true,
-      },
-      '/api/ai': {
+      '/api': {
         target: 'http://127.0.0.1:3100',
         changeOrigin: true,
       },
