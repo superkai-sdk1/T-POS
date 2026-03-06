@@ -48,7 +48,7 @@ const server = http.createServer((req, res) => {
       execSync('git fetch origin --quiet', { cwd: PROJECT_DIR, timeout: 15000 });
       const behind = execSync(`git rev-list HEAD..origin/${branch} --count`, { cwd: PROJECT_DIR }).toString().trim();
       behindCount = parseInt(behind) || 0;
-    } catch {}
+    } catch { }
     json(res, {
       version: getVersion(),
       git: { hash, date, branch },
@@ -89,10 +89,10 @@ const server = http.createServer((req, res) => {
 
     const runStep = () => {
       if (stepIdx >= steps.length) {
-        try { execSync('chown -R www-data:www-data dist', { cwd: PROJECT_DIR }); } catch {}
-        try { execSync('chown -R www-data:www-data dist-wallet', { cwd: PROJECT_DIR }); } catch {}
-        try { execSync('systemctl restart tpos-wallet-bot', { timeout: 5000 }); } catch {}
-        try { execSync('systemctl restart tpos-update', { timeout: 5000 }); } catch {}
+        try { execSync('chown -R www-data:www-data dist', { cwd: PROJECT_DIR }); } catch { }
+        try { execSync('chown -R www-data:www-data dist-wallet', { cwd: PROJECT_DIR }); } catch { }
+        try { execSync('systemctl restart tpos-wallet-bot', { timeout: 5000 }); } catch { }
+        try { execSync('systemctl restart tpos-update', { timeout: 5000 }); } catch { }
         send({ type: 'complete', message: 'Обновление завершено. Если добавлены новые таблицы — выполните SQL из supabase/migration.sql в Supabase Dashboard.' });
         res.end();
         updateInProgress = false;
@@ -140,39 +140,38 @@ const server = http.createServer((req, res) => {
     req.on('end', async () => {
       try {
         const { messages, context } = JSON.parse(body);
-        const GEMINI_KEY = process.env.GEMINI_API_KEY || 'AIzaSyBLdWgIZI5gZG3IWJBk9U83KjAbJYkVinU';
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+        const GROQ_KEY = process.env.GROQ_API_KEY;
+        const groqUrl = 'https://api.groq.com/openai/v1/chat/completions';
 
-        const contents = messages
-          .filter((m) => m.role !== 'system')
-          .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
-
-        const systemInstruction = messages.find((m) => m.role === 'system');
-        const geminiBody = {
-          contents,
-          ...(systemInstruction ? { systemInstruction: { parts: [{ text: systemInstruction.content }] } } : {}),
-          generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+        const groqBody = {
+          model: 'llama-3.3-70b-versatile',
+          messages,
+          temperature: 0.7,
+          max_tokens: 2048,
         };
 
-        const geminiRes = await fetch(geminiUrl, {
+        const groqRes = await fetch(groqUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(geminiBody),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${GROQ_KEY}`,
+          },
+          body: JSON.stringify(groqBody),
         });
 
-        const data = await geminiRes.json();
+        const data = await groqRes.json();
 
-        if (!geminiRes.ok) {
-          console.error('Gemini API Error:', data);
+        if (!groqRes.ok) {
+          console.error('Groq API Error:', data);
           // Возвращаем 200, чтобы фронт не видел 502/500, а показал текст ошибки
           json(res, {
-            error: `Gemini API error: ${geminiRes.status}`,
+            error: `Groq API error: ${groqRes.status}`,
             details: data.error?.message || 'Unknown error',
           }, 200);
           return;
         }
 
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Нет ответа';
+        const text = data?.choices?.[0]?.message?.content || 'Нет ответа';
         json(res, { response: text });
       } catch (e) {
         console.error('AI Route Error:', e);
