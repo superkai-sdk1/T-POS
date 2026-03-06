@@ -119,7 +119,7 @@ server {
         try_files \$uri \$uri/ /index.html;
     }
 
-    location /api/system/ {
+    location /api/ {
         proxy_pass http://127.0.0.1:3100;
         proxy_http_version 1.1;
         proxy_set_header Connection '';
@@ -301,10 +301,10 @@ WBEOF
 
 ensure_nginx_proxy() {
   local conf="$1"
-  if [ -f "$conf" ] && ! grep -q 'api/system' "$conf" 2>/dev/null; then
-    info "Добавление proxy для update-server в nginx..."
+  if [ -f "$conf" ] && ! grep -q 'location /api/' "$conf" 2>/dev/null; then
+    info "Добавление proxy для API в nginx..."
     sed -i '/location \/ {/i \
-    location /api/system/ {\
+    location /api/ {\
         proxy_pass http://127.0.0.1:3100;\
         proxy_http_version 1.1;\
         proxy_set_header Connection "";\
@@ -312,7 +312,7 @@ ensure_nginx_proxy() {
         proxy_cache off;\
         proxy_read_timeout 300s;\
     }' "$conf"
-    success "Proxy для update-server добавлен"
+    success "Proxy для API добавлен"
   fi
 }
 

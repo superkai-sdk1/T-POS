@@ -134,6 +134,48 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  if (url.pathname === '/api/ai' && req.method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => { body += chunk; });
+    req.on('end', async () => {
+      try {
+        const { messages, context } = JSON.parse(body);
+        const GEMINI_KEY = process.env.GEMINI_API_KEY || 'AIzaSyBLdWgIZI5gZG3IWJBk9U83KjAbJYkVinU';
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`;
+
+        const contents = messages
+          .filter((m) => m.role !== 'system')
+          .map((m) => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
+
+        const systemInstruction = messages.find((m) => m.role === 'system');
+        const geminiBody = {
+          contents,
+          ...(systemInstruction ? { systemInstruction: { parts: [{ text: systemInstruction.content }] } } : {}),
+          generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+        };
+
+        const geminiRes = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(geminiBody),
+        });
+
+        if (!geminiRes.ok) {
+          const err = await geminiRes.text();
+          json(res, { error: `Gemini API error: ${geminiRes.status}`, details: err }, 502);
+          return;
+        }
+
+        const data = await geminiRes.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Нет ответа';
+        json(res, { response: text });
+      } catch (e) {
+        json(res, { error: String(e) }, 500);
+      }
+    });
+    return;
+  }
+
   json(res, { error: 'Not found' }, 404);
 });
 

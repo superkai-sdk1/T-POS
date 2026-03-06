@@ -1,58 +1,30 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
-import { useSwipe } from '@/hooks/useSwipe';
-import { Badge } from '@/components/ui/Badge';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { ListSkeleton } from '@/components/ui/Skeleton';
+import { Badge } from '@/components/ui/Badge';
+import { AnalyticsFilter } from './AnalyticsFilter';
+import { FinanceModule } from './FinanceModule';
+import { ProductsModule } from './ProductsModule';
+import { PlayersModule } from './PlayersModule';
+import { AiReport } from './AiReport';
+import { useAnalyticsData } from '@/hooks/useAnalyticsData';
+import { useAnalyticsStore, getReportingDayStart } from '@/store/analytics';
+import { supabase } from '@/lib/supabase';
 import {
-  TrendingUp, Users, AlertCircle, Clock, Receipt,
-  Banknote, CreditCard, HandCoins, ShoppingBag,
-  Crown, BarChart3, CalendarDays, Hash,
-  ChevronDown, ChevronLeft, ChevronRight, Star,
-  Truck, ArrowDownRight, ArrowUpRight, Wallet, PieChart,
-  ArrowLeft,
+  BarChart3, Receipt, ShoppingBag, Users, Clock, Sparkles,
+  ChevronDown, ChevronRight, ChevronLeft,
+  Banknote, CreditCard, HandCoins, Star,
 } from 'lucide-react';
-import type { Transaction, Profile, Supply, CashOperation } from '@/types';
 
-interface ClosedCheck {
-  id: string;
-  total_amount: number;
-  payment_method: string | null;
-  closed_at: string;
-  player_id: string;
-  player: { nickname: string } | null;
-}
+type TabId = 'finance' | 'checks' | 'products' | 'players' | 'ai';
 
-interface CheckItemStat {
-  item_id: string;
-  check_id: string;
-  quantity: number;
-  price_at_time: number;
-  item: { name: string; category: string } | null;
-}
-
-interface DailyRevenue {
-  date: string;
-  label: string;
-  total: number;
-  count: number;
-}
-
-type TabId = 'overview' | 'checks' | 'items' | 'players' | 'log';
-type DetailView = null | 'revenue' | 'expenses' | 'pnl' | 'today' | 'week' | 'avgcheck' | 'payments';
+const REPORT_DAY_HOUR = 10;
 
 const pmLabels: Record<string, string> = {
   cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы', split: 'Разделённая',
 };
 
-const REPORT_DAY_HOUR = 10;
-
-function getReportingDayStart(date: Date): Date {
-  const d = new Date(date);
-  if (d.getHours() < REPORT_DAY_HOUR) {
-    d.setDate(d.getDate() - 1);
-  }
-  d.setHours(REPORT_DAY_HOUR, 0, 0, 0);
-  return d;
+interface DashboardPageProps {
+  onNavigate?: (target: string) => void;
 }
 
 interface ReportDay {
@@ -79,51 +51,152 @@ interface ReportDayAnalytics {
   avgCheck: number;
 }
 
-interface DashboardPageProps {
-  onNavigate?: (target: string) => void;
-}
-
 export function DashboardPage({ onNavigate }: DashboardPageProps) {
   const nav = (target: string) => onNavigate?.(target);
-  const [tab, setTab] = useState<TabId>('overview');
-  const [detail, setDetail] = useState<DetailView>(null);
-  const [checks, setChecks] = useState<ClosedCheck[]>([]);
-  const [checkItemStats, setCheckItemStats] = useState<CheckItemStat[]>([]);
-  const [debtors, setDebtors] = useState<Profile[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [txLimit, setTxLimit] = useState(50);
-  const [isLoading, setIsLoading] = useState(true);
+  const [tab, setTab] = useState<TabId>('finance');
+  const data = useAnalyticsData();
+  const { preset } = useAnalyticsStore();
 
-  const [supplies, setSupplies] = useState<Supply[]>([]);
-  const [cashOps, setCashOps] = useState<CashOperation[]>([]);
-  const [opExpenses, setOpExpenses] = useState<{ amount: number; expense_date: string }[]>([]);
+  const tabs: { id: TabId; label: string; icon: typeof BarChart3 }[] = [
+    { id: 'finance', label: 'Финансы', icon: BarChart3 },
+    { id: 'checks', label: 'Чеки', icon: Receipt },
+    { id: 'products', label: 'Товары', icon: ShoppingBag },
+    { id: 'players', label: 'Игроки', icon: Users },
+    { id: 'ai', label: 'ИИ', icon: Sparkles },
+  ];
 
+  const avgCheck = data.checks.length > 0 ? Math.round(data.revenue / data.checks.length) : 0;
+
+  const aiContext = useMemo(() => ({
+    revenue: data.revenue,
+    prevRevenue: data.prevRevenue,
+    netProfit: data.netProfit,
+    marginPct: data.marginPct,
+    totalExpenses: data.totalExpenses,
+    cogs: data.cogs,
+    periodExpenses: data.periodExpenses,
+    checkCount: data.checks.length,
+    avgCheck,
+    totalDebt: data.totalDebt,
+    debtorsCount: data.debtors.length,
+    retentionRate: data.retentionRate,
+    topProducts: data.productStats.slice(0, 10).map((p) => ({
+      name: p.name, revenue: p.revenue, qty: p.qty, abcGroup: p.abcGroup,
+    })),
+    topPlayers: data.playerStats.slice(0, 10).map((p) => ({
+      nickname: p.nickname, total: p.total, count: p.count, segment: p.segment,
+    })),
+    paymentBreakdown: data.paymentBreakdown,
+    period: preset,
+  }), [data, avgCheck, preset]);
+
+  if (data.isLoading) {
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--c-surface)]">
+          {[1, 2, 3, 4, 5].map((i) => <div key={i} className="flex-1 h-8 rounded-md bg-[var(--c-surface)]" />)}
+        </div>
+        <ListSkeleton rows={6} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Tab switcher */}
+      <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--c-surface)] overflow-x-auto scrollbar-none">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap min-w-0 ${
+              tab === t.id
+                ? 'bg-[var(--c-accent)] text-white shadow-sm'
+                : 'text-[var(--c-hint)]'
+            }`}
+          >
+            <t.icon className="w-3 h-3 shrink-0" />
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Global filter */}
+      <AnalyticsFilter
+        admins={data.admins}
+        showSearch={tab === 'products' || tab === 'players'}
+      />
+
+      {/* Tab content */}
+      {tab === 'finance' && (
+        <FinanceModule
+          revenue={data.revenue}
+          prevRevenue={data.prevRevenue}
+          netProfit={data.netProfit}
+          prevNetProfit={data.prevNetProfit}
+          marginPct={data.marginPct}
+          totalExpenses={data.totalExpenses}
+          prevTotalExpenses={data.prevTotalExpenses}
+          cogs={data.cogs}
+          periodExpenses={data.periodExpenses}
+          supplyCostInPeriod={data.supplyCostInPeriod}
+          paymentBreakdown={data.paymentBreakdown}
+          debtors={data.debtors}
+          totalDebt={data.totalDebt}
+          checkCount={data.checks.length}
+          prevCheckCount={data.prevChecks.length}
+          avgCheck={avgCheck}
+          delta={data.delta}
+          onNavigate={nav}
+        />
+      )}
+
+      {tab === 'checks' && (
+        <ChecksTab
+          allChecks={data.allChecks}
+          checkPaymentsMap={data.checkPaymentsMap}
+        />
+      )}
+
+      {tab === 'products' && (
+        <ProductsModule
+          products={data.productStats}
+          allCheckItems={data.allCheckItems as any}
+          checks={data.checks as any}
+        />
+      )}
+
+      {tab === 'players' && (
+        <PlayersModule
+          players={data.playerStats}
+          retentionRate={data.retentionRate}
+          checks={data.checks as any}
+        />
+      )}
+
+      {tab === 'ai' && (
+        <AiReport context={aiContext} />
+      )}
+    </div>
+  );
+}
+
+/* ── Checks tab (preserved from original) ── */
+
+function ChecksTab({ allChecks, checkPaymentsMap }: {
+  allChecks: { id: string; total_amount: number; payment_method: string | null; closed_at: string; player_id: string; player: { nickname: string } | null }[];
+  checkPaymentsMap: Record<string, { method: string; amount: number }[]>;
+}) {
   const [reportDays, setReportDays] = useState<ReportDay[]>([]);
   const [selectedDayIdx, setSelectedDayIdx] = useState(0);
   const [dayAnalytics, setDayAnalytics] = useState<ReportDayAnalytics | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [expandedCheckId, setExpandedCheckId] = useState<string | null>(null);
+  const [splitBreakdowns, setSplitBreakdowns] = useState<Record<string, { method: string; amount: number }[]>>({});
 
   useEffect(() => {
-    loadAll();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (tab === 'log') loadTransactions();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, txLimit]);
-
-  useEffect(() => {
-    if (tab === 'checks' && checks.length > 0 && reportDays.length === 0) {
-      computeReportDays();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, checks]);
-
-  const computeReportDays = useCallback(() => {
     const dayMap = new Map<number, { start: Date; count: number }>();
-    for (const c of checks) {
+    for (const c of allChecks) {
       if (!c.closed_at) continue;
       const start = getReportingDayStart(new Date(c.closed_at));
       const key = start.getTime();
@@ -141,16 +214,9 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       }));
     setReportDays(days);
     setSelectedDayIdx(0);
-  }, [checks]);
+  }, [allChecks]);
 
-  useEffect(() => {
-    if (reportDays.length > 0 && tab === 'checks') {
-      loadDayAnalytics(reportDays[selectedDayIdx]);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDayIdx, reportDays, tab]);
-
-  const loadDayAnalytics = async (day: ReportDay) => {
+  const loadDayAnalytics = useCallback(async (day: ReportDay) => {
     setAnalyticsLoading(true);
     setExpandedCheckId(null);
     const { data: checksData } = await supabase
@@ -173,20 +239,12 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
         .eq('check_id', c.id);
       const checkItems = (items || []).map((ci: Record<string, unknown>) => {
         const item = Array.isArray(ci.item) ? ci.item[0] : ci.item;
-        return {
-          name: (item as Record<string, string>)?.name || '?',
-          quantity: ci.quantity as number,
-          price: ci.price_at_time as number,
-        };
+        return { name: (item as Record<string, string>)?.name || '?', quantity: ci.quantity as number, price: ci.price_at_time as number };
       });
       dayChecks.push({
-        id: c.id,
-        player_nickname: nickname,
-        total_amount: c.total_amount,
-        payment_method: c.payment_method,
-        bonus_used: c.bonus_used || 0,
-        closed_at: c.closed_at,
-        items: checkItems,
+        id: c.id, player_nickname: nickname, total_amount: c.total_amount,
+        payment_method: c.payment_method, bonus_used: c.bonus_used || 0,
+        closed_at: c.closed_at, items: checkItems,
       });
       totalRevenue += c.total_amount;
     }
@@ -195,348 +253,21 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
     const avgCheck = totalChecks > 0 ? Math.round(totalRevenue / totalChecks) : 0;
     setDayAnalytics({ checks: dayChecks, totalRevenue, totalChecks, avgCheck });
     setAnalyticsLoading(false);
-  };
+  }, []);
 
-  const [checkPaymentsMap, setCheckPaymentsMap] = useState<Record<string, { method: string; amount: number }[]>>({});
-
-  const loadCheckPayments = async (checkIds: string[]) => {
-    if (checkIds.length === 0) { setCheckPaymentsMap({}); return; }
-    const { data } = await supabase
-      .from('check_payments')
-      .select('check_id, method, amount')
-      .in('check_id', checkIds);
-    const map: Record<string, { method: string; amount: number }[]> = {};
-    for (const p of data || []) {
-      if (!map[p.check_id]) map[p.check_id] = [];
-      map[p.check_id].push({ method: p.method, amount: p.amount });
-    }
-    setCheckPaymentsMap(map);
-  };
-
-  const loadAll = async () => {
-    setIsLoading(true);
-    await Promise.all([loadChecks(), loadCheckItems(), loadDebtors(), loadSupplies(), loadCashOps(), loadItemCosts(), loadOpExpenses()]);
-    setIsLoading(false);
-  };
-
-  const loadChecks = async () => {
-    const { data } = await supabase
-      .from('checks')
-      .select('id, total_amount, payment_method, closed_at, player_id, player:profiles!checks_player_id_fkey(nickname)')
-      .eq('status', 'closed')
-      .order('closed_at', { ascending: false });
-    if (data) {
-      const mapped = data.map((c) => ({
-        ...c,
-        player: Array.isArray(c.player) ? c.player[0] : c.player,
-      })) as ClosedCheck[];
-      setChecks(mapped);
-      const splitIds = mapped
-        .filter((c) => c.payment_method === 'split' || c.payment_method === 'bonus')
-        .map((c) => c.id);
-      await loadCheckPayments(splitIds);
-    }
-  };
-
-  const loadCheckItems = async () => {
-    const { data } = await supabase
-      .from('check_items')
-      .select('item_id, check_id, quantity, price_at_time, item:inventory(name, category)');
-    if (data) {
-      setCheckItemStats(data.map((ci) => ({
-        ...ci,
-        item: Array.isArray(ci.item) ? ci.item[0] : ci.item,
-      })) as CheckItemStat[]);
-    }
-  };
-
-  const [itemCostMap, setItemCostMap] = useState<Record<string, number>>({});
-
-  const loadItemCosts = async () => {
-    const { data } = await supabase
-      .from('supply_items')
-      .select('item_id, cost_per_unit, quantity');
-    if (!data || data.length === 0) return;
-    const agg: Record<string, { totalCost: number; totalQty: number }> = {};
-    for (const si of data) {
-      if (!agg[si.item_id]) agg[si.item_id] = { totalCost: 0, totalQty: 0 };
-      agg[si.item_id].totalCost += (si.cost_per_unit || 0) * (si.quantity || 0);
-      agg[si.item_id].totalQty += si.quantity || 0;
-    }
-    const map: Record<string, number> = {};
-    for (const [id, val] of Object.entries(agg)) {
-      map[id] = val.totalQty > 0 ? val.totalCost / val.totalQty : 0;
-    }
-    setItemCostMap(map);
-  };
-
-  const loadDebtors = async () => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .lt('balance', 0)
-      .order('balance', { ascending: true });
-    if (data) setDebtors(data as Profile[]);
-  };
-
-  const loadSupplies = async () => {
-    const { data } = await supabase
-      .from('supplies')
-      .select('id, total_cost, created_at')
-      .order('created_at', { ascending: false });
-    if (data) setSupplies(data as Supply[]);
-  };
-
-  const loadCashOps = async () => {
-    const { data } = await supabase
-      .from('cash_operations')
-      .select('id, type, amount, created_at')
-      .order('created_at', { ascending: false });
-    if (data) setCashOps(data as CashOperation[]);
-  };
-
-  const loadOpExpenses = async () => {
-    const { data } = await supabase
-      .from('expenses')
-      .select('amount, expense_date')
-      .order('expense_date', { ascending: false });
-    if (data) setOpExpenses(data);
-  };
-
-  const loadTransactions = async () => {
-    const { data } = await supabase
-      .from('transactions')
-      .select('*, creator:profiles!transactions_created_by_fkey(nickname), player:profiles!transactions_player_id_fkey(nickname)')
-      .order('created_at', { ascending: false })
-      .limit(txLimit);
-    if (data) {
-      setTransactions(data.map((t) => ({
-        ...t,
-        creator: Array.isArray(t.creator) ? t.creator[0] : t.creator,
-        player: Array.isArray(t.player) ? t.player[0] : t.player,
-      })) as Transaction[]);
-    }
-  };
-
-  const now = new Date();
-  const todayStart = getReportingDayStart(now);
-  const weekStart = new Date(todayStart.getTime() - 6 * 86400000);
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-
-  const stats = useMemo(() => {
-    let today = 0, week = 0, month = 0, prevMonth = 0;
-    let todayCount = 0, weekCount = 0, monthCount = 0;
-    let cash = 0, card = 0, debt = 0, bonus = 0;
-
-    for (const c of checks) {
-      const amt = c.total_amount || 0;
-      const d = new Date(c.closed_at);
-
-      if (d >= monthStart) {
-        month += amt; monthCount++;
-        if (d >= weekStart) { week += amt; weekCount++; }
-        if (d >= todayStart) { today += amt; todayCount++; }
-      } else if (d >= prevMonthStart) {
-        prevMonth += amt;
-      }
-
-      if (c.payment_method === 'split' || c.payment_method === 'bonus') {
-        const parts = checkPaymentsMap[c.id] || [];
-        if (parts.length > 0) {
-          for (const p of parts) {
-            if (p.method === 'cash') cash += p.amount;
-            else if (p.method === 'card') card += p.amount;
-            else if (p.method === 'debt') debt += p.amount;
-            else if (p.method === 'bonus') bonus += p.amount;
-          }
-        } else if (c.payment_method !== 'bonus') {
-          cash += amt;
-        }
-      } else if (c.payment_method === 'cash') cash += amt;
-      else if (c.payment_method === 'card') card += amt;
-      else if (c.payment_method === 'debt') debt += amt;
-    }
-
-    const avgCheck = monthCount > 0 ? Math.round(month / monthCount) : 0;
-    const monthGrowth = prevMonth > 0 ? Math.round(((month - prevMonth) / prevMonth) * 100) : 0;
-    const totalPayments = cash + card + debt + bonus;
-
-    return {
-      today, week, month, prevMonth, monthGrowth,
-      todayCount, weekCount, monthCount,
-      cash, card, debt, bonus, avgCheck, totalPayments,
-    };
-  }, [checks, checkPaymentsMap]);
-
-  const financials = useMemo(() => {
-    let monthSupplyCost = 0, prevMonthSupplyCost = 0;
-    let monthInkassation = 0;
-
-    for (const s of supplies) {
-      const d = new Date(s.created_at);
-      const cost = s.total_cost || 0;
-      if (d >= monthStart) monthSupplyCost += cost;
-      else if (d >= prevMonthStart) prevMonthSupplyCost += cost;
-    }
-
-    for (const op of cashOps) {
-      const d = new Date(op.created_at);
-      if (d >= monthStart && op.type === 'inkassation') {
-        monthInkassation += op.amount || 0;
-      }
-    }
-
-    const checkDateMap = new Map(checks.map((c) => [c.id, new Date(c.closed_at)]));
-    let monthCOGS = 0, prevMonthCOGS = 0;
-    for (const ci of checkItemStats) {
-      const cost = itemCostMap[ci.item_id];
-      if (cost == null || cost === 0) continue;
-      const closedAt = checkDateMap.get(ci.check_id);
-      if (!closedAt) continue;
-      const itemCost = ci.quantity * cost;
-      if (closedAt >= monthStart) monthCOGS += itemCost;
-      else if (closedAt >= prevMonthStart) prevMonthCOGS += itemCost;
-    }
-
-    let monthOpEx = 0, prevMonthOpEx = 0;
-    for (const e of opExpenses) {
-      const d = new Date(e.expense_date + 'T00:00:00');
-      if (d >= monthStart) monthOpEx += Number(e.amount);
-      else if (d >= prevMonthStart) prevMonthOpEx += Number(e.amount);
-    }
-
-    const monthExpenses = Math.round(monthCOGS) + Math.round(monthOpEx);
-    const prevMonthExpenses = Math.round(prevMonthCOGS) + Math.round(prevMonthOpEx);
-
-    const monthNetIncome = stats.month - monthExpenses;
-    const prevMonthNetIncome = stats.prevMonth - prevMonthExpenses;
-    const marginPct = stats.month > 0 ? Math.round((monthNetIncome / stats.month) * 100) : 0;
-    const netGrowth = prevMonthNetIncome !== 0
-      ? Math.round(((monthNetIncome - prevMonthNetIncome) / Math.abs(prevMonthNetIncome)) * 100)
-      : 0;
-
-    return {
-      monthExpenses,
-      prevMonthExpenses,
-      monthSupplyCost,
-      monthCOGS: Math.round(monthCOGS),
-      prevMonthCOGS: Math.round(prevMonthCOGS),
-      monthOpEx: Math.round(monthOpEx),
-      monthInkassation,
-      monthNetIncome,
-      prevMonthNetIncome,
-      marginPct,
-      netGrowth,
-    };
-  }, [supplies, cashOps, opExpenses, stats, checks, checkItemStats, itemCostMap, monthStart, prevMonthStart]);
-
-  const dailyRevenue = useMemo((): DailyRevenue[] => {
-    const days: DailyRevenue[] = [];
-    const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-
-    for (let i = 6; i >= 0; i--) {
-      const dayStart = new Date(todayStart.getTime() - i * 86400000);
-      const dayEnd = new Date(dayStart.getTime() + 86400000);
-      const key = dayStart.toISOString().slice(0, 10);
-      let total = 0, count = 0;
-      for (const c of checks) {
-        if (!c.closed_at) continue;
-        const d = new Date(c.closed_at);
-        if (d >= dayStart && d < dayEnd) {
-          total += c.total_amount || 0;
-          count++;
-        }
-      }
-      days.push({
-        date: key,
-        label: i === 0 ? 'Сег' : i === 1 ? 'Вч' : dayNames[dayStart.getDay()],
-        total,
-        count,
-      });
-    }
-
-    return days;
-  }, [checks, todayStart]);
-
-  const topItems = useMemo(() => {
-    const map: Record<string, { name: string; category: string; qty: number; revenue: number }> = {};
-    for (const ci of checkItemStats) {
-      if (!ci.item) continue;
-      const key = ci.item_id;
-      if (!map[key]) map[key] = { name: ci.item.name, category: ci.item.category, qty: 0, revenue: 0 };
-      map[key].qty += ci.quantity;
-      map[key].revenue += ci.quantity * ci.price_at_time;
-    }
-    return Object.values(map).sort((a, b) => b.revenue - a.revenue).slice(0, 15);
-  }, [checkItemStats]);
-
-  const categoryBreakdown = useMemo(() => {
-    const map: Record<string, { label: string; revenue: number; count: number }> = {};
-    const labels: Record<string, string> = {
-      drinks: 'Напитки', food: 'Еда', bar: 'Снеки', hookah: 'Кальяны', services: 'Услуги',
-    };
-    for (const ci of checkItemStats) {
-      if (!ci.item) continue;
-      const cat = ci.item.category;
-      if (!map[cat]) map[cat] = { label: labels[cat] || cat, revenue: 0, count: 0 };
-      map[cat].revenue += ci.quantity * ci.price_at_time;
-      map[cat].count += ci.quantity;
-    }
-    return Object.values(map).sort((a, b) => b.revenue - a.revenue);
-  }, [checkItemStats]);
-
-  const topPlayers = useMemo(() => {
-    const map: Record<string, { nickname: string; total: number; count: number }> = {};
-    for (const c of checks) {
-      if (!c.player_id) continue;
-      const nick = c.player?.nickname || 'Неизвестный';
-      if (!map[c.player_id]) map[c.player_id] = { nickname: nick, total: 0, count: 0 };
-      map[c.player_id].total += c.total_amount || 0;
-      map[c.player_id].count++;
-    }
-    return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 15);
-  }, [checks]);
-
-  const fmt = (n: number) =>
-    new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n);
-
-  const fmtCur = (n: number) => fmt(n) + '₽';
-
-  const maxDaily = Math.max(...dailyRevenue.map((d) => d.total), 1);
-
-  const tabs: { id: TabId; label: string; icon: typeof BarChart3 }[] = [
-    { id: 'overview', label: 'Обзор', icon: BarChart3 },
-    { id: 'checks', label: 'Чеки', icon: Receipt },
-    { id: 'items', label: 'Товары', icon: ShoppingBag },
-    { id: 'players', label: 'Игроки', icon: Users },
-    { id: 'log', label: 'Лог', icon: Clock },
-  ];
-
-  const tabIdx = tabs.findIndex((t) => t.id === tab);
-  const tabSwipe = useSwipe({
-    onSwipeLeft: () => { if (tabIdx < tabs.length - 1) { setTab(tabs[tabIdx + 1].id); setDetail(null); } },
-    onSwipeRight: () => { if (tabIdx > 0) { setTab(tabs[tabIdx - 1].id); setDetail(null); } },
-    threshold: 50,
-  });
-
-  const selectedDay = reportDays[selectedDayIdx] || null;
-
-  const [splitBreakdowns, setSplitBreakdowns] = useState<Record<string, { method: string; amount: number }[]>>({});
+  useEffect(() => {
+    if (reportDays.length > 0) loadDayAnalytics(reportDays[selectedDayIdx]);
+  }, [selectedDayIdx, reportDays, loadDayAnalytics]);
 
   useEffect(() => {
     if (!dayAnalytics) return;
     const mixedChecks = dayAnalytics.checks.filter((c) => c.payment_method === 'split' || c.payment_method === 'bonus');
     if (mixedChecks.length === 0) { setSplitBreakdowns({}); return; }
-
     (async () => {
       const ids = mixedChecks.map((c) => c.id);
       const { data } = await supabase.from('check_payments').select('*').in('check_id', ids);
       const map: Record<string, { method: string; amount: number }[]> = {};
-      for (const p of data || []) {
-        if (!map[p.check_id]) map[p.check_id] = [];
-        map[p.check_id].push({ method: p.method, amount: p.amount });
-      }
+      for (const p of data || []) { if (!map[p.check_id]) map[p.check_id] = []; map[p.check_id].push({ method: p.method, amount: p.amount }); }
       setSplitBreakdowns(map);
     })();
   }, [dayAnalytics]);
@@ -548,1143 +279,151 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       const amt = c.total_amount || 0;
       if (c.payment_method === 'split' || c.payment_method === 'bonus') {
         const parts = splitBreakdowns[c.id] || [];
-        if (parts.length > 0) {
-          for (const p of parts) {
-            if (p.method === 'cash') cash += p.amount;
-            else if (p.method === 'card') card += p.amount;
-            else if (p.method === 'debt') debt += p.amount;
-            else if (p.method === 'bonus') bonus += p.amount;
-          }
-        } else if (c.payment_method === 'bonus') {
-          bonus += c.bonus_used || 0;
-        } else {
-          cash += amt;
-        }
+        if (parts.length > 0) { for (const p of parts) { if (p.method === 'cash') cash += p.amount; else if (p.method === 'card') card += p.amount; else if (p.method === 'debt') debt += p.amount; else if (p.method === 'bonus') bonus += p.amount; } }
+        else if (c.payment_method === 'bonus') bonus += c.bonus_used || 0;
+        else cash += amt;
       } else {
         bonus += c.bonus_used || 0;
-        if (c.payment_method === 'cash') cash += amt;
-        else if (c.payment_method === 'card') card += amt;
-        else if (c.payment_method === 'debt') debt += amt;
+        if (c.payment_method === 'cash') cash += amt; else if (c.payment_method === 'card') card += amt; else if (c.payment_method === 'debt') debt += amt;
       }
     }
-    const total = cash + card + debt + bonus;
-    return { total, cash, card, debt, bonus };
+    return { total: cash + card + debt + bonus, cash, card, debt, bonus };
   }, [dayAnalytics, splitBreakdowns]);
 
-  const fmtTime = (d: string | null) =>
-    d ? new Date(d).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '-';
+  const fmt = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n);
+  const fmtCur = (n: number) => fmt(n) + '₽';
+  const fmtTime = (d: string | null) => d ? new Date(d).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '-';
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4 animate-pulse">
-        <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--c-surface)]">
-          {[1, 2, 3, 4, 5].map((i) => <div key={i} className="flex-1 h-8 rounded-md bg-[var(--c-surface)]" />)}
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          {[1, 2, 3, 4].map((i) => <div key={i} className="h-24 rounded-xl bg-[var(--c-surface)]" />)}
-        </div>
-        <div className="h-40 rounded-xl bg-[var(--c-surface)]" />
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => <div key={i} className="h-12 rounded-xl bg-[var(--c-surface)]" style={{ opacity: 1 - i * 0.2 }} />)}
-        </div>
-      </div>
-    );
-  }
+  const selectedDay = reportDays[selectedDayIdx] || null;
+
+  if (reportDays.length === 0) return <p className="text-sm text-[var(--c-hint)] text-center py-12">Нет закрытых чеков</p>;
 
   return (
-    <div className="space-y-5" {...tabSwipe}>
-      {/* Tab switcher */}
-      <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--c-surface)] overflow-x-auto scrollbar-none">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => { setTab(t.id); setDetail(null); }}
-            className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap min-w-0 ${
-              tab === t.id
-                ? 'bg-[var(--c-accent)] text-white shadow-sm'
-                : 'text-[var(--c-hint)]'
-            }`}
-          >
-            <t.icon className="w-3 h-3 shrink-0" />
-            {t.label}
-          </button>
-        ))}
+    <div className="space-y-4">
+      {/* Day selector */}
+      <div className="flex items-center gap-2">
+        <button onClick={() => setSelectedDayIdx((i) => Math.min(i + 1, reportDays.length - 1))} disabled={selectedDayIdx >= reportDays.length - 1} className="w-9 h-9 rounded-xl bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all">
+          <ChevronLeft className="w-4 h-4 text-[var(--c-text)]" />
+        </button>
+        <div className="flex-1 text-center">
+          {selectedDay && (
+            <>
+              <p className="text-sm font-bold text-[var(--c-text)]">{selectedDay.label}</p>
+              <p className="text-xs text-[var(--c-hint)]">{selectedDay.checkCount} чеков · {REPORT_DAY_HOUR}:00 — {REPORT_DAY_HOUR}:00</p>
+            </>
+          )}
+        </div>
+        <button onClick={() => setSelectedDayIdx((i) => Math.max(i - 1, 0))} disabled={selectedDayIdx <= 0} className="w-9 h-9 rounded-xl bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all">
+          <ChevronRight className="w-4 h-4 text-[var(--c-text)]" />
+        </button>
       </div>
 
-      {/* DETAIL VIEWS */}
-      {tab === 'overview' && detail && (
-        <DetailScreen
-          detail={detail}
-          onBack={() => setDetail(null)}
-          checks={checks}
-          supplies={supplies}
-          cashOps={cashOps}
-          stats={stats}
-          financials={financials}
-          dailyRevenue={dailyRevenue}
-          categoryBreakdown={categoryBreakdown}
-          topItems={topItems}
-          fmtCur={fmtCur}
-          fmt={fmt}
-          todayStart={todayStart}
-          weekStart={weekStart}
-          monthStart={monthStart}
-          onNavigate={nav}
-          checkPaymentsMap={checkPaymentsMap}
-        />
-      )}
-
-      {/* OVERVIEW TAB */}
-      {tab === 'overview' && !detail && (
-        <div className="space-y-5">
-          {/* Main financial cards */}
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              onClick={() => setDetail('revenue')}
-              className="p-3 rounded-xl bg-gradient-to-br from-[var(--c-accent)]/15 to-purple-900/5 card-interactive text-left col-span-1"
-            >
-              <div className="flex items-center gap-1 mb-1">
-                <ArrowUpRight className="w-3 h-3 text-[var(--c-success)]" />
-                <span className="text-[9px] text-[var(--c-hint)] font-semibold uppercase">Доход</span>
+      {analyticsLoading ? <ListSkeleton rows={4} /> : dayAnalytics ? (
+        <>
+          {/* Summary */}
+          {daySummary && (
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-[rgba(var(--c-accent-rgb),0.12)] to-transparent border border-[var(--c-border)]">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs text-[var(--c-hint)]">Итого за смену</span>
+                <span className="text-xl font-black text-[var(--c-text)]">{fmtCur(daySummary.total)}</span>
               </div>
-              <p className="text-base font-black text-[var(--c-text)] tabular-nums leading-tight">{fmtCur(stats.month)}</p>
-              {stats.monthGrowth !== 0 && (
-                <span className={`text-[9px] font-bold ${stats.monthGrowth > 0 ? 'text-[var(--c-success)]' : 'text-[var(--c-danger)]'}`}>
-                  {stats.monthGrowth > 0 ? '+' : ''}{stats.monthGrowth}%
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setDetail('expenses')}
-              className="p-3 rounded-xl card-interactive text-left col-span-1"
-            >
-              <div className="flex items-center gap-1 mb-1">
-                <ArrowDownRight className="w-3 h-3 text-[var(--c-danger)]" />
-                <span className="text-[9px] text-[var(--c-hint)] font-semibold uppercase">Себест.</span>
-              </div>
-              <p className="text-base font-black text-[var(--c-danger)] tabular-nums leading-tight">{fmtCur(financials.monthExpenses)}</p>
-              <span className="text-[9px] text-[var(--c-muted)]">подробнее →</span>
-            </button>
-            <button
-              onClick={() => setDetail('pnl')}
-              className={`p-3 rounded-xl card-interactive text-left col-span-1 ${financials.monthNetIncome >= 0 ? 'bg-[var(--c-success-bg)]' : 'bg-[var(--c-danger-bg)]'}`}
-            >
-              <div className="flex items-center gap-1 mb-1">
-                <Wallet className="w-3 h-3 text-[var(--c-accent)]" />
-                <span className="text-[9px] text-[var(--c-hint)] font-semibold uppercase">Прибыль</span>
-              </div>
-              <p className={`text-base font-black tabular-nums leading-tight ${financials.monthNetIncome >= 0 ? 'text-[var(--c-success)]' : 'text-[var(--c-danger)]'}`}>
-                {fmtCur(financials.monthNetIncome)}
-              </p>
-              {financials.marginPct !== 0 && (
-                <span className="text-[9px] text-[var(--c-muted)]">маржа {financials.marginPct}%</span>
-              )}
-            </button>
-          </div>
-
-          {/* Revenue / Expense / Profit bar */}
-          {stats.month > 0 && (
-            <button onClick={() => setDetail('pnl')} className="w-full p-3 rounded-xl card-interactive space-y-2 text-left">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-[var(--c-hint)] font-semibold uppercase tracking-wider">Структура за месяц</span>
-                <PieChart className="w-3 h-3 text-[var(--c-muted)]" />
-              </div>
-              <div className="flex h-3 rounded-full overflow-hidden bg-[var(--c-surface)]">
-                {financials.monthExpenses > 0 && (
-                  <div
-                    className="bg-red-500/70 transition-all duration-700"
-                    style={{ width: `${(financials.monthExpenses / stats.month) * 100}%` }}
-                    title="Расходы"
-                  />
-                )}
-                <div
-                  className="bg-emerald-500 transition-all duration-700"
-                  style={{ width: `${Math.max(0, (financials.monthNetIncome / stats.month) * 100)}%` }}
-                  title="Чистый доход"
-                />
-              </div>
-              <div className="flex gap-4 text-[10px]">
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-[var(--c-hint)]">Прибыль {financials.marginPct}%</span>
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-red-500/70" />
-                  <span className="text-[var(--c-hint)]">Расходы {stats.month > 0 ? 100 - financials.marginPct : 0}%</span>
-                </span>
-              </div>
-            </button>
-          )}
-
-          {/* Quick stats grid */}
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: 'Смена', value: stats.today, sub: `${stats.todayCount} чек.`, icon: CalendarDays, color: 'text-[var(--c-success)]', action: () => setDetail('today') },
-              { label: 'Неделя', value: stats.week, sub: `${stats.weekCount} чек.`, icon: TrendingUp, color: 'text-[var(--c-info)]', action: () => setDetail('week') },
-              { label: 'Ср. чек', value: stats.avgCheck, sub: 'за месяц', icon: Receipt, color: 'text-[var(--c-warning)]', action: () => setDetail('avgcheck') },
-              { label: 'Должники', value: debtors.reduce((s, d) => s + Math.abs(d.balance), 0), sub: `${debtors.length} чел.`, icon: AlertCircle, color: 'text-[var(--c-danger)]', action: () => nav('management:debtors') },
-            ].map((s) => (
-              <button key={s.label} onClick={s.action} className="p-2.5 rounded-xl card-interactive flex items-center gap-2.5 text-left">
-                <div className="w-8 h-8 rounded-lg bg-[var(--c-surface)] flex items-center justify-center shrink-0">
-                  <s.icon className={`w-4 h-4 ${s.color}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black text-[var(--c-text)] tabular-nums leading-tight">{fmtCur(s.value)}</p>
-                  <p className="text-[9px] text-[var(--c-muted)]">{s.sub}</p>
-                </div>
-                <ChevronRight className="w-3 h-3 text-[var(--c-muted)] shrink-0" />
-              </button>
-            ))}
-          </div>
-
-          {/* Expense breakdown */}
-          {(financials.monthExpenses > 0 || financials.monthSupplyCost > 0) && (
-            <div>
-              <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Затраты за месяц</h3>
-              <div className="space-y-2">
-                {financials.monthCOGS > 0 && (
-                  <button
-                    onClick={() => setDetail('expenses')}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
-                      <ShoppingBag className="w-4 h-4 text-[var(--c-warning)]" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-xs text-[var(--c-hint)]">Себестоимость проданного</p>
-                    </div>
-                    <span className="font-bold text-sm text-[var(--c-warning)]">{fmtCur(financials.monthCOGS)}</span>
-                    <ChevronRight className="w-3 h-3 text-[var(--c-muted)] shrink-0" />
-                  </button>
-                )}
-                <button
-                  onClick={() => nav('management:supplies')}
-                  className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
-                >
-                  <div className="w-8 h-8 rounded-lg bg-[var(--c-danger-bg)] flex items-center justify-center shrink-0">
-                    <Truck className="w-4 h-4 text-[var(--c-danger)]" />
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { label: 'Наличные', value: daySummary.cash, icon: Banknote, color: 'text-[var(--c-success)]' },
+                  { label: 'Карта', value: daySummary.card, icon: CreditCard, color: 'text-[var(--c-info)]' },
+                  { label: 'В долг', value: daySummary.debt, icon: HandCoins, color: 'text-[var(--c-danger)]' },
+                  { label: 'Бонусы', value: daySummary.bonus, icon: Star, color: 'text-[var(--c-warning)]' },
+                ] as const).filter((s) => s.value > 0).map((s) => (
+                  <div key={s.label} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--c-surface)]">
+                    <s.icon className={`w-3.5 h-3.5 ${s.color} shrink-0`} />
+                    <span className="text-xs text-[var(--c-hint)]">{s.label}</span>
+                    <span className="ml-auto text-xs font-bold text-[var(--c-text)]">{fmtCur(s.value)}</span>
                   </div>
-                  <div className="flex-1 text-left">
-                    <p className="text-xs text-[var(--c-hint)]">Закупки (поставки)</p>
-                  </div>
-                  <span className="font-bold text-sm text-[var(--c-danger)]">{fmtCur(financials.monthSupplyCost)}</span>
-                  <ChevronRight className="w-3 h-3 text-[var(--c-muted)] shrink-0" />
-                </button>
-                {financials.monthInkassation > 0 && (
-                  <button
-                    onClick={() => nav('management:cash')}
-                    className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-[var(--c-warning-bg)] flex items-center justify-center shrink-0">
-                      <Banknote className="w-4 h-4 text-[var(--c-warning)]" />
-                    </div>
-                    <div className="flex-1 text-left">
-                      <p className="text-xs text-[var(--c-hint)]">Инкассация</p>
-                    </div>
-                    <span className="font-bold text-sm text-[var(--c-warning)]">{fmtCur(financials.monthInkassation)}</span>
-                    <ChevronRight className="w-3 h-3 text-[var(--c-muted)] shrink-0" />
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Revenue chart */}
-          <div>
-            <button onClick={() => setDetail('revenue')} className="flex items-center gap-1 mb-2 group">
-              <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">Выручка за 7 дней</h3>
-              <ChevronRight className="w-3 h-3 text-[var(--c-muted)] group-hover:text-[var(--c-hint)] transition-colors" />
-            </button>
-            <div className="flex items-end gap-1 h-28">
-              {dailyRevenue.map((day) => (
-                <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-                    <span className="text-[9px] text-[var(--c-hint)] font-medium">
-                    {day.total > 0 ? fmt(day.total) : ''}
-                  </span>
-                  <div className="w-full flex-1 flex items-end">
-                    <div
-                      className="w-full rounded-t-md bg-[var(--c-accent)] transition-all duration-500 min-h-[2px]"
-                      style={{ height: `${Math.max(2, (day.total / maxDaily) * 100)}%` }}
-                    />
-                  </div>
-                  <span className="text-[10px] text-[var(--c-hint)] font-semibold">{day.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Payment methods */}
-          <div>
-            <button onClick={() => setDetail('payments')} className="flex items-center gap-1 mb-2 group">
-              <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">Способы оплаты</h3>
-              <ChevronRight className="w-3 h-3 text-[var(--c-muted)] group-hover:text-[var(--c-hint)] transition-colors" />
-            </button>
-            <div className="space-y-2.5">
-              {[
-                { label: 'Наличные', value: stats.cash, icon: Banknote, color: 'bg-emerald-500' },
-                { label: 'Карта', value: stats.card, icon: CreditCard, color: 'bg-sky-500' },
-                { label: 'В долг', value: stats.debt, icon: HandCoins, color: 'bg-red-500' },
-                { label: 'Бонусы', value: stats.bonus, icon: Star, color: 'bg-amber-500' },
-              ].filter((pm) => pm.value > 0).map((pm) => {
-                const pct = stats.totalPayments > 0 ? (pm.value / stats.totalPayments) * 100 : 0;
-                return (
-                  <div key={pm.label} className="flex items-center gap-3">
-                    <pm.icon className="w-4 h-4 text-[var(--c-hint)] shrink-0" />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs text-[var(--c-hint)]">{pm.label}</span>
-                        <span className="text-xs font-bold text-[var(--c-text)]">
-                          {fmtCur(pm.value)} <span className="text-[var(--c-hint)] font-normal">({Math.round(pct)}%)</span>
-                        </span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-[var(--c-surface)] overflow-hidden">
-                        <div className={`h-full rounded-full ${pm.color} transition-all duration-700`} style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Category breakdown */}
-          {categoryBreakdown.length > 0 && (
-            <div>
-              <button onClick={() => setTab('items')} className="flex items-center gap-1 mb-2 group">
-              <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">По категориям</h3>
-              <ChevronRight className="w-3 h-3 text-[var(--c-muted)] group-hover:text-[var(--c-hint)] transition-colors" />
-              </button>
-              <div className="space-y-2">
-                {categoryBreakdown.map((cat, i) => {
-                  const maxRev = categoryBreakdown[0]?.revenue || 1;
-                  const colors = ['bg-violet-500', 'bg-blue-500', 'bg-orange-500', 'bg-emerald-500', 'bg-pink-500'];
-                  return (
-                    <button
-                      key={cat.label}
-                      onClick={() => setTab('items')}
-                      className="w-full flex items-center gap-3 active:scale-[0.99] transition-transform"
-                    >
-                      <span className="text-xs text-[var(--c-hint)] w-16 shrink-0 text-left truncate">{cat.label}</span>
-                        <div className="flex-1 h-5 rounded-md bg-[var(--c-surface)] overflow-hidden">
-                        <div
-                          className={`h-full rounded-md ${colors[i % colors.length]} flex items-center px-2 transition-all duration-700`}
-                          style={{ width: `${(cat.revenue / maxRev) * 100}%` }}
-                        >
-                          <span className="text-[10px] font-bold text-white whitespace-nowrap">{fmtCur(cat.revenue)}</span>
-                        </div>
-                      </div>
-                      <span className="text-[10px] text-[var(--c-hint)] w-10 text-right">{cat.count} шт</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Debtors */}
-          <div>
-            <button
-              onClick={() => nav('management:debtors')}
-              className="w-full flex items-center gap-2 mb-3 group"
-            >
-              <AlertCircle className="w-4 h-4 text-[var(--c-danger)]" />
-              <h3 className="text-sm font-semibold text-[var(--c-text)]">
-                Должники ({debtors.length})
-              </h3>
-              <span className="ml-auto text-xs font-bold text-[var(--c-danger)]">
-                {fmtCur(debtors.reduce((s, d) => s + Math.abs(d.balance), 0))}
-              </span>
-              <ChevronRight className="w-3.5 h-3.5 text-[var(--c-muted)] group-hover:text-[var(--c-hint)] transition-colors shrink-0" />
-            </button>
-            {debtors.length === 0 ? (
-              <p className="text-xs text-[var(--c-hint)] py-4 text-center">Нет должников</p>
-            ) : (
-              <div className="space-y-1.5">
-                {debtors.slice(0, 5).map((d) => (
-                  <button
-                    key={d.id}
-                    onClick={() => nav('management:debtors')}
-                    className="w-full flex items-center justify-between p-3 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-border)] active:scale-[0.99] transition-transform"
-                  >
-                    <span className="font-medium text-sm text-[var(--c-text)]">{d.nickname}</span>
-                    <span className="font-bold text-sm text-[var(--c-danger)]">{fmtCur(d.balance)}</span>
-                  </button>
                 ))}
-                {debtors.length > 5 && (
-                  <button
-                    onClick={() => nav('management:debtors')}
-                    className="w-full py-2 text-xs text-[var(--c-accent)] font-medium"
-                  >
-                    Все должники ({debtors.length}) →
-                  </button>
-                )}
               </div>
-            )}
-          </div>
-        </div>
-      )}
+              <p className="text-[10px] text-[var(--c-muted)] mt-2 text-center">{dayAnalytics.totalChecks} чеков · ср. {fmtCur(dayAnalytics.avgCheck)}</p>
+            </div>
+          )}
 
-      {/* CHECKS TAB */}
-      {tab === 'checks' && (
-        <div className="space-y-4">
-          {reportDays.length === 0 ? (
-            <p className="text-sm text-[var(--c-hint)] text-center py-12">Нет закрытых чеков</p>
-          ) : (
-            <>
-              {/* Reporting day selector */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setSelectedDayIdx((i) => Math.min(i + 1, reportDays.length - 1))}
-                  disabled={selectedDayIdx >= reportDays.length - 1}
-                  className="w-9 h-9 rounded-xl bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all"
-                >
-                  <ChevronLeft className="w-4 h-4 text-[var(--c-text)]" />
-                </button>
-                <div className="flex-1 text-center">
-                  {selectedDay && (
-                    <>
-                      <p className="text-sm font-bold text-[var(--c-text)]">
-                        {selectedDay.label}
-                      </p>
-                      <p className="text-xs text-[var(--c-hint)]">
-                        {selectedDay.checkCount} чеков · {REPORT_DAY_HOUR}:00 — {REPORT_DAY_HOUR}:00
-                      </p>
-                    </>
-                  )}
-                </div>
-                <button
-                  onClick={() => setSelectedDayIdx((i) => Math.max(i - 1, 0))}
-                  disabled={selectedDayIdx <= 0}
-                  className="w-9 h-9 rounded-xl bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all"
-                >
-                  <ChevronRight className="w-4 h-4 text-[var(--c-text)]" />
-                </button>
-              </div>
-
-              {analyticsLoading ? (
-                <ListSkeleton rows={4} />
-              ) : dayAnalytics ? (
-                <>
-                  {/* Summary bar */}
-                  {daySummary && (
-                    <div className="p-4 rounded-2xl bg-gradient-to-br from-[var(--c-accent)]/15 to-emerald-500/5 border border-[var(--c-border)]">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs text-[var(--c-hint)]">Итого за смену</span>
-                        <span className="text-xl font-black text-[var(--c-text)]">
-                          {fmtCur(daySummary.total)}
+          {/* Check cards */}
+          <div className="space-y-2">
+            {dayAnalytics.checks.length === 0 ? (
+              <p className="text-sm text-[var(--c-hint)] text-center py-8">Нет чеков за эту смену</p>
+            ) : dayAnalytics.checks.map((c) => {
+              const isExp = expandedCheckId === c.id;
+              const origTotal = c.total_amount + (c.bonus_used || 0);
+              return (
+                <button key={c.id} onClick={() => setExpandedCheckId(isExp ? null : c.id)} className="w-full text-left p-2.5 rounded-xl card active:scale-[0.99] transition-transform">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span className="font-medium text-sm text-[var(--c-text)] truncate">{c.player_nickname}</span>
+                      <span className="text-[10px] text-[var(--c-hint)]">{fmtTime(c.closed_at)}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {c.payment_method && (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                          c.payment_method === 'cash' ? 'bg-[var(--c-success-bg)] text-[var(--c-success)]' :
+                          c.payment_method === 'card' ? 'bg-[var(--c-info-bg)] text-[var(--c-info)]' :
+                          c.payment_method === 'debt' ? 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' :
+                          'bg-[var(--c-warning-bg)] text-[var(--c-warning)]'
+                        }`}>
+                          {pmLabels[c.payment_method] || c.payment_method}
                         </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {[
-                          { label: 'Наличные', value: daySummary.cash, icon: Banknote, color: 'text-[var(--c-success)]' },
-                          { label: 'Карта', value: daySummary.card, icon: CreditCard, color: 'text-[var(--c-info)]' },
-                          { label: 'В долг', value: daySummary.debt, icon: HandCoins, color: 'text-[var(--c-danger)]' },
-                          { label: 'Бонусы', value: daySummary.bonus, icon: Star, color: 'text-[var(--c-warning)]' },
-                        ].filter((s) => s.value > 0).map((s) => (
-                          <div key={s.label} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--c-surface)]">
-                            <s.icon className={`w-3.5 h-3.5 ${s.color} shrink-0`} />
-                            <span className="text-xs text-[var(--c-hint)]">{s.label}</span>
-                            <span className="ml-auto text-xs font-bold text-[var(--c-text)]">{fmtCur(s.value)}</span>
+                      )}
+                      <span className="font-bold text-sm text-[var(--c-accent)]">{fmtCur(c.bonus_used > 0 ? origTotal : c.total_amount)}</span>
+                      <ChevronDown className={`w-4 h-4 text-[var(--c-muted)] transition-transform ${isExp ? 'rotate-180' : ''}`} />
+                    </div>
+                  </div>
+                  {isExp && (
+                    <div className="mt-3 pt-3 border-t border-[var(--c-border)] space-y-1.5">
+                      {c.items.map((item, idx) => (
+                        <div key={idx} className="flex justify-between text-xs">
+                          <span className="text-[var(--c-hint)]">{item.name} × {item.quantity}</span>
+                          <span className="text-[var(--c-hint)]">{fmtCur(item.quantity * item.price)}</span>
+                        </div>
+                      ))}
+                      <div className="pt-2 border-t border-[var(--c-border)] space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-[var(--c-hint)]">Сумма</span>
+                          <span className="font-semibold text-[var(--c-text)]">{fmtCur(origTotal)}</span>
+                        </div>
+                        {c.bonus_used > 0 && (
+                          <>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-[var(--c-warning)]">Бонусами</span>
+                              <span className="font-semibold text-[var(--c-warning)]">-{fmtCur(c.bonus_used)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span className="text-[var(--c-hint)]">К оплате</span>
+                              <span className="font-semibold text-[var(--c-text)]">{fmtCur(c.total_amount)}</span>
+                            </div>
+                          </>
+                        )}
+                        {c.payment_method === 'split' && splitBreakdowns[c.id] ? (
+                          <div className="space-y-0.5">
+                            <span className="text-xs text-[var(--c-hint)]">Разделённая оплата:</span>
+                            {splitBreakdowns[c.id].map((sp, si) => (
+                              <div key={si} className="flex justify-between text-xs pl-2">
+                                <span className="text-[var(--c-hint)]">{pmLabels[sp.method] || sp.method}</span>
+                                <span className="text-[var(--c-text)]">{fmtCur(sp.amount)}</span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        ) : (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-[var(--c-hint)]">Способ оплаты</span>
+                            <span className="text-[var(--c-text)]">{pmLabels[c.payment_method || ''] || c.payment_method || '-'}</span>
+                          </div>
+                        )}
                       </div>
-                      <p className="text-[10px] text-[var(--c-muted)] mt-2 text-center">
-                        {dayAnalytics.totalChecks} чеков · ср. {fmtCur(dayAnalytics.avgCheck)}
-                      </p>
                     </div>
                   )}
-
-                  {/* Check cards */}
-                  <div className="space-y-2">
-                    {dayAnalytics.checks.length === 0 ? (
-                      <p className="text-sm text-[var(--c-hint)] text-center py-8">Нет чеков за эту смену</p>
-                    ) : (
-                      dayAnalytics.checks.map((c) => {
-                        const isExpanded = expandedCheckId === c.id;
-                        const originalTotal = c.total_amount + (c.bonus_used || 0);
-                        return (
-                          <button
-                            key={c.id}
-                            onClick={() => setExpandedCheckId(isExpanded ? null : c.id)}
-                            className="w-full text-left p-2.5 rounded-xl card active:scale-[0.99] transition-transform"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <span className="font-medium text-sm text-[var(--c-text)] truncate">
-                                  {c.player_nickname}
-                                </span>
-                                <span className="text-[10px] text-[var(--c-hint)]">{fmtTime(c.closed_at)}</span>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                {c.payment_method && (
-                                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                                    c.payment_method === 'cash' ? 'bg-[var(--c-success-bg)] text-[var(--c-success)]' :
-                                    c.payment_method === 'card' ? 'bg-[var(--c-info-bg)] text-[var(--c-info)]' :
-                                    c.payment_method === 'debt' ? 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' :
-                                    'bg-[var(--c-warning-bg)] text-[var(--c-warning)]'
-                                  }`}>
-                                    {pmLabels[c.payment_method] || c.payment_method}
-                                  </span>
-                                )}
-                                <span className="font-bold text-sm text-[var(--c-accent)]">
-                                  {fmtCur(c.bonus_used > 0 ? originalTotal : c.total_amount)}
-                                </span>
-                                <ChevronDown className={`w-4 h-4 text-[var(--c-muted)] transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                              </div>
-                            </div>
-
-                            {isExpanded && (
-                              <div className="mt-3 pt-3 border-t border-[var(--c-border)] space-y-1.5">
-                                {c.items.map((item, idx) => (
-                                  <div key={idx} className="flex justify-between text-xs">
-                                    <span className="text-[var(--c-hint)]">{item.name} × {item.quantity}</span>
-                                    <span className="text-[var(--c-hint)]">{fmtCur(item.quantity * item.price)}</span>
-                                  </div>
-                                ))}
-                                <div className="pt-2 border-t border-[var(--c-border)] space-y-1">
-                                  <div className="flex justify-between text-xs">
-                                    <span className="text-[var(--c-hint)]">Сумма</span>
-                                    <span className="font-semibold text-[var(--c-text)]">{fmtCur(originalTotal)}</span>
-                                  </div>
-                                  {c.bonus_used > 0 && (
-                                    <>
-                                      <div className="flex justify-between text-xs">
-                                        <span className="text-[var(--c-warning)]/70">Оплачено бонусами</span>
-                                        <span className="font-semibold text-[var(--c-warning)]">-{fmtCur(c.bonus_used)}</span>
-                                      </div>
-                                      <div className="flex justify-between text-xs">
-                                        <span className="text-[var(--c-hint)]">К оплате ({pmLabels[c.payment_method || ''] || ''})</span>
-                                        <span className="font-semibold text-[var(--c-text)]">{fmtCur(c.total_amount)}</span>
-                                      </div>
-                                    </>
-                                  )}
-                                  {c.payment_method === 'split' && splitBreakdowns[c.id] ? (
-                                    <div className="space-y-0.5">
-                                      <span className="text-xs text-[var(--c-hint)]">Разделённая оплата:</span>
-                                      {splitBreakdowns[c.id].map((sp, si) => (
-                                        <div key={si} className="flex justify-between text-xs pl-2">
-                                          <span className="text-[var(--c-hint)]">{pmLabels[sp.method] || sp.method}</span>
-                                          <span className="text-[var(--c-text)]">{fmtCur(sp.amount)}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <div className="flex justify-between text-xs">
-                                      <span className="text-[var(--c-hint)]">Способ оплаты</span>
-                                      <span className="text-[var(--c-text)]">{pmLabels[c.payment_method || ''] || c.payment_method || '-'}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                </>
-              ) : null}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ITEMS TAB */}
-      {tab === 'items' && (
-        <div className="space-y-5">
-          <h3 className="text-sm font-bold text-[var(--c-text)]">
-            Топ товаров
-          </h3>
-          {topItems.length === 0 ? (
-            <p className="text-sm text-[var(--c-hint)] text-center py-10">Нет данных о продажах</p>
-          ) : (
-            <div className="space-y-2">
-              {topItems.map((item, i) => {
-                const maxRev = topItems[0]?.revenue || 1;
-                return (
-                  <div key={item.name} className="flex items-center gap-2.5 p-2.5 rounded-xl card">
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      i === 0 ? 'bg-[var(--c-warning-bg)] text-[var(--c-warning)]' :
-                      i === 1 ? 'bg-gray-400/20 text-gray-300' :
-                      i === 2 ? 'bg-orange-700/20 text-orange-400' :
-                      'bg-[var(--c-surface)] text-[var(--c-hint)]'
-                    }`}>
-                      {i + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[var(--c-text)] truncate">{item.name}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="flex-1 h-1 rounded-full bg-[var(--c-surface)] overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-[var(--c-accent)] transition-all duration-500"
-                            style={{ width: `${(item.revenue / maxRev) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-[var(--c-text)]">{fmtCur(item.revenue)}</p>
-                        <p className="text-[10px] text-[var(--c-hint)]">{item.qty} шт</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* PLAYERS TAB */}
-      {tab === 'players' && (
-        <div className="space-y-5">
-          <h3 className="text-sm font-bold text-[var(--c-text)]">
-            Топ игроков
-          </h3>
-          {topPlayers.length === 0 ? (
-            <p className="text-sm text-[var(--c-hint)] text-center py-10">Нет данных</p>
-          ) : (
-            <div className="space-y-2">
-              {topPlayers.map((player, i) => {
-                const maxTotal = topPlayers[0]?.total || 1;
-                return (
-                  <div key={player.nickname + i} className="flex items-center gap-2.5 p-2.5 rounded-xl card">
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      i === 0 ? 'bg-[var(--c-warning-bg)] text-[var(--c-warning)]' :
-                      i === 1 ? 'bg-gray-400/20 text-gray-300' :
-                      i === 2 ? 'bg-orange-700/20 text-orange-400' :
-                      'bg-[var(--c-surface)] text-[var(--c-hint)]'
-                    }`}>
-                      {i === 0 ? <Crown className="w-3 h-3" /> : i + 1}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[var(--c-text)] truncate">{player.nickname}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="flex-1 h-1 rounded-full bg-[var(--c-surface)] overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-amber-500 transition-all duration-500"
-                            style={{ width: `${(player.total / maxTotal) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-[var(--c-text)]">{fmtCur(player.total)}</p>
-                      <div className="flex items-center gap-1 justify-end">
-                        <Hash className="w-2.5 h-2.5 text-[var(--c-muted)]" />
-                        <p className="text-[10px] text-[var(--c-hint)]">{player.count} чек.</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* LOG TAB */}
-      {tab === 'log' && (
-        <div className="space-y-3">
-          {transactions.length === 0 ? (
-            <p className="text-sm text-[var(--c-hint)] text-center py-10">Нет транзакций</p>
-          ) : (
-            <>
-              {transactions.map((tx) => {
-                const typeMap: Record<string, { label: string; variant: 'success' | 'warning' | 'danger' | 'default' }> = {
-                  sale: { label: 'Продажа', variant: 'success' },
-                  supply: { label: 'Поставка', variant: 'default' },
-                  write_off: { label: 'Списание', variant: 'danger' },
-                  revision: { label: 'Ревизия', variant: 'warning' },
-                  bonus_accrual: { label: 'Бонус+', variant: 'success' },
-                  bonus_spend: { label: 'Бонус−', variant: 'warning' },
-                  cash_operation: { label: 'Касса', variant: 'default' },
-                  debt_adjustment: { label: 'Долг', variant: 'warning' },
-                  refund: { label: 'Возврат', variant: 'danger' },
-                };
-                const meta = typeMap[tx.type] || { label: tx.type, variant: 'default' as const };
-                return (
-                  <div key={tx.id} className="flex items-start gap-2.5 p-2.5 rounded-xl card">
-                    <Badge variant={meta.variant}>{meta.label}</Badge>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[var(--c-text)] truncate">{tx.description}</p>
-                      <p className="text-[10px] text-[var(--c-hint)] mt-0.5">
-                        {tx.creator?.nickname || '—'} · {new Date(tx.created_at).toLocaleString('ru-RU')}
-                      </p>
-                    </div>
-                    <span className="font-bold text-sm text-[var(--c-text)] whitespace-nowrap">
-                      {fmtCur(tx.amount)}
-                    </span>
-                  </div>
-                );
-              })}
-              {transactions.length >= txLimit && (
-                <button
-                  onClick={() => setTxLimit((l) => l + 50)}
-                  className="w-full py-2.5 text-sm text-[var(--c-accent)] hover:bg-[var(--c-surface)] rounded-xl transition-colors font-medium"
-                >
-                  Загрузить ещё
                 </button>
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─── Detail screens ─── */
-
-interface StatsData {
-  today: number; week: number; month: number; prevMonth: number; monthGrowth: number;
-  todayCount: number; weekCount: number; monthCount: number;
-  cash: number; card: number; debt: number; bonus: number; avgCheck: number; totalPayments: number;
-}
-interface FinData {
-  monthExpenses: number; prevMonthExpenses: number; monthSupplyCost: number;
-  monthCOGS: number; prevMonthCOGS: number; monthOpEx: number;
-  monthInkassation: number; monthNetIncome: number; prevMonthNetIncome: number;
-  marginPct: number; netGrowth: number;
-}
-interface DetailProps {
-  detail: DetailView;
-  onBack: () => void;
-  checks: ClosedCheck[];
-  supplies: Supply[];
-  cashOps: CashOperation[];
-  stats: StatsData;
-  financials: FinData;
-  dailyRevenue: DailyRevenue[];
-  categoryBreakdown: { label: string; revenue: number; count: number }[];
-  topItems: { name: string; category: string; qty: number; revenue: number }[];
-  fmtCur: (n: number) => string;
-  fmt: (n: number) => string;
-  todayStart: Date;
-  weekStart: Date;
-  monthStart: Date;
-  onNavigate: (t: string) => void;
-  checkPaymentsMap: Record<string, { method: string; amount: number }[]>;
-}
-
-function DetailScreen(props: DetailProps) {
-  const { detail, onBack, checks, supplies, cashOps, fmtCur, fmt, todayStart, weekStart, monthStart, onNavigate } = props;
-  const s = props.stats;
-  const f = props.financials;
-
-  const titleMap: Record<string, string> = {
-    revenue: 'Доход за месяц',
-    expenses: 'Расходы за месяц',
-    pnl: 'Финансовый отчёт',
-    today: 'Текущая смена',
-    week: 'Неделя',
-    avgcheck: 'Средний чек',
-    payments: 'Способы оплаты',
-  };
-
-  const header = (
-    <div className="flex items-center gap-2 mb-4">
-      <button onClick={onBack} className="w-9 h-9 rounded-xl bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform shrink-0">
-        <ArrowLeft className="w-4 h-4 text-[var(--c-text)]" />
-      </button>
-      <h2 className="text-lg font-bold text-[var(--c-text)]">{titleMap[detail || ''] || ''}</h2>
-    </div>
-  );
-
-  const monthChecks = checks.filter((c) => new Date(c.closed_at) >= monthStart);
-  const todayChecks = checks.filter((c) => new Date(c.closed_at) >= todayStart);
-  const weekChecks = checks.filter((c) => new Date(c.closed_at) >= weekStart);
-  const monthSupplies = supplies.filter((sup) => new Date(sup.created_at) >= monthStart);
-  const monthCashOps = cashOps.filter((op) => new Date(op.created_at) >= monthStart);
-
-  const pmIcons: Record<string, { icon: typeof Banknote; color: string; bg: string }> = {
-    cash: { icon: Banknote, color: 'text-[var(--c-success)]', bg: 'bg-[var(--c-success-bg)]' },
-    card: { icon: CreditCard, color: 'text-[var(--c-info)]', bg: 'bg-[var(--c-info-bg)]' },
-    debt: { icon: HandCoins, color: 'text-[var(--c-danger)]', bg: 'bg-[var(--c-danger-bg)]' },
-    bonus: { icon: Star, color: 'text-[var(--c-warning)]', bg: 'bg-[var(--c-warning-bg)]' },
-    split: { icon: Receipt, color: 'text-violet-400', bg: 'bg-violet-500/10' },
-  };
-
-  const fmtDateTime = (d: string) => new Date(d).toLocaleString('ru-RU', {
-    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-  });
-
-  const checkList = (list: ClosedCheck[], showDate = false) => (
-    <div className="space-y-1.5">
-      {list.length === 0 ? (
-        <p className="text-xs text-[var(--c-hint)] text-center py-8">Нет чеков</p>
-      ) : list.map((c) => {
-        const pm = pmIcons[c.payment_method || ''] || pmIcons.cash;
-        return (
-          <div key={c.id} className="flex items-center gap-2.5 p-2.5 rounded-xl card">
-            <div className={`w-8 h-8 rounded-lg ${pm.bg} flex items-center justify-center shrink-0`}>
-              <pm.icon className={`w-3.5 h-3.5 ${pm.color}`} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium text-[var(--c-text)] truncate">
-                {c.player?.nickname || 'Гость'}
-              </p>
-              <p className="text-[10px] text-[var(--c-muted)]">
-                {showDate ? fmtDateTime(c.closed_at) : new Date(c.closed_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                {c.payment_method && ` · ${pmLabels[c.payment_method] || c.payment_method}`}
-              </p>
-            </div>
-            <span className="font-bold text-sm text-[var(--c-text)] tabular-nums shrink-0">
-              {fmtCur(c.total_amount)}
-            </span>
-          </div>
-        );
-      })}
-    </div>
-  );
-
-  const statRow = (label: string, value: number, color = 'text-[var(--c-text)]') => (
-    <div className="flex items-center justify-between py-2 border-b border-[var(--c-border)] last:border-0">
-      <span className="text-xs text-[var(--c-hint)]">{label}</span>
-      <span className={`text-sm font-bold tabular-nums ${color}`}>{fmtCur(value)}</span>
-    </div>
-  );
-
-  if (detail === 'revenue') {
-    const pmBreakdown: Record<string, number> = {};
-    for (const c of monthChecks) {
-      const m = c.payment_method || 'other';
-      pmBreakdown[m] = (pmBreakdown[m] || 0) + c.total_amount;
-    }
-    return (
-      <div className="space-y-4">
-        {header}
-        <div className="p-4 rounded-xl bg-gradient-to-br from-[var(--c-accent)]/12 to-purple-900/5 card text-center">
-          <p className="text-3xl font-black text-[var(--c-text)] tabular-nums">{fmtCur(s.month)}</p>
-          <p className="text-[11px] text-[var(--c-hint)] mt-1">{s.monthCount} чеков · ср. {fmtCur(s.avgCheck)}</p>
-          {s.monthGrowth !== 0 && (
-            <Badge variant={s.monthGrowth > 0 ? 'success' : 'danger'} size="sm" className="mt-2">
-              {s.monthGrowth > 0 ? '+' : ''}{s.monthGrowth}% к прошлому месяцу
-            </Badge>
-          )}
-        </div>
-        <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">По дням (7 дней)</h3>
-          <div className="flex items-end gap-1 h-24">
-            {props.dailyRevenue.map((day) => {
-              const maxD = Math.max(...props.dailyRevenue.map((d) => d.total), 1);
-              return (
-                <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-[8px] text-[var(--c-hint)]">{day.total > 0 ? fmt(day.total) : ''}</span>
-                  <div className="w-full flex-1 flex items-end">
-                    <div className="w-full rounded-t-md bg-[var(--c-accent)] min-h-[2px]" style={{ height: `${Math.max(2, (day.total / maxD) * 100)}%` }} />
-                  </div>
-                  <span className="text-[9px] text-[var(--c-hint)] font-semibold">{day.label}</span>
-                </div>
               );
             })}
           </div>
-        </div>
-        <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-1">По способам оплаты</h3>
-          {Object.entries(pmBreakdown).sort((a, b) => b[1] - a[1]).map(([method, val]) => statRow(pmLabels[method] || method, val))}
-        </div>
-        <div>
-          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Чеки за месяц ({monthChecks.length})</h3>
-          {checkList(monthChecks.slice(0, 30), true)}
-          {monthChecks.length > 30 && <p className="text-[10px] text-[var(--c-muted)] text-center pt-2">и ещё {monthChecks.length - 30}...</p>}
-        </div>
-      </div>
-    );
-  }
-
-  if (detail === 'expenses') {
-    const totalSupplyCost = monthSupplies.reduce((a, s2) => a + (s2.total_cost || 0), 0);
-    const totalInkassation = monthCashOps.filter((o) => o.type === 'inkassation').reduce((a, o) => a + o.amount, 0);
-    return (
-      <div className="space-y-4">
-        {header}
-        <div className="p-4 rounded-xl bg-red-500/6 border border-red-500/10 text-center">
-          <p className="text-3xl font-black text-[var(--c-danger)] tabular-nums">{fmtCur(f.monthExpenses)}</p>
-          <p className="text-[11px] text-[var(--c-hint)] mt-1">общие расходы за месяц</p>
-        </div>
-        <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-1">Детализация</h3>
-          {f.monthCOGS > 0 && statRow('Себестоимость проданного', f.monthCOGS, 'text-[var(--c-warning)]')}
-          {f.monthOpEx > 0 && statRow('Операционные расходы', f.monthOpEx, 'text-[var(--c-danger)]')}
-          {statRow('Закупки (поставки)', totalSupplyCost, 'text-[var(--c-danger)]')}
-          {totalInkassation > 0 && statRow('Инкассация', totalInkassation, 'text-[var(--c-warning)]')}
-        </div>
-        <div>
-          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Поставки</h3>
-          <div className="space-y-1.5">
-            {monthSupplies.length === 0 ? (
-              <p className="text-xs text-[var(--c-hint)] text-center py-6">Нет поставок</p>
-            ) : monthSupplies.map((sup) => (
-              <button key={sup.id} onClick={() => onNavigate('management:supplies')} className="w-full flex items-center gap-2.5 p-2.5 rounded-xl card-interactive">
-                <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
-                  <Truck className="w-3.5 h-3.5 text-[var(--c-danger)]" />
-                </div>
-                <div className="flex-1 text-left min-w-0">
-                  <p className="text-[13px] font-medium text-[var(--c-text)]">
-                    {new Date(sup.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                </div>
-                <span className="font-bold text-sm text-[var(--c-danger)] tabular-nums shrink-0">{fmtCur(sup.total_cost)}</span>
-                <ChevronRight className="w-3 h-3 text-[var(--c-muted)] shrink-0" />
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (detail === 'pnl') {
-    return (
-      <div className="space-y-4">
-        {header}
-        <div className={`p-4 rounded-xl text-center ${f.monthNetIncome >= 0 ? 'bg-emerald-500/6 border border-emerald-500/10' : 'bg-red-500/6 border border-red-500/10'}`}>
-          <p className="text-[11px] text-[var(--c-hint)] mb-1">Чистая прибыль</p>
-          <p className={`text-3xl font-black tabular-nums ${f.monthNetIncome >= 0 ? 'text-[var(--c-success)]' : 'text-[var(--c-danger)]'}`}>{fmtCur(f.monthNetIncome)}</p>
-          <p className="text-[11px] text-[var(--c-muted)] mt-1">маржа {f.marginPct}%</p>
-        </div>
-        <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-1">P&L</h3>
-          {statRow('Выручка', s.month, 'text-[var(--c-success)]')}
-          {f.monthCOGS > 0 && statRow('Себестоимость проданного', -f.monthCOGS, 'text-[var(--c-warning)]')}
-          {f.monthOpEx > 0 && statRow('Операционные расходы', -f.monthOpEx, 'text-[var(--c-danger)]')}
-          <div className="border-t-2 border-[var(--c-border)] mt-1 pt-1">
-            {statRow('Чистая прибыль', f.monthNetIncome, f.monthNetIncome >= 0 ? 'text-[var(--c-success)]' : 'text-[var(--c-danger)]')}
-          </div>
-        </div>
-        <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-1">Движение средств</h3>
-          {statRow('Закупки (поставки)', f.monthSupplyCost, 'text-[var(--c-danger)]')}
-          {f.monthInkassation > 0 && statRow('Инкассация', f.monthInkassation, 'text-[var(--c-warning)]')}
-        </div>
-        {s.month > 0 && (
-          <div className="p-3 rounded-xl card space-y-2">
-            <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">Визуализация</h3>
-            <div className="flex h-4 rounded-full overflow-hidden bg-[var(--c-surface)]">
-              {f.monthExpenses > 0 && <div className="bg-red-500/70" style={{ width: `${(f.monthExpenses / s.month) * 100}%` }} />}
-              <div className="bg-emerald-500" style={{ width: `${Math.max(0, (f.monthNetIncome / s.month) * 100)}%` }} />
-            </div>
-            <div className="flex justify-between text-[10px] text-[var(--c-hint)]">
-              <span>Расходы {100 - f.marginPct}%</span>
-              <span>Прибыль {f.marginPct}%</span>
-            </div>
-          </div>
-        )}
-        <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-1">Сравнение с прошлым месяцем</h3>
-          {statRow('Выручка (этот)', s.month)}
-          {statRow('Выручка (прошлый)', s.prevMonth, 'text-[var(--c-hint)]')}
-          {statRow('Расходы (этот)', f.monthExpenses, 'text-[var(--c-danger)]')}
-          {statRow('Расходы (прошлый)', f.prevMonthExpenses, 'text-[var(--c-hint)]')}
-          {statRow('Прибыль (этот)', f.monthNetIncome, f.monthNetIncome >= 0 ? 'text-[var(--c-success)]' : 'text-[var(--c-danger)]')}
-          {statRow('Прибыль (прошлый)', f.prevMonthNetIncome, 'text-[var(--c-hint)]')}
-        </div>
-      </div>
-    );
-  }
-
-  if (detail === 'today') {
-    const todayTotal = todayChecks.reduce((a, c) => a + c.total_amount, 0);
-    let todayCash = 0, todayCard = 0, todayDebt = 0, todayBonus = 0;
-    for (const c of todayChecks) {
-      const amt = c.total_amount || 0;
-      if (c.payment_method === 'split' || c.payment_method === 'bonus') {
-        const parts = props.checkPaymentsMap[c.id] || [];
-        for (const p of parts) {
-          if (p.method === 'cash') todayCash += p.amount;
-          else if (p.method === 'card') todayCard += p.amount;
-          else if (p.method === 'debt') todayDebt += p.amount;
-          else if (p.method === 'bonus') todayBonus += p.amount;
-        }
-      } else if (c.payment_method === 'cash') todayCash += amt;
-      else if (c.payment_method === 'card') todayCard += amt;
-      else if (c.payment_method === 'debt') todayDebt += amt;
-    }
-    return (
-      <div className="space-y-4">
-        {header}
-        <div className="p-4 rounded-xl bg-emerald-500/6 border border-emerald-500/10 text-center">
-          <p className="text-3xl font-black text-[var(--c-success)] tabular-nums">{fmtCur(todayTotal)}</p>
-          <p className="text-[11px] text-[var(--c-hint)] mt-1">{todayChecks.length} чеков · с {REPORT_DAY_HOUR}:00</p>
-        </div>
-        {todayChecks.length > 0 && (() => {
-          const items = [
-            { label: 'Нал', value: todayCash, color: 'text-[var(--c-success)]' },
-            { label: 'Карта', value: todayCard, color: 'text-[var(--c-info)]' },
-            { label: 'Долг', value: todayDebt, color: 'text-[var(--c-danger)]' },
-            { label: 'Бонусы', value: todayBonus, color: 'text-[var(--c-warning)]' },
-          ].filter((p) => p.value > 0);
-          return <div className={`grid gap-2 ${items.length <= 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
-            {items.map((p) => (
-              <div key={p.label} className="p-2.5 rounded-xl card text-center">
-                <p className={`text-sm font-black tabular-nums ${p.color}`}>{fmtCur(p.value)}</p>
-                <p className="text-[9px] text-[var(--c-muted)]">{p.label}</p>
-              </div>
-            ))}
-          </div>;
-        })()}
-        <div>
-          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Чеки за смену</h3>
-          {checkList(todayChecks)}
-        </div>
-      </div>
-    );
-  }
-
-  if (detail === 'week') {
-    const weekTotal = weekChecks.reduce((a, c) => a + c.total_amount, 0);
-    const weekAvg = weekChecks.length > 0 ? Math.round(weekTotal / weekChecks.length) : 0;
-    return (
-      <div className="space-y-4">
-        {header}
-        <div className="p-4 rounded-xl bg-blue-500/6 border border-blue-500/10 text-center">
-          <p className="text-3xl font-black text-[var(--c-info)] tabular-nums">{fmtCur(weekTotal)}</p>
-          <p className="text-[11px] text-[var(--c-hint)] mt-1">{weekChecks.length} чеков · ср. {fmtCur(weekAvg)}</p>
-        </div>
-        <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">По дням</h3>
-          <div className="flex items-end gap-1 h-24">
-            {props.dailyRevenue.map((day) => {
-              const maxD = Math.max(...props.dailyRevenue.map((d) => d.total), 1);
-              return (
-                <div key={day.date} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-[8px] text-[var(--c-hint)]">{day.total > 0 ? fmt(day.total) : ''}</span>
-                  <div className="w-full flex-1 flex items-end">
-                    <div className="w-full rounded-t-md bg-blue-500 min-h-[2px]" style={{ height: `${Math.max(2, (day.total / maxD) * 100)}%` }} />
-                  </div>
-                  <span className="text-[9px] text-[var(--c-hint)] font-semibold">{day.label}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <div>
-          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Чеки за неделю ({weekChecks.length})</h3>
-          {checkList(weekChecks.slice(0, 30), true)}
-          {weekChecks.length > 30 && <p className="text-[10px] text-[var(--c-muted)] text-center pt-2">и ещё {weekChecks.length - 30}...</p>}
-        </div>
-      </div>
-    );
-  }
-
-  if (detail === 'avgcheck') {
-    const amounts = monthChecks.map((c) => c.total_amount).filter((a) => a > 0).sort((a, b) => a - b);
-    const avg = amounts.length > 0 ? Math.round(amounts.reduce((a, v) => a + v, 0) / amounts.length) : 0;
-    const median = amounts.length > 0 ? amounts[Math.floor(amounts.length / 2)] : 0;
-    const minCheck = amounts.length > 0 ? amounts[0] : 0;
-    const maxCheck = amounts.length > 0 ? amounts[amounts.length - 1] : 0;
-
-    const buckets = [0, 300, 500, 1000, 2000, 5000, Infinity];
-    const bucketLabels = ['<300', '300-500', '500-1K', '1K-2K', '2K-5K', '5K+'];
-    const histogram = bucketLabels.map((_, i) => ({
-      label: bucketLabels[i],
-      count: amounts.filter((a) => a >= buckets[i] && a < buckets[i + 1]).length,
-    }));
-    const maxBucket = Math.max(...histogram.map((h) => h.count), 1);
-
-    return (
-      <div className="space-y-4">
-        {header}
-        <div className="p-4 rounded-xl bg-amber-500/6 border border-amber-500/10 text-center">
-          <p className="text-3xl font-black text-[var(--c-warning)] tabular-nums">{fmtCur(avg)}</p>
-          <p className="text-[11px] text-[var(--c-hint)] mt-1">средний чек за месяц</p>
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <div className="p-2.5 rounded-xl card text-center">
-            <p className="text-sm font-black text-[var(--c-text)] tabular-nums">{fmtCur(minCheck)}</p>
-            <p className="text-[9px] text-[var(--c-muted)]">Мин.</p>
-          </div>
-          <div className="p-2.5 rounded-xl card text-center">
-            <p className="text-sm font-black text-[var(--c-text)] tabular-nums">{fmtCur(median)}</p>
-            <p className="text-[9px] text-[var(--c-muted)]">Медиана</p>
-          </div>
-          <div className="p-2.5 rounded-xl card text-center">
-            <p className="text-sm font-black text-[var(--c-text)] tabular-nums">{fmtCur(maxCheck)}</p>
-            <p className="text-[9px] text-[var(--c-muted)]">Макс.</p>
-          </div>
-        </div>
-        <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-3">Распределение чеков</h3>
-          <div className="flex items-end gap-1.5 h-24">
-            {histogram.map((b) => (
-              <div key={b.label} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[8px] text-[var(--c-hint)]">{b.count > 0 ? b.count : ''}</span>
-                <div className="w-full flex-1 flex items-end">
-                  <div className="w-full rounded-t-md bg-amber-500/70 min-h-[2px]" style={{ height: `${Math.max(2, (b.count / maxBucket) * 100)}%` }} />
-                </div>
-                <span className="text-[8px] text-[var(--c-hint)]">{b.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="p-3 rounded-xl card">
-          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-1">Статистика</h3>
-          {statRow('Всего чеков', s.monthCount)}
-          {statRow('Общая выручка', s.month)}
-          {statRow('Средний чек', avg, 'text-[var(--c-warning)]')}
-          {statRow('Медианный чек', median)}
-          {statRow('Мин. чек', minCheck)}
-          {statRow('Макс. чек', maxCheck)}
-        </div>
-      </div>
-    );
-  }
-
-  if (detail === 'payments') {
-    const pmData: Record<string, { count: number; total: number }> = {};
-    for (const c of monthChecks) {
-      const m = c.payment_method || 'other';
-      if (!pmData[m]) pmData[m] = { count: 0, total: 0 };
-      pmData[m].count++;
-      pmData[m].total += c.total_amount;
-    }
-    const totalPm = Object.values(pmData).reduce((a, v) => a + v.total, 0);
-    const sorted = Object.entries(pmData).sort((a, b) => b[1].total - a[1].total);
-
-    const pmColors: Record<string, string> = {
-      cash: 'bg-emerald-500', card: 'bg-blue-500', debt: 'bg-red-500', bonus: 'bg-amber-500', split: 'bg-violet-500',
-    };
-
-    return (
-      <div className="space-y-4">
-        {header}
-        <div className="p-4 rounded-xl card text-center">
-          <p className="text-3xl font-black text-[var(--c-text)] tabular-nums">{fmtCur(totalPm)}</p>
-          <p className="text-[11px] text-[var(--c-hint)] mt-1">{monthChecks.length} чеков за месяц</p>
-        </div>
-        {totalPm > 0 && (
-          <div className="flex h-4 rounded-full overflow-hidden bg-[var(--c-surface)]">
-            {sorted.map(([method, val]) => (
-              <div key={method} className={pmColors[method] || 'bg-[var(--c-muted)]'} style={{ width: `${(val.total / totalPm) * 100}%` }} />
-            ))}
-          </div>
-        )}
-        <div className="space-y-3">
-          {sorted.map(([method, val]) => {
-            const pm = pmIcons[method] || pmIcons.cash;
-            const pct = totalPm > 0 ? Math.round((val.total / totalPm) * 100) : 0;
-            return (
-              <div key={method} className="p-3 rounded-xl card">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className={`w-9 h-9 rounded-lg ${pm.bg} flex items-center justify-center shrink-0`}>
-                    <pm.icon className={`w-4 h-4 ${pm.color}`} />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-[var(--c-text)]">{pmLabels[method] || method}</p>
-                    <p className="text-[10px] text-[var(--c-muted)]">{val.count} чеков · {pct}%</p>
-                  </div>
-                  <span className="text-lg font-black text-[var(--c-text)] tabular-nums">{fmtCur(val.total)}</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-[var(--c-surface)] overflow-hidden">
-                  <div className={`h-full rounded-full ${pmColors[method] || 'bg-[var(--c-muted)]'}`} style={{ width: `${pct}%` }} />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  return <div>{header}<p className="text-[var(--c-hint)] text-sm text-center py-8">Раздел в разработке</p></div>;
+        </>
+      ) : null}
+    </div>
+  );
 }
