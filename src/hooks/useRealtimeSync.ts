@@ -3,6 +3,9 @@ import { supabase } from '@/lib/supabase';
 import { usePOSStore, isSavingCart } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
 import { useAuthStore } from '@/store/auth';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+
+type PgPayload = RealtimePostgresChangesPayload<Record<string, unknown>>;
 
 function emitTableChange(table: string) {
   window.dispatchEvent(new CustomEvent('rt:change', { detail: table }));
@@ -12,23 +15,16 @@ export function useRealtimeSync() {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
-    const debounceTimers: Record<string, ReturnType<typeof setTimeout>> = {};
-
-    const debounced = (key: string, fn: () => void, ms = 500) => {
-      if (debounceTimers[key]) clearTimeout(debounceTimers[key]);
-      debounceTimers[key] = setTimeout(fn, ms);
-    };
-
     const channel = supabase
       .channel('tpos-realtime')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'checks' },
-        (payload: any) => {
+        (payload: PgPayload) => {
           if (payload.eventType === 'DELETE') {
-            usePOSStore.getState().deleteCheckLocal(payload.old.id);
+            usePOSStore.getState().deleteCheckLocal((payload.old as Record<string, string>).id);
           } else {
-            usePOSStore.getState().refreshCheckById(payload.new.id);
+            usePOSStore.getState().refreshCheckById((payload.new as Record<string, string>).id);
           }
           emitTableChange('checks');
         },
@@ -36,9 +32,10 @@ export function useRealtimeSync() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'check_items' },
-        (payload: any) => {
+        (payload: PgPayload) => {
           if (isSavingCart()) return;
-          const checkId = payload.new ? payload.new.check_id : payload.old.check_id;
+          const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
+          const checkId = rec?.check_id;
           if (checkId) usePOSStore.getState().refreshCheckById(checkId);
           emitTableChange('check_items');
         },
@@ -46,8 +43,9 @@ export function useRealtimeSync() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'check_discounts' },
-        (payload: any) => {
-          const checkId = payload.new ? payload.new.check_id : payload.old.check_id;
+        (payload: PgPayload) => {
+          const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
+          const checkId = rec?.check_id;
           if (checkId) usePOSStore.getState().refreshCheckById(checkId);
           emitTableChange('check_discounts');
         },
@@ -55,12 +53,11 @@ export function useRealtimeSync() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'inventory' },
-        (payload: any) => {
+        (payload: PgPayload) => {
           if (payload.eventType === 'DELETE') {
-            // Usually we don't delete from inventory, but if we do:
             usePOSStore.getState().loadInventory();
           } else {
-            usePOSStore.getState().upsertInventoryLocal(payload.new);
+            usePOSStore.getState().upsertInventoryLocal(payload.new as Parameters<ReturnType<typeof usePOSStore.getState>['upsertInventoryLocal']>[0]);
           }
           emitTableChange('inventory');
         },
@@ -68,9 +65,9 @@ export function useRealtimeSync() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'menu_categories' },
-        (payload: any) => {
+        (payload: PgPayload) => {
           if (payload.eventType !== 'DELETE') {
-            usePOSStore.getState().upsertCategoryLocal(payload.new);
+            usePOSStore.getState().upsertCategoryLocal(payload.new as Parameters<ReturnType<typeof usePOSStore.getState>['upsertCategoryLocal']>[0]);
           }
           emitTableChange('menu_categories');
         },
@@ -78,9 +75,9 @@ export function useRealtimeSync() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'shifts' },
-        (payload: any) => {
+        (payload: PgPayload) => {
           if (payload.eventType !== 'DELETE') {
-            useShiftStore.getState().upsertShiftLocal(payload.new);
+            useShiftStore.getState().upsertShiftLocal(payload.new as Parameters<ReturnType<typeof useShiftStore.getState>['upsertShiftLocal']>[0]);
           }
           emitTableChange('shifts');
         },
@@ -88,16 +85,16 @@ export function useRealtimeSync() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'profiles' },
-        (payload: any) => {
+        (payload: PgPayload) => {
           if (payload.eventType !== 'DELETE') {
-            useAuthStore.getState().upsertProfileLocal(payload.new);
-            // Also update staff list if relevant
-            if (payload.new.role === 'staff' || payload.new.role === 'owner') {
+            const rec = payload.new as Record<string, unknown>;
+            useAuthStore.getState().upsertProfileLocal(rec as Parameters<ReturnType<typeof useAuthStore.getState>['upsertProfileLocal']>[0]);
+            if (rec.role === 'staff' || rec.role === 'owner') {
               useAuthStore.getState().upsertStaffLocal({
-                id: payload.new.id,
-                nickname: payload.new.nickname,
-                role: payload.new.role,
-                hasPin: !!payload.new.pin
+                id: rec.id as string,
+                nickname: rec.nickname as string,
+                role: rec.role as string,
+                hasPin: !!rec.pin
               });
             }
           }
@@ -115,18 +112,19 @@ export function useRealtimeSync() {
         channelRef.current.unsubscribe();
       }
       setTimeout(() => {
-        usePOSStore.getState().loadOpenChecks(); // Refresh everything once on reconnect
+        usePOSStore.getState().loadOpenChecks();
         const freshChannel = supabase
           .channel('tpos-realtime-' + Date.now())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'checks' },
-            (payload: any) => {
-              if (payload.eventType === 'DELETE') usePOSStore.getState().deleteCheckLocal(payload.old.id);
-              else usePOSStore.getState().refreshCheckById(payload.new.id);
+            (payload: PgPayload) => {
+              if (payload.eventType === 'DELETE') usePOSStore.getState().deleteCheckLocal((payload.old as Record<string, string>).id);
+              else usePOSStore.getState().refreshCheckById((payload.new as Record<string, string>).id);
             }
           )
           .on('postgres_changes', { event: '*', schema: 'public', table: 'check_items' },
-            (payload: any) => {
-              const checkId = payload.new ? payload.new.check_id : payload.old.check_id;
+            (payload: PgPayload) => {
+              const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
+              const checkId = rec?.check_id;
               if (checkId) usePOSStore.getState().refreshCheckById(checkId);
             }
           )
@@ -146,7 +144,6 @@ export function useRealtimeSync() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      Object.values(debounceTimers).forEach(clearTimeout);
       window.removeEventListener('tpos:reconnect', handleReconnect);
       window.removeEventListener('online', handleReconnect);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -157,7 +154,10 @@ export function useRealtimeSync() {
 
 export function useOnTableChange(tables: string[], callback: () => void) {
   const cbRef = useRef(callback);
-  cbRef.current = callback;
+
+  useEffect(() => {
+    cbRef.current = callback;
+  });
 
   useEffect(() => {
     const handler = (e: Event) => {

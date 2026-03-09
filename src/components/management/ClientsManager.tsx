@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
 import {
-  Search, Plus, Pencil, Trash2, Upload, X, Check, User,
+  Search, Pencil, Trash2, X, Check, User,
   Phone, Calendar, Star, CreditCard, UserPlus, Cake, GraduationCap, Send,
   Link, CheckCircle, XCircle, QrCode,
 } from 'lucide-react';
@@ -180,7 +180,6 @@ export function ClientsManager() {
   });
 
   const totalResidents = clients.filter((c) => c.client_tier === 'resident').length;
-  const totalStudents = clients.filter((c) => c.client_tier === 'student').length;
 
   const updateField = <K extends keyof ClientForm>(key: K, value: ClientForm[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));

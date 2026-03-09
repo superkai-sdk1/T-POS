@@ -154,7 +154,6 @@ export const useShiftStore = create<ShiftState>()(
         const month = now.getMonth() + 1;
         const day = now.getDate();
         const pad = (n: number) => String(n).padStart(2, '0');
-        const datePattern = `%-${pad(month)}-${pad(day)}`;
         const { data: bdayProfiles } = await supabase
           .from('profiles')
           .select('nickname, birthday')

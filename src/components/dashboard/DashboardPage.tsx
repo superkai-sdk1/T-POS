@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { ListSkeleton } from '@/components/ui/Skeleton';
-import { Badge } from '@/components/ui/Badge';
 import { AnalyticsFilter } from './AnalyticsFilter';
 import { FinanceModule } from './FinanceModule';
 import { ProductsModule } from './ProductsModule';
@@ -11,7 +10,7 @@ import { useAnalyticsStore, getReportingDayStart } from '@/store/analytics';
 import { useAuthStore } from '@/store/auth';
 import { supabase } from '@/lib/supabase';
 import {
-  BarChart3, Receipt, ShoppingBag, Users, Clock, Sparkles,
+  BarChart3, ShoppingBag, Users, Sparkles,
   ChevronDown, ChevronRight, ChevronLeft,
   Banknote, CreditCard, HandCoins, Star,
 } from 'lucide-react';
@@ -167,7 +166,6 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           <div className="mt-4">
             <ChecksTab
               allChecks={data.allChecks}
-              checkPaymentsMap={data.checkPaymentsMap}
             />
           </div>
         </>
@@ -193,14 +191,14 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           {analyticsSubTab === 'products' ? (
             <ProductsModule
               products={data.productStats}
-              allCheckItems={data.allCheckItems as any}
-              checks={data.checks as any}
+              allCheckItems={data.allCheckItems as Parameters<typeof ProductsModule>[0]['allCheckItems']}
+              checks={data.checks as Parameters<typeof ProductsModule>[0]['checks']}
             />
           ) : (
             <PlayersModule
               players={data.playerStats}
               retentionRate={data.retentionRate}
-              checks={data.checks as any}
+              checks={data.checks as Parameters<typeof PlayersModule>[0]['checks']}
             />
           )}
         </>
@@ -215,9 +213,8 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
 /* ── Checks tab (preserved from original) ── */
 
-function ChecksTab({ allChecks, checkPaymentsMap }: {
+function ChecksTab({ allChecks }: {
   allChecks: { id: string; total_amount: number; payment_method: string | null; closed_at: string; player_id: string; player: { nickname: string } | null }[];
-  checkPaymentsMap: Record<string, { method: string; amount: number }[]>;
 }) {
   const [reportDays, setReportDays] = useState<ReportDay[]>([]);
   const [selectedDayIdx, setSelectedDayIdx] = useState(0);

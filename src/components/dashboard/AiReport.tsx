@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, memo } from 'react';
 import {
   Sparkles, Send, Loader2, Bot, User,
-  TrendingUp, TrendingDown, DollarSign, ShoppingBag, Users, AlertTriangle, Lightbulb,
+  TrendingUp, TrendingDown, DollarSign, Users, AlertTriangle, Lightbulb,
   CreditCard, ChevronDown, Package, Target,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -129,8 +129,8 @@ function ReportCard({ section }: { section: ReportSection }) {
         onClick={() => setExpanded(!expanded)}
         className="w-full text-left p-3 flex items-start gap-3"
       >
-        <div className="w-9 h-9 rounded-lg bg-[var(--c-surface)] flex items-center justify-center shrink-0 text-lg">
-          {section.emoji}
+        <div className="w-9 h-9 rounded-lg bg-[var(--c-surface)] flex items-center justify-center shrink-0">
+          <Icon className="w-5 h-5 text-[var(--c-accent)]" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-[var(--c-text)] leading-tight">{section.title}</p>

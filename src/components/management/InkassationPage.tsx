@@ -3,7 +3,6 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { useShiftStore } from '@/store/shift';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
 import { ListSkeleton } from '@/components/ui/Skeleton';
@@ -11,7 +10,7 @@ import {
   Banknote, Plus, ArrowDownToLine, ArrowUpFromLine,
   Trash2, PlayCircle, StopCircle, Wallet,
 } from 'lucide-react';
-import { hapticFeedback, hapticNotification } from '@/lib/telegram';
+import { hapticNotification } from '@/lib/telegram';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import type { CashOperation, Shift } from '@/types';
 

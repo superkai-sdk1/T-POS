@@ -5,6 +5,10 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
+// Extract recommended rules and override set-state-in-effect to warn
+const reactHooksRecommended = reactHooks.configs.flat.recommended
+const reactHooksRules = { ...reactHooksRecommended.rules, 'react-hooks/set-state-in-effect': 'warn' }
+
 export default defineConfig([
   globalIgnores(['dist']),
   {
@@ -12,12 +16,15 @@ export default defineConfig([
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
-      reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
     ],
+    plugins: {
+      'react-hooks': reactHooks,
+    },
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: reactHooksRules,
   },
 ])

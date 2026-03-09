@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo, memo, startTransition, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, startTransition, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Badge } from '@/components/ui/Badge';
 import { Package, AlertTriangle, Search } from 'lucide-react';

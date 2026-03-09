@@ -18,11 +18,14 @@ export function useSwipeBack({
   const tracking = useRef(false);
   const committed = useRef(false);
   const [dragX, setDragX] = useState(0);
+  const [isTracking, setIsTracking] = useState(false);
   const onBackRef = useRef(onBack);
   const thresholdRef = useRef(threshold);
 
-  onBackRef.current = onBack;
-  thresholdRef.current = threshold;
+  useEffect(() => {
+    onBackRef.current = onBack;
+    thresholdRef.current = threshold;
+  });
 
   useEffect(() => {
     if (!enabled) return;
@@ -34,6 +37,7 @@ export function useSwipeBack({
       startY.current = e.touches[0].clientY;
       tracking.current = true;
       committed.current = false;
+      setIsTracking(true);
       setDragX(0);
     };
 
@@ -44,6 +48,7 @@ export function useSwipeBack({
 
       if (!committed.current && dy > Math.abs(dx) * 0.6 && dx < 12) {
         tracking.current = false;
+        setIsTracking(false);
         setDragX(0);
         return;
       }
@@ -60,9 +65,11 @@ export function useSwipeBack({
     const handleTouchEnd = () => {
       if (!tracking.current) {
         setDragX(0);
+        setIsTracking(false);
         return;
       }
       tracking.current = false;
+      setIsTracking(false);
       setDragX((prev) => {
         if (prev >= thresholdRef.current) {
           setTimeout(() => onBackRef.current(), 0);
@@ -83,6 +90,7 @@ export function useSwipeBack({
       document.removeEventListener('touchcancel', handleTouchEnd);
       tracking.current = false;
       setDragX(0);
+      setIsTracking(false);
     };
   }, [enabled, edgeWidth]);
 
@@ -101,7 +109,7 @@ export function useSwipeBack({
         background: `rgba(108, 92, 231, ${0.3 + progress * 0.5})`,
         zIndex: 9999,
         pointerEvents: 'none' as const,
-        transition: tracking.current ? 'none' : 'all 0.22s cubic-bezier(0.22,1,0.36,1)',
+        transition: isTracking ? 'none' : 'all 0.22s cubic-bezier(0.22,1,0.36,1)',
       }
     : undefined;
 
@@ -112,7 +120,7 @@ export function useSwipeBack({
         background: `rgba(0,0,0,${progress * 0.08})`,
         zIndex: 9998,
         pointerEvents: 'none' as const,
-        transition: tracking.current ? 'none' : 'all 0.22s cubic-bezier(0.22,1,0.36,1)',
+        transition: isTracking ? 'none' : 'all 0.22s cubic-bezier(0.22,1,0.36,1)',
       }
     : undefined;
 

@@ -2,12 +2,11 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
-import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
-import { Plus, Building2, Zap, Users, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Plus, Building2, Zap, Users, MoreHorizontal } from 'lucide-react';
 import type { Expense, ExpenseCategory } from '@/types';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 

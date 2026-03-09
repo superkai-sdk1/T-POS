@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { Badge } from '@/components/ui/Badge';
 import {
   Package, Truck, ClipboardList, Users, AlertTriangle, Wallet, Star, Banknote, UtensilsCrossed, UserCircle,
-  ChevronRight, ArrowLeft, Percent, Info, RotateCcw, SlidersHorizontal, Ticket, Receipt,
+  ArrowLeft, Percent, Info, SlidersHorizontal, Ticket, Receipt,
 } from 'lucide-react';
 import type { InventoryItem } from '@/types';
 import { SupplyPage } from '@/components/supply/SupplyPage';
@@ -16,7 +16,6 @@ import { StaffManager } from './StaffManager';
 import { DebtorsManager } from './DebtorsManager';
 import { DiscountsManager } from './DiscountsManager';
 import { AboutSystem } from './AboutSystem';
-import { RefundsManager } from './RefundsManager';
 import { ModifiersManager } from './ModifiersManager';
 import { CertificatesManager } from './CertificatesManager';
 import { ExpensesManager } from './ExpensesManager';

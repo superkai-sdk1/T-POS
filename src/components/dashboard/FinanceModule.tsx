@@ -1,11 +1,9 @@
 import { memo, useState } from 'react';
-import { Badge } from '@/components/ui/Badge';
 import {
   ArrowUpRight, ArrowDownRight, Wallet, PieChart, AlertCircle,
-  TrendingUp, ChevronRight, ArrowLeft, Banknote, CreditCard,
-  HandCoins, Star, ShoppingBag, Truck, Receipt,
+  TrendingUp, ChevronRight, ArrowLeft, Receipt,
 } from 'lucide-react';
-import type { Profile, Supply, CashOperation } from '@/types';
+import type { Profile } from '@/types';
 
 interface Props {
   revenue: number;
@@ -44,7 +42,7 @@ type DetailView = null | 'revenue' | 'expenses' | 'pnl' | 'payments' | 'debtors'
 
 export const FinanceModule = memo(function FinanceModule(props: Props) {
   const { revenue, prevRevenue, netProfit, marginPct, totalExpenses,
-    cogs, periodExpenses, supplyCostInPeriod, paymentBreakdown,
+    paymentBreakdown,
     debtors, totalDebt, checkCount, prevCheckCount, avgCheck, delta, onNavigate } = props;
 
   const [detail, setDetail] = useState<DetailView>(null);
@@ -206,6 +204,9 @@ function DetailScreen(props: Props & { detail: DetailView; onBack: () => void })
     cogs, periodExpenses, supplyCostInPeriod, paymentBreakdown, debtors, totalDebt,
     checkCount, delta, onNavigate } = props;
 
+  // Stable timestamp for debtors view (useState initializer runs once, not on re-render)
+  const [nowTimestamp] = useState(() => Date.now());
+
   const statRow = (label: string, value: number, color = 'text-[var(--c-text)]') => (
     <div className="flex items-center justify-between py-2 border-b border-[var(--c-border)] last:border-0">
       <span className="text-xs text-[var(--c-hint)]">{label}</span>
@@ -292,7 +293,6 @@ function DetailScreen(props: Props & { detail: DetailView; onBack: () => void })
   }
 
   if (detail === 'debtors') {
-    const now = Date.now();
     const sorted = [...debtors].sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
     return (
       <div className="space-y-4 animate-fade-in-up">
@@ -309,7 +309,7 @@ function DetailScreen(props: Props & { detail: DetailView; onBack: () => void })
         </div>
         <div className="space-y-1.5">
           {sorted.map((d) => {
-            const daysAgo = d.updated_at ? Math.floor((now - new Date(d.updated_at).getTime()) / 86400000) : 0;
+            const daysAgo = d.updated_at ? Math.floor((nowTimestamp - new Date(d.updated_at).getTime()) / 86400000) : 0;
             const isOld = daysAgo > 30;
             return (
               <div key={d.id} className={`flex items-center justify-between p-3 rounded-xl card ${isOld ? 'border-l-2 border-l-[var(--c-danger)]' : ''}`}>

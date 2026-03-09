@@ -259,7 +259,7 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'tpos-auth',
       partialize: (state) => ({
-        user: state.user ? (({ password_hash, pin, ...safe }) => safe)(state.user) : null,
+        user: state.user ? (({ password_hash: _ph, pin: _p, ...safe }) => { void _ph; void _p; return safe; })(state.user) : null,
         rememberedUserId: state.rememberedUserId,
         rememberedNickname: state.rememberedNickname,
       }),

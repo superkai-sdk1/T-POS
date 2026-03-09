@@ -1,5 +1,5 @@
 import { memo, useMemo, useState } from 'react';
-import { ArrowLeft, Users, Crown, Search, Activity, UserPlus, Moon, ChevronRight, Star, Hash } from 'lucide-react';
+import { ArrowLeft, Users, Crown, Search, Activity, UserPlus, Moon, ChevronRight, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import type { PlayerStat } from '@/hooks/useAnalyticsData';
 import { useAnalyticsStore } from '@/store/analytics';

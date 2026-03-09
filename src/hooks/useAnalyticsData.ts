@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useAnalyticsStore, getPreviousPeriod } from '@/store/analytics';
+import { useAnalyticsStore } from '@/store/analytics';
 import type { Profile, Supply, CashOperation } from '@/types';
 
 interface ClosedCheck {

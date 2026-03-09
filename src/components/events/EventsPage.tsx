@@ -3,15 +3,15 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { usePOSStore } from '@/store/pos';
 import {
-    Calendar, MapPin, Clock, MoreVertical, Plus, Play,
-    CheckCircle2, History, Timer, CreditCard, ChevronRight,
-    MessageSquare, Trash2, Edit2, X
+    Calendar, Clock, Plus, Play,
+    CheckCircle2, Timer, CreditCard,
+    MessageSquare, Edit2, X
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
-import type { Event, EventStatus, EventType, PaymentType } from '@/types';
+import type { Event, EventStatus } from '@/types';
 
 const HOURLY_RATES: Record<number, number> = {
     1: 5000,

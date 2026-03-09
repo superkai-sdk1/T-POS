@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react';
+import { useRef, useEffect, type ReactNode } from 'react';
 
 interface TabPanelProps {
   id: string;
@@ -12,9 +12,11 @@ export function TabPanel({ id, activeTab, prevTab, tabOrder, children }: TabPane
   const isActive = activeTab === id;
   const prevActiveRef = useRef<string | null>(null);
 
-  if (isActive && prevActiveRef.current !== id) {
-    prevActiveRef.current = id;
-  }
+  useEffect(() => {
+    if (isActive) {
+      prevActiveRef.current = id;
+    }
+  }, [isActive, id]);
 
   let animClass = 'tab-content-enter';
   if (tabOrder && prevTab && prevTab !== id) {

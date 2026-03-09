@@ -7,7 +7,7 @@ import { Drawer } from '@/components/ui/Drawer';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import {
-  Plus, Pencil, Trash2, Check, Package, Search,
+  Plus, Pencil, Trash2, Check, Search,
 } from 'lucide-react';
 import type { Modifier, InventoryItem } from '@/types';
 

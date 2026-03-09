@@ -168,7 +168,7 @@ export function AboutSystem() {
               setStatus('error');
               setErrorMsg(data.message || 'Неизвестная ошибка');
             }
-          } catch {}
+          } catch { /* parse error — ignore */ }
         }
       }
     } catch {

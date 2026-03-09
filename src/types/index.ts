@@ -238,7 +238,7 @@ export interface Event {
   fixed_amount: number | null;
   status: EventStatus;
   comment: string | null;
-  reminders: any;
+  reminders: Record<string, unknown> | null;
   check_id: string | null;
   created_by: string | null;
   created_at: string;

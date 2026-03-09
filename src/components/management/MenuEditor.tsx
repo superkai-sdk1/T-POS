@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -7,8 +7,8 @@ import { Drawer } from '@/components/ui/Drawer';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import {
   Plus, ChevronUp, ChevronDown, Pencil, Trash2,
-  Image as ImageIcon, Eye, EyeOff, Search, Upload, X, Check,
-  FolderPlus, FolderOpen, ChevronRight, ArrowLeft,
+  Eye, EyeOff, Search, Upload, X, Check,
+  FolderPlus, ChevronRight, ArrowLeft,
   Package,
 } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
@@ -756,7 +756,7 @@ function ItemsList({
 }) {
   return (
     <div className="space-y-1.5">
-      {items.map((item, idx) => {
+      {items.map((item) => {
         const catItems = search ? items : items.filter((i) => i.category === item.category).sort((a, b) => a.sort_order - b.sort_order);
         const posInCategory = catItems.findIndex((i) => i.id === item.id);
         const CatIcon = getIconComponent(categories.find((c) => c.slug === item.category)?.icon_name || 'Package');
@@ -872,7 +872,7 @@ function CategoryEditorDrawer({
             onClick={() => setShowIcons(!showIcons)}
             className="flex items-center gap-2 p-3 rounded-xl card active:scale-[0.98] transition-all w-full"
           >
-            {(() => { const I = getIconComponent(form.icon_name); return <I className="w-5 h-5 text-[var(--c-text)]" />; })()}
+            {React.createElement(getIconComponent(form.icon_name), { className: "w-5 h-5 text-[var(--c-text)]" })}
             <span className="text-[13px] text-[var(--c-text)]">{form.icon_name}</span>
             <ChevronRight className={`w-4 h-4 text-[var(--c-hint)] ml-auto transition-transform ${showIcons ? 'rotate-90' : ''}`} />
           </button>

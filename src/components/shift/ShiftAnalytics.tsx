@@ -3,7 +3,7 @@ import {
   Receipt, ShoppingBag, Users, CreditCard,
   TrendingUp,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useSwipe } from '@/hooks/useSwipe';
 import type { ShiftAnalytics as SA } from '@/store/shift';
 
@@ -30,16 +30,16 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
   const fmtTime = (d: string | null) =>
     d ? new Date(d).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '-';
 
-  const shiftDuration = () => {
+  const shiftDuration = useMemo(() => {
     const start = new Date(analytics.shift.opened_at).getTime();
     const end = analytics.shift.closed_at
       ? new Date(analytics.shift.closed_at).getTime()
-      : Date.now();
+      : start; // fallback to opened time if not closed yet
     const ms = end - start;
     const h = Math.floor(ms / 3600000);
     const m = Math.floor((ms % 3600000) / 60000);
     return `${h}ч ${m}м`;
-  };
+  }, [analytics.shift.opened_at, analytics.shift.closed_at]);
 
   const tabs: { id: Tab; label: string; icon: typeof Receipt }[] = [
     { id: 'overview', label: 'Обзор', icon: TrendingUp },
@@ -86,7 +86,7 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                 <p className="text-[10px] text-[var(--c-muted)] font-semibold mb-0.5">Выручка</p>
                 <p className="text-2xl font-black text-[var(--c-text)] tabular-nums">{fmtCur(analytics.totalRevenue)}</p>
                 <p className="text-[10px] text-[var(--c-muted)] mt-0.5">
-                  {new Date(analytics.shift.opened_at).toLocaleDateString('ru-RU')} · {shiftDuration()}
+                  {new Date(analytics.shift.opened_at).toLocaleDateString('ru-RU')} · {shiftDuration}
                 </p>
               </div>
 

@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { hapticFeedback } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase';
-import { useMenuCategories, getIconComponent, getCategoryColor } from '@/hooks/useMenuCategories';
+import { useMenuCategories, getIconComponent } from '@/hooks/useMenuCategories';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -172,7 +172,6 @@ export function CheckView({ onBack }: CheckViewProps) {
   const [modifierItem, setModifierItem] = useState<InventoryItem | null>(null);
   const [availableModifiers, setAvailableModifiers] = useState<Modifier[]>([]);
   const [selectedModifierIds, setSelectedModifierIds] = useState<string[]>([]);
-  const modifierCacheRef = useRef<Map<string, Modifier[]>>(new Map());
 
   const handleBack = useCallback(async () => {
     if (noteTimer.current) clearTimeout(noteTimer.current);
@@ -208,7 +207,6 @@ export function CheckView({ onBack }: CheckViewProps) {
     return () => {
       if (cartSaveTimer.current) clearTimeout(cartSaveTimer.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cart, activeCheckId, debouncedSaveCart]);
 
   useEffect(() => {
