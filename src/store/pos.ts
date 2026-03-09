@@ -52,6 +52,8 @@ interface POSState {
   deleteCheckLocal: (checkId: string) => void;
   upsertCheckItemLocal: (item: CheckItem, modifiers?: { id: string; name: string; price: number }[]) => void;
   deleteCheckItemLocal: (checkId: string, itemId: string) => void;
+  upsertInventoryLocal: (item: InventoryItem) => void;
+  upsertCategoryLocal: (category: any) => void;
 }
 
 let _savingCart = false;
@@ -940,6 +942,38 @@ export const usePOSStore = create<POSState>((set, get) => ({
       activeCheck: state.activeCheck?.id === checkId ? null : state.activeCheck,
       cart: state.activeCheck?.id === checkId ? [] : state.cart,
     }));
+  },
+
+  upsertInventoryLocal: (item: InventoryItem) => {
+    set((state) => {
+      const current = state.inventory;
+      const exists = current.find(i => i.id === item.id);
+      if (exists) {
+        return {
+          inventory: current.map(i => i.id === item.id ? item : i)
+        };
+      } else {
+        return {
+          inventory: [...current, item].sort((a, b) => a.category.localeCompare(b.category) || a.sort_order - b.sort_order || a.name.localeCompare(b.name))
+        };
+      }
+    });
+  },
+
+  upsertCategoryLocal: (category: any) => {
+    set((state) => {
+      const current = state.menuCategories;
+      const exists = current.find(c => c.id === category.id);
+      if (exists) {
+        return {
+          menuCategories: current.map(c => c.id === category.id ? category : c)
+        };
+      } else {
+        return {
+          menuCategories: [...current, category].sort((a, b) => a.sort_order - b.sort_order)
+        };
+      }
+    });
   },
 
   upsertCheckItemLocal: (item: CheckItem, modifiers?: { id: string; name: string; price: number }[]) => {

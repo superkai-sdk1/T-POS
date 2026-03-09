@@ -30,6 +30,8 @@ interface AuthState {
   forgetUser: () => void;
   isOwner: () => boolean;
   refreshProfile: () => Promise<void>;
+  upsertProfileLocal: (profile: Profile) => void;
+  upsertStaffLocal: (staff: StaffEntry) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -230,6 +232,27 @@ export const useAuthStore = create<AuthState>()(
           .single();
         if (data && get().user?.id === userId) {
           set({ user: data as Profile });
+        }
+      },
+
+      upsertProfileLocal: (profile: Profile) => {
+        const current = get().user;
+        if (current && current.id === profile.id) {
+          set({ user: profile });
+        }
+      },
+
+      upsertStaffLocal: (staff: StaffEntry) => {
+        const currentStaff = get().staffUsers;
+        const exists = currentStaff.find(s => s.id === staff.id);
+        if (exists) {
+          set({
+            staffUsers: currentStaff.map(s => s.id === staff.id ? staff : s)
+          });
+        } else {
+          set({
+            staffUsers: [...currentStaff, staff].sort((a, b) => a.role.localeCompare(b.role) || a.nickname.localeCompare(b.nickname))
+          });
         }
       },
     }),

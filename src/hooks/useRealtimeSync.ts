@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { usePOSStore, isSavingCart } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
+import { useAuthStore } from '@/store/auth';
 
 function emitTableChange(table: string) {
   window.dispatchEvent(new CustomEvent('rt:change', { detail: table }));
@@ -54,32 +55,54 @@ export function useRealtimeSync() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'inventory' },
-        () => debounced('inventory', () => {
-          usePOSStore.getState().loadInventory();
+        (payload: any) => {
+          if (payload.eventType === 'DELETE') {
+            // Usually we don't delete from inventory, but if we do:
+            usePOSStore.getState().loadInventory();
+          } else {
+            usePOSStore.getState().upsertInventoryLocal(payload.new);
+          }
           emitTableChange('inventory');
-        }),
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'menu_categories' },
+        (payload: any) => {
+          if (payload.eventType !== 'DELETE') {
+            usePOSStore.getState().upsertCategoryLocal(payload.new);
+          }
+          emitTableChange('menu_categories');
+        },
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'shifts' },
-        () => debounced('shifts', () => {
-          useShiftStore.getState().loadActiveShift();
+        (payload: any) => {
+          if (payload.eventType !== 'DELETE') {
+            useShiftStore.getState().upsertShiftLocal(payload.new);
+          }
           emitTableChange('shifts');
-        }),
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'cash_operations' },
-        () => debounced('cash_ops', () => {
-          emitTableChange('cash_operations');
-        }),
+        },
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'profiles' },
-        () => debounced('profiles', () => {
+        (payload: any) => {
+          if (payload.eventType !== 'DELETE') {
+            useAuthStore.getState().upsertProfileLocal(payload.new);
+            // Also update staff list if relevant
+            if (payload.new.role === 'staff' || payload.new.role === 'owner') {
+              useAuthStore.getState().upsertStaffLocal({
+                id: payload.new.id,
+                nickname: payload.new.nickname,
+                role: payload.new.role,
+                hasPin: !!payload.new.pin
+              });
+            }
+          }
           emitTableChange('profiles');
-        }),
+        },
       )
       .subscribe();
 

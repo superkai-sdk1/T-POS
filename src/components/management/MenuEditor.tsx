@@ -215,8 +215,12 @@ export function MenuEditor() {
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
     if (swapIdx < 0 || swapIdx >= categoryItems.length) return;
     const other = categoryItems[swapIdx];
-    await supabase.from('inventory').update({ sort_order: other.sort_order }).eq('id', item.id);
-    await supabase.from('inventory').update({ sort_order: item.sort_order }).eq('id', other.id);
+
+    await supabase.from('inventory').upsert([
+      { id: item.id, sort_order: other.sort_order },
+      { id: other.id, sort_order: item.sort_order }
+    ]);
+
     loadItems();
   };
 
@@ -293,8 +297,12 @@ export function MenuEditor() {
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
     if (swapIdx < 0 || swapIdx >= siblings.length) return;
     const other = siblings[swapIdx];
-    await supabase.from('menu_categories').update({ sort_order: other.sort_order }).eq('id', cat.id);
-    await supabase.from('menu_categories').update({ sort_order: cat.sort_order }).eq('id', other.id);
+
+    await supabase.from('menu_categories').upsert([
+      { id: cat.id, sort_order: other.sort_order },
+      { id: other.id, sort_order: cat.sort_order }
+    ]);
+
     reloadCategories();
   };
 

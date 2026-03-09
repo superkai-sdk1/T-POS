@@ -15,6 +15,7 @@ interface ShiftState {
   closeShift: (cashEnd: number, note?: string) => Promise<boolean>;
   getShiftAnalytics: (shiftId: string) => Promise<ShiftAnalytics | null>;
   dismissBirthdays: () => void;
+  upsertShiftLocal: (shift: Shift) => void;
 }
 
 export interface ShiftAnalytics {
@@ -240,6 +241,14 @@ export const useShiftStore = create<ShiftState>()(
           itemsSold: Array.from(itemMap.values()).sort((a, b) => b.revenue - a.revenue),
           playerBreakdown: Array.from(playerMap.values()).sort((a, b) => b.total - a.total),
         };
+      },
+      upsertShiftLocal: (shift: Shift) => {
+        const current = get().activeShift;
+        if (shift.status === 'open') {
+          set({ activeShift: shift });
+        } else if (current && current.id === shift.id && shift.status === 'closed') {
+          set({ activeShift: null });
+        }
       },
     }),
     {
