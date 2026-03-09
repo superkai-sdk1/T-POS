@@ -180,7 +180,7 @@ export function ClientsManager() {
   const clientVirtualizer = useVirtualizer({
     count: filtered.length,
     getScrollElement: () => clientListRef.current,
-    estimateSize: () => 60,
+    estimateSize: () => 72,
     overscan: 5,
   });
 
@@ -428,7 +428,7 @@ export function ClientsManager() {
           </p>
         </div>
       ) : (
-        <div ref={clientListRef} className="overflow-y-auto" style={{ height: Math.min(filtered.length * 60, 500) }}>
+        <div ref={clientListRef} className="overflow-y-auto flex-1" style={{ maxHeight: 'calc(100dvh - 320px)', minHeight: 200 }}>
           <div style={{ height: `${clientVirtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
             {clientVirtualizer.getVirtualItems().map((virtualRow) => {
               const client = filtered[virtualRow.index];
@@ -589,25 +589,25 @@ export function ClientsManager() {
         open={showEditor}
         onClose={() => setShowEditor(false)}
         title={editingClient ? 'Редактирование' : 'Новый клиент'}
-        size="md"
+        size="xl"
       >
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Photo */}
-          <div className="flex flex-col items-center gap-3">
-            <div className="relative">
-              <div className="w-24 h-24 rounded-full overflow-hidden bg-[var(--c-surface-hover)] flex items-center justify-center">
+          <div className="flex items-center gap-3">
+            <div className="relative shrink-0">
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-[var(--c-surface-hover)] flex items-center justify-center">
                 {form.photo_url ? (
                   <img src={form.photo_url} alt="Photo" className="w-full h-full object-cover" />
                 ) : (
-                  <User className="w-10 h-10 text-[var(--c-muted)]" />
+                  <User className="w-7 h-7 text-[var(--c-muted)]" />
                 )}
               </div>
               {form.photo_url && (
                 <button
                   onClick={() => updateField('photo_url', '')}
-                  className="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-red-500/80 flex items-center justify-center active:scale-90"
+                  className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500/80 flex items-center justify-center active:scale-90"
                 >
-                  <X className="w-3.5 h-3.5 text-white" />
+                  <X className="w-3 h-3 text-white" />
                 </button>
               )}
             </div>
@@ -632,6 +632,7 @@ export function ClientsManager() {
             placeholder="Имя клиента"
             value={form.nickname}
             onChange={(e) => updateField('nickname', e.target.value)}
+            compact
           />
 
           <Input
@@ -639,6 +640,7 @@ export function ClientsManager() {
             placeholder="@username"
             value={form.tg_username}
             onChange={(e) => updateField('tg_username', e.target.value)}
+            compact
           />
 
           <Input
@@ -647,6 +649,7 @@ export function ClientsManager() {
             value={form.phone}
             onChange={(e) => updateField('phone', e.target.value)}
             type="tel"
+            compact
           />
 
           <Input
@@ -654,6 +657,7 @@ export function ClientsManager() {
             type="date"
             value={form.birthday}
             onChange={(e) => updateField('birthday', e.target.value)}
+            compact
           />
 
           <Input
@@ -662,6 +666,7 @@ export function ClientsManager() {
             value={form.search_tags_text}
             onChange={(e) => updateField('search_tags_text', e.target.value)}
             hint="Всё, по чему можно найти клиента при создании чека"
+            compact
           />
 
           {/* Tier selector */}
