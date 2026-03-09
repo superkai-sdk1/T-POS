@@ -199,6 +199,21 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     }
   };
 
+  const handleConfirmNoTariff = async () => {
+    hapticFeedback('medium');
+    const check = await createCheck(selectedPlayer?.id || null);
+    if (check) {
+      setShowTariff(false);
+      setShowNewCheck(false);
+      setSelectedPlayer(null);
+      setSearchQuery('');
+      setPlayers([]);
+      onSelectCheck();
+    } else {
+      hapticNotification('error');
+    }
+  };
+
   const handleCreateCheckNoClient = async () => {
     hapticFeedback('medium');
     const check = await createCheck(null);
@@ -381,10 +396,72 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         size="xl"
       >
         <div className="flex flex-col h-full space-y-3">
-          {/* ── Search Results (Top) ── */}
-          <div className="flex-1 overflow-y-auto min-h-[40dvh] space-y-1 pr-1">
+          {/* ── Search input (Top) ── */}
+          <div className="shrink-0 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--c-muted)]" />
+            <Input
+              placeholder="Поиск игрока..."
+              value={searchQuery}
+              onChange={(e) => searchPlayers(e.target.value)}
+              className="pl-9"
+              compact
+              autoFocus
+            />
+          </div>
+
+          {/* ── Quick actions ── */}
+          <div className="shrink-0 flex gap-2">
+            <button
+              onClick={handleCreateCheckNoClient}
+              className="flex items-center gap-2 flex-1 p-2.5 rounded-xl active:scale-[0.97] transition-all"
+              style={{
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+              }}
+            >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <UserX className="w-4 h-4 text-[var(--c-hint)]" />
+              </div>
+              <span className="text-[12px] font-semibold text-[var(--c-text)]">Без клиента</span>
+            </button>
+            <button
+              onClick={() => { setShowNewCheck(false); setShowCreateClient(true); }}
+              className="flex items-center gap-2 flex-1 p-2.5 rounded-xl active:scale-[0.97] transition-all"
+              style={{
+                background: 'rgba(52, 211, 153, 0.06)',
+                border: '1px solid rgba(52, 211, 153, 0.15)',
+              }}
+            >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(52, 211, 153, 0.1)' }}>
+                <UserPlus className="w-4 h-4 text-[var(--c-success)]" />
+              </div>
+              <span className="text-[12px] font-semibold text-[var(--c-success)]">Новый</span>
+            </button>
+            <button
+              onClick={() => { setShowNewCheck(false); loadSpaces(); }}
+              className="flex items-center gap-2 p-2.5 rounded-xl active:scale-[0.97] transition-all"
+              style={{
+                background: 'rgba(99, 102, 241, 0.06)',
+                border: '1px solid rgba(99, 102, 241, 0.12)',
+              }}
+            >
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(99, 102, 241, 0.12)' }}>
+                <DoorOpen className="w-4 h-4 text-indigo-400" />
+              </div>
+            </button>
+          </div>
+
+          {/* ── Divider ── */}
+          <div className="shrink-0 flex items-center gap-2">
+            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+            <span className="text-[9px] text-[var(--c-muted)] font-semibold tracking-widest">ИГРОКИ</span>
+            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+          </div>
+
+          {/* ── Player list ── */}
+          <div className="flex-1 overflow-y-auto min-h-0 space-y-1 -mx-1 px-1">
             {isSearching && (
-              <div className="flex justify-center py-6">
+              <div className="flex justify-center py-8">
                 <div className="w-6 h-6 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin" />
               </div>
             )}
@@ -392,103 +469,46 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               <button
                 key={player.id}
                 onClick={() => handlePlayerSelected(player)}
-                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl transition-all active:scale-[0.98]"
-                style={{ background: 'transparent' }}
-                onPointerEnter={(e) => { (e.target as HTMLElement).closest('button')!.style.background = 'rgba(255,255,255,0.04)'; }}
-                onPointerLeave={(e) => { (e.target as HTMLElement).closest('button')!.style.background = 'transparent'; }}
+                className="w-full flex items-center gap-3 p-3 rounded-xl transition-all active:scale-[0.98] hover:bg-[rgba(255,255,255,0.04)]"
               >
                 <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(6, 182, 212, 0.06))' }}
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.08))' }}
                 >
-                  <span className="text-xs font-bold text-[var(--c-accent-light)]">
+                  <span className="text-sm font-bold text-[var(--c-accent-light)]">
                     {player.nickname?.charAt(0).toUpperCase()}
                   </span>
                 </div>
                 <div className="text-left flex-1 min-w-0">
-                  <p className="font-semibold text-[13px] text-[var(--c-text)] truncate">
+                  <p className="font-bold text-[14px] text-[var(--c-text)] truncate">
                     {player.nickname}
                   </p>
-                  <div className="flex gap-1 mt-0.5">
+                  <div className="flex gap-1.5 mt-1">
                     {tierBadge(player.client_tier)}
                     {(player.balance ?? 0) < 0 && <Badge variant="danger" size="sm">{player.balance}₽</Badge>}
                     {(player.bonus_points ?? 0) > 0 && <Badge variant="accent" size="sm">{player.bonus_points} бон.</Badge>}
                   </div>
                 </div>
+                <Receipt className="w-4 h-4 text-[var(--c-muted)] shrink-0" />
               </button>
             ))}
             {searchQuery.length > 0 && !isSearching && players.length === 0 && (
-              <p className="text-xs text-center text-[var(--c-hint)] py-6">
-                Никого не найдено
-              </p>
+              <div className="text-center py-8">
+                <UserX className="w-8 h-8 text-[var(--c-muted)] mx-auto mb-2" />
+                <p className="text-xs text-[var(--c-hint)]">Никого не найдено</p>
+                <button
+                  onClick={() => { setShowNewCheck(false); setNewNickname(searchQuery); setShowCreateClient(true); }}
+                  className="mt-3 text-xs font-semibold text-[var(--c-accent-light)] active:opacity-70"
+                >
+                  Создать «{searchQuery}» →
+                </button>
+              </div>
             )}
             {searchQuery.length === 0 && players.length === 0 && !isSearching && (
-              <p className="text-xs text-center text-[var(--c-hint)] py-6">
-                Введите никнейм или номер
+              <p className="text-xs text-center text-[var(--c-muted)] py-8">
+                Начните вводить никнейм для поиска
               </p>
             )}
-          </div>
-
-          {/* ── Search & Navigation (Bottom) ── */}
-          <div className="shrink-0 space-y-3 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--c-muted)]" />
-              <Input
-                placeholder="Поиск по нику..."
-                value={searchQuery}
-                onChange={(e) => searchPlayers(e.target.value)}
-                className="pl-9"
-                compact
-              />
-            </div>
-
-            <div className="flex items-center gap-2 py-1">
-              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-              <span className="text-[9px] text-[var(--c-muted)] font-semibold tracking-widest">ИЛИ ВЫБЕРИТЕ</span>
-              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 pb-1">
-              <button
-                onClick={handleCreateCheckNoClient}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-xl active:scale-[0.97] transition-all"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                }}
-              >
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                  <UserX className="w-4 h-4 text-[var(--c-hint)]" />
-                </div>
-                <span className="text-[11px] font-semibold text-[var(--c-text)]">Без клиента</span>
-              </button>
-              <button
-                onClick={() => { setShowNewCheck(false); setShowCreateClient(true); }}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-xl active:scale-[0.97] transition-all"
-                style={{
-                  background: 'rgba(52, 211, 153, 0.06)',
-                  border: '1px solid rgba(52, 211, 153, 0.15)',
-                }}
-              >
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(52, 211, 153, 0.1)' }}>
-                  <UserPlus className="w-4 h-4 text-[var(--c-success)]" />
-                </div>
-                <span className="text-[11px] font-semibold text-[var(--c-success)]">Новый</span>
-              </button>
-              <button
-                onClick={() => { setShowNewCheck(false); loadSpaces(); }}
-                className="flex flex-col items-center gap-1.5 p-3 rounded-xl active:scale-[0.97] transition-all"
-                style={{
-                  background: 'rgba(99, 102, 241, 0.06)',
-                  border: '1px solid rgba(99, 102, 241, 0.12)',
-                }}
-              >
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(99, 102, 241, 0.12)' }}>
-                  <DoorOpen className="w-4 h-4 text-indigo-400" />
-                </div>
-                <span className="text-[11px] font-semibold text-indigo-400">Кабинка</span>
-              </button>
-            </div>
           </div>
         </div>
       </Drawer>
@@ -580,6 +600,12 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               <Receipt className="w-4 h-4" />
               Открыть чек · {VISIT_ITEMS[selectedTariff].price}₽
             </Button>
+            <button
+              onClick={handleConfirmNoTariff}
+              className="w-full text-center py-2 text-xs font-semibold text-[var(--c-hint)] active:text-[var(--c-text)] transition-colors"
+            >
+              Без тарифа (пустой чек)
+            </button>
           </div>
         )}
       </Drawer>
