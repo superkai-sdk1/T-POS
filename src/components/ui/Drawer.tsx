@@ -10,48 +10,47 @@ interface DrawerProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
+const SIZE_RATIO: Record<string, number> = { sm: 0.6, md: 0.7, lg: 0.85, xl: 0.95 };
+
 export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerProps) {
   const contentRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [closing, setClosing] = useState(false);
 
-  const maxH = size === 'sm' ? 'max-h-[60dvh]' : size === 'md' ? 'max-h-[70dvh]' : size === 'lg' ? 'max-h-[85dvh]' : 'max-h-[95dvh] h-[95dvh]';
-
-  // Adapt to virtual keyboard on mobile (visualViewport API)
+  // Track visual viewport for keyboard adaptation
   useEffect(() => {
     if (!open) return;
     const vv = window.visualViewport;
     if (!vv) return;
 
-    const onResize = () => {
-      const panel = panelRef.current;
-      if (!panel) return;
-      // When keyboard opens, visualViewport.height shrinks
-      // Offset the drawer so it stays visible within the visual viewport
-      const offsetTop = vv.offsetTop;
-      const vpHeight = vv.height;
-      panel.style.maxHeight = `${vpHeight * 0.92}px`;
-      panel.style.transform = dragY > 0
-        ? `translateY(${offsetTop + dragY}px) translateZ(0)`
-        : `translateY(${offsetTop}px) translateZ(0)`;
+    const sync = () => {
+      const container = containerRef.current;
+      if (!container) return;
+      // Position the fixed container to match the visual viewport
+      // This keeps content visible when virtual keyboard opens
+      container.style.height = `${vv.height}px`;
+      container.style.top = `${vv.offsetTop}px`;
     };
 
-    vv.addEventListener('resize', onResize);
-    vv.addEventListener('scroll', onResize);
+    // Initial sync
+    sync();
+
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
     return () => {
-      vv.removeEventListener('resize', onResize);
-      vv.removeEventListener('scroll', onResize);
-      // Reset on close
-      const panel = panelRef.current;
-      if (panel) {
-        panel.style.maxHeight = '';
-        panel.style.transform = '';
+      vv.removeEventListener('resize', sync);
+      vv.removeEventListener('scroll', sync);
+      const container = containerRef.current;
+      if (container) {
+        container.style.height = '';
+        container.style.top = '';
       }
     };
-  }, [open, dragY]);
+  }, [open]);
 
   useEffect(() => {
     if (open) {
@@ -99,9 +98,15 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
   if (!open && !closing) return null;
 
   const opacity = closing ? 0 : dragY > 0 ? Math.max(0, 1 - dragY / 250) : 1;
+  const ratio = SIZE_RATIO[size] ?? 0.85;
 
   const drawerContent = (
-    <div className="fixed inset-0 z-50 flex items-end lg:items-center lg:justify-center">
+    <div
+      ref={containerRef}
+      className="fixed inset-x-0 z-50 flex items-end lg:items-center lg:justify-center overflow-hidden"
+      style={{ top: 0, height: '100dvh' }}
+    >
+      {/* Backdrop */}
       <div
         className={`absolute inset-0 ${closing ? '' : 'animate-fade-in'}`}
         style={{
@@ -113,12 +118,13 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
         }}
         onClick={handleClose}
       />
+      {/* Panel */}
       <div
         ref={panelRef}
         onClick={(e) => e.stopPropagation()}
-        className={`relative w-full ${maxH} lg:max-h-[80vh] lg:max-w-lg lg:rounded-2xl rounded-t-3xl overflow-hidden flex flex-col ${closing ? 'animate-slide-down' : 'lg:animate-pop-in animate-slide-up'
-          }`}
+        className={`relative w-full lg:max-w-lg lg:rounded-2xl rounded-t-3xl overflow-hidden flex flex-col ${closing ? 'animate-slide-down' : 'lg:animate-pop-in animate-slide-up'}`}
         style={{
+          maxHeight: `${ratio * 100}%`,
           transform: dragY > 0 ? `translateY(${dragY}px) translateZ(0)` : 'translateZ(0)',
           transition: dragging ? 'none' : 'transform 0.2s var(--ease-spring)',
           willChange: 'transform',
@@ -133,7 +139,7 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
       >
         {/* ── Drag Handle ── */}
         <div
-          className="flex flex-col items-center pt-3 pb-1 lg:hidden cursor-grab"
+          className="flex flex-col items-center pt-3 pb-1 lg:hidden cursor-grab shrink-0"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -147,7 +153,7 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
         </div>
 
         {/* ── Title Bar ── */}
-        <div className="flex items-center justify-between px-5 py-2.5">
+        <div className="flex items-center justify-between px-5 py-2.5 shrink-0">
           {title && (
             <h3 className="text-base font-bold text-[var(--c-text)] truncate min-w-0 flex-1 mr-2">
               {title}
@@ -168,7 +174,7 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
         {/* ── Content ── */}
         <div
           ref={contentRef}
-          className="overflow-y-auto px-5 pb-5 flex-1"
+          className="overflow-y-auto px-5 pb-5 flex-1 min-h-0"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
