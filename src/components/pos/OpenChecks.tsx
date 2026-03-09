@@ -519,7 +519,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         open={showTariff}
         onClose={() => { setShowTariff(false); setSelectedPlayer(null); }}
         title="Выберите тариф"
-        size="sm"
+        size="lg"
       >
         {selectedPlayer && (
           <div className="space-y-4">
