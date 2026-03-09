@@ -85,11 +85,18 @@ export default function App() {
     if (showCheckView && activeCheck) {
       await leaveCheck();
     }
+
+    // Reset internal states when clicking the same tab or switching
+    if (tab === activeTab || tab !== 'management') {
+      setManagementScreen(undefined);
+    }
+    if (tab === activeTab || tab !== 'pos') {
+      setShowCheckView(false);
+    }
+
     prevTabRef.current = activeTab;
     setActiveTab(tab);
-    setShowCheckView(false);
     setVisitedTabs((prev) => new Set(prev).add(tab));
-    if (tab !== 'management') setManagementScreen(undefined);
   }, [showCheckView, activeCheck, leaveCheck, activeTab]);
 
   const handleDashboardNavigate = useCallback((target: string) => {
@@ -120,7 +127,7 @@ export default function App() {
         </div>
         {/* Desktop: split view — list left, check right */}
         <div className="hidden lg:flex gap-4 h-full">
-          <div className={`shrink-0 overflow-y-auto pr-1 ${showCheckView ? 'w-[340px]' : 'flex-1'}`}>
+          <div className={`shrink-0 overflow-y-auto pr-1 transition-all duration-300 ${showCheckView ? 'lg:w-[30%] xl:w-[25%] min-w-[340px]' : 'flex-1'}`}>
             <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
           </div>
           {showCheckView && (

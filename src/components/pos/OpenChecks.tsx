@@ -60,7 +60,7 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
   return (
     <button
       onClick={() => onSelect(check)}
-      className="text-left p-3 flex flex-col gap-2 rounded-2xl active:scale-[0.97] transition-all duration-200"
+      className="group text-left p-3 flex flex-col gap-2 rounded-2xl active:scale-[0.97] transition-all duration-300 hover:bg-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.2)] hover:shadow-[0_8px_24px_rgba(139,92,246,0.15)]"
       style={{
         background: 'rgba(255, 255, 255, 0.04)',
         backdropFilter: 'blur(16px)',
@@ -288,83 +288,85 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <ShiftBar />
+    <div className="flex-1 flex flex-col min-h-0 relative">
+      <div className="flex-1 space-y-4 pb-24 overflow-y-auto no-scrollbar">
+        <ShiftBar />
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-[var(--c-text)]">Касса</h2>
-          <p className="text-[11px] text-[var(--c-hint)]">
-            {openChecks.length > 0 ? `${openChecks.length} открыт${openChecks.length === 1 ? '' : 'о'}` : 'Нет открытых чеков'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowHistory(true)}
-            className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-90"
-            style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-            }}
-          >
-            <History className="w-4 h-4 text-[var(--c-hint)]" />
-          </button>
-          <Button size="sm" variant="danger" onClick={() => setShowRefunds(true)} disabled={!activeShift}>
-            <RotateCcw className="w-3.5 h-3.5" />
-            Возвраты
-          </Button>
-        </div>
-      </div>
-
-      {!checksLoaded ? (
-        <div className="grid grid-cols-2 gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
-          {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="p-3 rounded-2xl animate-pulse space-y-2"
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-[var(--c-text)]">Касса</h2>
+            <p className="text-[11px] text-[var(--c-hint)]">
+              {openChecks.length > 0 ? `${openChecks.length} открыт${openChecks.length === 1 ? '' : 'о'}` : 'Нет открытых чеков'}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowHistory(true)}
+              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-90"
               style={{
-                opacity: 1 - i * 0.2,
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.06)',
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
               }}
             >
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg" style={{ background: 'rgba(255,255,255,0.06)' }} />
-                <div className="flex-1"><div className="h-3 w-20 rounded" style={{ background: 'rgba(255,255,255,0.06)' }} /></div>
+              <History className="w-4 h-4 text-[var(--c-hint)]" />
+            </button>
+            <Button size="sm" variant="danger" onClick={() => setShowRefunds(true)} disabled={!activeShift}>
+              <RotateCcw className="w-3.5 h-3.5" />
+              Возвраты
+            </Button>
+          </div>
+        </div>
+
+        {!checksLoaded ? (
+          <div className="grid grid-cols-2 gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="p-3 rounded-2xl animate-pulse space-y-2"
+                style={{
+                  opacity: 1 - i * 0.2,
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                  <div className="flex-1"><div className="h-3 w-20 rounded" style={{ background: 'rgba(255,255,255,0.06)' }} /></div>
+                </div>
+                <div className="flex items-end justify-between">
+                  <div className="h-2.5 w-12 rounded" style={{ background: 'rgba(255,255,255,0.04)' }} />
+                  <div className="h-5 w-14 rounded" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                </div>
               </div>
-              <div className="flex items-end justify-between">
-                <div className="h-2.5 w-12 rounded" style={{ background: 'rgba(255,255,255,0.04)' }} />
-                <div className="h-5 w-14 rounded" style={{ background: 'rgba(255,255,255,0.06)' }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : openChecks.length === 0 ? (
-        <div className="text-center py-20 animate-fade-in">
-          <button
-            onClick={() => activeShift && setShowNewCheck(true)}
-            disabled={!activeShift}
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 active:scale-90 transition-transform disabled:opacity-30"
-            style={{
-              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(6, 182, 212, 0.06))',
-              border: '1px solid rgba(139, 92, 246, 0.15)',
-              boxShadow: '0 0 30px rgba(139, 92, 246, 0.08)',
-            }}
-          >
-            <Plus className="w-7 h-7 text-[var(--c-accent-light)] animate-pulse" />
-          </button>
-          <p className="text-[var(--c-hint)] text-sm font-medium">Нет открытых чеков</p>
-          <p className="text-xs text-[var(--c-muted)] mt-1">
-            {activeShift ? 'Нажмите чтобы создать' : 'Откройте смену для начала'}
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-2.5 stagger-children" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', transform: 'translateZ(0)' }}>
-          {openChecks.map((check) => (
-            <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} />
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        ) : openChecks.length === 0 ? (
+          <div className="text-center py-20 animate-fade-in">
+            <button
+              onClick={() => activeShift && setShowNewCheck(true)}
+              disabled={!activeShift}
+              className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 active:scale-90 transition-transform disabled:opacity-30"
+              style={{
+                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(6, 182, 212, 0.06))',
+                border: '1px solid rgba(139, 92, 246, 0.15)',
+                boxShadow: '0 0 30px rgba(139, 92, 246, 0.08)',
+              }}
+            >
+              <Plus className="w-7 h-7 text-[var(--c-accent-light)] animate-pulse" />
+            </button>
+            <p className="text-[var(--c-hint)] text-sm font-medium">Нет открытых чеков</p>
+            <p className="text-xs text-[var(--c-muted)] mt-1">
+              {activeShift ? 'Нажмите чтобы создать' : 'Откройте смену для начала'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-2.5 stagger-children" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', transform: 'translateZ(0)' }}>
+            {openChecks.map((check) => (
+              <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} />
+            ))}
+          </div>
+        )}
+      </div>
 
       <Drawer open={showHistory} onClose={() => setShowHistory(false)} title="История смен">
         <ShiftHistory />
@@ -512,11 +514,11 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-bold text-[var(--c-text)] truncate">{selectedPlayer.nickname}</p>
+                <p className="text-[13px] font-bold text-[var(--c-text)] truncate">{selectedPlayer?.nickname}</p>
                 <div className="flex gap-1 mt-0.5">
-                  {tierBadge(selectedPlayer.client_tier)}
-                  {(selectedPlayer.bonus_points ?? 0) > 0 && (
-                    <Badge variant="accent" size="sm">{selectedPlayer.bonus_points} бон.</Badge>
+                  {tierBadge(selectedPlayer?.client_tier)}
+                  {(selectedPlayer?.bonus_points ?? 0) > 0 && (
+                    <Badge variant="accent" size="sm">{selectedPlayer?.bonus_points} бон.</Badge>
                   )}
                 </div>
               </div>
@@ -541,7 +543,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                       boxShadow: isSelected ? '0 0 16px rgba(139, 92, 246, 0.1)' : undefined,
                     }}
                   >
-                    {isDefault && (
+                    {isDefault && selectedPlayer && (
                       <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
                         <Star className="w-2.5 h-2.5 text-white fill-white" />
                       </div>
@@ -680,7 +682,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
       </Drawer>
 
       {/* ── Fixed "New" button at the bottom ── */}
-      <div className="sticky bottom-0 left-0 right-0 pt-4 pb-2 mt-auto z-20 pointer-events-none">
+      <div className="absolute bottom-0 left-0 right-0 px-0 pt-6 pb-4 z-20 pointer-events-none" style={{ background: 'linear-gradient(to top, rgba(10, 14, 26, 0.95) 70%, transparent)' }}>
         <div className="max-w-md mx-auto pointer-events-auto px-4 lg:px-0">
           <Button
             size="lg"
