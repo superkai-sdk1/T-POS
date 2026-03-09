@@ -101,3 +101,49 @@ FROM profiles
 WHERE search_tags != '{}'
 ORDER BY nickname;
 
+-- ============================================
+-- 6. Storage bucket для фото клиентов
+-- ============================================
+
+-- Создаём публичный bucket (если нет)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('client-photos', 'client-photos', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+-- Политики для storage (безопасно для повторного запуска)
+DO $$ BEGIN
+  CREATE POLICY "client_photos_insert" ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'client-photos');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "client_photos_insert_anon" ON storage.objects FOR INSERT TO anon
+  WITH CHECK (bucket_id = 'client-photos');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "client_photos_select" ON storage.objects FOR SELECT TO public
+  USING (bucket_id = 'client-photos');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "client_photos_update" ON storage.objects FOR UPDATE TO anon
+  USING (bucket_id = 'client-photos');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "client_photos_delete" ON storage.objects FOR DELETE TO authenticated
+  USING (bucket_id = 'client-photos');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  CREATE POLICY "client_photos_delete_anon" ON storage.objects FOR DELETE TO anon
+  USING (bucket_id = 'client-photos');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+

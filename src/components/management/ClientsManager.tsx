@@ -235,14 +235,49 @@ export function ClientsManager() {
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploading(true);
-    const ext = file.name.split('.').pop() || 'jpg';
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from('client-photos').upload(path, file, { contentType: file.type });
-    if (!error) {
-      const url = `${SUPABASE_URL}/storage/v1/object/public/client-photos/${path}`;
-      updateField('photo_url', url);
-      hapticNotification('success');
+
+    try {
+      // Try Supabase Storage first
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await supabase.storage.from('client-photos').upload(path, file, {
+        contentType: file.type,
+        upsert: true,
+      });
+
+      if (!error) {
+        // Try public URL
+        const { data: urlData } = supabase.storage.from('client-photos').getPublicUrl(path);
+        if (urlData?.publicUrl) {
+          updateField('photo_url', urlData.publicUrl);
+          hapticNotification('success');
+        } else {
+          // Fallback: manual URL
+          const url = `${SUPABASE_URL}/storage/v1/object/public/client-photos/${path}`;
+          updateField('photo_url', url);
+          hapticNotification('success');
+        }
+      } else {
+        console.error('Storage upload error:', error.message);
+        // Fallback: convert to base64 Data URL
+        const reader = new FileReader();
+        reader.onload = () => {
+          updateField('photo_url', reader.result as string);
+          hapticNotification('success');
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      // Fallback: base64
+      const reader = new FileReader();
+      reader.onload = () => {
+        updateField('photo_url', reader.result as string);
+        hapticNotification('success');
+      };
+      reader.readAsDataURL(file);
     }
+
     setIsUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
