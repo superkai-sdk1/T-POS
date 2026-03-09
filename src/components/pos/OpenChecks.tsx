@@ -70,7 +70,7 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
     >
       <div className="flex items-center gap-2">
         <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
           style={{
             background: hasSpace
               ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(99, 102, 241, 0.05))'
@@ -80,9 +80,11 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
           }}
         >
           {hasSpace ? (() => { const Icon = spaceIconMap[check.space!.type] || DoorOpen; return <Icon className="w-3.5 h-3.5 text-indigo-400" />; })()
-            : check.player
-              ? <span className="text-xs font-bold text-[var(--c-accent-light)]">{check.player.nickname?.charAt(0).toUpperCase()}</span>
-              : <UserX className="w-3.5 h-3.5 text-[var(--c-muted)]" />}
+            : check.player?.photo_url
+              ? <img src={check.player.photo_url} alt="" className="w-full h-full object-cover" />
+              : check.player
+                ? <span className="text-xs font-bold text-[var(--c-accent-light)]">{check.player.nickname?.charAt(0).toUpperCase()}</span>
+                : <UserX className="w-3.5 h-3.5 text-[var(--c-muted)]" />}
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-[13px] text-[var(--c-text)] truncate leading-tight">
