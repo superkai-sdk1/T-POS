@@ -405,7 +405,6 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               onChange={(e) => searchPlayers(e.target.value)}
               className="pl-9"
               compact
-              autoFocus
             />
           </div>
 

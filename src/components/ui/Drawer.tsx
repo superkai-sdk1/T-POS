@@ -12,12 +12,46 @@ interface DrawerProps {
 
 export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerProps) {
   const contentRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [closing, setClosing] = useState(false);
 
   const maxH = size === 'sm' ? 'max-h-[60dvh]' : size === 'md' ? 'max-h-[70dvh]' : size === 'lg' ? 'max-h-[85dvh]' : 'max-h-[95dvh] h-[95dvh]';
+
+  // Adapt to virtual keyboard on mobile (visualViewport API)
+  useEffect(() => {
+    if (!open) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const onResize = () => {
+      const panel = panelRef.current;
+      if (!panel) return;
+      // When keyboard opens, visualViewport.height shrinks
+      // Offset the drawer so it stays visible within the visual viewport
+      const offsetTop = vv.offsetTop;
+      const vpHeight = vv.height;
+      panel.style.maxHeight = `${vpHeight * 0.92}px`;
+      panel.style.transform = dragY > 0
+        ? `translateY(${offsetTop + dragY}px) translateZ(0)`
+        : `translateY(${offsetTop}px) translateZ(0)`;
+    };
+
+    vv.addEventListener('resize', onResize);
+    vv.addEventListener('scroll', onResize);
+    return () => {
+      vv.removeEventListener('resize', onResize);
+      vv.removeEventListener('scroll', onResize);
+      // Reset on close
+      const panel = panelRef.current;
+      if (panel) {
+        panel.style.maxHeight = '';
+        panel.style.transform = '';
+      }
+    };
+  }, [open, dragY]);
 
   useEffect(() => {
     if (open) {
@@ -80,6 +114,7 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
         onClick={handleClose}
       />
       <div
+        ref={panelRef}
         onClick={(e) => e.stopPropagation()}
         className={`relative w-full ${maxH} lg:max-h-[80vh] lg:max-w-lg lg:rounded-2xl rounded-t-3xl overflow-hidden flex flex-col ${closing ? 'animate-slide-down' : 'lg:animate-pop-in animate-slide-up'
           }`}
