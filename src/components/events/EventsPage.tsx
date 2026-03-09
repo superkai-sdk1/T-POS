@@ -5,11 +5,12 @@ import { usePOSStore } from '@/store/pos';
 import {
     Calendar, Clock, Plus, Play,
     CheckCircle2, Timer, CreditCard,
-    MessageSquare, Edit2, X
+    MessageSquare, MapPin, Sparkles,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { Drawer } from '@/components/ui/Drawer';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import type { Event, EventStatus } from '@/types';
 
@@ -21,16 +22,37 @@ const HOURLY_RATES: Record<number, number> = {
     5: 14000
 };
 
+const statusLabel: Record<EventStatus, string> = {
+    planned: 'Запланировано',
+    active: 'В процессе',
+    completed: 'Завершено',
+};
+
+const statusVariant: Record<EventStatus, 'default' | 'success' | 'accent'> = {
+    planned: 'default',
+    active: 'success',
+    completed: 'accent',
+};
+
+function formatDate(d: string) {
+    return new Date(d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+}
+
+function pluralHours(n: number) {
+    if (n === 1) return 'час';
+    if (n >= 2 && n <= 4) return 'часа';
+    return 'часов';
+}
+
 export function EventsPage() {
     const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
     const [events, setEvents] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showAddModal, setShowAddModal] = useState(false);
-    const [showCompletionModal, setShowCompletionModal] = useState<Event | null>(null);
-    const [selectedHours, setSelectedHours] = useState<number>(1);
+    const [showAdd, setShowAdd] = useState(false);
+    const [showComplete, setShowComplete] = useState<Event | null>(null);
+    const [selectedHours, setSelectedHours] = useState<number>(2);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Form State
     const [formData, setFormData] = useState<Partial<Event>>({
         type: 'titan',
         payment_type: 'fixed',
@@ -38,6 +60,11 @@ export function EventsPage() {
         status: 'planned',
         date: new Date().toISOString().split('T')[0],
         start_time: '18:00',
+    });
+
+    const resetForm = () => setFormData({
+        type: 'titan', payment_type: 'fixed', fixed_amount: 0,
+        status: 'planned', date: new Date().toISOString().split('T')[0], start_time: '18:00',
     });
 
     const loadEvents = useCallback(async () => {
@@ -48,40 +75,30 @@ export function EventsPage() {
             .order('date', { ascending: activeTab === 'upcoming' })
             .order('start_time', { ascending: activeTab === 'upcoming' });
 
-        if (!error && data) {
-            setEvents(data as Event[]);
-        }
+        if (!error && data) setEvents(data as Event[]);
         setLoading(false);
     }, [activeTab]);
 
-    useEffect(() => {
-        loadEvents();
-    }, [loadEvents]);
+    useEffect(() => { loadEvents(); }, [loadEvents]);
 
     const filteredEvents = useMemo(() => {
         const today = new Date().toISOString().split('T')[0];
-        if (activeTab === 'upcoming') {
-            return events.filter(e => e.status !== 'completed' && e.date >= today);
-        }
+        if (activeTab === 'upcoming') return events.filter(e => e.status !== 'completed' && e.date >= today);
         return events.filter(e => e.status === 'completed' || e.date < today);
     }, [events, activeTab]);
 
     const handleCreateEvent = async () => {
         setIsSubmitting(true);
-        const { error } = await supabase
-            .from('events')
-            .insert([{
-                ...formData,
-                created_by: useAuthStore.getState().user?.id
-            }]);
-
+        const { error } = await supabase.from('events').insert([{
+            ...formData,
+            created_by: useAuthStore.getState().user?.id,
+        }]);
         if (!error) {
             hapticNotification('success');
-            setShowAddModal(false);
+            setShowAdd(false);
+            resetForm();
             loadEvents();
         } else {
-            console.error('Create Event Error:', error);
-            alert('Ошибка создания: ' + (error.message || 'Проверьте соединение и наличие таблиц в БД'));
             hapticNotification('error');
         }
         setIsSubmitting(false);
@@ -89,340 +106,400 @@ export function EventsPage() {
 
     const handleStatusChange = async (event: Event, newStatus: EventStatus) => {
         if (newStatus === 'completed') {
-            setShowCompletionModal(event);
+            setShowComplete(event);
+            setSelectedHours(2);
             return;
         }
-
-        const { error } = await supabase
-            .from('events')
-            .update({ status: newStatus })
-            .eq('id', event.id);
-
-        if (!error) {
-            hapticFeedback('medium');
-            loadEvents();
-        }
+        const { error } = await supabase.from('events').update({ status: newStatus }).eq('id', event.id);
+        if (!error) { hapticFeedback('medium'); loadEvents(); }
     };
 
     const handleCompleteEvent = async () => {
-        if (!showCompletionModal) return;
+        if (!showComplete) return;
         setIsSubmitting(true);
-
-        const amount = showCompletionModal.payment_type === 'hourly'
+        const amount = showComplete.payment_type === 'hourly'
             ? HOURLY_RATES[selectedHours]
-            : (showCompletionModal.fixed_amount || 0);
+            : (showComplete.fixed_amount || 0);
 
-        // 1. Create a check in POS
         const check = await usePOSStore.getState().createCheck(null);
         if (check) {
-            // 2. Add as a special transaction or item in the check? 
-            // For now, let's update the check total and close it to represent income
             await supabase.from('checks').update({
-                status: 'closed',
-                total_amount: amount,
-                payment_method: 'cash', // Default to cash for simplicity
-                note: `Мероприятие: ${showCompletionModal.type === 'titan' ? 'Титан' : showCompletionModal.location}`,
-                closed_at: new Date().toISOString()
+                status: 'closed', total_amount: amount, payment_method: 'cash',
+                note: `Мероприятие: ${showComplete.type === 'titan' ? 'Титан' : showComplete.location}`,
+                closed_at: new Date().toISOString(),
             }).eq('id', check.id);
 
-            // 3. Update event status and link check
-            await supabase
-                .from('events')
-                .update({
-                    status: 'completed',
-                    check_id: check.id,
-                    fixed_amount: amount // Store final amount if it was hourly
-                })
-                .eq('id', showCompletionModal.id);
+            await supabase.from('events').update({
+                status: 'completed', check_id: check.id, fixed_amount: amount,
+            }).eq('id', showComplete.id);
 
             hapticNotification('success');
-            setShowCompletionModal(null);
+            setShowComplete(null);
             loadEvents();
             usePOSStore.getState().loadOpenChecks();
-        } else {
-            console.error('Complete Event Error: No check created');
-            alert('Не удалось создать чек в кассе. Проверьте статус смены.');
         }
         setIsSubmitting(false);
     };
 
     return (
-        <div className="flex flex-col h-full space-y-4">
-            <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-[var(--c-text)]">Мероприятия</h2>
-                <Button
-                    onClick={() => { hapticFeedback('light'); setShowAddModal(true); }}
-                    size="sm"
-                    className="gap-2"
-                >
+        <div className="flex flex-col h-full min-h-0">
+            {/* Header */}
+            <div className="shrink-0 flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-[var(--c-text)]">Мероприятия</h2>
+                <Button onClick={() => { hapticFeedback('light'); setShowAdd(true); }} size="sm">
                     <Plus className="w-4 h-4" />
                     Новое
                 </Button>
             </div>
 
-            <div className="flex gap-1 p-1 bg-[var(--c-surface)] rounded-xl w-fit">
-                <button
-                    onClick={() => { hapticFeedback('light'); setActiveTab('upcoming'); }}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'upcoming'
-                        ? 'bg-[var(--c-bg)] text-[var(--c-text)] shadow-sm'
-                        : 'text-[var(--c-hint)] hover:text-[var(--c-text)]'
+            {/* Tabs */}
+            <div className="shrink-0 flex gap-1.5 mb-4">
+                {(['upcoming', 'history'] as const).map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => { hapticFeedback('light'); setActiveTab(tab); }}
+                        className={`px-4 py-2 rounded-xl text-[13px] font-semibold transition-all active:scale-95 min-h-[40px] ${
+                            activeTab === tab
+                                ? 'text-white'
+                                : 'text-[var(--c-hint)]'
                         }`}
-                >
-                    Предстоящие
-                </button>
-                <button
-                    onClick={() => { hapticFeedback('light'); setActiveTab('history'); }}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'history'
-                        ? 'bg-[var(--c-bg)] text-[var(--c-text)] shadow-sm'
-                        : 'text-[var(--c-hint)] hover:text-[var(--c-text)]'
-                        }`}
-                >
-                    История
-                </button>
+                        style={activeTab === tab ? {
+                            background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(6,182,212,0.1))',
+                            border: '1px solid rgba(139,92,246,0.2)',
+                        } : {
+                            background: 'rgba(255,255,255,0.04)',
+                            border: '1px solid rgba(255,255,255,0.06)',
+                        }}
+                    >
+                        {tab === 'upcoming' ? 'Предстоящие' : 'История'}
+                    </button>
+                ))}
             </div>
 
-            <div className="flex-1 overflow-y-auto min-h-0 space-y-3 pb-20">
+            {/* Event list */}
+            <div className="flex-1 overflow-y-auto min-h-0 pb-4 space-y-3">
                 {loading ? (
-                    <div className="flex items-center justify-center py-10">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--c-accent)]"></div>
+                    <div className="flex justify-center py-12">
+                        <div className="w-7 h-7 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin" />
                     </div>
                 ) : filteredEvents.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-[var(--c-hint)] space-y-2">
-                        <Calendar className="w-12 h-12 opacity-20" />
-                        <p>Нет мероприятий в этом разделе</p>
+                    <div className="flex flex-col items-center py-16 gap-3">
+                        <Calendar className="w-12 h-12 text-[var(--c-muted)]" />
+                        <p className="text-sm text-[var(--c-hint)]">
+                            {activeTab === 'upcoming' ? 'Нет предстоящих мероприятий' : 'Нет завершённых'}
+                        </p>
                     </div>
                 ) : (
                     filteredEvents.map(event => (
-                        <div key={event.id} className="card p-4 space-y-3 group active:scale-[0.98] transition-all">
-                            <div className="flex items-start justify-between">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <Badge variant={event.type === 'titan' ? 'success' : 'default'}>
-                                            {event.type === 'titan' ? 'Титан' : 'Выезд'}
+                        <div
+                            key={event.id}
+                            className="rounded-2xl overflow-hidden"
+                            style={{
+                                background: 'rgba(255,255,255,0.03)',
+                                border: '1px solid rgba(255,255,255,0.07)',
+                            }}
+                        >
+                            {/* Card header */}
+                            <div className="p-3.5 pb-3">
+                                <div className="flex items-center gap-2.5 mb-2.5">
+                                    <div
+                                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                                        style={{
+                                            background: event.type === 'titan'
+                                                ? 'linear-gradient(135deg, rgba(52,211,153,0.15), rgba(52,211,153,0.05))'
+                                                : 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(99,102,241,0.05))',
+                                        }}
+                                    >
+                                        {event.type === 'titan'
+                                            ? <Sparkles className="w-5 h-5 text-emerald-400" />
+                                            : <MapPin className="w-5 h-5 text-indigo-400" />
+                                        }
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[14px] font-bold text-[var(--c-text)] truncate">
+                                            {event.type === 'titan' ? 'Титан Парк' : (event.location || 'Выездное')}
+                                        </p>
+                                        <div className="flex items-center gap-3 mt-0.5">
+                                            <span className="flex items-center gap-1 text-[11px] text-[var(--c-hint)]">
+                                                <Calendar className="w-3 h-3" />
+                                                {formatDate(event.date)}
+                                            </span>
+                                            <span className="flex items-center gap-1 text-[11px] text-[var(--c-hint)]">
+                                                <Clock className="w-3 h-3" />
+                                                {event.start_time?.slice(0, 5)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="shrink-0 flex flex-col items-end gap-1">
+                                        <Badge variant={statusVariant[event.status]} size="sm">
+                                            {statusLabel[event.status]}
                                         </Badge>
-                                        <span className="font-bold text-[var(--c-text)]">
-                                            {event.type === 'titan' ? 'Титан Парк' : event.location}
+                                        <span className="text-[13px] font-bold tabular-nums text-[var(--c-accent-light)]">
+                                            {event.payment_type === 'hourly' ? 'Почасовая' : `${event.fixed_amount || 0}₽`}
                                         </span>
                                     </div>
-                                    <div className="flex items-center gap-3 text-xs text-[var(--c-hint)]">
-                                        <div className="flex items-center gap-1">
-                                            <Calendar className="w-3.5 h-3.5" />
-                                            {new Date(event.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <Clock className="w-3.5 h-3.5" />
-                                            {event.start_time.slice(0, 5)}
-                                        </div>
+                                </div>
+
+                                {event.comment && (
+                                    <div
+                                        className="flex items-start gap-2 px-3 py-2 rounded-lg text-[12px] text-[var(--c-text)]/70"
+                                        style={{ background: 'rgba(255,255,255,0.03)' }}
+                                    >
+                                        <MessageSquare className="w-3 h-3 shrink-0 mt-0.5 text-[var(--c-muted)]" />
+                                        <span className="line-clamp-2">{event.comment}</span>
                                     </div>
-                                </div>
-                                <div className="flex flex-col items-end gap-1">
-                                    <Badge variant={
-                                        event.status === 'planned' ? 'default' :
-                                            event.status === 'active' ? 'success' : 'default'
-                                    }>
-                                        {event.status === 'planned' ? 'Запланировано' :
-                                            event.status === 'active' ? 'В процессе' : 'Завершено'}
-                                    </Badge>
-                                    <span className="text-xs font-bold text-[var(--c-accent)]">
-                                        {event.payment_type === 'hourly' ? 'Почасовая' : `${event.fixed_amount}₽`}
-                                    </span>
-                                </div>
+                                )}
                             </div>
 
-                            {event.comment && (
-                                <div className="flex items-start gap-2 p-2.5 bg-[var(--c-bg)] rounded-lg text-xs text-[var(--c-text)] italic">
-                                    <MessageSquare className="w-3.5 h-3.5 shrink-0 opacity-40" />
-                                    {event.comment}
+                            {/* Card actions */}
+                            {event.status !== 'completed' && (
+                                <div
+                                    className="flex gap-2 px-3.5 py-2.5"
+                                    style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
+                                >
+                                    {event.status === 'planned' && (
+                                        <Button
+                                            onClick={() => handleStatusChange(event, 'active')}
+                                            variant="secondary"
+                                            size="sm"
+                                            fullWidth
+                                        >
+                                            <Play className="w-3.5 h-3.5" />
+                                            Начать
+                                        </Button>
+                                    )}
+                                    {event.status === 'active' && (
+                                        <Button
+                                            onClick={() => handleStatusChange(event, 'completed')}
+                                            size="sm"
+                                            fullWidth
+                                        >
+                                            <CheckCircle2 className="w-3.5 h-3.5" />
+                                            Завершить
+                                        </Button>
+                                    )}
                                 </div>
                             )}
-
-                            <div className="flex gap-2 pt-1">
-                                {event.status === 'planned' && (
-                                    <Button
-                                        onClick={() => handleStatusChange(event, 'active')}
-                                        className="flex-1 gap-2 bg-[var(--c-success-bg)] text-[var(--c-success)] hover:bg-[var(--c-success-bg)]/80"
-                                        size="sm"
-                                    >
-                                        <Play className="w-3.5 h-3.5" />
-                                        Начать
-                                    </Button>
-                                )}
-                                {event.status === 'active' && (
-                                    <Button
-                                        onClick={() => handleStatusChange(event, 'completed')}
-                                        className="flex-1 gap-2 bg-[var(--c-accent)] text-white"
-                                        size="sm"
-                                    >
-                                        <CheckCircle2 className="w-3.5 h-3.5" />
-                                        Завершить
-                                    </Button>
-                                )}
-                                <Button variant="secondary" size="sm" className="px-3">
-                                    <Edit2 className="w-3.5 h-3.5" />
-                                </Button>
-                            </div>
                         </div>
                     ))
                 )}
             </div>
 
-            {/* Add Modal */}
-            {showAddModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-[var(--c-surface)] w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-bold">Новое мероприятие</h3>
-                            <button onClick={() => setShowAddModal(false)} className="text-[var(--c-hint)]">
-                                <X className="w-6 h-6" />
-                            </button>
+            {/* ============ ADD EVENT DRAWER ============ */}
+            <Drawer
+                open={showAdd}
+                onClose={() => { setShowAdd(false); resetForm(); }}
+                title="Новое мероприятие"
+                size="lg"
+            >
+                <div className="flex flex-col h-full">
+                    <div className="flex-1 overflow-y-auto space-y-4 pb-4">
+                        {/* Type selector */}
+                        <div className="grid grid-cols-2 gap-2.5">
+                            {([
+                                { key: 'titan' as const, label: 'Титан', sub: 'В клубе', icon: Sparkles, color: 'rgba(52,211,153,0.1)', borderColor: 'rgba(52,211,153,0.2)' },
+                                { key: 'exit' as const, label: 'Выезд', sub: 'На локации', icon: MapPin, color: 'rgba(99,102,241,0.1)', borderColor: 'rgba(99,102,241,0.2)' },
+                            ]).map(({ key, label, sub, icon: Icon, color, borderColor }) => {
+                                const active = formData.type === key;
+                                return (
+                                    <button
+                                        key={key}
+                                        onClick={() => { setFormData({ ...formData, type: key }); hapticFeedback('light'); }}
+                                        className="flex items-center gap-3 p-3.5 rounded-xl transition-all active:scale-[0.97] min-h-[56px]"
+                                        style={{
+                                            background: active ? color : 'rgba(255,255,255,0.04)',
+                                            border: active ? `1px solid ${borderColor}` : '1px solid rgba(255,255,255,0.08)',
+                                        }}
+                                    >
+                                        <Icon className={`w-5 h-5 shrink-0 ${active ? 'text-white' : 'text-[var(--c-hint)]'}`} />
+                                        <div className="text-left">
+                                            <p className={`text-[13px] font-bold ${active ? 'text-white' : 'text-[var(--c-text)]'}`}>{label}</p>
+                                            <p className="text-[10px] text-[var(--c-hint)]">{sub}</p>
+                                        </div>
+                                    </button>
+                                );
+                            })}
                         </div>
 
-                        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-                            <div className="grid grid-cols-2 gap-2">
-                                <button
-                                    onClick={() => setFormData({ ...formData, type: 'titan' })}
-                                    className={`p-3 rounded-xl border-2 transition-all ${formData.type === 'titan' ? 'border-[var(--c-accent)] bg-[var(--c-accent)]/5' : 'border-transparent bg-[var(--c-bg)]'}`}
-                                >
-                                    <p className="font-bold">Титан</p>
-                                    <p className="text-[10px] text-[var(--c-hint)]">В клубе</p>
-                                </button>
-                                <button
-                                    onClick={() => setFormData({ ...formData, type: 'exit' })}
-                                    className={`p-3 rounded-xl border-2 transition-all ${formData.type === 'exit' ? 'border-[var(--c-accent)] bg-[var(--c-accent)]/5' : 'border-transparent bg-[var(--c-bg)]'}`}
-                                >
-                                    <p className="font-bold">Выезд</p>
-                                    <p className="text-[10px] text-[var(--c-hint)]">На локации</p>
-                                </button>
-                            </div>
-
-                            {formData.type === 'exit' && (
-                                <Input
-                                    label="Локация"
-                                    placeholder="Где будет проходить?"
-                                    value={formData.location || ''}
-                                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                />
-                            )}
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <Input
-                                    type="date"
-                                    label="Дата"
-                                    value={formData.date}
-                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                />
-                                <Input
-                                    type="time"
-                                    label="Время"
-                                    value={formData.start_time}
-                                    onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-semibold text-[var(--c-hint)]">Тип оплаты</label>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setFormData({ ...formData, payment_type: 'fixed' })}
-                                        className={`flex-1 py-2 rounded-lg text-sm transition-all ${formData.payment_type === 'fixed' ? 'bg-[var(--c-accent)] text-white' : 'bg-[var(--c-bg)]'}`}
-                                    >
-                                        Фикс
-                                    </button>
-                                    <button
-                                        onClick={() => setFormData({ ...formData, payment_type: 'hourly' })}
-                                        className={`flex-1 py-2 rounded-lg text-sm transition-all ${formData.payment_type === 'hourly' ? 'bg-[var(--c-accent)] text-white' : 'bg-[var(--c-bg)]'}`}
-                                    >
-                                        Почасовая
-                                    </button>
-                                </div>
-                            </div>
-
-                            {formData.payment_type === 'fixed' && (
-                                <Input
-                                    type="number"
-                                    label="Сумма (₽)"
-                                    value={formData.fixed_amount || 0}
-                                    onChange={(e) => setFormData({ ...formData, fixed_amount: Number(e.target.value) })}
-                                />
-                            )}
-
+                        {formData.type === 'exit' && (
                             <Input
-                                label="Комментарий"
-                                placeholder="Заказчик, особенности..."
-                                value={formData.comment || ''}
-                                onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
+                                label="Локация"
+                                placeholder="Где будет проходить?"
+                                value={formData.location || ''}
+                                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                                compact
+                            />
+                        )}
+
+                        <div className="grid grid-cols-2 gap-2.5">
+                            <Input
+                                type="date"
+                                label="Дата"
+                                value={formData.date}
+                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                compact
+                            />
+                            <Input
+                                type="time"
+                                label="Время"
+                                value={formData.start_time}
+                                onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+                                compact
                             />
                         </div>
 
-                        <Button
-                            className="w-full h-12"
-                            onClick={handleCreateEvent}
-                            disabled={isSubmitting}
-                        >
-                            Создать
+                        {/* Payment type */}
+                        <div>
+                            <p className="text-[11px] font-semibold text-[var(--c-hint)] mb-2 uppercase tracking-wider">Тип оплаты</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {([
+                                    { key: 'fixed' as const, label: 'Фиксированная', icon: CreditCard },
+                                    { key: 'hourly' as const, label: 'Почасовая', icon: Timer },
+                                ]).map(({ key, label, icon: Icon }) => {
+                                    const active = formData.payment_type === key;
+                                    return (
+                                        <button
+                                            key={key}
+                                            onClick={() => { setFormData({ ...formData, payment_type: key }); hapticFeedback('light'); }}
+                                            className="flex items-center gap-2 p-3 rounded-xl transition-all active:scale-[0.97] min-h-[48px]"
+                                            style={{
+                                                background: active ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.04)',
+                                                border: active ? '1px solid rgba(139,92,246,0.25)' : '1px solid rgba(255,255,255,0.08)',
+                                            }}
+                                        >
+                                            <Icon className={`w-4 h-4 ${active ? 'text-[var(--c-accent-light)]' : 'text-[var(--c-hint)]'}`} />
+                                            <span className={`text-[12px] font-semibold ${active ? 'text-[var(--c-accent-light)]' : 'text-[var(--c-text)]'}`}>
+                                                {label}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {formData.payment_type === 'fixed' && (
+                            <Input
+                                type="number"
+                                label="Сумма (₽)"
+                                value={formData.fixed_amount || 0}
+                                onChange={(e) => setFormData({ ...formData, fixed_amount: Number(e.target.value) })}
+                                compact
+                            />
+                        )}
+
+                        <Input
+                            label="Комментарий"
+                            placeholder="Заказчик, особенности..."
+                            value={formData.comment || ''}
+                            onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
+                            compact
+                        />
+                    </div>
+
+                    <div className="shrink-0 pt-2">
+                        <Button fullWidth size="lg" onClick={handleCreateEvent} loading={isSubmitting}>
+                            <Plus className="w-4 h-4" />
+                            Создать мероприятие
                         </Button>
                     </div>
                 </div>
-            )}
+            </Drawer>
 
-            {/* Completion (Hourly Calculator) Modal */}
-            {showCompletionModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-[var(--c-surface)] w-full max-w-md rounded-2xl p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-bold">Завершение мероприятия</h3>
-                            <button onClick={() => setShowCompletionModal(null)} className="text-[var(--c-hint)]">
-                                <X className="w-6 h-6" />
-                            </button>
-                        </div>
-
-                        <div className="space-y-4">
-                            {showCompletionModal.payment_type === 'hourly' ? (
-                                <div className="space-y-3">
-                                    <p className="text-sm text-[var(--c-hint)]">Выберите время проведения для расчета стоимости:</p>
-                                    <div className="grid grid-cols-1 gap-2">
-                                        {[1, 2, 3, 4, 5].map(hours => (
-                                            <button
-                                                key={hours}
-                                                onClick={() => setSelectedHours(hours)}
-                                                className={`flex items-center justify-between p-4 rounded-xl border-2 transition-all ${selectedHours === hours
-                                                    ? 'border-[var(--c-accent)] bg-[var(--c-accent)]/5'
-                                                    : 'border-transparent bg-[var(--c-bg)]'
-                                                    }`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <Timer className={`w-5 h-5 ${selectedHours === hours ? 'text-[var(--c-accent)]' : 'text-[var(--c-hint)]'}`} />
-                                                    <span className="font-bold">{hours} {hours === 1 ? 'час' : hours < 5 ? 'часа' : 'часов'}</span>
-                                                </div>
-                                                <span className="text-lg font-black text-[var(--c-accent)]">{HOURLY_RATES[hours]}₽</span>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="p-6 bg-[var(--c-bg)] rounded-xl text-center space-y-2">
-                                    <p className="text-sm text-[var(--c-hint)]">Итоговая сумма к оплате:</p>
-                                    <p className="text-3xl font-black text-[var(--c-accent)]">{showCompletionModal.fixed_amount}₽</p>
-                                </div>
-                            )}
-
-                            <div className="pt-2">
-                                <Button
-                                    className="w-full h-12 gap-2"
-                                    onClick={handleCompleteEvent}
-                                    disabled={isSubmitting}
-                                >
-                                    <CreditCard className="w-5 h-5" />
-                                    Принять оплату и закрыть
-                                </Button>
-                                <p className="text-[10px] text-center text-[var(--c-hint)] mt-3">
-                                    Будет автоматически создан закрытый чек для финансовой отчетности
+            {/* ============ COMPLETION DRAWER ============ */}
+            <Drawer
+                open={!!showComplete}
+                onClose={() => setShowComplete(null)}
+                title="Завершение"
+                size="lg"
+            >
+                {showComplete && (
+                    <div className="flex flex-col h-full">
+                        {/* Event info */}
+                        <div
+                            className="shrink-0 flex items-center gap-3 p-3 rounded-xl mb-4"
+                            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+                        >
+                            <div
+                                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                                style={{
+                                    background: showComplete.type === 'titan'
+                                        ? 'rgba(52,211,153,0.12)' : 'rgba(99,102,241,0.12)',
+                                }}
+                            >
+                                {showComplete.type === 'titan'
+                                    ? <Sparkles className="w-5 h-5 text-emerald-400" />
+                                    : <MapPin className="w-5 h-5 text-indigo-400" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[14px] font-bold text-[var(--c-text)] truncate">
+                                    {showComplete.type === 'titan' ? 'Титан Парк' : showComplete.location}
+                                </p>
+                                <p className="text-[11px] text-[var(--c-hint)]">
+                                    {formatDate(showComplete.date)} · {showComplete.start_time?.slice(0, 5)}
                                 </p>
                             </div>
                         </div>
+
+                        <div className="flex-1 overflow-y-auto space-y-3">
+                            {showComplete.payment_type === 'hourly' ? (
+                                <>
+                                    <p className="text-[12px] text-[var(--c-hint)] font-medium">Время проведения:</p>
+                                    <div className="space-y-2">
+                                        {[1, 2, 3, 4, 5].map(hours => {
+                                            const active = selectedHours === hours;
+                                            return (
+                                                <button
+                                                    key={hours}
+                                                    onClick={() => { setSelectedHours(hours); hapticFeedback('light'); }}
+                                                    className="w-full flex items-center justify-between p-3.5 rounded-xl transition-all active:scale-[0.98] min-h-[52px]"
+                                                    style={{
+                                                        background: active ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.04)',
+                                                        border: active ? '1px solid rgba(139,92,246,0.25)' : '1px solid rgba(255,255,255,0.08)',
+                                                        boxShadow: active ? '0 0 16px rgba(139,92,246,0.08)' : undefined,
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <Timer className={`w-4.5 h-4.5 ${active ? 'text-[var(--c-accent-light)]' : 'text-[var(--c-hint)]'}`} />
+                                                        <span className={`text-[14px] font-bold ${active ? 'text-[var(--c-accent-light)]' : 'text-[var(--c-text)]'}`}>
+                                                            {hours} {pluralHours(hours)}
+                                                        </span>
+                                                    </div>
+                                                    <span className={`text-[16px] font-black tabular-nums ${active ? 'text-[var(--c-accent-light)]' : 'text-[var(--c-hint)]'}`}>
+                                                        {HOURLY_RATES[hours].toLocaleString('ru-RU')}₽
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </>
+                            ) : (
+                                <div
+                                    className="p-5 rounded-xl text-center"
+                                    style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.12)' }}
+                                >
+                                    <p className="text-[12px] text-[var(--c-hint)] mb-1">К оплате</p>
+                                    <p className="text-3xl font-black text-[var(--c-accent-light)] tabular-nums">
+                                        {(showComplete.fixed_amount || 0).toLocaleString('ru-RU')}₽
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="shrink-0 pt-3 space-y-2">
+                            <Button fullWidth size="lg" onClick={handleCompleteEvent} loading={isSubmitting}>
+                                <CreditCard className="w-4 h-4" />
+                                Принять оплату · {(showComplete.payment_type === 'hourly'
+                                    ? HOURLY_RATES[selectedHours]
+                                    : (showComplete.fixed_amount || 0)
+                                ).toLocaleString('ru-RU')}₽
+                            </Button>
+                            <p className="text-[10px] text-center text-[var(--c-muted)]">
+                                Будет создан закрытый чек для отчётности
+                            </p>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+            </Drawer>
         </div>
     );
 }
