@@ -205,7 +205,7 @@ export function ClientsManager() {
       client_tier: client.client_tier || 'regular',
       photo_url: client.photo_url || '',
       tg_username: client.tg_username || '',
-      search_tags: client.search_tags || [],
+      search_tags_text: (client.search_tags || []).join(', '),
     });
     setShowEditor(true);
     hapticFeedback();
@@ -258,7 +258,10 @@ export function ClientsManager() {
       client_tier: form.client_tier,
       photo_url: form.photo_url || null,
       tg_username: rawTg || null,
-      search_tags: form.search_tags.filter(t => t.trim()),
+      search_tags: form.search_tags_text
+        .split(',')
+        .map((t: string) => t.trim())
+        .filter(Boolean),
     };
 
     if (editingClient) {
