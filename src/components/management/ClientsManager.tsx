@@ -17,6 +17,35 @@ import type { Profile, ClientTier } from '@/types';
 
 const WALLET_BOT_USERNAME = (import.meta.env.VITE_WALLET_BOT_USERNAME as string) || 'titanwalletrobot';
 
+// Compress image to max 256px and JPEG quality 0.7 (~10-30KB)
+function compressImage(file: File, maxSize = 256): Promise<{ blob: Blob; dataUrl: string }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+      if (width > height) {
+        if (width > maxSize) { height = (height * maxSize) / width; width = maxSize; }
+      } else {
+        if (height > maxSize) { width = (width * maxSize) / height; height = maxSize; }
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+          resolve({ blob: blob!, dataUrl });
+        },
+        'image/jpeg',
+        0.7
+      );
+    };
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 interface LinkRequest {
   id: string;
   tg_id: string;
@@ -236,48 +265,34 @@ export function ClientsManager() {
     if (!file) return;
     setIsUploading(true);
 
+    // 1. Сжимаем изображение (256px, JPEG ~10-30KB)
+    const { blob, dataUrl } = await compressImage(file);
+
+    // 2. Сразу показываем превью
+    updateField('photo_url', dataUrl);
+
+    // 3. Пробуем загрузить в Supabase Storage
     try {
-      // Try Supabase Storage first
-      const ext = file.name.split('.').pop() || 'jpg';
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error } = await supabase.storage.from('client-photos').upload(path, file, {
-        contentType: file.type,
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+      const { error } = await supabase.storage.from('client-photos').upload(path, blob, {
+        contentType: 'image/jpeg',
         upsert: true,
       });
 
       if (!error) {
-        // Try public URL
         const { data: urlData } = supabase.storage.from('client-photos').getPublicUrl(path);
         if (urlData?.publicUrl) {
           updateField('photo_url', urlData.publicUrl);
-          hapticNotification('success');
-        } else {
-          // Fallback: manual URL
-          const url = `${SUPABASE_URL}/storage/v1/object/public/client-photos/${path}`;
-          updateField('photo_url', url);
-          hapticNotification('success');
         }
       } else {
-        console.error('Storage upload error:', error.message);
-        // Fallback: convert to base64 Data URL
-        const reader = new FileReader();
-        reader.onload = () => {
-          updateField('photo_url', reader.result as string);
-          hapticNotification('success');
-        };
-        reader.readAsDataURL(file);
+        // Storage не работает — base64 dataUrl уже в форме, сохранится в БД
+        console.warn('Storage upload failed, using base64:', error.message);
       }
     } catch (err) {
-      console.error('Image upload failed:', err);
-      // Fallback: base64
-      const reader = new FileReader();
-      reader.onload = () => {
-        updateField('photo_url', reader.result as string);
-        hapticNotification('success');
-      };
-      reader.readAsDataURL(file);
+      console.warn('Storage unavailable, using base64:', err);
     }
 
+    hapticNotification('success');
     setIsUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
