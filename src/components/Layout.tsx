@@ -52,7 +52,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                   }`}
               >
                 {isActive && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-[var(--c-accent)]" />
+                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-[var(--c-accent)]" style={{ willChange: 'transform' }} />
                 )}
                 <tab.icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5]' : ''}`} />
               </button>
@@ -106,7 +106,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
         {/* Mobile bottom nav — part of flex, not fixed */}
         <nav
           className="lg:hidden shrink-0 z-40 glass-strong"
-          style={{ paddingBottom: 'max(var(--tg-safe-bottom), calc(env(safe-area-inset-bottom, 0px) * 0.5))' }}
+          style={{ paddingBottom: 'max(var(--tg-safe-bottom), calc(env(safe-area-inset-bottom, 0px) * 0.5))', transform: 'translateZ(0)' }}
         >
           <div className="flex max-w-3xl mx-auto" style={{ height: 'var(--nav-height)' }}>
             {tabs.map((tab) => {
@@ -121,7 +121,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                     }`}
                 >
                   {isActive && (
-                    <div className="absolute -top-px left-1/2 -translate-x-1/2 h-[2px] rounded-full bg-[var(--c-accent)] transition-all duration-200" style={{ width: '24px' }} />
+                    <div className="absolute -top-px left-1/2 -translate-x-1/2 h-[2px] rounded-full bg-[var(--c-accent)] transition-all duration-150" style={{ width: '24px', willChange: 'transform' }} />
                   )}
                   <tab.icon className={`w-[22px] h-[22px] shrink-0 transition-all duration-150 ${isActive ? 'stroke-[2.5]' : 'stroke-[1.5]'}`} />
                   <span className={`text-[10px] font-semibold truncate w-full px-1 transition-all duration-150 ${isActive ? 'opacity-100' : 'opacity-50'}`}>{tab.label}</span>

@@ -75,7 +75,7 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
           backdropFilter: 'blur(4px)',
           WebkitBackdropFilter: 'blur(4px)',
           opacity,
-          transition: closing ? 'opacity 0.2s, backdrop-filter 0.2s' : undefined,
+          transition: closing ? 'opacity 0.18s, backdrop-filter 0.18s' : undefined,
         }}
         onClick={handleClose}
       />
@@ -84,8 +84,9 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
         className={`relative w-full ${maxH} lg:max-h-[80vh] lg:max-w-lg lg:rounded-2xl rounded-t-2xl overflow-hidden flex flex-col ${closing ? 'animate-slide-down' : 'lg:animate-pop-in animate-slide-up'
           }`}
         style={{
-          transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
-          transition: dragging ? 'none' : 'transform 0.25s var(--ease-spring)',
+          transform: dragY > 0 ? `translateY(${dragY}px) translateZ(0)` : 'translateZ(0)',
+          transition: dragging ? 'none' : 'transform 0.2s var(--ease-spring)',
+          willChange: 'transform',
           paddingBottom: 'var(--safe-bottom)',
           background: 'linear-gradient(180deg, color-mix(in srgb, var(--c-bg2) 60%, var(--c-bg)) 0%, var(--c-bg) 100%)',
           boxShadow: '0 -8px 40px rgba(0,0,0,0.3)',

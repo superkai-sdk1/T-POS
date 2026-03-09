@@ -453,7 +453,7 @@ export function CheckView({ onBack }: CheckViewProps) {
       {swipeIndicatorStyle && <div style={swipeIndicatorStyle} />}
       {overlayStyle && <div style={overlayStyle} />}
       {/* Sticky header */}
-      <div className="sticky top-0 z-20 -mx-4 px-4 py-2 bg-[var(--c-bg)]/95 backdrop-blur-sm border-b border-[var(--c-border)] mb-3">
+      <div className="sticky top-0 z-20 -mx-4 px-4 py-2 bg-[var(--c-bg)]/95 backdrop-blur-sm border-b border-[var(--c-border)] mb-3" style={{ transform: 'translateZ(0)' }}>
         <div className="flex items-center gap-2">
           <button
             onClick={handleBack}
@@ -606,7 +606,7 @@ export function CheckView({ onBack }: CheckViewProps) {
       </div>
 
       {/* Bottom bar */}
-      <div className="sticky bottom-0 z-30 -mx-4 px-4 pb-3 pt-2 bg-gradient-to-t from-[var(--c-bg)] via-[var(--c-bg)] to-transparent">
+      <div className="sticky bottom-0 z-30 -mx-4 px-4 pb-3 pt-2 bg-gradient-to-t from-[var(--c-bg)] via-[var(--c-bg)] to-transparent" style={{ transform: 'translateZ(0)' }}>
         <div className="max-w-5xl mx-auto flex gap-2 items-center">
           <button
             onClick={openMenu}

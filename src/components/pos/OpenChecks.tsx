@@ -333,7 +333,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           </p>
         </div>
       ) : (
-        <div className="grid gap-2 stagger-children" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
+        <div className="grid gap-2 stagger-children" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', transform: 'translateZ(0)' }}>
           {openChecks.map((check) => (
             <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} />
           ))}
