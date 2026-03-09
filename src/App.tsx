@@ -46,6 +46,7 @@ export default function App() {
   const prevTabRef = useRef('pos');
   const [showCheckView, setShowCheckView] = useState(false);
   const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(['pos']));
+  const [tabKeys, setTabKeys] = useState<Record<string, number>>({});
   const tabOrder = ['pos', 'events', 'inventory', 'dashboard', 'management'];
 
   useRealtimeSync();
@@ -86,12 +87,14 @@ export default function App() {
       await leaveCheck();
     }
 
-    // Reset internal states when clicking the same tab or switching
-    if (tab === activeTab || tab !== 'management') {
+    // Reset internal states when clicking the same tab
+    if (tab === activeTab) {
+      setTabKeys((prev) => ({ ...prev, [tab]: (prev[tab] || 0) + 1 }));
       setManagementScreen(undefined);
-    }
-    if (tab === activeTab || tab !== 'pos') {
       setShowCheckView(false);
+    } else {
+      if (tab !== 'management') setManagementScreen(undefined);
+      if (tab !== 'pos') setShowCheckView(false);
     }
 
     prevTabRef.current = activeTab;
@@ -141,7 +144,7 @@ export default function App() {
       {visitedTabs.has('inventory') && (
         <TabPanel id="inventory" activeTab={activeTab} prevTab={prevTabRef.current} tabOrder={tabOrder}>
           <Suspense fallback={<TabFallback />}>
-            <InventoryPage />
+            <InventoryPage key={tabKeys['inventory'] || 0} />
           </Suspense>
         </TabPanel>
       )}
@@ -149,7 +152,7 @@ export default function App() {
       {visitedTabs.has('events') && (
         <TabPanel id="events" activeTab={activeTab} prevTab={prevTabRef.current} tabOrder={tabOrder}>
           <Suspense fallback={<TabFallback />}>
-            <EventsPage />
+            <EventsPage key={tabKeys['events'] || 0} />
           </Suspense>
         </TabPanel>
       )}
@@ -157,7 +160,7 @@ export default function App() {
       {visitedTabs.has('management') && (
         <TabPanel id="management" activeTab={activeTab} prevTab={prevTabRef.current} tabOrder={tabOrder}>
           <Suspense fallback={<TabFallback />}>
-            <ManagementPage initialScreen={managementScreen} isActive={activeTab === 'management'} />
+            <ManagementPage key={tabKeys['management'] || 0} initialScreen={managementScreen} isActive={activeTab === 'management'} />
           </Suspense>
         </TabPanel>
       )}
@@ -165,7 +168,7 @@ export default function App() {
       {visitedTabs.has('dashboard') && (
         <TabPanel id="dashboard" activeTab={activeTab} prevTab={prevTabRef.current} tabOrder={tabOrder}>
           <Suspense fallback={<TabFallback />}>
-            <DashboardPage onNavigate={handleDashboardNavigate} />
+            <DashboardPage key={tabKeys['dashboard'] || 0} onNavigate={handleDashboardNavigate} />
           </Suspense>
         </TabPanel>
       )}

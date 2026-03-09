@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/ui/Drawer';
 import { Input } from '@/components/ui/Input';
-import { ShiftBar } from '@/components/shift/ShiftBar';
 import { ShiftHistory } from '@/components/shift/ShiftHistory';
 import { Plus, Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen, Home, Building2, Warehouse, Star, GraduationCap, Gamepad2, RotateCcw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -290,8 +289,6 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   return (
     <div className="flex-1 flex flex-col min-h-0 relative">
       <div className="flex-1 space-y-4 pb-24 overflow-y-auto no-scrollbar">
-        <ShiftBar />
-
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-[var(--c-text)]">Касса</h2>
@@ -381,77 +378,17 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         open={showNewCheck}
         onClose={() => { setShowNewCheck(false); setSearchQuery(''); setPlayers([]); }}
         title="Новый чек"
-        size="md"
+        size="xl"
       >
-        <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              onClick={handleCreateCheckNoClient}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-xl active:scale-[0.97] transition-all"
-              style={{
-                background: 'rgba(255, 255, 255, 0.04)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-              }}
-            >
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                <UserX className="w-4 h-4 text-[var(--c-hint)]" />
+        <div className="flex flex-col h-full space-y-3">
+          {/* ── Search Results (Top) ── */}
+          <div className="flex-1 overflow-y-auto min-h-[40dvh] space-y-1 pr-1">
+            {isSearching && (
+              <div className="flex justify-center py-6">
+                <div className="w-6 h-6 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin" />
               </div>
-              <span className="text-[11px] font-semibold text-[var(--c-text)]">Без клиента</span>
-            </button>
-            <button
-              onClick={() => { setShowNewCheck(false); setShowCreateClient(true); }}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-xl active:scale-[0.97] transition-all"
-              style={{
-                background: 'rgba(52, 211, 153, 0.06)',
-                border: '1px solid rgba(52, 211, 153, 0.15)',
-              }}
-            >
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(52, 211, 153, 0.1)' }}>
-                <UserPlus className="w-4 h-4 text-[var(--c-success)]" />
-              </div>
-              <span className="text-[11px] font-semibold text-[var(--c-success)]">Новый</span>
-            </button>
-            <button
-              onClick={() => { setShowNewCheck(false); loadSpaces(); }}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-xl active:scale-[0.97] transition-all"
-              style={{
-                background: 'rgba(99, 102, 241, 0.06)',
-                border: '1px solid rgba(99, 102, 241, 0.12)',
-              }}
-            >
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(99, 102, 241, 0.12)' }}>
-                <DoorOpen className="w-4 h-4 text-indigo-400" />
-              </div>
-              <span className="text-[11px] font-semibold text-indigo-400">Кабинка</span>
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 py-1">
-            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-            <span className="text-[9px] text-[var(--c-muted)] font-semibold tracking-widest">ИЛИ ВЫБЕРИТЕ</span>
-            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
-          </div>
-
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--c-muted)]" />
-            <Input
-              placeholder="Поиск по нику..."
-              value={searchQuery}
-              onChange={(e) => searchPlayers(e.target.value)}
-              className="pl-9"
-              compact
-              autoFocus
-            />
-          </div>
-
-          {isSearching && (
-            <div className="flex justify-center py-3">
-              <div className="w-5 h-5 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin" />
-            </div>
-          )}
-
-          <div className="space-y-1 max-h-[35vh] overflow-y-auto">
-            {players.map((player) => (
+            )}
+            {!isSearching && players.map((player) => (
               <button
                 key={player.id}
                 onClick={() => handlePlayerSelected(player)}
@@ -485,6 +422,73 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                 Никого не найдено
               </p>
             )}
+            {searchQuery.length === 0 && players.length === 0 && !isSearching && (
+              <p className="text-xs text-center text-[var(--c-hint)] py-6">
+                Введите никнейм или номер
+              </p>
+            )}
+          </div>
+
+          {/* ── Search & Navigation (Bottom) ── */}
+          <div className="shrink-0 space-y-3 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--c-muted)]" />
+              <Input
+                placeholder="Поиск по нику..."
+                value={searchQuery}
+                onChange={(e) => searchPlayers(e.target.value)}
+                className="pl-9"
+                compact
+              />
+            </div>
+
+            <div className="flex items-center gap-2 py-1">
+              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+              <span className="text-[9px] text-[var(--c-muted)] font-semibold tracking-widest">ИЛИ ВЫБЕРИТЕ</span>
+              <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 pb-1">
+              <button
+                onClick={handleCreateCheckNoClient}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-xl active:scale-[0.97] transition-all"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                }}
+              >
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                  <UserX className="w-4 h-4 text-[var(--c-hint)]" />
+                </div>
+                <span className="text-[11px] font-semibold text-[var(--c-text)]">Без клиента</span>
+              </button>
+              <button
+                onClick={() => { setShowNewCheck(false); setShowCreateClient(true); }}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-xl active:scale-[0.97] transition-all"
+                style={{
+                  background: 'rgba(52, 211, 153, 0.06)',
+                  border: '1px solid rgba(52, 211, 153, 0.15)',
+                }}
+              >
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(52, 211, 153, 0.1)' }}>
+                  <UserPlus className="w-4 h-4 text-[var(--c-success)]" />
+                </div>
+                <span className="text-[11px] font-semibold text-[var(--c-success)]">Новый</span>
+              </button>
+              <button
+                onClick={() => { setShowNewCheck(false); loadSpaces(); }}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-xl active:scale-[0.97] transition-all"
+                style={{
+                  background: 'rgba(99, 102, 241, 0.06)',
+                  border: '1px solid rgba(99, 102, 241, 0.12)',
+                }}
+              >
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(99, 102, 241, 0.12)' }}>
+                  <DoorOpen className="w-4 h-4 text-indigo-400" />
+                </div>
+                <span className="text-[11px] font-semibold text-indigo-400">Кабинка</span>
+              </button>
+            </div>
           </div>
         </div>
       </Drawer>

@@ -54,8 +54,10 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
   const [screen, setScreen] = useState<Screen>((initialScreen as Screen) || 'menu');
 
   useEffect(() => {
-    if (initialScreen && initialScreen !== screen) {
+    if (initialScreen !== undefined && initialScreen !== screen) {
       setScreen(initialScreen as Screen);
+    } else if (initialScreen === undefined && screen !== 'menu') {
+      setScreen('menu');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialScreen]);

@@ -8,9 +8,11 @@ import { sendToOwners, buildShiftOpenReport, buildShiftCloseReport, buildBirthda
 interface ShiftState {
   activeShift: Shift | null;
   birthdayNames: string[];
+  cashInRegister: number | null;
   isLoading: boolean;
 
   loadActiveShift: () => Promise<void>;
+  loadCashBalance: () => Promise<void>;
   openShift: (cashStart: number) => Promise<Shift | null>;
   closeShift: (cashEnd: number, note?: string) => Promise<boolean>;
   getShiftAnalytics: (shiftId: string) => Promise<ShiftAnalytics | null>;
@@ -33,6 +35,7 @@ export const useShiftStore = create<ShiftState>()(
   persist(
     (set, get) => ({
       activeShift: null,
+      cashInRegister: null,
       birthdayNames: [],
       isLoading: false,
 
@@ -45,8 +48,91 @@ export const useShiftStore = create<ShiftState>()(
           .order('opened_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        set({ activeShift: data ? (data as Shift) : null, isLoading: false });
+        const activeShift = data ? (data as Shift) : null;
+        set({ activeShift, isLoading: false });
+        if (activeShift) {
+          get().loadCashBalance();
+        }
       },
+
+      loadCashBalance: async () => {
+        const { activeShift } = get();
+        if (!activeShift) {
+          set({ cashInRegister: null });
+          return;
+        }
+
+        const { data: shiftChecks } = await supabase
+          .from('checks')
+          .select('id, total_amount, payment_method')
+          .eq('shift_id', activeShift.id)
+          .eq('status', 'closed');
+
+        let cashFromSales = 0;
+        const checkIds = (shiftChecks || []).map((c) => c.id);
+
+        for (const c of shiftChecks || []) {
+          if (c.payment_method === 'cash') {
+            cashFromSales += c.total_amount || 0;
+          }
+        }
+
+        if (checkIds.length > 0) {
+          const { data: splitPayments } = await supabase
+            .from('check_payments')
+            .select('check_id, method, amount')
+            .in('check_id', checkIds)
+            .eq('method', 'cash');
+          for (const p of splitPayments || []) {
+            const check = shiftChecks?.find((c) => c.id === p.check_id);
+            if (check && check.payment_method !== 'cash') {
+              cashFromSales += p.amount || 0;
+            }
+          }
+        }
+
+        const { data: cashOps } = await supabase
+          .from('cash_operations')
+          .select('type, amount')
+          .eq('shift_id', activeShift.id);
+        let opsBalance = 0;
+        for (const op of cashOps || []) {
+          opsBalance += op.type === 'deposit' ? op.amount : -op.amount;
+        }
+
+        let cashRefunded = 0;
+        const { data: refundData } = await supabase
+          .from('refunds')
+          .select('total_amount, check_id')
+          .eq('shift_id', activeShift.id);
+        if (refundData && refundData.length > 0) {
+          const refundCheckIds = refundData.map((r) => r.check_id);
+          const { data: refChecks } = await supabase
+            .from('checks')
+            .select('id, total_amount, payment_method')
+            .in('id', refundCheckIds);
+          const refCheckMap = new Map((refChecks || []).map((c) => [c.id, c]));
+
+          for (const r of refundData) {
+            const origCheck = refCheckMap.get(r.check_id);
+            if (!origCheck) continue;
+            if (origCheck.payment_method === 'cash') {
+              cashRefunded += r.total_amount || 0;
+            } else if (origCheck.payment_method === 'split') {
+              const { data: cp } = await supabase
+                .from('check_payments')
+                .select('method, amount')
+                .eq('check_id', r.check_id);
+              const cashPortion = (cp || []).filter((p) => p.method === 'cash').reduce((s, p) => s + p.amount, 0);
+              const origTotal = origCheck.total_amount || 1;
+              cashRefunded += Math.round((cashPortion / origTotal) * (r.total_amount || 0));
+            }
+          }
+        }
+
+        set({ cashInRegister: activeShift.cash_start + cashFromSales + opsBalance - cashRefunded });
+      },
+
 
       openShift: async (cashStart: number) => {
         const user = useAuthStore.getState().user;

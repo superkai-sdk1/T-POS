@@ -7,7 +7,7 @@ interface DrawerProps {
   onClose: () => void;
   title?: string;
   children: ReactNode;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
 export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerProps) {
@@ -17,7 +17,7 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
   const [dragging, setDragging] = useState(false);
   const [closing, setClosing] = useState(false);
 
-  const maxH = size === 'sm' ? 'max-h-[60vh]' : size === 'md' ? 'max-h-[70vh]' : 'max-h-[85vh]';
+  const maxH = size === 'sm' ? 'max-h-[60dvh]' : size === 'md' ? 'max-h-[70dvh]' : size === 'lg' ? 'max-h-[85dvh]' : 'max-h-[95dvh] h-[95dvh]';
 
   useEffect(() => {
     if (open) {
