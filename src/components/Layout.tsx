@@ -357,28 +357,43 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
         className="flex-1 flex flex-col overflow-hidden transition-all duration-300"
         style={{ marginLeft: typeof window !== 'undefined' && window.innerWidth >= 1024 ? (isSidebarExpanded ? '240px' : '72px') : 0 }}
       >
-        {/* ── Mobile header — glass blur ── */}
-        <header
-          className="lg:hidden shrink-0 z-40 select-none relative cursor-pointer"
-          style={{
-            paddingTop: `var(--safe-top)`,
-            height: 'calc(var(--safe-top) + 65px)',
-            background: 'rgba(10, 14, 26, 0.85)',
-            backdropFilter: 'blur(40px) saturate(1.8)',
-            WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-          }}
-          onClick={handleHeaderTap}
-          onContextMenu={(e) => e.preventDefault()}
-        >
-          <div className="absolute inset-0 flex flex-col items-center justify-center pt-[var(--safe-top)]">
-            <h1 className={`text-[12px] uppercase tracking-[0.15em] font-black ${activeShift ? 'text-[var(--c-success)]' : 'text-[var(--c-danger)]'}`}>
-              {activeShift ? 'Смена открыта' : 'Смена закрыта'}
-            </h1>
-            <div className="flex items-center justify-center mt-1">
-              <span className={`text-[18px] font-black tabular-nums tracking-tight ${cashInRegister === null ? 'opacity-0' : 'text-white'}`}>
-                {fmtCur(cashInRegister ?? 0)}
-              </span>
+        {/* ── Mobile header ── */}
+        {activeTab === 'pos' ? (
+          /* Shift header — only on POS tab */
+          <header
+            className="lg:hidden shrink-0 z-40 select-none relative"
+            style={{
+              paddingTop: `var(--safe-top)`,
+              height: 'calc(var(--safe-top) + 65px)',
+              background: 'rgba(10, 14, 26, 0.85)',
+              backdropFilter: 'blur(40px) saturate(1.8)',
+              WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            }}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            {/* Logout button — top-left */}
+            <button
+              onClick={() => useAuthStore.getState().logout()}
+              className="absolute top-0 left-3 z-10 w-9 h-9 rounded-xl flex items-center justify-center text-[var(--c-hint)] active:scale-90 transition-all"
+              style={{ marginTop: 'calc(var(--safe-top) + 10px)' }}
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+
+            {/* Shift info — tappable center */}
+            <div
+              className="absolute inset-0 flex flex-col items-center justify-center pt-[var(--safe-top)] cursor-pointer"
+              onClick={handleHeaderTap}
+            >
+              <h1 className={`text-[12px] uppercase tracking-[0.15em] font-black ${activeShift ? 'text-[var(--c-success)]' : 'text-[var(--c-danger)]'}`}>
+                {activeShift ? 'Смена открыта' : 'Смена закрыта'}
+              </h1>
+              <div className="flex items-center justify-center mt-1">
+                <span className={`text-[18px] font-black tabular-nums tracking-tight ${cashInRegister === null ? 'opacity-0' : 'text-white'}`}>
+                  {fmtCur(cashInRegister ?? 0)}
+                </span>
+              </div>
             </div>
 
             {/* Pull to refresh visual indicator */}
@@ -387,8 +402,33 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                 <RefreshCw className="w-3.5 h-3.5 text-white animate-spin" />
               </div>
             )}
-          </div>
-        </header>
+          </header>
+        ) : (
+          /* Compact header — other tabs */
+          <header
+            className="lg:hidden shrink-0 z-40 select-none relative"
+            style={{
+              paddingTop: `var(--safe-top)`,
+              height: 'calc(var(--safe-top) + 50px)',
+              background: 'rgba(10, 14, 26, 0.85)',
+              backdropFilter: 'blur(40px) saturate(1.8)',
+              WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            }}
+          >
+            <div className="absolute inset-0 flex items-center justify-between px-4 pt-[var(--safe-top)]">
+              <h1 className="text-[15px] font-bold text-white">
+                {tabs.find(t => t.id === activeTab)?.label ?? ''}
+              </h1>
+              <button
+                onClick={() => useAuthStore.getState().logout()}
+                className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--c-hint)] active:scale-90 transition-all"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          </header>
+        )}
 
         <main
           ref={scrollRef}
