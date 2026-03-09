@@ -21,6 +21,7 @@ export interface Profile {
   photo_url: string | null;
   birthday: string | null;
   client_tier: ClientTier;
+  search_tags: string[];
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

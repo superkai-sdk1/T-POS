@@ -7,7 +7,7 @@ import { Drawer } from '@/components/ui/Drawer';
 import {
   Search, Pencil, Trash2, X, Check, User,
   Phone, Calendar, Star, CreditCard, UserPlus, Cake, GraduationCap, Send,
-  Link, CheckCircle, XCircle, QrCode,
+  Link, CheckCircle, XCircle, QrCode, Tag, Plus,
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
@@ -37,6 +37,7 @@ interface ClientForm {
   client_tier: ClientTier;
   photo_url: string;
   tg_username: string;
+  search_tags: string[];
 }
 
 const emptyForm: ClientForm = {
@@ -46,6 +47,7 @@ const emptyForm: ClientForm = {
   client_tier: 'regular',
   photo_url: '',
   tg_username: '',
+  search_tags: [],
 };
 
 const ClientRow = memo(function ClientRow({ client, onSelect, getAge, isBirthdaySoon }: { client: Profile; onSelect: (c: Profile) => void; getAge: (d: string) => number; isBirthdaySoon: (d: string) => boolean }) {
@@ -82,6 +84,11 @@ const ClientRow = memo(function ClientRow({ client, onSelect, getAge, isBirthday
           {client.birthday && (
             <span className="text-[10px] text-[var(--c-muted)]">{getAge(client.birthday)} лет</span>
           )}
+          {client.search_tags && client.search_tags.length > 0 && (
+            <span className="text-[10px] text-[var(--c-accent-light)]/50 truncate max-w-[100px]">
+              {client.search_tags.slice(0, 2).join(', ')}
+            </span>
+          )}
         </div>
       </div>
 
@@ -115,6 +122,7 @@ export function ClientsManager() {
   const [linkRequests, setLinkRequests] = useState<LinkRequest[]>([]);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [showQr, setShowQr] = useState(false);
+  const [newTag, setNewTag] = useState('');
 
   const loadClients = useCallback(async () => {
     const { data } = await supabase
@@ -163,7 +171,10 @@ export function ClientsManager() {
   const filtered = clients.filter((c) => {
     if (search) {
       const q = search.toLowerCase();
-      return c.nickname.toLowerCase().includes(q) || (c.phone && c.phone.includes(q)) || (c.tg_username && c.tg_username.toLowerCase().includes(q));
+      return c.nickname.toLowerCase().includes(q)
+        || (c.phone && c.phone.includes(q))
+        || (c.tg_username && c.tg_username.toLowerCase().includes(q))
+        || (c.search_tags && c.search_tags.some(tag => tag.toLowerCase().includes(q)));
     }
     if (filter === 'residents') return c.client_tier === 'resident';
     if (filter === 'students') return c.client_tier === 'student';
@@ -200,6 +211,7 @@ export function ClientsManager() {
       client_tier: client.client_tier || 'regular',
       photo_url: client.photo_url || '',
       tg_username: client.tg_username || '',
+      search_tags: client.search_tags || [],
     });
     setShowEditor(true);
     hapticFeedback();
@@ -252,6 +264,7 @@ export function ClientsManager() {
       client_tier: form.client_tier,
       photo_url: form.photo_url || null,
       tg_username: rawTg || null,
+      search_tags: form.search_tags.filter(t => t.trim()),
     };
 
     if (editingClient) {
@@ -499,6 +512,21 @@ export function ClientsManager() {
                   </div>
                 </div>
               )}
+              {detailClient.search_tags && detailClient.search_tags.length > 0 && (
+                <div className="flex items-start gap-3 p-2.5 rounded-xl card">
+                  <Tag className="w-4 h-4 text-[var(--c-accent-light)]/60 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">Теги</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {detailClient.search_tags.map((tag, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded text-[11px] font-medium" style={{ background: 'rgba(139,92,246,0.1)', color: 'var(--c-accent-light)' }}>
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-3 rounded-xl bg-[var(--c-warning-bg)] text-center">
                   <Star className="w-4 h-4 text-[var(--c-warning)] mx-auto mb-1" />
@@ -645,6 +673,62 @@ export function ClientsManager() {
             value={form.birthday}
             onChange={(e) => updateField('birthday', e.target.value)}
           />
+
+          {/* Search tags */}
+          <div>
+            <p className="text-xs font-medium text-[var(--c-hint)] mb-2">Теги для поиска</p>
+            {form.search_tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {form.search_tags.map((tag, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium"
+                    style={{ background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.2)', color: 'var(--c-accent-light)' }}
+                  >
+                    <Tag className="w-3 h-3" />
+                    {tag}
+                    <button
+                      onClick={() => updateField('search_tags', form.search_tags.filter((_, j) => j !== i))}
+                      className="ml-0.5 w-4 h-4 rounded flex items-center justify-center hover:bg-white/10 active:scale-90"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Имя, фамилия, прозвище..."
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                compact
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newTag.trim()) {
+                    e.preventDefault();
+                    if (!form.search_tags.includes(newTag.trim())) {
+                      updateField('search_tags', [...form.search_tags, newTag.trim()]);
+                    }
+                    setNewTag('');
+                  }
+                }}
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={!newTag.trim()}
+                onClick={() => {
+                  if (newTag.trim() && !form.search_tags.includes(newTag.trim())) {
+                    updateField('search_tags', [...form.search_tags, newTag.trim()]);
+                  }
+                  setNewTag('');
+                }}
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+            <p className="text-[10px] text-[var(--c-muted)] mt-1">Реальное имя, фамилия, прозвище — всё, по чему можно найти</p>
+          </div>
 
           {/* Tier selector */}
           <div>

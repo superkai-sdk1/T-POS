@@ -131,6 +131,9 @@ END $$;
 
 ALTER TABLE modifiers REPLICA IDENTITY FULL;
 ALTER TABLE expenses REPLICA IDENTITY FULL;
+
+-- Search tags for client profiles
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS search_tags text[] NOT NULL DEFAULT '{}';
 `;
 
 async function main() {

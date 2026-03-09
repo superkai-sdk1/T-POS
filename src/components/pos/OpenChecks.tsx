@@ -162,10 +162,31 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
       const { data } = await supabase
         .from('profiles')
         .select('*')
-        .ilike('nickname', `%${query}%`)
         .is('deleted_at', null)
+        .or(`nickname.ilike.%${query}%,search_tags.cs.{"${query.toLowerCase()}"}`)
         .limit(20);
-      setPlayers((data as Profile[]) || []);
+
+      // Also do a client-side partial match on tags for better UX
+      let results = (data as Profile[]) || [];
+      if (results.length < 20) {
+        const { data: tagData } = await supabase
+          .from('profiles')
+          .select('*')
+          .is('deleted_at', null)
+          .not('search_tags', 'eq', '{}')
+          .limit(100);
+        if (tagData) {
+          const q = query.toLowerCase();
+          const existingIds = new Set(results.map(r => r.id));
+          const tagMatches = (tagData as Profile[]).filter(p =>
+            !existingIds.has(p.id) &&
+            p.search_tags?.some(tag => tag.toLowerCase().includes(q))
+          );
+          results = [...results, ...tagMatches].slice(0, 20);
+        }
+      }
+
+      setPlayers(results);
       setIsSearching(false);
     }, 300);
   }, []);
@@ -483,10 +504,15 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                   <p className="font-bold text-[14px] text-[var(--c-text)] truncate">
                     {player.nickname}
                   </p>
-                  <div className="flex gap-1.5 mt-1">
+                  <div className="flex flex-wrap gap-1.5 mt-1">
                     {tierBadge(player.client_tier)}
                     {(player.balance ?? 0) < 0 && <Badge variant="danger" size="sm">{player.balance}₽</Badge>}
                     {(player.bonus_points ?? 0) > 0 && <Badge variant="accent" size="sm">{player.bonus_points} бон.</Badge>}
+                    {searchQuery && player.search_tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())) && (
+                      <span className="text-[10px] text-[var(--c-accent-light)]/60 italic truncate">
+                        {player.search_tags.find(t => t.toLowerCase().includes(searchQuery.toLowerCase()))}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <Receipt className="w-4 h-4 text-[var(--c-muted)] shrink-0" />

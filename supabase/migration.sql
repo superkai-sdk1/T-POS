@@ -32,6 +32,7 @@ create table profiles (
   phone text,
   photo_url text,
   birthday date,
+они искались и по этим тегам тоже  search_tags text[] not null default '{}',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
