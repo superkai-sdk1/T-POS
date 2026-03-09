@@ -109,39 +109,46 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
     }
   };
 
-  const handleStartClose = async () => {
+  const handleStartClose = () => {
     if (!activeShift) return;
     hapticFeedback('medium');
-    setIsClosing(true);
     setCloseError('');
+    setAnalytics(null);
+    setIsClosing(true);
 
-    try {
-      const { count } = await supabase
-        .from('checks')
-        .select('id', { count: 'exact', head: true })
-        .eq('shift_id', activeShift.id)
-        .eq('status', 'open');
-      if (count && count > 0) {
-        setIsClosing(false);
-        setCloseError(`Невозможно закрыть смену: ${count} открытых чеков`);
-        hapticNotification('error');
-        return;
-      }
-    } catch {
-      // Network error — still allow to try closing
-    }
-
-    // Open drawer immediately
+    // Open drawer IMMEDIATELY — show loading state inside
     if (cashInRegister !== null) {
       setCashEnd(String(cashInRegister));
     }
-    setIsClosing(false);
     setShowClose(true);
 
-    // Load analytics in background (non-blocking)
-    getShiftAnalytics(activeShift.id).then((data) => {
-      setAnalytics(data);
-    });
+    // Check for open checks + load analytics in background
+    (async () => {
+      try {
+        const { count } = await supabase
+          .from('checks')
+          .select('id', { count: 'exact', head: true })
+          .eq('shift_id', activeShift.id)
+          .eq('status', 'open');
+        if (count && count > 0) {
+          setCloseError(`Невозможно закрыть смену: ${count} открытых чеков. Закройте все чеки и повторите.`);
+          hapticNotification('error');
+          setIsClosing(false);
+          return;
+        }
+      } catch {
+        // Network error — still allow to try closing
+      }
+
+      // Load analytics (non-blocking)
+      try {
+        const data = await getShiftAnalytics(activeShift.id);
+        setAnalytics(data);
+      } catch {
+        // Analytics failed — not critical
+      }
+      setIsClosing(false);
+    })();
   };
 
   const handleConfirmClose = async () => {
@@ -475,7 +482,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
         </div>
       </Drawer>
 
-      <Drawer open={showClose} onClose={() => setShowClose(false)} title="Закрытие смены" size="md">
+      <Drawer open={showClose} onClose={() => { setShowClose(false); setCloseError(''); setIsClosing(false); }} title="Закрытие смены" size="md">
         <div className="space-y-3">
           {closeError && (
             <div className="flex items-center gap-2 p-2.5 rounded-xl animate-fade-in" style={{ background: 'rgba(251, 113, 133, 0.06)', border: '1px solid rgba(251, 113, 133, 0.12)' }}>
@@ -484,6 +491,12 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
               <button onClick={() => setCloseError('')} className="w-5 h-5 rounded-md flex items-center justify-center shrink-0">
                 <X className="w-2.5 h-2.5 text-[var(--c-muted)]" />
               </button>
+            </div>
+          )}
+          {isClosing && !analytics && !closeError && (
+            <div className="flex flex-col items-center justify-center py-6 gap-3">
+              <div className="w-8 h-8 border-2 border-[var(--c-accent)]/30 border-t-[var(--c-accent)] rounded-full animate-spin" />
+              <p className="text-xs text-[var(--c-hint)]">Проверка открытых чеков...</p>
             </div>
           )}
           {analytics && (
@@ -519,7 +532,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
 
           <Input type="number" label="Наличные в кассе (факт)" placeholder="Пересчитайте наличные" value={cashEnd} onChange={(e) => setCashEnd(e.target.value)} compact min={0} />
           <Input label="Примечание" placeholder="Комментарий к смене" value={closeNote} onChange={(e) => setCloseNote(e.target.value)} compact />
-          <Button fullWidth variant="danger" onClick={handleConfirmClose} disabled={isClosing}>
+          <Button fullWidth variant="danger" onClick={handleConfirmClose} disabled={isClosing || !!closeError}>
             {isClosing ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <StopCircle className="w-4 h-4" />}
             Закрыть смену
           </Button>
