@@ -1,6 +1,7 @@
 import { useMemo, useState, useRef, useEffect, type ReactNode } from 'react';
 import { useAuthStore } from '@/store/auth';
 import { useShiftStore } from '@/store/shift';
+import { usePOSStore } from '@/store/pos';
 import { supabase } from '@/lib/supabase';
 import { Drawer } from '@/components/ui/Drawer';
 import { Input } from '@/components/ui/Input';
@@ -181,16 +182,17 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
     triggerShiftAction();
   };
 
-  // Pull to refresh hook — only on POS tab when no drawers/modals are open
-  const isOverlayOpen = () => !!document.querySelector('.fixed.inset-0.z-50');
+  // Pull to refresh hook — only on POS open checks screen, no overlays
+  const activeCheck = usePOSStore((s) => s.activeCheck);
+  const isOverlayOpen = () => !!document.querySelector('.fixed.inset-x-0.z-50, .fixed.inset-0.z-50');
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (activeTab !== 'pos' || isOverlayOpen()) return;
+    if (activeTab !== 'pos' || activeCheck || isOverlayOpen()) return;
     if (!scrollRef.current || scrollRef.current.scrollTop > 5) return;
     touchStartY.current = e.touches[0].clientY;
   };
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (activeTab !== 'pos' || isOverlayOpen()) return;
+    if (activeTab !== 'pos' || activeCheck || isOverlayOpen()) return;
     if (isRefreshing || !scrollRef.current || scrollRef.current.scrollTop > 5) return;
     const dy = e.touches[0].clientY - touchStartY.current;
     if (dy > 120) {

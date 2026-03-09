@@ -15,11 +15,11 @@ const SIZE_RATIO: Record<string, number> = { sm: 0.6, md: 0.7, lg: 0.85, xl: 0.9
 export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [viewportH, setViewportH] = useState<number | null>(null);
 
   // Track visual viewport for keyboard adaptation
   useEffect(() => {
@@ -28,27 +28,19 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
     if (!vv) return;
 
     const sync = () => {
-      const container = containerRef.current;
-      if (!container) return;
-      // Position the fixed container to match the visual viewport
-      // This keeps content visible when virtual keyboard opens
-      container.style.height = `${vv.height}px`;
-      container.style.top = `${vv.offsetTop}px`;
+      // Use visual viewport height so Drawer shrinks when keyboard opens
+      setViewportH(vv.height);
+      // Prevent page scroll behind Drawer when keyboard is open
+      window.scrollTo(0, 0);
     };
 
-    // Initial sync
     sync();
-
     vv.addEventListener('resize', sync);
     vv.addEventListener('scroll', sync);
     return () => {
       vv.removeEventListener('resize', sync);
       vv.removeEventListener('scroll', sync);
-      const container = containerRef.current;
-      if (container) {
-        container.style.height = '';
-        container.style.top = '';
-      }
+      setViewportH(null);
     };
   }, [open]);
 
@@ -100,11 +92,14 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
   const opacity = closing ? 0 : dragY > 0 ? Math.max(0, 1 - dragY / 250) : 1;
   const ratio = SIZE_RATIO[size] ?? 0.85;
 
+  // Container height: use visualViewport height if keyboard is open, otherwise full screen
+  const containerHeight = viewportH != null ? `${viewportH}px` : '100dvh';
+
   const drawerContent = (
     <div
       ref={containerRef}
-      className="fixed inset-x-0 z-50 flex items-end lg:items-center lg:justify-center overflow-hidden"
-      style={{ top: 0, height: '100dvh' }}
+      className="fixed inset-x-0 top-0 z-50 flex items-end lg:items-center lg:justify-center overflow-hidden"
+      style={{ height: containerHeight }}
     >
       {/* Backdrop */}
       <div
@@ -120,7 +115,6 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
       />
       {/* Panel */}
       <div
-        ref={panelRef}
         onClick={(e) => e.stopPropagation()}
         className={`relative w-full lg:max-w-lg lg:rounded-2xl rounded-t-3xl overflow-hidden flex flex-col ${closing ? 'animate-slide-down' : 'lg:animate-pop-in animate-slide-up'}`}
         style={{
