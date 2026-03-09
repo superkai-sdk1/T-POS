@@ -82,18 +82,21 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
     return map[m] || m;
   };
 
-  const handleOpenDrawer = async () => {
-    const { data: lastShift } = await supabase
+  const handleOpenDrawer = () => {
+    setShowOpen(true);
+    // Pre-fill cash from last closed shift (non-blocking)
+    supabase
       .from('shifts')
       .select('cash_end')
       .eq('status', 'closed')
       .order('closed_at', { ascending: false })
       .limit(1)
-      .maybeSingle();
-    if (lastShift?.cash_end != null) {
-      setCashStart(String(lastShift.cash_end));
-    }
-    setShowOpen(true);
+      .maybeSingle()
+      .then(({ data: lastShift }) => {
+        if (lastShift?.cash_end != null) {
+          setCashStart(String(lastShift.cash_end));
+        }
+      });
   };
 
   const handleOpen = async () => {
@@ -112,25 +115,33 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
     setIsClosing(true);
     setCloseError('');
 
-    const { count } = await supabase
-      .from('checks')
-      .select('id', { count: 'exact', head: true })
-      .eq('shift_id', activeShift.id)
-      .eq('status', 'open');
-    if (count && count > 0) {
-      setIsClosing(false);
-      setCloseError(`Невозможно закрыть смену: ${count} открытых чеков`);
-      hapticNotification('error');
-      return;
+    try {
+      const { count } = await supabase
+        .from('checks')
+        .select('id', { count: 'exact', head: true })
+        .eq('shift_id', activeShift.id)
+        .eq('status', 'open');
+      if (count && count > 0) {
+        setIsClosing(false);
+        setCloseError(`Невозможно закрыть смену: ${count} открытых чеков`);
+        hapticNotification('error');
+        return;
+      }
+    } catch {
+      // Network error — still allow to try closing
     }
 
-    const data = await getShiftAnalytics(activeShift.id);
-    setAnalytics(data);
+    // Open drawer immediately
     if (cashInRegister !== null) {
       setCashEnd(String(cashInRegister));
     }
     setIsClosing(false);
     setShowClose(true);
+
+    // Load analytics in background (non-blocking)
+    getShiftAnalytics(activeShift.id).then((data) => {
+      setAnalytics(data);
+    });
   };
 
   const handleConfirmClose = async () => {
