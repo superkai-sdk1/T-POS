@@ -23,32 +23,33 @@ export function useRealtimeSync() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'checks' },
-        () => debounced('checks', () => {
-          usePOSStore.getState().loadOpenChecks();
-          const active = usePOSStore.getState().activeCheck;
-          if (active) usePOSStore.getState().refreshActiveCheck();
+        (payload: any) => {
+          if (payload.eventType === 'DELETE') {
+            usePOSStore.getState().deleteCheckLocal(payload.old.id);
+          } else {
+            usePOSStore.getState().refreshCheckById(payload.new.id);
+          }
           emitTableChange('checks');
-        }),
+        },
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'check_items' },
-        () => debounced('check_items', () => {
+        (payload: any) => {
           if (isSavingCart()) return;
-          usePOSStore.getState().loadOpenChecks();
-          const active = usePOSStore.getState().activeCheck;
-          if (active) usePOSStore.getState().refreshActiveCheck();
+          const checkId = payload.new ? payload.new.check_id : payload.old.check_id;
+          if (checkId) usePOSStore.getState().refreshCheckById(checkId);
           emitTableChange('check_items');
-        }),
+        },
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'check_discounts' },
-        () => debounced('check_discounts', () => {
-          const active = usePOSStore.getState().activeCheck;
-          if (active) usePOSStore.getState().refreshActiveCheck();
+        (payload: any) => {
+          const checkId = payload.new ? payload.new.check_id : payload.old.check_id;
+          if (checkId) usePOSStore.getState().refreshCheckById(checkId);
           emitTableChange('check_discounts');
-        }),
+        },
       )
       .on(
         'postgres_changes',
@@ -80,83 +81,52 @@ export function useRealtimeSync() {
           emitTableChange('profiles');
         }),
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'events' },
-        () => debounced('events', () => {
-          emitTableChange('events');
-        }),
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'discounts' },
-        () => debounced('discounts', () => {
-          emitTableChange('discounts');
-        }),
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'supplies' },
-        () => debounced('supplies', () => {
-          emitTableChange('supplies');
-        }),
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'revisions' },
-        () => debounced('revisions', () => {
-          emitTableChange('revisions');
-        }),
-      )
       .subscribe();
 
     channelRef.current = channel;
 
-    // Re-subscribe after app resume from screen lock
+    // Aggressive reconnection on app resume
     const handleReconnect = () => {
       console.log('[T-POS] Reconnecting realtime channel');
       if (channelRef.current) {
         channelRef.current.unsubscribe();
       }
-      // Small delay to let the old channel clean up
       setTimeout(() => {
+        usePOSStore.getState().loadOpenChecks(); // Refresh everything once on reconnect
         const freshChannel = supabase
           .channel('tpos-realtime-' + Date.now())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'checks' },
-            () => debounced('checks', () => {
-              usePOSStore.getState().loadOpenChecks();
-              const active = usePOSStore.getState().activeCheck;
-              if (active) usePOSStore.getState().refreshActiveCheck();
-              emitTableChange('checks');
-            }),
+            (payload: any) => {
+              if (payload.eventType === 'DELETE') usePOSStore.getState().deleteCheckLocal(payload.old.id);
+              else usePOSStore.getState().refreshCheckById(payload.new.id);
+            }
           )
           .on('postgres_changes', { event: '*', schema: 'public', table: 'check_items' },
-            () => debounced('check_items', () => {
-              if (isSavingCart()) return;
-              usePOSStore.getState().loadOpenChecks();
-              const active = usePOSStore.getState().activeCheck;
-              if (active) usePOSStore.getState().refreshActiveCheck();
-              emitTableChange('check_items');
-            }),
-          )
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' },
-            () => debounced('inventory', () => { usePOSStore.getState().loadInventory(); emitTableChange('inventory'); }),
-          )
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'shifts' },
-            () => debounced('shifts', () => { useShiftStore.getState().loadActiveShift(); emitTableChange('shifts'); }),
-          )
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' },
-            () => debounced('profiles', () => { emitTableChange('profiles'); }),
+            (payload: any) => {
+              const checkId = payload.new ? payload.new.check_id : payload.old.check_id;
+              if (checkId) usePOSStore.getState().refreshCheckById(checkId);
+            }
           )
           .subscribe();
         channelRef.current = freshChannel;
-      }, 500);
+      }, 300);
     };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        handleReconnect();
+      }
+    };
+
     window.addEventListener('tpos:reconnect', handleReconnect);
+    window.addEventListener('online', handleReconnect);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       Object.values(debounceTimers).forEach(clearTimeout);
       window.removeEventListener('tpos:reconnect', handleReconnect);
+      window.removeEventListener('online', handleReconnect);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       channel.unsubscribe();
     };
   }, []);

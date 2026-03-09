@@ -45,6 +45,13 @@ interface POSState {
   closeCheck: (payments: PaymentPortion[], bonusUsed?: number, spaceRental?: number) => Promise<boolean>;
   cancelCheck: () => Promise<boolean>;
   leaveCheck: () => Promise<void>;
+  refreshCheckById: (checkId: string) => Promise<void>;
+
+  // Local state updates for Realtime Sync
+  upsertCheckLocal: (check: Check) => void;
+  deleteCheckLocal: (checkId: string) => void;
+  upsertCheckItemLocal: (item: CheckItem, modifiers?: { id: string; name: string; price: number }[]) => void;
+  deleteCheckItemLocal: (checkId: string, itemId: string) => void;
 }
 
 let _savingCart = false;
@@ -513,38 +520,115 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const doSave = async () => {
       _savingCart = true;
       try {
-        await supabase.from('check_items').delete().eq('check_id', activeCheck.id);
-        if (cart.length > 0) {
-          const rows = cart.map((c) => ({
-            check_id: activeCheck.id,
-            item_id: c.item.id,
-            quantity: c.quantity,
-            price_at_time: c.item.price,
-          }));
-          const { error, data: newCIs } = await supabase.from('check_items').insert(rows).select('id, item_id');
-          if (error) {
-            console.error('saveCartToDb insert failed:', error);
-            return;
-          }
+        // 1. Fetch current DB state for this check's items and their modifiers
+        const { data: dbItems } = await supabase
+          .from('check_items')
+          .select('id, item_id, quantity, price_at_time')
+          .eq('check_id', activeCheck.id);
 
-          if (newCIs) {
-            const modRows: { check_item_id: string; modifier_id: string; price_at_time: number }[] = [];
-            for (let i = 0; i < cart.length; i++) {
-              const ci = cart[i];
-              if (!ci.modifiers || ci.modifiers.length === 0) continue;
-              const newCI = newCIs[i];
-              if (!newCI) continue;
-              for (const mod of ci.modifiers) {
-                modRows.push({ check_item_id: newCI.id, modifier_id: mod.id, price_at_time: mod.price });
-              }
+        const dbItemsArray = dbItems || [];
+        const dbItemIds = dbItemsArray.map(i => i.id);
+
+        const { data: dbModifiers } = dbItemIds.length > 0
+          ? await supabase.from('check_item_modifiers').select('*').in('check_item_id', dbItemIds)
+          : { data: [] };
+
+        const dbModifierMap: Record<string, string> = {}; // check_item_id -> sorted modifier IDs
+        (dbModifiers || []).forEach(m => {
+          if (!dbModifierMap[m.check_item_id]) dbModifierMap[m.check_item_id] = '';
+          dbModifierMap[m.check_item_id] += (dbModifierMap[m.check_item_id] ? ',' : '') + m.modifier_id;
+        });
+        Object.keys(dbModifierMap).forEach(k => {
+          dbModifierMap[k] = dbModifierMap[k].split(',').sort().join(',');
+        });
+
+        // 2. Diff local cart with DB items
+        const itemsToDelete: string[] = [];
+        const itemsToUpsert: any[] = [];
+        const modifiersToInsert: any[] = [];
+
+        const cartWithKeys = cart.map(c => ({
+          ...c,
+          key: (c.modifiers || []).map(m => m.id).sort().join(',')
+        }));
+
+        const matchedDbIds = new Set<string>();
+
+        for (const cartItem of cartWithKeys) {
+          const existing = dbItemsArray.find(dbi =>
+            dbi.item_id === cartItem.item.id &&
+            (dbModifierMap[dbi.id] || '') === cartItem.key &&
+            !matchedDbIds.has(dbi.id)
+          );
+
+          if (existing) {
+            matchedDbIds.add(existing.id);
+            if (existing.quantity !== cartItem.quantity) {
+              itemsToUpsert.push({
+                id: existing.id,
+                check_id: activeCheck.id,
+                item_id: cartItem.item.id,
+                quantity: cartItem.quantity,
+                price_at_time: cartItem.item.price
+              });
             }
-            if (modRows.length > 0) {
-              await supabase.from('check_item_modifiers').insert(modRows);
+          } else {
+            // New item
+            itemsToUpsert.push({
+              check_id: activeCheck.id,
+              item_id: cartItem.item.id,
+              quantity: cartItem.quantity,
+              price_at_time: cartItem.item.price,
+              _temp_modifiers: cartItem.modifiers // Temporary for step 5
+            });
+          }
+        }
+
+        dbItemsArray.forEach(dbi => {
+          if (!matchedDbIds.has(dbi.id)) itemsToDelete.push(dbi.id);
+        });
+
+        // 3. Execution
+        if (itemsToDelete.length > 0) {
+          await supabase.from('check_items').delete().in('id', itemsToDelete);
+        }
+
+        if (itemsToUpsert.length > 0) {
+          const { data: savedItems, error } = await supabase
+            .from('check_items')
+            .upsert(itemsToUpsert.map(({ _temp_modifiers, ...rest }) => rest))
+            .select();
+
+          if (error) throw error;
+
+          // 4. Handle modifiers for NEW items
+          if (savedItems) {
+            const newModifiers: any[] = [];
+            itemsToUpsert.forEach((item, idx) => {
+              if (item._temp_modifiers && item._temp_modifiers.length > 0) {
+                // Find the saved item by matching fields (since we might not have ID from upsert input if it was new)
+                const saved = savedItems.find(si => si.item_id === item.item_id && si.quantity === item.quantity);
+                if (saved) {
+                  item._temp_modifiers.forEach((m: any) => {
+                    newModifiers.push({
+                      check_item_id: saved.id,
+                      modifier_id: m.id,
+                      price_at_time: m.price
+                    });
+                  });
+                }
+              }
+            });
+            if (newModifiers.length > 0) {
+              await supabase.from('check_item_modifiers').insert(newModifiers);
             }
           }
         }
+
         _lastCartFingerprint = modKey;
         success = true;
+      } catch (err) {
+        console.error('saveCartToDb error:', err);
       } finally {
         setTimeout(() => { _savingCart = false; }, 600);
         _savePromise = null;
@@ -608,6 +692,15 @@ export const usePOSStore = create<POSState>((set, get) => ({
         closed_at: new Date().toISOString(),
       })
       .eq('id', activeCheck.id);
+
+    // Refresh local state immediately to avoid stale data
+    set((state) => ({
+      openChecks: state.openChecks.filter(c => c.id !== activeCheck.id),
+      activeCheck: null,
+      cart: [],
+      checkItems: [],
+      appliedDiscounts: []
+    }));
 
     if (payments.length > 0) {
       const paymentRows = payments.map((p) => ({
@@ -749,6 +842,169 @@ export const usePOSStore = create<POSState>((set, get) => ({
     await get().loadOpenChecks();
     await get().loadInventory();
     return true;
+  },
+
+  refreshCheckById: async (checkId: string) => {
+    const { data: checkData } = await supabase
+      .from('checks')
+      .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*)')
+      .eq('id', checkId)
+      .single();
+
+    if (!checkData || checkData.status === 'closed') {
+      get().deleteCheckLocal(checkId);
+      return;
+    }
+
+    const { data: itemsData } = await supabase
+      .from('check_items')
+      .select('*, item:inventory(*)')
+      .eq('check_id', checkId);
+
+    const check = {
+      ...checkData,
+      player: Array.isArray(checkData.player) ? checkData.player[0] : checkData.player,
+      space: Array.isArray(checkData.space) ? checkData.space[0] : checkData.space,
+    } as Check;
+
+    const items = (itemsData || []).map(ci => ({
+      ...ci,
+      item: Array.isArray(ci.item) ? ci.item[0] : ci.item,
+    })) as CheckItem[];
+
+    // Fetch modifiers
+    let modMap: Record<string, { id: string; name: string; price: number }[]> = {};
+    const ciIds = items.map(i => i.id);
+    if (ciIds.length > 0) {
+      const { data: cimRows } = await supabase
+        .from('check_item_modifiers')
+        .select('check_item_id, modifier_id, price_at_time, modifier:modifiers(name)')
+        .in('check_item_id', ciIds);
+      (cimRows || []).forEach(row => {
+        if (!modMap[row.check_item_id]) modMap[row.check_item_id] = [];
+        modMap[row.check_item_id].push({
+          id: row.modifier_id,
+          name: (row.modifier as any)?.name || '?',
+          price: row.price_at_time || 0,
+        });
+      });
+    }
+
+    const cart: CartItem[] = items.map(ci => ({
+      item: ci.item!,
+      quantity: ci.quantity,
+      modifiers: modMap[ci.id],
+    }));
+
+    set(state => {
+      const newChecks = state.openChecks.map(c => c.id === checkId ? check : c);
+      if (!newChecks.find(c => c.id === checkId)) newChecks.unshift(check);
+
+      const updates: Partial<POSState> = {
+        openChecks: newChecks,
+        openCheckItems: { ...state.openCheckItems, [checkId]: items },
+        openCheckCarts: { ...state.openCheckCarts, [checkId]: cart },
+      };
+
+      if (state.activeCheck?.id === checkId) {
+        updates.activeCheck = check;
+        updates.checkItems = items;
+        updates.cart = cart;
+      }
+
+      return updates as any;
+    });
+  },
+
+  upsertCheckLocal: (check: Check) => {
+    set((state) => {
+      const idx = state.openChecks.findIndex((c) => c.id === check.id);
+      const newChecks = [...state.openChecks];
+      if (idx >= 0) {
+        newChecks[idx] = { ...newChecks[idx], ...check };
+      } else {
+        newChecks.unshift(check);
+      }
+
+      const updates: Partial<POSState> = { openChecks: newChecks };
+      if (state.activeCheck?.id === check.id) {
+        updates.activeCheck = { ...state.activeCheck, ...check };
+      }
+      return updates as any;
+    });
+  },
+
+  deleteCheckLocal: (checkId: string) => {
+    set((state) => ({
+      openChecks: state.openChecks.filter((c) => c.id !== checkId),
+      activeCheck: state.activeCheck?.id === checkId ? null : state.activeCheck,
+      cart: state.activeCheck?.id === checkId ? [] : state.cart,
+    }));
+  },
+
+  upsertCheckItemLocal: (item: CheckItem, modifiers?: { id: string; name: string; price: number }[]) => {
+    set((state) => {
+      const checkId = item.check_id;
+      const currentItems = state.openCheckItems[checkId] || [];
+      const itemIdx = currentItems.findIndex((ci) => ci.id === item.id);
+
+      const newItems = [...currentItems];
+      if (itemIdx >= 0) {
+        newItems[itemIdx] = item;
+      } else {
+        newItems.push(item);
+      }
+
+      const newItemsMap = { ...state.openCheckItems, [checkId]: newItems };
+
+      // Update cart representation
+      const newCart: CartItem[] = newItems.map(ci => ({
+        item: ci.item!,
+        quantity: ci.quantity,
+        modifiers: modifiers // This is tricky because we might not have all modifiers here
+      }));
+      // Note: Full modifier sync happens in refreshActiveCheck or specific UPSERT payloads
+
+      const newCartsMap = { ...state.openCheckCarts, [checkId]: newCart };
+
+      const updates: Partial<POSState> = {
+        openCheckItems: newItemsMap,
+        openCheckCarts: newCartsMap,
+      };
+
+      if (state.activeCheck?.id === checkId) {
+        updates.checkItems = newItems;
+        updates.cart = newCart;
+      }
+
+      return updates as any;
+    });
+  },
+
+  deleteCheckItemLocal: (checkId: string, checkItemId: string) => {
+    set((state) => {
+      const currentItems = state.openCheckItems[checkId] || [];
+      const newItems = currentItems.filter(ci => ci.id !== checkItemId);
+      const newItemsMap = { ...state.openCheckItems, [checkId]: newItems };
+
+      const newCart = state.openCheckCarts[checkId]?.filter((_, idx) => {
+        const ci = currentItems[idx];
+        return ci && ci.id !== checkItemId;
+      }) || [];
+      const newCartsMap = { ...state.openCheckCarts, [checkId]: newCart };
+
+      const updates: Partial<POSState> = {
+        openCheckItems: newItemsMap,
+        openCheckCarts: newCartsMap,
+      };
+
+      if (state.activeCheck?.id === checkId) {
+        updates.checkItems = newItems;
+        updates.cart = newCart;
+      }
+
+      return updates as any;
+    });
   },
 }));
 
