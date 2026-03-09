@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useCallback, type ReactNode } from 'react';
+import { useMemo, useState, useRef, useEffect, type ReactNode } from 'react';
 import { useAuthStore } from '@/store/auth';
 import { useShiftStore } from '@/store/shift';
 import { supabase } from '@/lib/supabase';
@@ -9,7 +9,7 @@ import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { ShiftAnalytics as ShiftAnalyticsModal } from '@/components/shift/ShiftAnalytics';
 import {
   Receipt, Package, BarChart3, LogOut, Settings, Calendar,
-  Menu, RefreshCw, PlayCircle, StopCircle, Clock, Banknote, AlertTriangle, X
+  Menu, RefreshCw, PlayCircle, StopCircle, AlertTriangle, X
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -31,7 +31,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const [closeNote, setCloseNote] = useState('');
   const [closeError, setCloseError] = useState('');
   const [isClosing, setIsClosing] = useState(false);
-  const [analytics, setAnalytics] = useState<any>(null);
+  const [analytics, setAnalytics] = useState<Awaited<ReturnType<typeof getShiftAnalytics>>>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
 
   // Layout states
@@ -57,13 +57,25 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
 
   const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
 
-  const shiftDuration = () => {
-    if (!activeShift) return '';
-    const ms = Date.now() - new Date(activeShift.opened_at).getTime();
-    const h = Math.floor(ms / 3600000);
-    const m = Math.floor((ms % 3600000) / 60000);
-    return `${h}ч ${m}м`;
-  };
+  const [shiftDurationStr, setShiftDurationStr] = useState('');
+
+  useEffect(() => {
+    if (!activeShift) {
+      return;
+    }
+    const update = () => {
+      const ms = Date.now() - new Date(activeShift.opened_at).getTime();
+      const h = Math.floor(ms / 3600000);
+      const m = Math.floor((ms % 3600000) / 60000);
+      setShiftDurationStr(`${h}ч ${m}м`);
+    };
+    update();
+    const iv = setInterval(update, 60000);
+    return () => {
+      clearInterval(iv);
+      setShiftDurationStr('');
+    };
+  }, [activeShift]);
 
   const pmLabel = (m: string) => {
     const map: Record<string, string> = { cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы', split: 'Разделённая' };
@@ -252,7 +264,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                     </div>
                     <div className="flex justify-between items-center text-[13px]">
                       <span className="text-[var(--c-hint)]">Время</span>
-                      <span className="text-white tabular-nums">{shiftDuration()}</span>
+                      <span className="text-white tabular-nums">{shiftDurationStr}</span>
                     </div>
                     {cashInRegister !== null && (
                       <div className="flex justify-between items-center text-[13px]">

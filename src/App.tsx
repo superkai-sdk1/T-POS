@@ -1,9 +1,8 @@
-import { useEffect, useState, useCallback, useRef, lazy, Suspense, startTransition } from 'react';
+import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
 import { useAuthStore } from '@/store/auth';
 import { usePOSStore } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
-import { supabase } from '@/lib/supabase';
 import { initTelegramApp } from '@/lib/telegram';
 import { LoginPage } from '@/components/auth/LoginPage';
 import { Layout } from '@/components/Layout';
@@ -43,7 +42,7 @@ export default function App() {
   const leaveCheck = usePOSStore((s) => s.leaveCheck);
   const activeCheck = usePOSStore((s) => s.activeCheck);
   const [activeTab, setActiveTab] = useState('pos');
-  const prevTabRef = useRef('pos');
+  const [prevTab, setPrevTab] = useState('pos');
   const [showCheckView, setShowCheckView] = useState(false);
   const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(['pos']));
   const [tabKeys, setTabKeys] = useState<Record<string, number>>({});
@@ -97,7 +96,7 @@ export default function App() {
       if (tab !== 'pos') setShowCheckView(false);
     }
 
-    prevTabRef.current = activeTab;
+    setPrevTab(activeTab);
     setActiveTab(tab);
     setVisitedTabs((prev) => new Set(prev).add(tab));
   }, [showCheckView, activeCheck, leaveCheck, activeTab]);
@@ -119,7 +118,7 @@ export default function App() {
 
   return (
     <Layout activeTab={activeTab} onTabChange={handleTabChange}>
-      <TabPanel id="pos" activeTab={activeTab} prevTab={prevTabRef.current} tabOrder={tabOrder}>
+      <TabPanel id="pos" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
         {/* Mobile: swap between list and check view */}
         <div className="lg:hidden flex-1 flex flex-col">
           {showCheckView ? (
@@ -142,7 +141,7 @@ export default function App() {
       </TabPanel>
 
       {visitedTabs.has('inventory') && (
-        <TabPanel id="inventory" activeTab={activeTab} prevTab={prevTabRef.current} tabOrder={tabOrder}>
+        <TabPanel id="inventory" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
           <Suspense fallback={<TabFallback />}>
             <InventoryPage key={tabKeys['inventory'] || 0} />
           </Suspense>
@@ -150,7 +149,7 @@ export default function App() {
       )}
 
       {visitedTabs.has('events') && (
-        <TabPanel id="events" activeTab={activeTab} prevTab={prevTabRef.current} tabOrder={tabOrder}>
+        <TabPanel id="events" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
           <Suspense fallback={<TabFallback />}>
             <EventsPage key={tabKeys['events'] || 0} />
           </Suspense>
@@ -158,7 +157,7 @@ export default function App() {
       )}
 
       {visitedTabs.has('management') && (
-        <TabPanel id="management" activeTab={activeTab} prevTab={prevTabRef.current} tabOrder={tabOrder}>
+        <TabPanel id="management" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
           <Suspense fallback={<TabFallback />}>
             <ManagementPage key={tabKeys['management'] || 0} initialScreen={managementScreen} isActive={activeTab === 'management'} />
           </Suspense>
@@ -166,7 +165,7 @@ export default function App() {
       )}
 
       {visitedTabs.has('dashboard') && (
-        <TabPanel id="dashboard" activeTab={activeTab} prevTab={prevTabRef.current} tabOrder={tabOrder}>
+        <TabPanel id="dashboard" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
           <Suspense fallback={<TabFallback />}>
             <DashboardPage key={tabKeys['dashboard'] || 0} onNavigate={handleDashboardNavigate} />
           </Suspense>

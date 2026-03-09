@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CartItem, Check, CheckItem, CheckDiscount, InventoryItem, PaymentMethod, Space, Modifier } from '@/types';
+import type { CartItem, Check, CheckItem, CheckDiscount, InventoryItem, PaymentMethod, Modifier, MenuCategory, Discount } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from './auth';
 import { useShiftStore } from './shift';
@@ -20,7 +20,7 @@ interface POSState {
   openCheckItems: Record<string, CheckItem[]>;
   openCheckDiscounts: Record<string, CheckDiscount[]>;
   productModifiers: Record<string, Modifier[]>;
-  menuCategories: Record<string, any>[];
+  menuCategories: MenuCategory[];
   isLoading: boolean;
   checksLoaded: boolean;
   inventoryLoaded: boolean;
@@ -33,8 +33,8 @@ interface POSState {
   updateCheckNote: (note: string) => Promise<void>;
   selectCheck: (check: Check) => Promise<void>;
   addToCart: (item: InventoryItem, modifiers?: { id: string; name: string; price: number }[]) => void;
-  removeFromCart: (itemId: string) => void;
-  updateCartQuantity: (itemId: string, quantity: number) => void;
+  removeFromCart: (itemId: string, modifierKey?: string) => void;
+  updateCartQuantity: (itemId: string, quantity: number, modifierKey?: string) => void;
   clearCart: () => void;
   getCartTotal: () => number;
   getDiscountTotal: () => number;
@@ -53,7 +53,7 @@ interface POSState {
   upsertCheckItemLocal: (item: CheckItem, modifiers?: { id: string; name: string; price: number }[]) => void;
   deleteCheckItemLocal: (checkId: string, itemId: string) => void;
   upsertInventoryLocal: (item: InventoryItem) => void;
-  upsertCategoryLocal: (category: any) => void;
+  upsertCategoryLocal: (category: MenuCategory) => void;
 }
 
 let _savingCart = false;
@@ -153,13 +153,13 @@ export const usePOSStore = create<POSState>((set, get) => ({
     })) as CheckItem[];
 
     const checkItemIds = parsedItems.map((ci) => ci.id);
-    let allModifiers: any[] = [];
+    let allModifiers: { check_item_id: string; modifier_id: string; price_at_time: number; modifier: { name: string }[] | { name: string } | null }[] = [];
     if (checkItemIds.length > 0) {
       const { data: modRows } = await supabase
         .from('check_item_modifiers')
         .select('check_item_id, modifier_id, price_at_time, modifier:modifiers(name)')
         .in('check_item_id', checkItemIds);
-      allModifiers = modRows || [];
+      allModifiers = (modRows || []) as typeof allModifiers;
     }
 
     const { data: allDiscounts } = await supabase
@@ -189,9 +189,10 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const modMap: Record<string, { id: string; name: string; price: number }[]> = {};
     for (const row of allModifiers) {
       if (!modMap[row.check_item_id]) modMap[row.check_item_id] = [];
+      const mod = Array.isArray(row.modifier) ? row.modifier[0] : row.modifier;
       modMap[row.check_item_id].push({
         id: row.modifier_id,
-        name: (row.modifier as any)?.name || '?',
+        name: mod?.name || '?',
         price: row.price_at_time || 0,
       });
     }
@@ -309,19 +310,29 @@ export const usePOSStore = create<POSState>((set, get) => ({
     set({ cart: newCart });
   },
 
-  removeFromCart: (itemId: string) => {
-    set({ cart: get().cart.filter((c) => c.item.id !== itemId) });
+  removeFromCart: (itemId: string, modifierKey?: string) => {
+    const key = modifierKey ?? '';
+    set({
+      cart: get().cart.filter((c) => {
+        if (c.item.id !== itemId) return true;
+        const cKey = (c.modifiers || []).map((m) => m.id).sort().join(',');
+        return cKey !== key;
+      }),
+    });
   },
 
-  updateCartQuantity: (itemId: string, quantity: number) => {
+  updateCartQuantity: (itemId: string, quantity: number, modifierKey?: string) => {
     if (quantity <= 0) {
-      get().removeFromCart(itemId);
+      get().removeFromCart(itemId, modifierKey);
       return;
     }
+    const key = modifierKey ?? '';
     set({
-      cart: get().cart.map((c) =>
-        c.item.id === itemId ? { ...c, quantity } : c
-      ),
+      cart: get().cart.map((c) => {
+        if (c.item.id !== itemId) return c;
+        const cKey = (c.modifiers || []).map((m) => m.id).sort().join(',');
+        return cKey === key ? { ...c, quantity } : c;
+      }),
     });
   },
 
@@ -346,12 +357,16 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
     let amount = 0;
     if (target === 'check') {
-      const subtotal = cart.reduce((s, c) => s + c.item.price * c.quantity, 0);
+      const subtotal = cart.reduce((s, c) => {
+        const modPrice = (c.modifiers || []).reduce((ms, m) => ms + m.price, 0);
+        return s + (c.item.price + modPrice) * c.quantity;
+      }, 0);
       amount = discountType === 'percentage' ? Math.round(subtotal * discountValue / 100) : discountValue;
     } else if (itemId) {
       const ci = cart.find((c) => c.item.id === itemId);
       if (ci) {
-        const itemTotal = ci.item.price * ci.quantity;
+        const modPrice = (ci.modifiers || []).reduce((ms, m) => ms + m.price, 0);
+        const itemTotal = (ci.item.price + modPrice) * ci.quantity;
         amount = discountType === 'percentage' ? Math.round(itemTotal * discountValue / 100) : discountValue;
       }
     }
@@ -377,7 +392,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       target,
       item_id: checkItemId,
       discount_amount: amount,
-      discount: { id: discountId, name: discountName, type: discountType, value: discountValue } as any,
+      discount: { id: discountId, name: discountName, type: discountType, value: discountValue } as Discount,
     } as CheckDiscount;
 
     const prev = get().appliedDiscounts;
@@ -402,7 +417,8 @@ export const usePOSStore = create<POSState>((set, get) => ({
         ...data,
         discount: Array.isArray(data.discount) ? data.discount[0] : data.discount,
       } as CheckDiscount;
-      set({ appliedDiscounts: [...prev, cd] });
+      // Заменяем оптимистичную запись (tempId) на серверную
+      set({ appliedDiscounts: get().appliedDiscounts.map((d) => d.id === tempId ? cd : d) });
     }
   },
 
@@ -455,13 +471,13 @@ export const usePOSStore = create<POSState>((set, get) => ({
       prev.status === updatedCheck.status
     );
 
-    const normalizedItems = (items || []).map((ci: any) => ({
+    const normalizedItems = (items || []).map((ci: Record<string, unknown>) => ({
       ...ci,
       item: Array.isArray(ci.item) ? ci.item[0] : ci.item,
     }));
-    const loadedItems = normalizedItems.filter((ci: any) => ci.item) as CheckItem[];
+    const loadedItems = normalizedItems.filter((ci: Record<string, unknown>) => ci.item) as CheckItem[];
 
-    let modMap: Record<string, { id: string; name: string; price: number }[]> = {};
+    const modMap: Record<string, { id: string; name: string; price: number }[]> = {};
     if (loadedItems.length > 0) {
       const ciIds = loadedItems.map((ci) => ci.id);
       const { data: cimRows } = await supabase
@@ -471,9 +487,10 @@ export const usePOSStore = create<POSState>((set, get) => ({
       if (cimRows) {
         for (const row of cimRows) {
           if (!modMap[row.check_item_id]) modMap[row.check_item_id] = [];
+          const mod = Array.isArray(row.modifier) ? row.modifier[0] : row.modifier;
           modMap[row.check_item_id].push({
             id: row.modifier_id,
-            name: (row.modifier as any)?.name || '?',
+            name: (mod as { name: string } | null)?.name || '?',
             price: row.price_at_time || 0,
           });
         }
@@ -503,7 +520,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       updates.checkItems = loadedItems;
       _lastCartFingerprint = newFp;
     }
-    set(updates as any);
+    set(updates as Partial<POSState>);
   },
 
   saveCartToDb: async (): Promise<boolean> => {
@@ -545,9 +562,17 @@ export const usePOSStore = create<POSState>((set, get) => ({
         });
 
         // 2. Diff local cart with DB items
+        interface UpsertItem {
+          id?: string;
+          check_id: string;
+          item_id: string;
+          quantity: number;
+          price_at_time: number;
+          _temp_modifiers?: { id: string; name: string; price: number }[];
+        }
+
         const itemsToDelete: string[] = [];
-        const itemsToUpsert: any[] = [];
-        const modifiersToInsert: any[] = [];
+        const itemsToUpsert: UpsertItem[] = [];
 
         const cartWithKeys = cart.map(c => ({
           ...c,
@@ -581,7 +606,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
               item_id: cartItem.item.id,
               quantity: cartItem.quantity,
               price_at_time: cartItem.item.price,
-              _temp_modifiers: cartItem.modifiers // Temporary for step 5
+              _temp_modifiers: cartItem.modifiers
             });
           }
         }
@@ -596,34 +621,46 @@ export const usePOSStore = create<POSState>((set, get) => ({
         }
 
         if (itemsToUpsert.length > 0) {
-          const { data: savedItems, error } = await supabase
-            .from('check_items')
-            .upsert(itemsToUpsert.map(({ _temp_modifiers, ...rest }) => rest))
-            .select();
+          // Separate existing (update) and new (insert) items for reliable modifier mapping
+          const existingItems = itemsToUpsert.filter(i => i.id);
+          const newItems = itemsToUpsert.filter(i => !i.id);
 
-          if (error) throw error;
+          // Upsert existing items (quantity changes only)
+          if (existingItems.length > 0) {
+            const { error: upErr } = await supabase
+              .from('check_items')
+              .upsert(existingItems.map(({ _temp_modifiers, ...rest }) => { void _temp_modifiers; return rest; }));
+            if (upErr) console.error('saveCartToDb upsert error:', upErr);
+          }
 
-          // 4. Handle modifiers for NEW items
-          if (savedItems) {
-            const newModifiers: any[] = [];
-            itemsToUpsert.forEach((item, idx) => {
-              if (item._temp_modifiers && item._temp_modifiers.length > 0) {
-                // Find the saved item by matching fields (since we might not have ID from upsert input if it was new)
-                const saved = savedItems.find(si => si.item_id === item.item_id && si.quantity === item.quantity);
-                if (saved) {
-                  item._temp_modifiers.forEach((m: any) => {
-                    newModifiers.push({
-                      check_item_id: saved.id,
-                      modifier_id: m.id,
-                      price_at_time: m.price
-                    });
-                  });
-                }
-              }
-            });
-            if (newModifiers.length > 0) {
-              await supabase.from('check_item_modifiers').insert(newModifiers);
+          // Insert new items one-by-one to reliably get IDs for modifier mapping
+          const newModifiers: { check_item_id: string; modifier_id: string; price_at_time: number }[] = [];
+          for (const newItem of newItems) {
+            const { _temp_modifiers: tempMods, ...insertData } = newItem;
+            const { data: saved, error: insErr } = await supabase
+              .from('check_items')
+              .insert(insertData)
+              .select()
+              .single();
+
+            if (insErr || !saved) {
+              console.error('saveCartToDb insert error:', insErr);
+              continue;
             }
+
+            if (tempMods && tempMods.length > 0) {
+              for (const m of tempMods) {
+                newModifiers.push({
+                  check_item_id: saved.id,
+                  modifier_id: m.id,
+                  price_at_time: m.price,
+                });
+              }
+            }
+          }
+
+          if (newModifiers.length > 0) {
+            await supabase.from('check_item_modifiers').insert(newModifiers);
           }
         }
 
@@ -669,7 +706,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   closeCheck: async (payments: PaymentPortion[], bonusUsed = 0, spaceRental = 0) => {
-    const { activeCheck, cart, appliedDiscounts } = get();
+    const { activeCheck, cart } = get();
     if (!activeCheck) return false;
     const user = useAuthStore.getState().user;
     const total = get().getCartTotal() + spaceRental;
@@ -875,7 +912,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     })) as CheckItem[];
 
     // Fetch modifiers
-    let modMap: Record<string, { id: string; name: string; price: number }[]> = {};
+    const modMap: Record<string, { id: string; name: string; price: number }[]> = {};
     const ciIds = items.map(i => i.id);
     if (ciIds.length > 0) {
       const { data: cimRows } = await supabase
@@ -884,9 +921,10 @@ export const usePOSStore = create<POSState>((set, get) => ({
         .in('check_item_id', ciIds);
       (cimRows || []).forEach(row => {
         if (!modMap[row.check_item_id]) modMap[row.check_item_id] = [];
+        const mod = Array.isArray(row.modifier) ? row.modifier[0] : row.modifier;
         modMap[row.check_item_id].push({
           id: row.modifier_id,
-          name: (row.modifier as any)?.name || '?',
+          name: (mod as { name: string } | null)?.name || '?',
           price: row.price_at_time || 0,
         });
       });
@@ -914,7 +952,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
         updates.cart = cart;
       }
 
-      return updates as any;
+      return updates as Partial<POSState>;
     });
   },
 
@@ -932,7 +970,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       if (state.activeCheck?.id === check.id) {
         updates.activeCheck = { ...state.activeCheck, ...check };
       }
-      return updates as any;
+      return updates as Partial<POSState>;
     });
   },
 
@@ -960,7 +998,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     });
   },
 
-  upsertCategoryLocal: (category: any) => {
+  upsertCategoryLocal: (category: MenuCategory) => {
     set((state) => {
       const current = state.menuCategories;
       const exists = current.find(c => c.id === category.id);
@@ -1011,20 +1049,27 @@ export const usePOSStore = create<POSState>((set, get) => ({
         updates.cart = newCart;
       }
 
-      return updates as any;
+      return updates as Partial<POSState>;
     });
   },
 
   deleteCheckItemLocal: (checkId: string, checkItemId: string) => {
     set((state) => {
       const currentItems = state.openCheckItems[checkId] || [];
+      const removedItem = currentItems.find(ci => ci.id === checkItemId);
       const newItems = currentItems.filter(ci => ci.id !== checkItemId);
       const newItemsMap = { ...state.openCheckItems, [checkId]: newItems };
 
-      const newCart = state.openCheckCarts[checkId]?.filter((_, idx) => {
-        const ci = currentItems[idx];
-        return ci && ci.id !== checkItemId;
-      }) || [];
+      // Удаляем из корзины по item_id удалённого check_item, а не по индексу
+      const currentCart = state.openCheckCarts[checkId] || [];
+      let removed = false;
+      const newCart = currentCart.filter((cartItem) => {
+        if (!removed && removedItem && cartItem.item?.id === removedItem.item_id) {
+          removed = true;
+          return false;
+        }
+        return true;
+      });
       const newCartsMap = { ...state.openCheckCarts, [checkId]: newCart };
 
       const updates: Partial<POSState> = {
@@ -1037,7 +1082,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
         updates.cart = newCart;
       }
 
-      return updates as any;
+      return updates as Partial<POSState>;
     });
   },
 }));
