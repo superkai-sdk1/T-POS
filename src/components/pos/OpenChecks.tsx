@@ -159,34 +159,35 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     }
     setIsSearching(true);
     searchTimerRef.current = setTimeout(async () => {
+      // Search by nickname
       const { data } = await supabase
         .from('profiles')
         .select('*')
+        .ilike('nickname', `%${query}%`)
         .is('deleted_at', null)
-        .or(`nickname.ilike.%${query}%,search_tags.cs.{"${query.toLowerCase()}"}`)
         .limit(20);
+      const nicknameResults = (data as Profile[]) || [];
+      const nicknameIds = new Set(nicknameResults.map(r => r.id));
 
-      // Also do a client-side partial match on tags for better UX
-      let results = (data as Profile[]) || [];
-      if (results.length < 20) {
-        const { data: tagData } = await supabase
+      // Also search by tags — fetch all clients with tags and filter client-side
+      let tagResults: Profile[] = [];
+      if (nicknameResults.length < 20) {
+        const { data: allWithTags } = await supabase
           .from('profiles')
           .select('*')
           .is('deleted_at', null)
           .not('search_tags', 'eq', '{}')
-          .limit(100);
-        if (tagData) {
+          .limit(200);
+        if (allWithTags) {
           const q = query.toLowerCase();
-          const existingIds = new Set(results.map(r => r.id));
-          const tagMatches = (tagData as Profile[]).filter(p =>
-            !existingIds.has(p.id) &&
+          tagResults = (allWithTags as Profile[]).filter(p =>
+            !nicknameIds.has(p.id) &&
             p.search_tags?.some(tag => tag.toLowerCase().includes(q))
           );
-          results = [...results, ...tagMatches].slice(0, 20);
         }
       }
 
-      setPlayers(results);
+      setPlayers([...nicknameResults, ...tagResults].slice(0, 20));
       setIsSearching(false);
     }, 300);
   }, []);
@@ -508,11 +509,6 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                     {tierBadge(player.client_tier)}
                     {(player.balance ?? 0) < 0 && <Badge variant="danger" size="sm">{player.balance}₽</Badge>}
                     {(player.bonus_points ?? 0) > 0 && <Badge variant="accent" size="sm">{player.bonus_points} бон.</Badge>}
-                    {searchQuery && player.search_tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase())) && (
-                      <span className="text-[10px] text-[var(--c-accent-light)]/60 italic truncate">
-                        {player.search_tags.find(t => t.toLowerCase().includes(searchQuery.toLowerCase()))}
-                      </span>
-                    )}
                   </div>
                 </div>
                 <Receipt className="w-4 h-4 text-[var(--c-muted)] shrink-0" />
