@@ -57,7 +57,7 @@ export function useRealtimeSync() {
           if (payload.eventType === 'DELETE') {
             usePOSStore.getState().loadInventory();
           } else {
-            usePOSStore.getState().upsertInventoryLocal(payload.new as Parameters<ReturnType<typeof usePOSStore.getState>['upsertInventoryLocal']>[0]);
+            usePOSStore.getState().upsertInventoryLocal(payload.new as unknown as Parameters<ReturnType<typeof usePOSStore.getState>['upsertInventoryLocal']>[0]);
           }
           emitTableChange('inventory');
         },
@@ -67,7 +67,7 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'menu_categories' },
         (payload: PgPayload) => {
           if (payload.eventType !== 'DELETE') {
-            usePOSStore.getState().upsertCategoryLocal(payload.new as Parameters<ReturnType<typeof usePOSStore.getState>['upsertCategoryLocal']>[0]);
+            usePOSStore.getState().upsertCategoryLocal(payload.new as unknown as Parameters<ReturnType<typeof usePOSStore.getState>['upsertCategoryLocal']>[0]);
           }
           emitTableChange('menu_categories');
         },
@@ -77,7 +77,7 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'shifts' },
         (payload: PgPayload) => {
           if (payload.eventType !== 'DELETE') {
-            useShiftStore.getState().upsertShiftLocal(payload.new as Parameters<ReturnType<typeof useShiftStore.getState>['upsertShiftLocal']>[0]);
+            useShiftStore.getState().upsertShiftLocal(payload.new as unknown as Parameters<ReturnType<typeof useShiftStore.getState>['upsertShiftLocal']>[0]);
           }
           emitTableChange('shifts');
         },
@@ -88,7 +88,7 @@ export function useRealtimeSync() {
         (payload: PgPayload) => {
           if (payload.eventType !== 'DELETE') {
             const rec = payload.new as Record<string, unknown>;
-            useAuthStore.getState().upsertProfileLocal(rec as Parameters<ReturnType<typeof useAuthStore.getState>['upsertProfileLocal']>[0]);
+            useAuthStore.getState().upsertProfileLocal(rec as unknown as Parameters<ReturnType<typeof useAuthStore.getState>['upsertProfileLocal']>[0]);
             if (rec.role === 'staff' || rec.role === 'owner') {
               useAuthStore.getState().upsertStaffLocal({
                 id: rec.id as string,
