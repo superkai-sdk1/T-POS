@@ -482,8 +482,8 @@ if [ "$MODE" = "update" ]; then
 
   info "Загрузка обновлений..."
   git clean -fd 2>/dev/null || true
-  git reset --hard HEAD 2>/dev/null || true
-  git pull origin main
+  git fetch origin
+  git reset --hard origin/main
 
   # ── Re-exec if install.sh itself was updated ──
 
@@ -495,7 +495,7 @@ if [ "$MODE" = "update" ]; then
   fi
 
   info "Установка зависимостей..."
-  NODE_ENV=development npm ci --include=dev --loglevel=error 2>&1
+  npm ci --include=dev --loglevel=error 2>&1
 
   info "Сборка T-POS..."
   npm run build 2>&1
@@ -760,7 +760,7 @@ echo ""
 apt-get update -qq > /dev/null 2>&1
 success "Пакеты обновлены"
 
-for pkg in nginx certbot git; do
+for pkg in nginx certbot python3-certbot-nginx git; do
   if command -v "$pkg" > /dev/null 2>&1; then
     success "$pkg уже установлен"
   else
@@ -770,7 +770,8 @@ for pkg in nginx certbot git; do
   fi
 done
 
-if ! command -v certbot > /dev/null 2>&1; then
+# Ensure certbot nginx plugin is always present
+if ! dpkg -l python3-certbot-nginx > /dev/null 2>&1; then
   apt-get install -y -qq python3-certbot-nginx > /dev/null 2>&1
 fi
 
@@ -827,7 +828,7 @@ ENVEOF
 success ".env создан"
 
 info "npm ci..."
-NODE_ENV=development npm ci --include=dev --loglevel=error 2>&1
+npm ci --include=dev --loglevel=error 2>&1
 success "Зависимости установлены"
 
 info "Сборка T-POS..."
@@ -858,6 +859,7 @@ setup_wallet_nginx "$WALLET_DOMAIN" "$INSTALL_DIR"
 fix_and_reload_nginx
 
 setup_wallet_bot "$INSTALL_DIR"
+setup_admin_bot "$INSTALL_DIR"
 
 # ── Step 5: SSL ──────────────────────────────
 

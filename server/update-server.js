@@ -93,8 +93,9 @@ const server = http.createServer((req, res) => {
     };
 
     const steps = [
-      { label: 'Сброс локальных изменений', cmd: 'git', args: ['reset', '--hard', 'HEAD'] },
-      { label: 'Загрузка обновлений', cmd: 'git', args: ['pull', 'origin', 'main'] },
+      { label: 'Очистка неотслеживаемых файлов', cmd: 'git', args: ['clean', '-fd'] },
+      { label: 'Загрузка обновлений с сервера', cmd: 'git', args: ['fetch', 'origin'] },
+      { label: 'Сброс до актуальной версии', cmd: 'git', args: ['reset', '--hard', 'origin/main'] },
       { label: 'Установка зависимостей', cmd: 'npm', args: ['ci', '--include=dev', '--loglevel=error'] },
       { label: 'Сборка проекта', cmd: 'npm', args: ['run', 'build'] },
       { label: 'Сборка Wallet', cmd: 'npm', args: ['run', 'build:wallet'] },
