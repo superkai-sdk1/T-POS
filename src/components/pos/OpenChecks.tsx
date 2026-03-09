@@ -413,40 +413,40 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           <div className="shrink-0 flex gap-2">
             <button
               onClick={handleCreateCheckNoClient}
-              className="flex items-center gap-2 flex-1 p-2.5 rounded-xl active:scale-[0.97] transition-all"
+              className="flex items-center gap-2.5 flex-1 p-3 rounded-xl active:scale-[0.97] transition-all min-h-[48px]"
               style={{
                 background: 'rgba(255, 255, 255, 0.04)',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
               }}
             >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }}>
-                <UserX className="w-4 h-4 text-[var(--c-hint)]" />
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                <UserX className="w-4.5 h-4.5 text-[var(--c-hint)]" />
               </div>
-              <span className="text-[12px] font-semibold text-[var(--c-text)]">Без клиента</span>
+              <span className="text-[13px] font-semibold text-[var(--c-text)]">Без клиента</span>
             </button>
             <button
               onClick={() => { setShowNewCheck(false); setShowCreateClient(true); }}
-              className="flex items-center gap-2 flex-1 p-2.5 rounded-xl active:scale-[0.97] transition-all"
+              className="flex items-center gap-2.5 flex-1 p-3 rounded-xl active:scale-[0.97] transition-all min-h-[48px]"
               style={{
                 background: 'rgba(52, 211, 153, 0.06)',
                 border: '1px solid rgba(52, 211, 153, 0.15)',
               }}
             >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(52, 211, 153, 0.1)' }}>
-                <UserPlus className="w-4 h-4 text-[var(--c-success)]" />
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(52, 211, 153, 0.1)' }}>
+                <UserPlus className="w-4.5 h-4.5 text-[var(--c-success)]" />
               </div>
-              <span className="text-[12px] font-semibold text-[var(--c-success)]">Новый</span>
+              <span className="text-[13px] font-semibold text-[var(--c-success)]">Новый</span>
             </button>
             <button
               onClick={() => { setShowNewCheck(false); loadSpaces(); }}
-              className="flex items-center gap-2 p-2.5 rounded-xl active:scale-[0.97] transition-all"
+              className="flex items-center gap-2 p-3 rounded-xl active:scale-[0.97] transition-all min-h-[48px]"
               style={{
                 background: 'rgba(99, 102, 241, 0.06)',
                 border: '1px solid rgba(99, 102, 241, 0.12)',
               }}
             >
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(99, 102, 241, 0.12)' }}>
-                <DoorOpen className="w-4 h-4 text-indigo-400" />
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(99, 102, 241, 0.12)' }}>
+                <DoorOpen className="w-4.5 h-4.5 text-indigo-400" />
               </div>
             </button>
           </div>
@@ -469,10 +469,10 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               <button
                 key={player.id}
                 onClick={() => handlePlayerSelected(player)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl transition-all active:scale-[0.98] hover:bg-[rgba(255,255,255,0.04)]"
+                className="w-full flex items-center gap-3 p-3.5 rounded-xl transition-all active:scale-[0.98] hover:bg-[rgba(255,255,255,0.04)] min-h-[56px]"
               >
                 <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
                   style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.08))' }}
                 >
                   <span className="text-sm font-bold text-[var(--c-accent-light)]">
@@ -498,7 +498,8 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                 <p className="text-xs text-[var(--c-hint)]">Никого не найдено</p>
                 <button
                   onClick={() => { setShowNewCheck(false); setNewNickname(searchQuery); setShowCreateClient(true); }}
-                  className="mt-3 text-xs font-semibold text-[var(--c-accent-light)] active:opacity-70"
+                  className="mt-3 px-4 py-2.5 rounded-xl text-[13px] font-semibold text-[var(--c-accent-light)] active:opacity-70 min-h-[44px]"
+                  style={{ background: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.15)' }}
                 >
                   Создать «{searchQuery}» →
                 </button>
@@ -548,7 +549,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               {(Object.entries(VISIT_ITEMS) as [VisitTariff, typeof VISIT_ITEMS['regular']][]).map(([key, info]) => {
                 const isSelected = selectedTariff === key;
                 const isDefault = tierToTariff(selectedPlayer.client_tier || 'regular') === key;
@@ -556,7 +557,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                   <button
                     key={key}
                     onClick={() => { setSelectedTariff(key); hapticFeedback('light'); }}
-                    className="relative flex flex-col items-center gap-1 p-3 rounded-xl transition-all active:scale-[0.97]"
+                    className="relative flex flex-col items-center gap-1.5 p-4 rounded-xl transition-all active:scale-[0.97] min-h-[88px]"
                     style={{
                       background: isSelected
                         ? 'rgba(139, 92, 246, 0.1)'
@@ -568,11 +569,11 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                     }}
                   >
                     {isDefault && selectedPlayer && (
-                      <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
-                        <Star className="w-2.5 h-2.5 text-white fill-white" />
+                      <div className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                        <Star className="w-3 h-3 text-white fill-white" />
                       </div>
                     )}
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center`}
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center`}
                       style={{
                         background: key === 'resident' ? 'rgba(52, 211, 153, 0.1)' :
                           key === 'student' ? 'rgba(96, 165, 250, 0.1)' :
@@ -580,15 +581,15 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                               'rgba(255, 255, 255, 0.06)',
                       }}
                     >
-                      {key === 'resident' ? <Star className="w-4 h-4 text-[var(--c-success)]" /> :
-                        key === 'student' ? <GraduationCap className="w-4 h-4 text-[var(--c-info)]" /> :
-                          key === 'single_game' ? <Gamepad2 className="w-4 h-4 text-[var(--c-warning)]" /> :
-                            <User className="w-4 h-4 text-[var(--c-hint)]" />}
+                      {key === 'resident' ? <Star className="w-5 h-5 text-[var(--c-success)]" /> :
+                        key === 'student' ? <GraduationCap className="w-5 h-5 text-[var(--c-info)]" /> :
+                          key === 'single_game' ? <Gamepad2 className="w-5 h-5 text-[var(--c-warning)]" /> :
+                            <User className="w-5 h-5 text-[var(--c-hint)]" />}
                     </div>
-                    <span className={`text-xs font-semibold ${isSelected ? 'text-[var(--c-accent-light)]' : 'text-[var(--c-text)]'}`}>
+                    <span className={`text-[13px] font-semibold ${isSelected ? 'text-[var(--c-accent-light)]' : 'text-[var(--c-text)]'}`}>
                       {info.label}
                     </span>
-                    <span className={`text-sm font-black tabular-nums ${isSelected ? 'text-[var(--c-accent-light)]' : 'text-[var(--c-hint)]'}`}>
+                    <span className={`text-[15px] font-black tabular-nums ${isSelected ? 'text-[var(--c-accent-light)]' : 'text-[var(--c-hint)]'}`}>
                       {info.price}₽
                     </span>
                   </button>
@@ -602,7 +603,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
             </Button>
             <button
               onClick={handleConfirmNoTariff}
-              className="w-full text-center py-2 text-xs font-semibold text-[var(--c-hint)] active:text-[var(--c-text)] transition-colors"
+              className="w-full text-center py-3 text-[13px] font-semibold text-[var(--c-hint)] active:text-[var(--c-text)] transition-colors min-h-[44px]"
             >
               Без тарифа (пустой чек)
             </button>
@@ -629,7 +630,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
 
           <div>
             <p className="text-xs font-medium text-[var(--c-hint)] mb-2">Статус</p>
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-3 gap-2">
               {([
                 { key: 'regular' as ClientTier, label: 'Гость', icon: User, bgColor: 'rgba(255,255,255,0.06)' },
                 { key: 'resident' as ClientTier, label: 'Резидент', icon: Star, bgColor: 'rgba(52,211,153,0.1)' },
@@ -638,7 +639,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                 <button
                   key={key}
                   onClick={() => setNewClientTier(key)}
-                  className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl text-xs font-medium transition-all active:scale-[0.97]"
+                  className="flex flex-col items-center gap-2 p-3 rounded-xl text-[13px] font-medium transition-all active:scale-[0.97] min-h-[72px]"
                   style={{
                     background: newClientTier === key
                       ? 'rgba(139, 92, 246, 0.1)'
@@ -650,10 +651,10 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                   }}
                 >
                   <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center"
+                    className="w-9 h-9 rounded-lg flex items-center justify-center"
                     style={{ background: newClientTier === key ? 'rgba(139, 92, 246, 0.15)' : bgColor }}
                   >
-                    <Icon className="w-3.5 h-3.5" />
+                    <Icon className="w-4 h-4" />
                   </div>
                   {label}
                 </button>
@@ -690,18 +691,18 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               <button
                 key={s.id}
                 onClick={() => handleCreateCheckSpace(s.id)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl active:scale-[0.97] transition-all"
+                className="w-full flex items-center gap-3 p-3.5 rounded-xl active:scale-[0.97] transition-all min-h-[56px]"
                 style={{
                   background: 'rgba(255, 255, 255, 0.04)',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
                 }}
               >
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(99, 102, 241, 0.12)' }}>
-                  <Icon className="w-4 h-4 text-indigo-400" />
+                <div className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(99, 102, 241, 0.12)' }}>
+                  <Icon className="w-5 h-5 text-indigo-400" />
                 </div>
                 <div className="flex-1 text-left">
-                  <p className="font-semibold text-[13px] text-[var(--c-text)]">{s.name}</p>
-                  <p className="text-[11px] text-[var(--c-muted)]">
+                  <p className="font-semibold text-[14px] text-[var(--c-text)]">{s.name}</p>
+                  <p className="text-[12px] text-[var(--c-muted)]">
                     {s.hourly_rate ? `${s.hourly_rate}₽/час` : 'Ручная цена'}
                   </p>
                 </div>

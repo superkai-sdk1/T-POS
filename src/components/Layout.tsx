@@ -464,7 +464,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                 <button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
-                  className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all duration-200 active:scale-90 relative shrink-0 min-w-0`}
+                  className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all duration-200 active:scale-90 relative shrink-0 min-w-0 min-h-[48px]`}
                 >
                   {/* Active glow indicator */}
                   {isActive && (
@@ -481,14 +481,14 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
 
                   {/* Icon with glow background */}
                   <div
-                    className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-200 ${isActive ? '' : ''
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 ${isActive ? '' : ''
                       }`}
                     style={isActive ? {
                       background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.08))',
                     } : undefined}
                   >
                     <tab.icon
-                      className={`w-[20px] h-[20px] shrink-0 transition-all duration-200 ${isActive ? 'stroke-[2.5] text-white' : 'stroke-[1.5] text-[var(--c-hint)]'
+                      className={`w-[22px] h-[22px] shrink-0 transition-all duration-200 ${isActive ? 'stroke-[2.5] text-white' : 'stroke-[1.5] text-[var(--c-hint)]'
                         }`}
                     />
                   </div>

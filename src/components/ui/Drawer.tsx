@@ -147,7 +147,7 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
         </div>
 
         {/* ── Title Bar ── */}
-        <div className="flex items-center justify-between px-5 py-2.5 shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 shrink-0">
           {title && (
             <h3 className="text-base font-bold text-[var(--c-text)] truncate min-w-0 flex-1 mr-2">
               {title}
@@ -155,13 +155,13 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
           )}
           <button
             onClick={handleClose}
-            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all ml-auto active:scale-90"
+            className="w-10 h-10 rounded-xl flex items-center justify-center transition-all ml-auto active:scale-90"
             style={{
               background: 'rgba(255, 255, 255, 0.06)',
               border: '1px solid rgba(255, 255, 255, 0.06)',
             }}
           >
-            <X className="w-4 h-4 text-[var(--c-hint)]" />
+            <X className="w-5 h-5 text-[var(--c-hint)]" />
           </button>
         </div>
 

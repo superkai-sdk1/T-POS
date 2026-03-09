@@ -17,7 +17,7 @@ export function Input({ label, error, hint, compact, className = '', ...props }:
       )}
       <input
         className={`
-          w-full ${compact ? 'px-3 py-2 text-sm' : 'px-3.5 py-2.5'} rounded-xl
+          w-full ${compact ? 'px-3.5 py-2.5 text-sm min-h-[44px]' : 'px-4 py-3 min-h-[48px]'} rounded-xl
           text-[var(--c-text)] text-sm
           placeholder:text-[var(--c-muted)]
           transition-all duration-200

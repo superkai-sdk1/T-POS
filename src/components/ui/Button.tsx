@@ -20,10 +20,10 @@ const variantStyles = {
 };
 
 const sizeStyles = {
-  sm: 'px-3.5 py-1.5 text-xs rounded-xl gap-1.5',
-  md: 'px-4 py-2.5 text-sm rounded-xl gap-2',
-  lg: 'px-6 py-3 text-sm rounded-2xl gap-2',
-  icon: 'w-10 h-10 rounded-xl',
+  sm: 'px-4 py-2.5 text-[13px] rounded-xl gap-1.5 min-h-[44px]',
+  md: 'px-5 py-3 text-sm rounded-xl gap-2 min-h-[48px]',
+  lg: 'px-6 py-3.5 text-[15px] rounded-2xl gap-2 min-h-[52px]',
+  icon: 'w-11 h-11 rounded-xl',
 };
 
 export function Button({
