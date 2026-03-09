@@ -72,7 +72,9 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const el = contentRef.current;
-    if (!el || el.scrollTop > 5) return;
+    if (!el) return;
+    const isContentArea = el.contains((e.target as Node) || null);
+    if (isContentArea && el.scrollTop > 5) return;
     startY.current = e.touches[0].clientY;
     setDragging(true);
   }, []);
@@ -104,8 +106,17 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
   const drawerContent = (
     <div
       ref={containerRef}
-      className="fixed inset-x-0 top-0 z-50 flex items-end lg:items-center lg:justify-center overflow-hidden"
-      style={{ height: containerHeight }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title || 'Окно'}
+      className="fixed inset-0 z-[100] flex items-end lg:items-center lg:justify-center overflow-hidden"
+      style={{
+        height: containerHeight,
+        paddingTop: 'var(--safe-top)',
+        paddingBottom: 'var(--safe-bottom)',
+        paddingLeft: 'var(--safe-left)',
+        paddingRight: 'var(--safe-right)',
+      }}
     >
       {/* Backdrop */}
       <div
@@ -124,11 +135,14 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
         onClick={(e) => e.stopPropagation()}
         className={`relative w-full lg:max-w-lg lg:rounded-2xl rounded-t-3xl overflow-hidden flex flex-col ${closing ? 'animate-slide-down' : 'lg:animate-pop-in animate-slide-up'}`}
         style={{
-          maxHeight: `${ratio * 100}%`,
+          maxHeight: `calc(${ratio * 100}% - var(--safe-top) - var(--safe-bottom))`,
           transform: dragY > 0 ? `translateY(${dragY}px) translateZ(0)` : 'translateZ(0)',
           transition: dragging ? 'none' : 'transform 0.2s var(--ease-spring)',
           willChange: 'transform',
+          paddingTop: 'max(var(--safe-top), 0.5rem)',
           paddingBottom: 'var(--safe-bottom)',
+          paddingLeft: 'var(--safe-left)',
+          paddingRight: 'var(--safe-right)',
           background: 'linear-gradient(180deg, rgba(20, 24, 40, 0.95) 0%, rgba(10, 14, 26, 0.98) 100%)',
           backdropFilter: 'blur(40px) saturate(1.5)',
           WebkitBackdropFilter: 'blur(40px) saturate(1.5)',
@@ -137,9 +151,10 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
           borderBottom: 'none',
         }}
       >
-        {/* ── Drag Handle ── */}
+        {/* ── Drag Handle (PWA/MiniApp: 44px touch zone) ── */}
         <div
-          className="flex flex-col items-center pt-3 pb-1 lg:hidden cursor-grab shrink-0"
+          className="flex flex-col items-center pt-3 pb-1 lg:hidden cursor-grab active:cursor-grabbing shrink-0 touch-none"
+          style={{ minHeight: '2.75rem' }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -153,28 +168,34 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
         </div>
 
         {/* ── Title Bar ── */}
-        <div className="flex items-center justify-between px-5 py-3 shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 shrink-0">
           {title && (
             <h3 className="text-base font-bold text-[var(--c-text)] truncate min-w-0 flex-1 mr-2">
               {title}
             </h3>
           )}
           <button
+            type="button"
             onClick={handleClose}
-            className="w-10 h-10 rounded-xl flex items-center justify-center transition-all ml-auto active:scale-90"
+            className="min-w-[2.75rem] min-h-[2.75rem] w-10 h-10 rounded-xl flex items-center justify-center transition-all ml-auto active:scale-90 -mr-1"
             style={{
               background: 'rgba(255, 255, 255, 0.06)',
               border: '1px solid rgba(255, 255, 255, 0.06)',
             }}
+            aria-label="Закрыть"
           >
             <X className="w-5 h-5 text-[var(--c-hint)]" />
           </button>
         </div>
 
-        {/* ── Content ── */}
+        {/* ── Content (smooth scroll, touch pan-y for PWA/MiniApp) ── */}
         <div
           ref={contentRef}
-          className="overflow-y-auto px-5 pb-5 flex-1 min-h-0"
+          className="overflow-y-auto overflow-x-hidden px-4 pb-5 flex-1 min-h-0 overscroll-contain"
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+          }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}

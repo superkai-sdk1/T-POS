@@ -184,7 +184,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
 
   // Pull to refresh hook — only on POS open checks screen, no overlays
   const activeCheck = usePOSStore((s) => s.activeCheck);
-  const isOverlayOpen = () => !!document.querySelector('.fixed.inset-x-0.z-50, .fixed.inset-0.z-50');
+  const isOverlayOpen = () => !!document.querySelector('[role="dialog"]');
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (activeTab !== 'pos' || activeCheck || isOverlayOpen()) return;

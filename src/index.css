@@ -16,7 +16,15 @@
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
 
   --nav-height: 3.5rem;
+  /* PWA/MiniApp: use dvh when supported so address bar doesn't change layout */
   --app-height: 100vh;
+  --app-height-dynamic: 100dvh;
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --app-height: 100dvh;
+  }
 }
 
 * {
