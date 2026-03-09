@@ -173,25 +173,13 @@ export function ShiftBar() {
   };
 
   const birthdayBanner = birthdayNames.length > 0 ? (
-    <div
-      className="flex items-center gap-2 p-2.5 rounded-xl animate-fade-in mb-3"
-      style={{
-        background: 'rgba(96, 165, 250, 0.06)',
-        border: '1px solid rgba(96, 165, 250, 0.12)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-      }}
-    >
+    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] animate-fade-in mb-3">
       <Cake className="w-4 h-4 text-[var(--c-info)] shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-bold text-[var(--c-info)]">День рождения!</p>
         <p className="text-[10px] text-[var(--c-hint)] truncate">{birthdayNames.join(', ')}</p>
       </div>
-      <button
-        onClick={dismissBirthdays}
-        className="w-6 h-6 rounded-md flex items-center justify-center active:scale-90 transition-transform shrink-0"
-        style={{ background: 'rgba(255,255,255,0.05)' }}
-      >
+      <button onClick={dismissBirthdays} className="w-6 h-6 rounded-md bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform shrink-0">
         <X className="w-3 h-3 text-[var(--c-muted)]" />
       </button>
     </div>
@@ -217,19 +205,9 @@ export function ShiftBar() {
         {birthdayBanner}
         <button
           onClick={handleOpenDrawer}
-          className="w-full flex items-center gap-2.5 p-3 rounded-xl active:scale-[0.98] transition-all duration-200"
-          style={{
-            background: 'rgba(52, 211, 153, 0.06)',
-            border: '1px solid rgba(52, 211, 153, 0.15)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            boxShadow: '0 0 20px rgba(52, 211, 153, 0.05)',
-          }}
+          className="w-full flex items-center gap-2.5 p-3 rounded-xl bg-[var(--c-success-bg)] border border-[var(--c-success-border)] active:scale-[0.98] transition-transform"
         >
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: 'rgba(52, 211, 153, 0.12)' }}
-          >
+          <div className="w-8 h-8 rounded-lg bg-[var(--c-success-bg)] flex items-center justify-center">
             <PlayCircle className="w-4 h-4 text-[var(--c-success)]" />
           </div>
           <div className="text-left flex-1">
@@ -263,16 +241,7 @@ export function ShiftBar() {
   return (
     <>
       {birthdayBanner}
-      <div
-        className="flex items-center gap-2 p-2.5 rounded-xl"
-        style={{
-          background: 'rgba(52, 211, 153, 0.06)',
-          border: '1px solid rgba(52, 211, 153, 0.15)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          boxShadow: '0 0 20px rgba(52, 211, 153, 0.05)',
-        }}
-      >
+      <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--c-success-bg)] border border-[var(--c-success-border)]">
         <div className="relative shrink-0">
           <div className="w-2 h-2 rounded-full bg-[var(--c-success)]" />
           <div className="absolute inset-0 w-2 h-2 rounded-full bg-[var(--c-success)] animate-ping opacity-50" />
@@ -295,12 +264,7 @@ export function ShiftBar() {
         <button
           onClick={handleStartClose}
           disabled={isClosing}
-          className="px-2.5 py-1 rounded-xl text-[11px] font-bold active:scale-90 transition-all disabled:opacity-40 flex items-center gap-1"
-          style={{
-            color: 'var(--c-danger)',
-            background: 'rgba(251, 113, 133, 0.08)',
-            border: '1px solid rgba(251, 113, 133, 0.15)',
-          }}
+          className="px-2.5 py-1 rounded-xl bg-[var(--c-danger-bg)] text-[var(--c-danger)] text-[11px] font-bold active:scale-90 transition-transform disabled:opacity-40 flex items-center gap-1"
         >
           {isClosing ? (
             <div className="w-3 h-3 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
@@ -312,20 +276,10 @@ export function ShiftBar() {
       </div>
 
       {closeError && (
-        <div
-          className="flex items-center gap-2 p-2.5 rounded-xl animate-fade-in"
-          style={{
-            background: 'rgba(251, 113, 133, 0.06)',
-            border: '1px solid rgba(251, 113, 133, 0.12)',
-          }}
-        >
+        <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-border)] animate-fade-in">
           <AlertTriangle className="w-3.5 h-3.5 text-[var(--c-danger)] shrink-0" />
           <p className="text-[11px] text-[var(--c-danger)] flex-1">{closeError}</p>
-          <button
-            onClick={() => setCloseError('')}
-            className="w-5 h-5 rounded-md flex items-center justify-center shrink-0"
-            style={{ background: 'rgba(255,255,255,0.05)' }}
-          >
+          <button onClick={() => setCloseError('')} className="w-5 h-5 rounded-md bg-[var(--c-surface)] flex items-center justify-center shrink-0">
             <X className="w-2.5 h-2.5 text-[var(--c-muted)]" />
           </button>
         </div>
@@ -336,34 +290,22 @@ export function ShiftBar() {
           {analytics && (
             <div className="space-y-2 stagger-children">
               <div className="grid grid-cols-3 gap-1.5">
-                <div
-                  className="p-2.5 rounded-xl text-center"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-                >
-                  <p className="text-base font-black text-[var(--c-accent-light)] tabular-nums">{analytics.totalChecks}</p>
+                <div className="p-2.5 rounded-xl card text-center">
+                  <p className="text-base font-black text-[var(--c-accent)] tabular-nums">{analytics.totalChecks}</p>
                   <p className="text-[9px] text-[var(--c-muted)] font-semibold">Чеков</p>
                 </div>
-                <div
-                  className="p-2.5 rounded-xl text-center"
-                  style={{ background: 'rgba(52,211,153,0.04)', border: '1px solid rgba(52,211,153,0.12)' }}
-                >
+                <div className="p-2.5 rounded-xl card text-center">
                   <p className="text-base font-black text-[var(--c-success)] tabular-nums">{fmtCur(analytics.totalRevenue)}</p>
                   <p className="text-[9px] text-[var(--c-muted)] font-semibold">Выручка</p>
                 </div>
-                <div
-                  className="p-2.5 rounded-xl text-center"
-                  style={{ background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.12)' }}
-                >
+                <div className="p-2.5 rounded-xl card text-center">
                   <p className="text-base font-black text-[var(--c-warning)] tabular-nums">{fmtCur(analytics.avgCheck)}</p>
                   <p className="text-[9px] text-[var(--c-muted)] font-semibold">Ср. чек</p>
                 </div>
               </div>
 
               {Object.keys(analytics.paymentBreakdown).length > 0 && (
-                <div
-                  className="p-2.5 rounded-xl space-y-1"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-                >
+                <div className="p-2.5 rounded-xl card space-y-1">
                   <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider mb-1">Оплата</p>
                   {Object.entries(analytics.paymentBreakdown).map(([method, val]) => (
                     <div key={method} className="flex justify-between text-[13px]">

@@ -10,11 +10,11 @@ interface BadgeProps {
 }
 
 const variants = {
-  default: 'bg-[var(--c-surface)] text-[var(--c-hint)] border border-[var(--c-border)]',
-  success: 'bg-[var(--c-success-bg)] text-[var(--c-success)] border border-[var(--c-success-border)]',
-  warning: 'bg-[var(--c-warning-bg)] text-[var(--c-warning)] border border-[var(--c-warning-border)]',
-  danger: 'bg-[var(--c-danger-bg)] text-[var(--c-danger)] border border-[var(--c-danger-border)]',
-  accent: 'bg-[rgba(var(--c-accent-rgb),0.1)] text-[var(--c-accent)] border border-[rgba(var(--c-accent-rgb),0.15)]',
+  default: 'bg-[rgba(255,255,255,0.06)] text-[var(--c-hint)] border border-[rgba(255,255,255,0.08)] [backdrop-filter:blur(8px)] [-webkit-backdrop-filter:blur(8px)]',
+  success: 'bg-[rgba(52,211,153,0.1)] text-[var(--c-success)] border border-[rgba(52,211,153,0.15)] [backdrop-filter:blur(8px)] [-webkit-backdrop-filter:blur(8px)]',
+  warning: 'bg-[rgba(251,191,36,0.1)] text-[var(--c-warning)] border border-[rgba(251,191,36,0.15)] [backdrop-filter:blur(8px)] [-webkit-backdrop-filter:blur(8px)]',
+  danger: 'bg-[rgba(251,113,133,0.1)] text-[var(--c-danger)] border border-[rgba(251,113,133,0.15)] [backdrop-filter:blur(8px)] [-webkit-backdrop-filter:blur(8px)]',
+  accent: 'bg-[rgba(139,92,246,0.1)] text-[var(--c-accent-light)] border border-[rgba(139,92,246,0.15)] [backdrop-filter:blur(8px)] [-webkit-backdrop-filter:blur(8px)]',
 };
 
 const sizes = {

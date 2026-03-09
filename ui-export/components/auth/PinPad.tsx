@@ -1,0 +1,170 @@
+import { useState, useCallback, useEffect } from 'react';
+import { Delete, ArrowLeft } from 'lucide-react';
+import { hapticFeedback, hapticNotification } from '@/lib/telegram';
+
+interface PinPadProps {
+  title: string;
+  subtitle?: string;
+  onComplete: (pin: string) => void;
+  onBack?: () => void;
+  error?: string | null;
+  isLoading?: boolean;
+  /** If true, requires user to enter PIN twice to confirm */
+  confirmMode?: boolean;
+}
+
+export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, confirmMode }: PinPadProps) {
+  const [pin, setPin] = useState('');
+  const [firstPin, setFirstPin] = useState<string | null>(null);
+  const [confirmError, setConfirmError] = useState('');
+  const [shake, setShake] = useState(false);
+
+  const isConfirming = confirmMode && firstPin !== null;
+  const displayError = confirmError || error;
+
+  useEffect(() => {
+    if (displayError) {
+      setShake(true);
+      hapticNotification('error');
+      const t = setTimeout(() => setShake(false), 500);
+      return () => clearTimeout(t);
+    }
+  }, [displayError]);
+
+  const handleDigit = useCallback((digit: string) => {
+    if (isLoading) return;
+    hapticFeedback('light');
+    setConfirmError('');
+
+    setPin((prev) => {
+      const next = prev + digit;
+      if (next.length === 4) {
+        setTimeout(() => {
+          if (confirmMode) {
+            if (firstPin === null) {
+              setFirstPin(next);
+              setPin('');
+            } else {
+              if (next === firstPin) {
+                onComplete(next);
+              } else {
+                setConfirmError('PIN-коды не совпадают');
+                setFirstPin(null);
+                setPin('');
+                hapticNotification('error');
+              }
+            }
+          } else {
+            onComplete(next);
+            setPin('');
+          }
+        }, 150);
+      }
+      return next.length <= 4 ? next : prev;
+    });
+  }, [isLoading, confirmMode, firstPin, onComplete]);
+
+  const handleDelete = useCallback(() => {
+    if (isLoading) return;
+    hapticFeedback('light');
+    setPin((prev) => prev.slice(0, -1));
+    setConfirmError('');
+  }, [isLoading]);
+
+  const displayTitle = isConfirming ? 'Повторите PIN-код' : title;
+  const displaySubtitle = isConfirming ? 'Введите PIN-код ещё раз' : subtitle;
+
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'];
+
+  return (
+    <div
+      className="min-h-screen flex flex-col items-center justify-center p-4 bg-[var(--c-bg)] relative overflow-hidden"
+      style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)' }}
+    >
+      <div className="absolute inset-0 pointer-events-none" aria-hidden>
+        <div className="absolute top-[10%] left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full opacity-[0.04]"
+          style={{ background: 'radial-gradient(circle, var(--c-accent), transparent 70%)' }} />
+      </div>
+
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="absolute p-2 rounded-xl text-[var(--c-hint)] hover:text-[var(--c-text)] hover:bg-[var(--c-surface)] transition-all duration-150 z-10"
+          style={{ top: 'calc(var(--safe-top) + 1rem)', left: '1rem' }}
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+      )}
+
+      <div className="flex flex-col items-center w-full max-w-xs animate-fade-in relative z-10">
+        <img src="/icons/tpos.svg" alt="T-POS" className="w-20 h-auto mb-5 drop-shadow-lg" />
+
+        <div className="card p-6 w-full flex flex-col items-center gap-5" style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.2)' }}>
+          <div className="text-center">
+            <h1 className="text-xl font-bold text-[var(--c-text)]">
+              {displayTitle}
+            </h1>
+            {displaySubtitle && (
+              <p className="text-[10px] text-[var(--c-hint)] mt-0.5">{displaySubtitle}</p>
+            )}
+          </div>
+
+          <div className={`flex gap-3.5 ${shake ? 'animate-shake' : ''}`}>
+            {[0, 1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className={`w-3.5 h-3.5 rounded-full transition-all duration-200 ${
+                  pin.length > i
+                    ? 'scale-110'
+                    : 'bg-[var(--c-surface-hover)]'
+                }`}
+                style={pin.length > i ? { background: 'linear-gradient(135deg, var(--c-accent), var(--c-accent-light))', boxShadow: '0 0 8px rgba(var(--c-accent-rgb), 0.4)' } : undefined}
+              />
+            ))}
+          </div>
+
+          {displayError && (
+            <p className="text-[13px] text-[var(--c-danger)] bg-[var(--c-danger-bg)] rounded-xl px-3 py-1.5 text-center animate-fade-in w-full">
+              {displayError}
+            </p>
+          )}
+
+          <div className="grid grid-cols-3 gap-2.5 w-full">
+            {keys.map((key, i) => {
+              if (key === '') return <div key={i} />;
+              if (key === 'del') {
+                return (
+                  <button
+                    key={i}
+                    onClick={handleDelete}
+                    disabled={pin.length === 0 || isLoading}
+                    className="w-14 h-14 rounded-xl flex items-center justify-center text-[var(--c-hint)] hover:bg-[var(--c-surface)] active:bg-[var(--c-surface-hover)] transition-all duration-150 active:scale-90 disabled:opacity-30"
+                  >
+                    <Delete className="w-5 h-5" />
+                  </button>
+                );
+              }
+              return (
+                <button
+                  key={i}
+                  onClick={() => handleDigit(key)}
+                  disabled={isLoading}
+                  className="w-14 h-14 rounded-xl bg-[var(--c-surface)] hover:bg-[var(--c-surface-hover)] active:bg-[var(--c-surface-hover)] text-xl font-semibold text-[var(--c-text)] transition-all duration-150 active:scale-90 disabled:opacity-50"
+                >
+                  {key}
+                </button>
+              );
+            })}
+          </div>
+
+          {isLoading && (
+            <div className="flex items-center gap-2 text-[var(--c-hint)]">
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              <span className="text-[13px]">Проверка...</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

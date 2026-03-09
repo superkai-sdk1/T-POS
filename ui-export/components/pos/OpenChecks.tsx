@@ -7,11 +7,10 @@ import { Drawer } from '@/components/ui/Drawer';
 import { Input } from '@/components/ui/Input';
 import { ShiftBar } from '@/components/shift/ShiftBar';
 import { ShiftHistory } from '@/components/shift/ShiftHistory';
-import { Plus, Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen, Home, Building2, Warehouse, Star, GraduationCap, Gamepad2, RotateCcw } from 'lucide-react';
+import { Plus, Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen, Home, Building2, Warehouse, Star, GraduationCap, Gamepad2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Profile, Space, VisitTariff, ClientTier, Check } from '@/types';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
-import { RefundsManager } from '@/components/management/RefundsManager';
 
 interface OpenChecksProps {
   onSelectCheck: () => void;
@@ -60,29 +59,18 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
   return (
     <button
       onClick={() => onSelect(check)}
-      className="text-left p-3 flex flex-col gap-2 rounded-2xl active:scale-[0.97] transition-all duration-200"
-      style={{
-        background: 'rgba(255, 255, 255, 0.04)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04)',
-      }}
+      className="card-interactive text-left p-3 flex flex-col gap-2"
     >
       <div className="flex items-center gap-2">
-        <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-          style={{
-            background: hasSpace
-              ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(99, 102, 241, 0.05))'
-              : check.player
-                ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.08))'
-                : 'rgba(255, 255, 255, 0.06)',
-          }}
-        >
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${hasSpace
+          ? 'bg-indigo-500/12'
+          : check.player
+            ? 'bg-[var(--c-accent)]/10'
+            : 'bg-[var(--c-surface)]'
+          }`}>
           {hasSpace ? (() => { const Icon = spaceIconMap[check.space!.type] || DoorOpen; return <Icon className="w-3.5 h-3.5 text-indigo-400" />; })()
             : check.player
-              ? <span className="text-xs font-bold text-[var(--c-accent-light)]">{check.player.nickname?.charAt(0).toUpperCase()}</span>
+              ? <span className="text-xs font-bold text-[var(--c-accent)]">{check.player.nickname?.charAt(0).toUpperCase()}</span>
               : <UserX className="w-3.5 h-3.5 text-[var(--c-muted)]" />}
         </div>
         <div className="min-w-0 flex-1">
@@ -127,7 +115,6 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const activeShift = useShiftStore((s) => s.activeShift);
   const [showNewCheck, setShowNewCheck] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [showRefunds, setShowRefunds] = useState(false);
   const [showCreateClient, setShowCreateClient] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [players, setPlayers] = useState<Profile[]>([]);
@@ -281,6 +268,9 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     setShowTariff(true);
   };
 
+  const formatTime = (dateStr: string) =>
+    new Date(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
   const tierBadge = (tier: ClientTier | undefined) => {
     if (tier === 'resident') return <Badge variant="success" size="sm">Резидент</Badge>;
     if (tier === 'student') return <Badge variant="accent" size="sm">Студент</Badge>;
@@ -301,40 +291,28 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         <div className="flex gap-2">
           <button
             onClick={() => setShowHistory(true)}
-            className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-90"
-            style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-            }}
+            className="w-9 h-9 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] flex items-center justify-center hover:bg-[var(--c-surface-hover)] transition-all active:scale-90"
           >
             <History className="w-4 h-4 text-[var(--c-hint)]" />
           </button>
-          <Button size="sm" variant="danger" onClick={() => setShowRefunds(true)} disabled={!activeShift}>
-            <RotateCcw className="w-3.5 h-3.5" />
-            Возвраты
+          <Button size="sm" onClick={() => setShowNewCheck(true)} disabled={!activeShift}>
+            <Plus className="w-3.5 h-3.5" />
+            Новый
           </Button>
         </div>
       </div>
 
       {!checksLoaded ? (
-        <div className="grid grid-cols-2 gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
+        <div className="grid grid-cols-2 gap-2" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}>
           {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="p-3 rounded-2xl animate-pulse space-y-2"
-              style={{
-                opacity: 1 - i * 0.2,
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid rgba(255, 255, 255, 0.06)',
-              }}
-            >
+            <div key={i} className="p-3 rounded-xl bg-[var(--c-surface)] animate-pulse space-y-2 border border-[var(--c-border)]" style={{ opacity: 1 - i * 0.2 }}>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg" style={{ background: 'rgba(255,255,255,0.06)' }} />
-                <div className="flex-1"><div className="h-3 w-20 rounded" style={{ background: 'rgba(255,255,255,0.06)' }} /></div>
+                <div className="w-8 h-8 rounded-lg bg-[var(--c-surface-hover)]" />
+                <div className="flex-1"><div className="h-3 w-20 rounded bg-[var(--c-surface-hover)]" /></div>
               </div>
               <div className="flex items-end justify-between">
-                <div className="h-2.5 w-12 rounded" style={{ background: 'rgba(255,255,255,0.04)' }} />
-                <div className="h-5 w-14 rounded" style={{ background: 'rgba(255,255,255,0.06)' }} />
+                <div className="h-2.5 w-12 rounded bg-[var(--c-surface)]" />
+                <div className="h-5 w-14 rounded bg-[var(--c-surface-hover)]" />
               </div>
             </div>
           ))}
@@ -345,13 +323,9 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
             onClick={() => activeShift && setShowNewCheck(true)}
             disabled={!activeShift}
             className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 active:scale-90 transition-transform disabled:opacity-30"
-            style={{
-              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(6, 182, 212, 0.06))',
-              border: '1px solid rgba(139, 92, 246, 0.15)',
-              boxShadow: '0 0 30px rgba(139, 92, 246, 0.08)',
-            }}
+            style={{ background: 'linear-gradient(135deg, rgba(var(--c-accent-rgb), 0.12), rgba(var(--c-accent-rgb), 0.06))', border: '1px solid rgba(var(--c-accent-rgb), 0.15)', boxShadow: '0 0 30px rgba(var(--c-accent-rgb), 0.08)' }}
           >
-            <Plus className="w-7 h-7 text-[var(--c-accent-light)] animate-pulse" />
+            <Plus className="w-7 h-7 text-[var(--c-accent)] animate-pulse" />
           </button>
           <p className="text-[var(--c-hint)] text-sm font-medium">Нет открытых чеков</p>
           <p className="text-xs text-[var(--c-muted)] mt-1">
@@ -359,7 +333,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           </p>
         </div>
       ) : (
-        <div className="grid gap-2.5 stagger-children" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', transform: 'translateZ(0)' }}>
+        <div className="grid gap-2 stagger-children" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', transform: 'translateZ(0)' }}>
           {openChecks.map((check) => (
             <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} />
           ))}
@@ -368,10 +342,6 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
 
       <Drawer open={showHistory} onClose={() => setShowHistory(false)} title="История смен">
         <ShiftHistory />
-      </Drawer>
-
-      <Drawer open={showRefunds} onClose={() => setShowRefunds(false)} title="Возвраты" size="md">
-        <RefundsManager />
       </Drawer>
 
       {/* ============ NEW CHECK ============ */}
@@ -385,39 +355,27 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           <div className="grid grid-cols-3 gap-2">
             <button
               onClick={handleCreateCheckNoClient}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-xl active:scale-[0.97] transition-all"
-              style={{
-                background: 'rgba(255, 255, 255, 0.04)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-              }}
+              className="flex flex-col items-center gap-1.5 p-3 rounded-xl card-interactive"
             >
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.06)' }}>
+              <div className="w-9 h-9 rounded-lg bg-[var(--c-surface-hover)] flex items-center justify-center">
                 <UserX className="w-4 h-4 text-[var(--c-hint)]" />
               </div>
               <span className="text-[11px] font-semibold text-[var(--c-text)]">Без клиента</span>
             </button>
             <button
               onClick={() => { setShowNewCheck(false); setShowCreateClient(true); }}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-xl active:scale-[0.97] transition-all"
-              style={{
-                background: 'rgba(52, 211, 153, 0.06)',
-                border: '1px solid rgba(52, 211, 153, 0.15)',
-              }}
+              className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-[var(--c-success-bg)] border border-[var(--c-success-border)] active:scale-[0.97] transition-transform"
             >
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(52, 211, 153, 0.1)' }}>
+              <div className="w-9 h-9 rounded-lg bg-[var(--c-success-bg)] flex items-center justify-center">
                 <UserPlus className="w-4 h-4 text-[var(--c-success)]" />
               </div>
               <span className="text-[11px] font-semibold text-[var(--c-success)]">Новый</span>
             </button>
             <button
               onClick={() => { setShowNewCheck(false); loadSpaces(); }}
-              className="flex flex-col items-center gap-1.5 p-3 rounded-xl active:scale-[0.97] transition-all"
-              style={{
-                background: 'rgba(99, 102, 241, 0.06)',
-                border: '1px solid rgba(99, 102, 241, 0.12)',
-              }}
+              className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-indigo-500/6 border border-indigo-500/10 active:scale-[0.97] transition-transform"
             >
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'rgba(99, 102, 241, 0.12)' }}>
+              <div className="w-9 h-9 rounded-lg bg-indigo-500/12 flex items-center justify-center">
                 <DoorOpen className="w-4 h-4 text-indigo-400" />
               </div>
               <span className="text-[11px] font-semibold text-indigo-400">Кабинка</span>
@@ -425,9 +383,9 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           </div>
 
           <div className="flex items-center gap-2 py-1">
-            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+            <div className="flex-1 h-px bg-[var(--c-border)]" />
             <span className="text-[9px] text-[var(--c-muted)] font-semibold tracking-widest">ИЛИ ВЫБЕРИТЕ</span>
-            <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+            <div className="flex-1 h-px bg-[var(--c-border)]" />
           </div>
 
           <div className="relative">
@@ -453,16 +411,10 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               <button
                 key={player.id}
                 onClick={() => handlePlayerSelected(player)}
-                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl transition-all active:scale-[0.98]"
-                style={{ background: 'transparent' }}
-                onPointerEnter={(e) => { (e.target as HTMLElement).closest('button')!.style.background = 'rgba(255,255,255,0.04)'; }}
-                onPointerLeave={(e) => { (e.target as HTMLElement).closest('button')!.style.background = 'transparent'; }}
+                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-[var(--c-surface)] transition-colors active:scale-[0.98]"
               >
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(6, 182, 212, 0.06))' }}
-                >
-                  <span className="text-xs font-bold text-[var(--c-accent-light)]">
+                <div className="w-8 h-8 rounded-lg bg-[var(--c-accent)]/10 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-bold text-[var(--c-accent)]">
                     {player.nickname?.charAt(0).toUpperCase()}
                   </span>
                 </div>
@@ -496,18 +448,9 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
       >
         {selectedPlayer && (
           <div className="space-y-4">
-            <div
-              className="flex items-center gap-3 p-3 rounded-xl"
-              style={{
-                background: 'rgba(255, 255, 255, 0.04)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-              }}
-            >
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.08))' }}
-              >
-                <span className="text-sm font-bold text-[var(--c-accent-light)]">
+            <div className="flex items-center gap-3 p-3 rounded-xl card">
+              <div className="w-10 h-10 rounded-xl bg-[var(--c-accent)]/10 flex items-center justify-center shrink-0">
+                <span className="text-sm font-bold text-[var(--c-accent)]">
                   {selectedPlayer.nickname?.charAt(0).toUpperCase()}
                 </span>
               </div>
@@ -530,39 +473,32 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                   <button
                     key={key}
                     onClick={() => { setSelectedTariff(key); hapticFeedback('light'); }}
-                    className="relative flex flex-col items-center gap-1 p-3 rounded-xl transition-all active:scale-[0.97]"
-                    style={{
-                      background: isSelected
-                        ? 'rgba(139, 92, 246, 0.1)'
-                        : 'rgba(255, 255, 255, 0.04)',
-                      border: isSelected
-                        ? '1px solid rgba(139, 92, 246, 0.25)'
-                        : '1px solid rgba(255, 255, 255, 0.08)',
-                      boxShadow: isSelected ? '0 0 16px rgba(139, 92, 246, 0.1)' : undefined,
-                    }}
+                    className={`relative flex flex-col items-center gap-1 p-3 rounded-xl border transition-all active:scale-[0.97] ${isSelected
+                      ? 'bg-[var(--c-accent)]/10 border-[var(--c-accent)]/30'
+                      : 'card border-[var(--c-border)]'
+                      }`}
                   >
                     {isDefault && (
                       <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
                         <Star className="w-2.5 h-2.5 text-white fill-white" />
                       </div>
                     )}
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center`}
-                      style={{
-                        background: key === 'resident' ? 'rgba(52, 211, 153, 0.1)' :
-                          key === 'student' ? 'rgba(96, 165, 250, 0.1)' :
-                            key === 'single_game' ? 'rgba(251, 191, 36, 0.1)' :
-                              'rgba(255, 255, 255, 0.06)',
-                      }}
-                    >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${key === 'resident' ? 'bg-[var(--c-success-bg)]' :
+                      key === 'student' ? 'bg-[var(--c-info-bg)]' :
+                        key === 'single_game' ? 'bg-[var(--c-warning-bg)]' :
+                          'bg-[var(--c-surface-hover)]'
+                      }`}>
                       {key === 'resident' ? <Star className="w-4 h-4 text-[var(--c-success)]" /> :
                         key === 'student' ? <GraduationCap className="w-4 h-4 text-[var(--c-info)]" /> :
                           key === 'single_game' ? <Gamepad2 className="w-4 h-4 text-[var(--c-warning)]" /> :
                             <User className="w-4 h-4 text-[var(--c-hint)]" />}
                     </div>
-                    <span className={`text-xs font-semibold ${isSelected ? 'text-[var(--c-accent-light)]' : 'text-[var(--c-text)]'}`}>
+                    <span className={`text-xs font-semibold ${isSelected ? 'text-[var(--c-accent)]' : 'text-[var(--c-text)]'
+                      }`}>
                       {info.label}
                     </span>
-                    <span className={`text-sm font-black tabular-nums ${isSelected ? 'text-[var(--c-accent-light)]' : 'text-[var(--c-hint)]'}`}>
+                    <span className={`text-sm font-black tabular-nums ${isSelected ? 'text-[var(--c-accent)]' : 'text-[var(--c-hint)]'
+                      }`}>
                       {info.price}₽
                     </span>
                   </button>
@@ -599,28 +535,19 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
             <p className="text-xs font-medium text-[var(--c-hint)] mb-2">Статус</p>
             <div className="grid grid-cols-3 gap-1.5">
               {([
-                { key: 'regular' as ClientTier, label: 'Гость', icon: User, bgColor: 'rgba(255,255,255,0.06)' },
-                { key: 'resident' as ClientTier, label: 'Резидент', icon: Star, bgColor: 'rgba(52,211,153,0.1)' },
-                { key: 'student' as ClientTier, label: 'Студент', icon: GraduationCap, bgColor: 'rgba(96,165,250,0.1)' },
-              ]).map(({ key, label, icon: Icon, bgColor }) => (
+                { key: 'regular' as ClientTier, label: 'Гость', icon: User, color: 'bg-[var(--c-surface)]' },
+                { key: 'resident' as ClientTier, label: 'Резидент', icon: Star, color: 'bg-emerald-500/12' },
+                { key: 'student' as ClientTier, label: 'Студент', icon: GraduationCap, color: 'bg-blue-500/12' },
+              ]).map(({ key, label, icon: Icon, color }) => (
                 <button
                   key={key}
                   onClick={() => setNewClientTier(key)}
-                  className="flex flex-col items-center gap-1.5 p-2.5 rounded-xl text-xs font-medium transition-all active:scale-[0.97]"
-                  style={{
-                    background: newClientTier === key
-                      ? 'rgba(139, 92, 246, 0.1)'
-                      : 'rgba(255, 255, 255, 0.04)',
-                    border: newClientTier === key
-                      ? '1px solid rgba(139, 92, 246, 0.25)'
-                      : '1px solid rgba(255, 255, 255, 0.08)',
-                    color: newClientTier === key ? 'var(--c-accent-light)' : 'var(--c-hint)',
-                  }}
+                  className={`flex flex-col items-center gap-1.5 p-2.5 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${newClientTier === key
+                    ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/30 text-[var(--c-accent)]'
+                    : 'card border border-[var(--c-border)] text-[var(--c-hint)]'
+                    }`}
                 >
-                  <div
-                    className="w-7 h-7 rounded-lg flex items-center justify-center"
-                    style={{ background: newClientTier === key ? 'rgba(139, 92, 246, 0.15)' : bgColor }}
-                  >
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${newClientTier === key ? 'bg-[var(--c-accent)]/15' : color}`}>
                     <Icon className="w-3.5 h-3.5" />
                   </div>
                   {label}
@@ -630,12 +557,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           </div>
 
           {createError && (
-            <p
-              className="text-xs rounded-lg px-3 py-2"
-              style={{ color: 'var(--c-danger)', background: 'rgba(251,113,133,0.08)', border: '1px solid rgba(251,113,133,0.15)' }}
-            >
-              {createError}
-            </p>
+            <p className="text-xs text-[var(--c-danger)] bg-[var(--c-danger-bg)] rounded-lg px-3 py-2 border border-[var(--c-border)]">{createError}</p>
           )}
           <Button fullWidth onClick={handleCreateClient}>
             <UserPlus className="w-4 h-4" />
@@ -658,13 +580,9 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               <button
                 key={s.id}
                 onClick={() => handleCreateCheckSpace(s.id)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl active:scale-[0.97] transition-all"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                }}
+                className="w-full flex items-center gap-3 p-3 rounded-xl card-interactive"
               >
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(99, 102, 241, 0.12)' }}>
+                <div className="w-9 h-9 rounded-lg bg-indigo-500/12 flex items-center justify-center shrink-0">
                   <Icon className="w-4 h-4 text-indigo-400" />
                 </div>
                 <div className="flex-1 text-left">
@@ -678,22 +596,6 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           })}
         </div>
       </Drawer>
-
-      {/* ── Fixed "New" button at the bottom ── */}
-      <div className="sticky bottom-0 left-0 right-0 pt-4 pb-2 mt-auto z-20 pointer-events-none">
-        <div className="max-w-md mx-auto pointer-events-auto px-4 lg:px-0">
-          <Button
-            size="lg"
-            fullWidth
-            onClick={() => setShowNewCheck(true)}
-            disabled={!activeShift}
-            className="glow-accent py-4"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Новый чек
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

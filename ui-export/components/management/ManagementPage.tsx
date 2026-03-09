@@ -40,6 +40,7 @@ const menuItems: { id: Screen; label: string; desc: string; icon: typeof Package
   { id: 'certificates', label: 'Сертификаты', desc: 'Подарочные сертификаты', icon: Ticket, color: 'bg-[var(--c-warning-bg)] text-[var(--c-warning)]' },
   { id: 'cash', label: 'Инкассация', desc: 'Операции с наличными', icon: Banknote, color: 'bg-cyan-500/10 text-cyan-400' },
   { id: 'expenses', label: 'Расходы', desc: 'Аренда, коммуналка, зарплаты', icon: Receipt, color: 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' },
+  { id: 'refunds', label: 'Возвраты', desc: 'Полные и частичные возвраты', icon: RotateCcw, color: 'bg-rose-500/10 text-rose-400' },
   { id: 'debtors', label: 'Должники', desc: 'Управление долгами', icon: Wallet, color: 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' },
   { id: 'staff', label: 'Персонал', desc: 'Сотрудники и доступы', icon: Users, color: 'bg-violet-500/10 text-violet-400' },
   { id: 'about', label: 'О системе', desc: 'Версия, обновление', icon: Info, color: 'bg-gray-500/10 text-gray-400' },
@@ -57,7 +58,7 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
     if (initialScreen && initialScreen !== screen) {
       setScreen(initialScreen as Screen);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialScreen]);
 
   const goToMenu = useCallback(() => startTransition(() => setScreen('menu')), []);
@@ -115,6 +116,7 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
       {screen === 'modifiers' && <ModifiersManager />}
       {screen === 'certificates' && <CertificatesManager />}
       {screen === 'expenses' && <ExpensesManager />}
+      {screen === 'refunds' && <RefundsManager />}
       {screen === 'debtors' && <DebtorsManager />}
       {screen === 'staff' && <StaffManager />}
       {screen === 'about' && <AboutSystem />}
@@ -166,12 +168,14 @@ function InventoryFull() {
           return (
             <div
               key={item.id}
-              className={`flex items-center justify-between p-2.5 rounded-xl ${isCritical ? 'bg-[var(--c-danger-bg)] border border-[var(--c-border)]' : 'card'
-                }`}
+              className={`flex items-center justify-between p-2.5 rounded-xl ${
+                isCritical ? 'bg-[var(--c-danger-bg)] border border-[var(--c-border)]' : 'card'
+              }`}
             >
               <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isCritical ? 'bg-[var(--c-danger-bg)]' : 'bg-[var(--c-surface)]'
-                  }`}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                  isCritical ? 'bg-[var(--c-danger-bg)]' : 'bg-[var(--c-surface)]'
+                }`}>
                   <Package className={`w-3.5 h-3.5 ${isCritical ? 'text-[var(--c-danger)]' : 'text-[var(--c-hint)]'}`} />
                 </div>
                 <div className="min-w-0">

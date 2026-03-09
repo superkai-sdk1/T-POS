@@ -10,17 +10,17 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles = {
   primary:
-    'text-white [background:linear-gradient(135deg,#8b5cf6,#06b6d4)] [box-shadow:0_4px_20px_rgba(139,92,246,0.3),0_0_40px_rgba(139,92,246,0.08)] hover:brightness-110 border border-[rgba(255,255,255,0.1)]',
+    'text-[var(--c-accent-text)] shadow-md hover:brightness-110 [background:linear-gradient(135deg,var(--c-accent),var(--c-accent-light))] [box-shadow:0_4px_16px_rgba(var(--c-accent-rgb),0.25)]',
   secondary:
-    'text-[var(--c-text)] border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.15)] [background:rgba(255,255,255,0.05)] [backdrop-filter:blur(12px)] [-webkit-backdrop-filter:blur(12px)] hover:bg-[rgba(255,255,255,0.08)]',
+    'bg-[var(--c-surface)] text-[var(--c-text)] hover:bg-[var(--c-surface-hover)] border border-[var(--c-border)]',
   danger:
-    'text-[var(--c-danger)] border border-[var(--c-danger-border)] [background:rgba(251,113,133,0.06)] [backdrop-filter:blur(12px)] [-webkit-backdrop-filter:blur(12px)] hover:bg-[rgba(251,113,133,0.12)] [box-shadow:0_0_16px_rgba(251,113,133,0.08)]',
+    'bg-[var(--c-danger-bg)] text-[var(--c-danger)] hover:brightness-125 border border-[var(--c-danger-border)]',
   ghost:
-    'text-[var(--c-accent-light)] hover:bg-[rgba(255,255,255,0.05)]',
+    'text-[var(--c-accent)] hover:bg-[var(--c-surface)]',
 };
 
 const sizeStyles = {
-  sm: 'px-3.5 py-1.5 text-xs rounded-xl gap-1.5',
+  sm: 'px-3 py-1.5 text-xs rounded-xl gap-1.5',
   md: 'px-4 py-2.5 text-sm rounded-xl gap-2',
   lg: 'px-6 py-3 text-sm rounded-2xl gap-2',
   icon: 'w-10 h-10 rounded-xl',
@@ -39,12 +39,12 @@ export function Button({
   return (
     <button
       className={`
-        font-semibold transition-all duration-200 flex items-center justify-center
+        font-semibold transition-all duration-150 flex items-center justify-center
         active:scale-[0.96]
         ${variantStyles[variant]}
         ${sizeStyles[size]}
         ${fullWidth ? 'w-full' : ''}
-        disabled:opacity-30 disabled:pointer-events-none disabled:shadow-none
+        disabled:opacity-35 disabled:pointer-events-none disabled:shadow-none
         ${className}
       `}
       disabled={disabled || loading}

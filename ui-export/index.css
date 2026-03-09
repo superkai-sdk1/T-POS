@@ -1,0 +1,241 @@
+@import "tailwindcss";
+@import "./themes/titan-dark.css";
+@import "./themes/neon.css";
+@import "./themes/material-you.css";
+
+:root {
+  --tg-safe-top: 0px;
+  --tg-safe-bottom: 0px;
+  --tg-safe-left: 0px;
+  --tg-safe-right: 0px;
+
+  --safe-top: max(var(--tg-safe-top), env(safe-area-inset-top, 0px));
+  --safe-bottom: max(var(--tg-safe-bottom), env(safe-area-inset-bottom, 0px));
+  --safe-left: max(var(--tg-safe-left), env(safe-area-inset-left, 0px));
+  --safe-right: max(var(--tg-safe-right), env(safe-area-inset-right, 0px));
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --nav-height: 3rem;
+  --app-height: 100vh;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input, textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+html {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  font-size: 17px;
+  touch-action: manipulation;
+}
+
+@media (min-width: 1024px) {
+  html { font-size: 16px; }
+}
+
+body {
+  height: var(--app-height);
+  max-height: var(--app-height);
+  overflow: hidden;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+  background-color: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Core Animations ── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-up {
+  0% { transform: translateY(100%); }
+  70% { transform: translateY(-2%); }
+  100% { transform: translateY(0); }
+}
+@keyframes slide-down {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(100%); opacity: 0; }
+}
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes pop-in {
+  0% { transform: scale(0.92); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+}
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes swipe-out-left {
+  to { transform: translateX(-100%); opacity: 0; height: 0; margin: 0; padding: 0; }
+}
+@keyframes expand-in {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 500px; }
+}
+
+.animate-fade-in { animation: fade-in 0.12s ease-out; }
+.animate-fade-in-up { animation: fade-in-up 0.15s var(--ease-spring); }
+.animate-slide-up { animation: slide-up 0.25s var(--ease-spring); will-change: transform; }
+.animate-slide-down { animation: slide-down 0.18s var(--ease-spring) forwards; will-change: transform; }
+.animate-slide-in-right { animation: slide-in-right 0.15s var(--ease-spring); will-change: transform, opacity; }
+.animate-slide-in-left { animation: slide-in-left 0.15s var(--ease-spring); will-change: transform, opacity; }
+.animate-pop-in { animation: pop-in 0.15s var(--ease-spring); will-change: transform, opacity; }
+.animate-shake { animation: shake 0.35s ease-in-out; }
+.animate-count-up { animation: count-up 0.2s var(--ease-spring); }
+.animate-swipe-out { animation: swipe-out-left 0.2s ease forwards; will-change: transform, opacity; }
+.animate-expand { animation: expand-in 0.2s var(--ease-spring) forwards; overflow: hidden; will-change: max-height, opacity; }
+
+/* ── Skeleton Loader ── */
+.skeleton {
+  background: linear-gradient(90deg, var(--c-skeleton-a) 0%, var(--c-skeleton-b) 50%, var(--c-skeleton-a) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-md);
+}
+
+/* ── Card System ── */
+.card {
+  background: var(--c-card-bg);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+
+.card-interactive {
+  background: var(--c-card-bg);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  transition: background 0.1s, transform 0.1s ease-out, box-shadow 0.1s;
+  will-change: transform;
+  transform: translateZ(0);
+}
+.card-interactive:active {
+  transform: scale(0.975) translateZ(0);
+  background: var(--c-card-active-bg);
+  box-shadow: 0 0 0 1px rgba(var(--c-accent-rgb), 0.15);
+}
+
+/* ── Tap micro-interaction ── */
+.tap {
+  transition: transform 0.08s ease-out;
+  will-change: transform;
+  transform: translateZ(0);
+}
+.tap:active {
+  transform: scale(0.97) translateZ(0);
+}
+
+/* ── Glass ── */
+.glass {
+  background: var(--c-glass-bg);
+  backdrop-filter: blur(var(--c-glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--c-glass-blur)) saturate(1.4);
+  border: 1px solid var(--c-border);
+}
+
+.glass-strong {
+  background: var(--c-glass-strong-bg);
+  backdrop-filter: blur(var(--c-glass-strong-blur)) saturate(1.5);
+  -webkit-backdrop-filter: blur(var(--c-glass-strong-blur)) saturate(1.5);
+  border-top: 1px solid var(--c-border-strong);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* ── Staggered children ── */
+.stagger-children > * {
+  animation: fade-in-up 0.15s var(--ease-spring) backwards;
+  content-visibility: auto;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 25ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 75ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 125ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 175ms; }
+
+/* ── Layout ── */
+.bottom-bar-pos {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+}
+
+/* ── Tab transitions ── */
+.tab-enter-right { animation: slide-in-right 0.15s var(--ease-spring); will-change: transform, opacity; }
+.tab-enter-left { animation: slide-in-left 0.15s var(--ease-spring); will-change: transform, opacity; }
+.tab-content-enter { animation: fade-in-up 0.15s var(--ease-spring); will-change: transform, opacity; }
+
+/* ── Theme transition ── */
+.card, .card-interactive, .glass, .glass-strong {
+  transition: background 0.3s, border-color 0.3s, box-shadow 0.3s, transform 0.12s;
+}

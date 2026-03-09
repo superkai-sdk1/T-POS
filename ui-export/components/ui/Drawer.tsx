@@ -71,9 +71,9 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
       <div
         className={`absolute inset-0 ${closing ? '' : 'animate-fade-in'}`}
         style={{
-          background: 'rgba(0, 0, 0, 0.55)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
+          background: 'var(--c-overlay)',
+          backdropFilter: 'blur(4px)',
+          WebkitBackdropFilter: 'blur(4px)',
           opacity,
           transition: closing ? 'opacity 0.18s, backdrop-filter 0.18s' : undefined,
         }}
@@ -81,38 +81,27 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
       />
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative w-full ${maxH} lg:max-h-[80vh] lg:max-w-lg lg:rounded-2xl rounded-t-3xl overflow-hidden flex flex-col ${closing ? 'animate-slide-down' : 'lg:animate-pop-in animate-slide-up'
+        className={`relative w-full ${maxH} lg:max-h-[80vh] lg:max-w-lg lg:rounded-2xl rounded-t-2xl overflow-hidden flex flex-col ${closing ? 'animate-slide-down' : 'lg:animate-pop-in animate-slide-up'
           }`}
         style={{
           transform: dragY > 0 ? `translateY(${dragY}px) translateZ(0)` : 'translateZ(0)',
           transition: dragging ? 'none' : 'transform 0.2s var(--ease-spring)',
           willChange: 'transform',
           paddingBottom: 'var(--safe-bottom)',
-          background: 'linear-gradient(180deg, rgba(20, 24, 40, 0.95) 0%, rgba(10, 14, 26, 0.98) 100%)',
-          backdropFilter: 'blur(40px) saturate(1.5)',
-          WebkitBackdropFilter: 'blur(40px) saturate(1.5)',
-          boxShadow: '0 -8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06)',
-          border: '1px solid rgba(255, 255, 255, 0.06)',
-          borderBottom: 'none',
+          background: 'linear-gradient(180deg, color-mix(in srgb, var(--c-bg2) 60%, var(--c-bg)) 0%, var(--c-bg) 100%)',
+          boxShadow: '0 -8px 40px rgba(0,0,0,0.3)',
         }}
       >
-        {/* ── Drag Handle ── */}
         <div
-          className="flex flex-col items-center pt-3 pb-1 lg:hidden cursor-grab"
+          className="flex flex-col items-center pt-2 pb-1 lg:hidden cursor-grab"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          <div
-            className="w-10 h-1 rounded-full"
-            style={{
-              background: 'linear-gradient(90deg, rgba(139, 92, 246, 0.3), rgba(6, 182, 212, 0.3))',
-            }}
-          />
+          <div className="w-10 h-1 bg-[var(--c-muted)] rounded-full" />
         </div>
 
-        {/* ── Title Bar ── */}
-        <div className="flex items-center justify-between px-5 py-2.5">
+        <div className="flex items-center justify-between px-5 py-2">
           {title && (
             <h3 className="text-base font-bold text-[var(--c-text)] truncate min-w-0 flex-1 mr-2">
               {title}
@@ -120,17 +109,12 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
           )}
           <button
             onClick={handleClose}
-            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all ml-auto active:scale-90"
-            style={{
-              background: 'rgba(255, 255, 255, 0.06)',
-              border: '1px solid rgba(255, 255, 255, 0.06)',
-            }}
+            className="w-8 h-8 rounded-full bg-[var(--c-surface)] flex items-center justify-center hover:bg-[var(--c-surface-hover)] transition-colors transition-transform ml-auto active:scale-90"
           >
             <X className="w-4 h-4 text-[var(--c-hint)]" />
           </button>
         </div>
 
-        {/* ── Content ── */}
         <div
           ref={contentRef}
           className="overflow-y-auto px-5 pb-5 flex-1"
