@@ -158,23 +158,19 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
     }
   };
 
-  // Long press hook for mobile header
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
-  const handleHeaderTouchStart = () => {
-    longPressTimer.current = setTimeout(() => {
-      triggerShiftAction();
-    }, 800);
-  };
-  const handleHeaderTouchEnd = () => {
-    if (longPressTimer.current) clearTimeout(longPressTimer.current);
+  // Mobile header tap handler — simple tap to open/close shift
+  const handleHeaderTap = () => {
+    triggerShiftAction();
   };
 
-  // Pull to refresh hook
+  // Pull to refresh hook — only on POS tab
   const handleTouchStart = (e: React.TouchEvent) => {
+    if (activeTab !== 'pos') return;
     if (!scrollRef.current || scrollRef.current.scrollTop > 5) return;
     touchStartY.current = e.touches[0].clientY;
   };
   const handleTouchMove = (e: React.TouchEvent) => {
+    if (activeTab !== 'pos') return;
     if (isRefreshing || !scrollRef.current || scrollRef.current.scrollTop > 5) return;
     const dy = e.touches[0].clientY - touchStartY.current;
     if (dy > 120) {
@@ -291,6 +287,21 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
 
         <div className={`pb-5 pt-3 mt-auto shrink-0 ${isSidebarExpanded ? 'px-4 flex flex-col gap-2' : 'flex flex-col items-center gap-3'}`}>
           <div className="h-px w-full bg-[rgba(255,255,255,0.06)] mb-2" />
+
+          {/* Shift button in collapsed sidebar */}
+          {!isSidebarExpanded && (
+            <button
+              onClick={triggerShiftAction}
+              title={activeShift ? 'Закрыть смену' : 'Открыть смену'}
+              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all tap ${
+                activeShift
+                  ? 'text-[var(--c-danger)] hover:bg-[rgba(251,113,133,0.08)]'
+                  : 'text-[var(--c-success)] hover:bg-[rgba(52,211,153,0.08)]'
+              }`}
+            >
+              {activeShift ? <StopCircle className="w-5 h-5" /> : <PlayCircle className="w-5 h-5" />}
+            </button>
+          )}
           {isSidebarExpanded && (
             <button
               onClick={() => window.location.reload()}
@@ -330,7 +341,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
       >
         {/* ── Mobile header — glass blur ── */}
         <header
-          className="lg:hidden shrink-0 z-40 touch-none select-none relative"
+          className="lg:hidden shrink-0 z-40 select-none relative cursor-pointer"
           style={{
             paddingTop: `var(--safe-top)`,
             height: 'calc(var(--safe-top) + 65px)',
@@ -339,9 +350,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
             WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
             borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
           }}
-          onTouchStart={handleHeaderTouchStart}
-          onTouchEnd={handleHeaderTouchEnd}
-          onTouchCancel={handleHeaderTouchEnd}
+          onClick={handleHeaderTap}
           onContextMenu={(e) => e.preventDefault()}
         >
           <div className="absolute inset-0 flex flex-col items-center justify-center pt-[var(--safe-top)]">
