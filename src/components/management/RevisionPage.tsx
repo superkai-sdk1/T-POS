@@ -71,6 +71,7 @@ export function RevisionPage() {
   const [revisionNote, setRevisionNote] = useState('');
   const [showExitWarning, setShowExitWarning] = useState(false);
   const [createSearch, setCreateSearch] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const [selectedRevision, setSelectedRevision] = useState<Revision | null>(null);
   const [showDetail, setShowDetail] = useState(false);
@@ -149,7 +150,8 @@ export function RevisionPage() {
   });
 
   const handleCreateRevision = async () => {
-    if (changes.length === 0) return;
+    if (changes.length === 0 || isSaving) return;
+    setIsSaving(true);
 
     const totalDiff = changes.reduce((s, c) => s + Math.abs(c.diff), 0);
 
@@ -164,7 +166,7 @@ export function RevisionPage() {
       .select()
       .single();
 
-    if (error || !revision) return;
+    if (error || !revision) { setIsSaving(false); return; }
 
     const rows = changes.map((c) => ({
       revision_id: revision.id,
@@ -187,6 +189,7 @@ export function RevisionPage() {
     }
 
     hapticNotification('success');
+    setIsSaving(false);
     setIsCreating(false);
     setRevisionData({});
     setRevisionNote('');

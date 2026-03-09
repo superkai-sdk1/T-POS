@@ -38,6 +38,7 @@ export function RefundsManager() {
   const [processing, setProcessing] = useState(false);
   const [detailRefund, setDetailRefund] = useState<Refund | null>(null);
   const [detailItems, setDetailItems] = useState<{ name: string; quantity: number; price: number }[]>([]);
+  const [bonusRate, setBonusRate] = useState(10);
 
   const loadRefunds = useCallback(async () => {
     const { data } = await supabase
@@ -109,7 +110,7 @@ export function RefundsManager() {
   useEffect(() => { loadRefunds(); }, [loadRefunds]);
   useEffect(() => { loadClosedChecks(); }, [loadClosedChecks]);
 
-  const handleSelectCheck = (check: CheckWithItems) => {
+  const handleSelectCheck = async (check: CheckWithItems) => {
     hapticFeedback('light');
     setSelectedCheck(check);
     setRefundType('full');
@@ -119,6 +120,11 @@ export function RefundsManager() {
     }
     setItemSelections(sel);
     setRefundNote('');
+    const { data: settingsRows } = await supabase.from('app_settings').select('*');
+    if (settingsRows) {
+      const rateRow = settingsRows.find((r: { key: string }) => r.key === 'bonus_accrual_rate');
+      if (rateRow) setBonusRate(Number(rateRow.value) || 10);
+    }
     setScreen('refundForm');
   };
 
@@ -164,20 +170,21 @@ export function RefundsManager() {
       const isFullRefund = refundType === 'full' || refundTotal >= check.total_amount;
       const actualType = isFullRefund ? 'full' : 'partial';
 
-      const originalTotal = check.total_amount;
-      const refundPct = originalTotal > 0 ? refundTotal / originalTotal : 0;
+      const bonusUsedOnCheck = check.bonus_used || 0;
+      const checkTotalBeforeBonus = check.total_amount + bonusUsedOnCheck;
+      const refundPct = checkTotalBeforeBonus > 0 ? refundTotal / checkTotalBeforeBonus : 0;
 
       const { data: settingsRows } = await supabase.from('app_settings').select('*');
       const cfg: Record<string, string> = {};
       if (settingsRows) for (const r of settingsRows) cfg[r.key] = r.value;
-      const bonusRate = Number(cfg['bonus_accrual_rate'] || '10');
+      const freshBonusRate = Number(cfg['bonus_accrual_rate'] || '10');
+      setBonusRate(freshBonusRate);
 
-      const originalBonusAccrual = Math.floor(originalTotal * bonusRate / 100);
+      const originalBonusAccrual = Math.floor(checkTotalBeforeBonus * freshBonusRate / 100);
       const bonusToDeduct = isFullRefund
         ? originalBonusAccrual
         : Math.floor(originalBonusAccrual * refundPct);
 
-      const bonusUsedOnCheck = check.bonus_used || 0;
       const bonusToReturn = isFullRefund
         ? bonusUsedOnCheck
         : Math.floor(bonusUsedOnCheck * refundPct);
@@ -212,21 +219,26 @@ export function RefundsManager() {
         await supabase.from('refund_items').insert(refundItemRows);
       }
 
-      const itemIds = refundItemRows.map((r) => r.item_id);
-      if (itemIds.length > 0) {
+      const qtyByItemId = new Map<string, number>();
+      for (const ri of refundItemRows) {
+        qtyByItemId.set(ri.item_id, (qtyByItemId.get(ri.item_id) || 0) + ri.quantity);
+      }
+      const uniqueItemIds = [...qtyByItemId.keys()];
+      if (uniqueItemIds.length > 0) {
         const { data: freshItems } = await supabase
           .from('inventory')
           .select('id, stock_quantity')
-          .in('id', itemIds);
+          .in('id', uniqueItemIds);
         if (freshItems) {
           const stockMap = new Map(freshItems.map((i) => [i.id, i.stock_quantity as number]));
           await Promise.all(
-            refundItemRows.map((ri) => {
-              const current = stockMap.get(ri.item_id) ?? 0;
+            uniqueItemIds.map((itemId) => {
+              const current = stockMap.get(itemId) ?? 0;
+              const returnQty = qtyByItemId.get(itemId) ?? 0;
               return supabase
                 .from('inventory')
-                .update({ stock_quantity: current + ri.quantity })
-                .eq('id', ri.item_id);
+                .update({ stock_quantity: current + returnQty })
+                .eq('id', itemId);
             })
           );
         }
@@ -495,14 +507,13 @@ export function RefundsManager() {
           {selectedCheck.player_id && (
             <>
               {(() => {
-                const originalTotal = selectedCheck.total_amount;
-                const pct = originalTotal > 0 ? refundTotal / originalTotal : 0;
-                const { data: settingsRows } = { data: null as null };
-                void settingsRows;
-                const bonusDeduct = Math.floor(
-                  Math.floor(originalTotal * 10 / 100) * pct
-                );
-                const bonusReturn = Math.floor((selectedCheck.bonus_used || 0) * pct);
+                const bUsed = selectedCheck.bonus_used || 0;
+                const totalBeforeBonus = selectedCheck.total_amount + bUsed;
+                const pct = totalBeforeBonus > 0 ? refundTotal / totalBeforeBonus : 0;
+                const isFullPct = refundTotal >= selectedCheck.total_amount;
+                const originalAccrual = Math.floor(totalBeforeBonus * bonusRate / 100);
+                const bonusDeduct = isFullPct ? originalAccrual : Math.floor(originalAccrual * pct);
+                const bonusReturn = isFullPct ? bUsed : Math.floor(bUsed * pct);
                 return (
                   <>
                     {bonusDeduct > 0 && (

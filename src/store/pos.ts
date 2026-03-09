@@ -265,7 +265,12 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const prev = activeCheck.note;
     set({ activeCheck: { ...activeCheck, note } });
     const { error } = await supabase.from('checks').update({ note }).eq('id', activeCheck.id);
-    if (error) set({ activeCheck: { ...get().activeCheck!, note: prev } });
+    if (error) {
+      const current = get().activeCheck;
+      if (current?.id === activeCheck.id) {
+        set({ activeCheck: { ...current, note: prev } });
+      }
+    }
   },
 
   selectCheck: async (check: Check) => {
@@ -582,6 +587,9 @@ export const usePOSStore = create<POSState>((set, get) => ({
         const matchedDbIds = new Set<string>();
 
         for (const cartItem of cartWithKeys) {
+          const modPrice = (cartItem.modifiers || []).reduce((s, m) => s + m.price, 0);
+          const unitPrice = cartItem.item.price + modPrice;
+
           const existing = dbItemsArray.find(dbi =>
             dbi.item_id === cartItem.item.id &&
             (dbModifierMap[dbi.id] || '') === cartItem.key &&
@@ -596,16 +604,15 @@ export const usePOSStore = create<POSState>((set, get) => ({
                 check_id: activeCheck.id,
                 item_id: cartItem.item.id,
                 quantity: cartItem.quantity,
-                price_at_time: cartItem.item.price
+                price_at_time: unitPrice
               });
             }
           } else {
-            // New item
             itemsToUpsert.push({
               check_id: activeCheck.id,
               item_id: cartItem.item.id,
               quantity: cartItem.quantity,
-              price_at_time: cartItem.item.price,
+              price_at_time: unitPrice,
               _temp_modifiers: cartItem.modifiers
             });
           }
@@ -685,8 +692,14 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const prevFp = _lastCartFingerprint;
     _lastCartFingerprint = '';
     set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
-    await supabase.from('check_discounts').delete().eq('check_id', activeCheck.id);
-    await supabase.from('check_items').delete().eq('check_id', activeCheck.id);
+    const { error: discErr } = await supabase.from('check_discounts').delete().eq('check_id', activeCheck.id);
+    const { error: itemsErr } = await supabase.from('check_items').delete().eq('check_id', activeCheck.id);
+    if (discErr || itemsErr) {
+      console.error('cancelCheck cleanup error:', discErr || itemsErr);
+      _lastCartFingerprint = prevFp;
+      set({ activeCheck, cart, checkItems, appliedDiscounts });
+      return false;
+    }
     const { error } = await supabase.from('checks').delete().eq('id', activeCheck.id);
     if (error) {
       console.error('cancelCheck error:', error);
@@ -720,7 +733,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const isSplit = payments.length > 1;
     const primaryMethod: PaymentMethod = isSplit ? 'split' : payments[0]?.method || 'cash';
 
-    await supabase
+    const { error: closeErr } = await supabase
       .from('checks')
       .update({
         status: 'closed',
@@ -732,7 +745,11 @@ export const usePOSStore = create<POSState>((set, get) => ({
       })
       .eq('id', activeCheck.id);
 
-    // Refresh local state immediately to avoid stale data
+    if (closeErr) {
+      console.error('closeCheck update error:', closeErr);
+      return false;
+    }
+
     set((state) => ({
       openChecks: state.openChecks.filter(c => c.id !== activeCheck.id),
       activeCheck: null,
@@ -842,21 +859,26 @@ export const usePOSStore = create<POSState>((set, get) => ({
       created_by: user?.id,
     });
 
-    const itemIds = cart.map((c) => c.item.id);
+    const qtyByItemId = new Map<string, number>();
+    for (const c of cart) {
+      qtyByItemId.set(c.item.id, (qtyByItemId.get(c.item.id) || 0) + c.quantity);
+    }
+    const uniqueItemIds = [...qtyByItemId.keys()];
     const { data: freshItems } = await supabase
       .from('inventory')
       .select('id, stock_quantity')
-      .in('id', itemIds);
+      .in('id', uniqueItemIds);
     if (freshItems) {
       const stockMap = new Map(freshItems.map((i) => [i.id, i.stock_quantity as number]));
       await Promise.all(
-        cart.map((c) => {
-          const current = stockMap.get(c.item.id) ?? 0;
-          if (current > 0) {
+        uniqueItemIds.map((itemId) => {
+          const current = stockMap.get(itemId) ?? 0;
+          const soldQty = qtyByItemId.get(itemId) ?? 0;
+          if (current > 0 && soldQty > 0) {
             return supabase
               .from('inventory')
-              .update({ stock_quantity: Math.max(0, current - c.quantity) })
-              .eq('id', c.item.id);
+              .update({ stock_quantity: Math.max(0, current - soldQty) })
+              .eq('id', itemId);
           }
           return Promise.resolve();
         }),
@@ -877,7 +899,6 @@ export const usePOSStore = create<POSState>((set, get) => ({
       .eq('check_id', activeCheck.id)
       .neq('status', 'cancelled');
 
-    set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
     await get().loadOpenChecks();
     await get().loadInventory();
     return true;
@@ -975,11 +996,22 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   deleteCheckLocal: (checkId: string) => {
-    set((state) => ({
-      openChecks: state.openChecks.filter((c) => c.id !== checkId),
-      activeCheck: state.activeCheck?.id === checkId ? null : state.activeCheck,
-      cart: state.activeCheck?.id === checkId ? [] : state.cart,
-    }));
+    set((state) => {
+      const { [checkId]: _carts, ...restCarts } = state.openCheckCarts;
+      const { [checkId]: _items, ...restItems } = state.openCheckItems;
+      const { [checkId]: _discs, ...restDiscs } = state.openCheckDiscounts;
+      void _carts; void _items; void _discs;
+      return {
+        openChecks: state.openChecks.filter((c) => c.id !== checkId),
+        openCheckCarts: restCarts,
+        openCheckItems: restItems,
+        openCheckDiscounts: restDiscs,
+        activeCheck: state.activeCheck?.id === checkId ? null : state.activeCheck,
+        cart: state.activeCheck?.id === checkId ? [] : state.cart,
+        checkItems: state.activeCheck?.id === checkId ? [] : state.checkItems,
+        appliedDiscounts: state.activeCheck?.id === checkId ? [] : state.appliedDiscounts,
+      };
+    });
   },
 
   upsertInventoryLocal: (item: InventoryItem) => {
@@ -1029,13 +1061,14 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
       const newItemsMap = { ...state.openCheckItems, [checkId]: newItems };
 
-      // Update cart representation
-      const newCart: CartItem[] = newItems.map(ci => ({
-        item: ci.item!,
-        quantity: ci.quantity,
-        modifiers: modifiers // This is tricky because we might not have all modifiers here
-      }));
-      // Note: Full modifier sync happens in refreshActiveCheck or specific UPSERT payloads
+      const prevCart = state.openCheckCarts[checkId] || [];
+      const newCart: CartItem[] = newItems.map(ci => {
+        if (ci.id === item.id && modifiers !== undefined) {
+          return { item: ci.item!, quantity: ci.quantity, modifiers };
+        }
+        const existing = prevCart.find(pc => pc.item?.id === ci.item_id);
+        return { item: ci.item!, quantity: ci.quantity, modifiers: existing?.modifiers || [] };
+      });
 
       const newCartsMap = { ...state.openCheckCarts, [checkId]: newCart };
 
@@ -1060,13 +1093,18 @@ export const usePOSStore = create<POSState>((set, get) => ({
       const newItems = currentItems.filter(ci => ci.id !== checkItemId);
       const newItemsMap = { ...state.openCheckItems, [checkId]: newItems };
 
-      // Удаляем из корзины по item_id удалённого check_item, а не по индексу
       const currentCart = state.openCheckCarts[checkId] || [];
       let removed = false;
+      const removedModKey = removedItem
+        ? (currentCart.find(c => c.item?.id === removedItem.item_id)?.modifiers || []).map(m => m.id).sort().join(',')
+        : '';
       const newCart = currentCart.filter((cartItem) => {
         if (!removed && removedItem && cartItem.item?.id === removedItem.item_id) {
-          removed = true;
-          return false;
+          const cartModKey = (cartItem.modifiers || []).map(m => m.id).sort().join(',');
+          if (cartModKey === removedModKey) {
+            removed = true;
+            return false;
+          }
         }
         return true;
       });

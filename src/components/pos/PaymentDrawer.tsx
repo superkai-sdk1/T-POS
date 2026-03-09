@@ -42,12 +42,13 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
 
   const total = getCartTotal() + spaceRental;
 
+  const activePlayerId = activeCheck?.player_id;
   useEffect(() => {
-    if (open && activeCheck?.player_id) {
+    if (open && activePlayerId) {
       supabase
         .from('profiles')
         .select('*')
-        .eq('id', activeCheck.player_id)
+        .eq('id', activePlayerId)
         .single()
         .then(({ data }) => {
           if (data) setPlayerInfo(data as Profile);
@@ -65,7 +66,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
       setCertError('');
       setAppliedCert(null);
     }
-  }, [open, activeCheck]);
+  }, [open, activePlayerId]);
 
   const maxBonus = Math.min(playerInfo?.bonus_points || 0, Math.floor(total * 0.5));
   const bonusRemainder = total - bonusAmount;
@@ -87,21 +88,24 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
   }, [maxBonus]);
 
   const handleSimplePay = async (method: PaymentMethod) => {
+    if (isProcessing) return;
     setIsProcessing(true);
     const payments: PaymentPortion[] = [{ method, amount: total }];
     const ok = await closeCheck(payments, 0, spaceRental);
     setIsProcessing(false);
     if (ok) { hapticNotification('success'); onSuccess(); }
+    else { hapticNotification('error'); }
   };
 
   const handleBonusConfirm = async (remainderMethod: PaymentMethod) => {
-    if (bonusAmount <= 0) return;
+    if (bonusAmount <= 0 || isProcessing) return;
     setIsProcessing(true);
     const payments: PaymentPortion[] = [{ method: 'bonus', amount: bonusAmount }];
     if (bonusRemainder > 0) payments.push({ method: remainderMethod, amount: bonusRemainder });
     const ok = await closeCheck(payments, bonusAmount, spaceRental);
     setIsProcessing(false);
     if (ok) { hapticNotification('success'); onSuccess(); }
+    else { hapticNotification('error'); }
   };
 
   const addSplitPayment = () => {
@@ -123,12 +127,13 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
   };
 
   const handleSplitConfirm = async () => {
-    if (splitRemaining > 0) return;
+    if (splitRemaining > 0 || isProcessing) return;
     setIsProcessing(true);
     const bu = splitPayments.filter((p) => p.method === 'bonus').reduce((s, p) => s + p.amount, 0);
     const ok = await closeCheck(splitPayments, bu, spaceRental);
     setIsProcessing(false);
     if (ok) { hapticNotification('success'); onSuccess(); }
+    else { hapticNotification('error'); }
   };
 
   const lookupCertificate = async () => {
@@ -143,31 +148,33 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
     setCertLoading(false);
     if (error || !data) { setCertError('Сертификат не найден'); return; }
     if (data.is_used) { setCertError('Сертификат уже использован'); return; }
-    if ((data.balance || data.nominal) <= 0) { setCertError('Баланс сертификата 0'); return; }
+    if ((data.balance ?? data.nominal) <= 0) { setCertError('Баланс сертификата 0'); return; }
     setAppliedCert(data as Certificate);
   };
 
   const handleCertPay = async (remainderMethod: PaymentMethod) => {
-    if (!appliedCert || !activeCheck) return;
+    if (!appliedCert || !activeCheck || isProcessing) return;
     setIsProcessing(true);
     const certBalance = appliedCert.balance ?? appliedCert.nominal;
     const certAmount = Math.min(certBalance, total);
     const remainder = total - certAmount;
 
-    await supabase
-      .from('certificates')
-      .update({
-        balance: certBalance - certAmount,
-        is_used: certBalance - certAmount <= 0,
-        used_by: activeCheck.player_id || null,
-      })
-      .eq('id', appliedCert.id);
-
     const payments: PaymentPortion[] = [{ method: 'cash' as PaymentMethod, amount: certAmount }];
     if (remainder > 0) payments.push({ method: remainderMethod, amount: remainder });
     const ok = await closeCheck(payments, 0, spaceRental);
+    if (ok) {
+      await supabase
+        .from('certificates')
+        .update({
+          balance: certBalance - certAmount,
+          is_used: certBalance - certAmount <= 0,
+          used_by: activeCheck.player_id || null,
+        })
+        .eq('id', appliedCert.id);
+      hapticNotification('success');
+      onSuccess();
+    }
     setIsProcessing(false);
-    if (ok) { hapticNotification('success'); onSuccess(); }
   };
 
   const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';

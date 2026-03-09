@@ -12,6 +12,8 @@ interface DrawerProps {
 
 const SIZE_RATIO: Record<string, number> = { sm: 0.6, md: 0.7, lg: 0.85, xl: 0.95 };
 
+let _drawerCount = 0;
+
 export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -46,13 +48,17 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
 
   useEffect(() => {
     if (open) {
+      _drawerCount++;
       document.body.style.overflow = 'hidden';
       setClosing(false);
       setDragY(0);
-    } else {
-      document.body.style.overflow = '';
     }
-    return () => { document.body.style.overflow = ''; };
+    return () => {
+      if (open) {
+        _drawerCount = Math.max(0, _drawerCount - 1);
+        if (_drawerCount === 0) document.body.style.overflow = '';
+      }
+    };
   }, [open]);
 
   const handleClose = useCallback(() => {

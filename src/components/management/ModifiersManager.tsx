@@ -92,8 +92,9 @@ export function ModifiersManager() {
         );
       }
     } else {
-      const { data } = await supabase.from('modifiers').insert({ name: name.trim(), price: priceNum }).select().single();
-      if (data && selectedProducts.length > 0) {
+      const { data, error: insErr } = await supabase.from('modifiers').insert({ name: name.trim(), price: priceNum }).select().single();
+      if (insErr || !data) { hapticNotification('error'); return; }
+      if (selectedProducts.length > 0) {
         await supabase.from('product_modifiers').insert(
           selectedProducts.map((pid) => ({ product_id: pid, modifier_id: data.id }))
         );

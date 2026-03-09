@@ -178,11 +178,12 @@ export const useShiftStore = create<ShiftState>()(
         const { activeShift } = get();
         if (!activeShift) return false;
 
-        const { count } = await supabase
+        const { count, error: countError } = await supabase
           .from('checks')
           .select('id', { count: 'exact', head: true })
           .eq('shift_id', activeShift.id)
           .eq('status', 'open');
+        if (countError) return false;
         if (count && count > 0) return false;
 
         const user = useAuthStore.getState().user;

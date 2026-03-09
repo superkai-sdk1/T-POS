@@ -47,9 +47,11 @@ export function DebtorsManager() {
   const handleRepay = async () => {
     if (!selected || !amount) return;
     const val = Math.abs(Number(amount));
-    if (val <= 0) return;
+    if (!Number.isFinite(val) || val <= 0) return;
 
-    const newBalance = selected.balance + val;
+    const { data: fresh } = await supabase.from('profiles').select('balance').eq('id', selected.id).single();
+    const currentBalance = fresh?.balance ?? selected.balance;
+    const newBalance = currentBalance + val;
     await supabase
       .from('profiles')
       .update({ balance: newBalance })
@@ -58,7 +60,7 @@ export function DebtorsManager() {
     await supabase.from('transactions').insert({
       type: 'debt_adjustment',
       amount: val,
-      description: `Погашение долга${adjustNote ? ': ' + adjustNote : ''} (было ${selected.balance}₽, стало ${newBalance}₽)`,
+      description: `Погашение долга${adjustNote ? ': ' + adjustNote : ''} (было ${currentBalance}₽, стало ${newBalance}₽)`,
       player_id: selected.id,
       created_by: user?.id,
     });
@@ -71,9 +73,11 @@ export function DebtorsManager() {
   const handleIncrease = async () => {
     if (!selected || !amount) return;
     const val = Math.abs(Number(amount));
-    if (val <= 0) return;
+    if (!Number.isFinite(val) || val <= 0) return;
 
-    const newBalance = selected.balance - val;
+    const { data: fresh } = await supabase.from('profiles').select('balance').eq('id', selected.id).single();
+    const currentBalance = fresh?.balance ?? selected.balance;
+    const newBalance = currentBalance - val;
     await supabase
       .from('profiles')
       .update({ balance: newBalance })
@@ -82,7 +86,7 @@ export function DebtorsManager() {
     await supabase.from('transactions').insert({
       type: 'debt_adjustment',
       amount: -val,
-      description: `Увеличение долга${adjustNote ? ': ' + adjustNote : ''} (было ${selected.balance}₽, стало ${newBalance}₽)`,
+      description: `Увеличение долга${adjustNote ? ': ' + adjustNote : ''} (было ${currentBalance}₽, стало ${newBalance}₽)`,
       player_id: selected.id,
       created_by: user?.id,
     });

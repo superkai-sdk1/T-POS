@@ -46,6 +46,7 @@ export function SupplyPage() {
   const [detailItems, setDetailItems] = useState<SupplyItem[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [editItems, setEditItems] = useState<DraftItem[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   const user = useAuthStore((s) => s.user);
 
@@ -157,7 +158,8 @@ export function SupplyPage() {
   // --- CREATE SUPPLY ---
 
   const handleCreate = async () => {
-    if (draftItems.length === 0) return;
+    if (draftItems.length === 0 || isSaving) return;
+    setIsSaving(true);
 
     const { data: supply, error } = await supabase
       .from('supplies')
@@ -165,7 +167,7 @@ export function SupplyPage() {
       .select()
       .single();
 
-    if (error || !supply) return;
+    if (error || !supply) { setIsSaving(false); return; }
 
     const rows = draftItems.map((d) => ({
       supply_id: supply.id,
@@ -201,6 +203,7 @@ export function SupplyPage() {
     });
 
     hapticNotification('success');
+    setIsSaving(false);
     setIsCreating(false);
     setDraftItems([]);
     setDraftNote('');
@@ -286,7 +289,8 @@ export function SupplyPage() {
   };
 
   const handleSaveEdit = async () => {
-    if (!selectedSupply) return;
+    if (!selectedSupply || isSaving) return;
+    setIsSaving(true);
     for (const si of detailItems) {
       const { data: fresh } = await supabase.from('inventory').select('stock_quantity').eq('id', si.item_id).single();
       if (fresh) await supabase.from('inventory').update({ stock_quantity: Math.max(0, fresh.stock_quantity - si.quantity) }).eq('id', si.item_id);
@@ -307,19 +311,23 @@ export function SupplyPage() {
       }
     }
     hapticNotification('success');
+    setIsSaving(false);
     setShowDetail(false);
     loadSupplies();
     loadInventory();
   };
 
   const handleDelete = async () => {
-    if (!selectedSupply) return;
+    if (!selectedSupply || isSaving) return;
+    setIsSaving(true);
+    const { error: delErr } = await supabase.from('supplies').delete().eq('id', selectedSupply.id);
+    if (delErr) { setIsSaving(false); return; }
     for (const si of detailItems) {
       const { data: fresh } = await supabase.from('inventory').select('stock_quantity').eq('id', si.item_id).single();
       if (fresh) await supabase.from('inventory').update({ stock_quantity: Math.max(0, fresh.stock_quantity - si.quantity) }).eq('id', si.item_id);
     }
-    await supabase.from('supplies').delete().eq('id', selectedSupply.id);
     hapticNotification('warning');
+    setIsSaving(false);
     setShowDetail(false);
     loadSupplies();
     loadInventory();

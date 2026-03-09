@@ -139,6 +139,7 @@ export function AboutSystem() {
       const decoder = new TextDecoder();
       let buffer = '';
 
+      let finished = false;
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -163,13 +164,19 @@ export function AboutSystem() {
             }
             if (data.type === 'complete') {
               setStatus('complete');
+              finished = true;
             }
             if (data.type === 'error') {
               setStatus('error');
               setErrorMsg(data.message || 'Неизвестная ошибка');
+              finished = true;
             }
           } catch { /* parse error — ignore */ }
         }
+      }
+      if (!finished) {
+        setStatus('error');
+        setErrorMsg('Поток обновления завершился без результата');
       }
     } catch {
       setStatus('error');

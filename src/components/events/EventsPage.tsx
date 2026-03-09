@@ -115,28 +115,32 @@ export function EventsPage() {
     };
 
     const handleCompleteEvent = async () => {
-        if (!showComplete) return;
+        if (!showComplete || isSubmitting) return;
         setIsSubmitting(true);
-        const amount = showComplete.payment_type === 'hourly'
-            ? HOURLY_RATES[selectedHours]
-            : (showComplete.fixed_amount || 0);
+        try {
+            const amount = showComplete.payment_type === 'hourly'
+                ? HOURLY_RATES[selectedHours]
+                : (showComplete.fixed_amount || 0);
 
-        const check = await usePOSStore.getState().createCheck(null);
-        if (check) {
-            await supabase.from('checks').update({
-                status: 'closed', total_amount: amount, payment_method: 'cash',
-                note: `Мероприятие: ${showComplete.type === 'titan' ? 'Титан' : showComplete.location}`,
-                closed_at: new Date().toISOString(),
-            }).eq('id', check.id);
+            const check = await usePOSStore.getState().createCheck(null);
+            if (check) {
+                await supabase.from('checks').update({
+                    status: 'closed', total_amount: amount, payment_method: 'cash',
+                    note: `Мероприятие: ${showComplete.type === 'titan' ? 'Титан' : showComplete.location}`,
+                    closed_at: new Date().toISOString(),
+                }).eq('id', check.id);
 
-            await supabase.from('events').update({
-                status: 'completed', check_id: check.id, fixed_amount: amount,
-            }).eq('id', showComplete.id);
+                await supabase.from('events').update({
+                    status: 'completed', check_id: check.id, fixed_amount: amount,
+                }).eq('id', showComplete.id);
 
-            hapticNotification('success');
-            setShowComplete(null);
-            loadEvents();
-            usePOSStore.getState().loadOpenChecks();
+                hapticNotification('success');
+                setShowComplete(null);
+                loadEvents();
+                usePOSStore.getState().loadOpenChecks();
+            }
+        } catch (e) {
+            console.error('handleCompleteEvent error:', e);
         }
         setIsSubmitting(false);
     };

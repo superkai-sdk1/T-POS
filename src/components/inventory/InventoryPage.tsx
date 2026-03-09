@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo, startTransition, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Badge } from '@/components/ui/Badge';
 import { Package, AlertTriangle, Search } from 'lucide-react';
@@ -120,7 +120,7 @@ export function InventoryPage() {
         <Input
           placeholder="Поиск..."
           value={search}
-          onChange={(e) => startTransition(() => setSearch(e.target.value))}
+          onChange={(e) => setSearch(e.target.value)}
           className="pl-10"
         />
       </div>

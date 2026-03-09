@@ -22,6 +22,7 @@ export function StaffManager() {
   const [pinCode, setPinCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const loadStaff = useCallback(async () => {
     const { data } = await supabase
@@ -53,7 +54,9 @@ export function StaffManager() {
   const handleAdd = async () => {
     if (!nickname.trim()) { setError('Введите никнейм'); return; }
     if (!password.trim()) { setError('Введите пароль'); return; }
+    if (isSaving) return;
     setError('');
+    setIsSaving(true);
 
     const { data: existing } = await supabase
       .from('profiles')
@@ -63,6 +66,7 @@ export function StaffManager() {
 
     if (existing) {
       setError('Такой никнейм уже существует');
+      setIsSaving(false);
       return;
     }
 
@@ -79,10 +83,12 @@ export function StaffManager() {
 
     if (insertErr) {
       setError('Ошибка при создании');
+      setIsSaving(false);
       return;
     }
 
     hapticNotification('success');
+    setIsSaving(false);
     setShowAdd(false);
     resetForm();
     loadStaff();
@@ -98,9 +104,10 @@ export function StaffManager() {
   };
 
   const handleSaveEdit = async () => {
-    if (!selected) return;
+    if (!selected || isSaving) return;
     if (!nickname.trim()) { setError('Введите никнейм'); return; }
     setError('');
+    setIsSaving(true);
 
     const updates: Record<string, unknown> = { nickname: nickname.trim() };
     if (password.trim()) {
@@ -123,17 +130,20 @@ export function StaffManager() {
 
     if (updErr) {
       setError(updErr.message.includes('unique') ? 'Такой никнейм уже занят' : 'Ошибка сохранения');
+      setIsSaving(false);
       return;
     }
 
     hapticNotification('success');
+    setIsSaving(false);
     setShowEdit(false);
     resetForm();
     loadStaff();
   };
 
   const handleDelete = async () => {
-    if (!selected) return;
+    if (!selected || isSaving) return;
+    setIsSaving(true);
     hapticFeedback('heavy');
 
     const { error: delErr } = await supabase
@@ -143,10 +153,12 @@ export function StaffManager() {
 
     if (delErr) {
       setError('Невозможно удалить (есть связанные данные)');
+      setIsSaving(false);
       return;
     }
 
     hapticNotification('warning');
+    setIsSaving(false);
     setShowEdit(false);
     resetForm();
     loadStaff();

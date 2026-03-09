@@ -31,8 +31,9 @@ export const ProductsModule = memo(function ProductsModule({ products, allCheckI
   const filtered = useMemo(() => {
     let list = products;
     if (abcFilter !== 'all') list = list.filter((p) => p.abcGroup === abcFilter);
+    if (search) list = list.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
     return list;
-  }, [products, abcFilter]);
+  }, [products, abcFilter, search]);
 
   const totalRevenue = products.reduce((s, p) => s + p.revenue, 0);
   const abcGroups = useMemo(() => ({

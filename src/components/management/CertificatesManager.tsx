@@ -43,6 +43,7 @@ export function CertificatesManager() {
     const to = parseInt(rangeTo);
     const nom = parseFloat(nominal);
     if (isNaN(from) || isNaN(to) || isNaN(nom) || from > to || nom <= 0) return;
+    if (to - from + 1 > 1000) return;
 
     setGenerating(true);
     const rows = [];
@@ -178,16 +179,21 @@ export function CertificatesManager() {
           </div>
           <Input label="Номинал (₽)" type="number" value={nominal} onChange={(e) => setNominal(e.target.value)} placeholder="1000" />
 
-          {rangeFrom && rangeTo && nominal && (
-            <div className="p-3 rounded-xl bg-amber-500/6 border border-amber-500/10">
-              <p className="text-xs text-amber-400">
-                Будет создано <strong>{Math.max(0, parseInt(rangeTo) - parseInt(rangeFrom) + 1)}</strong> сертификатов
-                от <strong>{prefix}{rangeFrom}</strong> до <strong>{prefix}{rangeTo}</strong> номиналом <strong>{nominal}₽</strong>
-              </p>
-            </div>
-          )}
+          {rangeFrom && rangeTo && nominal && (() => {
+            const count = Math.max(0, (parseInt(rangeTo) || 0) - (parseInt(rangeFrom) || 0) + 1);
+            const overLimit = count > 1000;
+            return (
+              <div className={`p-3 rounded-xl ${overLimit ? 'bg-red-500/6 border border-red-500/10' : 'bg-amber-500/6 border border-amber-500/10'}`}>
+                <p className={`text-xs ${overLimit ? 'text-red-400' : 'text-amber-400'}`}>
+                  Будет создано <strong>{count}</strong> сертификатов
+                  от <strong>{prefix}{rangeFrom}</strong> до <strong>{prefix}{rangeTo}</strong> номиналом <strong>{nominal}₽</strong>
+                  {overLimit && <><br />Максимум 1000 за раз</>}
+                </p>
+              </div>
+            );
+          })()}
 
-          <Button onClick={handleGenerate} className="w-full" disabled={generating || !rangeFrom || !rangeTo || !nominal}>
+          <Button onClick={handleGenerate} className="w-full" disabled={generating || !rangeFrom || !rangeTo || !nominal || ((parseInt(rangeTo) || 0) - (parseInt(rangeFrom) || 0) + 1) > 1000}>
             {generating ? 'Генерация...' : 'Сгенерировать'}
           </Button>
         </div>

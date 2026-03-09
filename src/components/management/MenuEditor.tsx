@@ -216,9 +216,9 @@ export function MenuEditor() {
     if (swapIdx < 0 || swapIdx >= categoryItems.length) return;
     const other = categoryItems[swapIdx];
 
-    await supabase.from('inventory').upsert([
-      { id: item.id, sort_order: other.sort_order },
-      { id: other.id, sort_order: item.sort_order }
+    await Promise.all([
+      supabase.from('inventory').update({ sort_order: other.sort_order }).eq('id', item.id),
+      supabase.from('inventory').update({ sort_order: item.sort_order }).eq('id', other.id),
     ]);
 
     loadItems();
@@ -276,9 +276,8 @@ export function MenuEditor() {
     }
     if (itemCount > 0) {
       const firstCat = categories.find((c) => c.id !== deleteCatTarget.id);
-      if (firstCat) {
-        await supabase.from('inventory').update({ category: firstCat.slug }).eq('category', deleteCatTarget.slug);
-      }
+      if (!firstCat) return;
+      await supabase.from('inventory').update({ category: firstCat.slug }).eq('category', deleteCatTarget.slug);
     }
     await supabase.from('menu_categories').delete().eq('id', deleteCatTarget.id);
     hapticNotification('success');
@@ -298,9 +297,9 @@ export function MenuEditor() {
     if (swapIdx < 0 || swapIdx >= siblings.length) return;
     const other = siblings[swapIdx];
 
-    await supabase.from('menu_categories').upsert([
-      { id: cat.id, sort_order: other.sort_order },
-      { id: other.id, sort_order: cat.sort_order }
+    await Promise.all([
+      supabase.from('menu_categories').update({ sort_order: other.sort_order }).eq('id', cat.id),
+      supabase.from('menu_categories').update({ sort_order: cat.sort_order }).eq('id', other.id),
     ]);
 
     reloadCategories();

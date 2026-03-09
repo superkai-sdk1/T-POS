@@ -85,17 +85,18 @@ const CartItemRow = memo(function CartItemRow({
   onUpdateQty,
 }: {
   ci: { item: InventoryItem; quantity: number; modifiers?: { id: string; name: string; price: number }[] };
-  onRemove: (id: string) => void;
-  onUpdateQty: (id: string, qty: number) => void;
+  onRemove: (id: string, modifierKey?: string) => void;
+  onUpdateQty: (id: string, qty: number, modifierKey?: string) => void;
 }) {
   const modPrice = (ci.modifiers || []).reduce((s, m) => s + m.price, 0);
   const unitPrice = ci.item.price + modPrice;
+  const modKey = (ci.modifiers || []).map((m) => m.id).sort().join(',');
   return (
     <CartSwipeableRow
       quantity={ci.quantity}
-      onIncrement={() => onUpdateQty(ci.item.id, ci.quantity + 1)}
-      onDecrement={() => onUpdateQty(ci.item.id, Math.max(1, ci.quantity - 1))}
-      onRemove={() => onRemove(ci.item.id)}
+      onIncrement={() => onUpdateQty(ci.item.id, ci.quantity + 1, modKey)}
+      onDecrement={() => onUpdateQty(ci.item.id, Math.max(1, ci.quantity - 1), modKey)}
+      onRemove={() => onRemove(ci.item.id, modKey)}
     >
       <div className="flex items-center gap-2.5 py-2 px-1">
         <div className="flex-1 min-w-0">
@@ -115,7 +116,7 @@ const CartItemRow = memo(function CartItemRow({
         </div>
         <div className="flex items-center gap-px bg-[var(--c-surface)] rounded-lg shrink-0">
           <button
-            onClick={() => { hapticFeedback('light'); onUpdateQty(ci.item.id, ci.quantity - 1); }}
+            onClick={() => { hapticFeedback('light'); onUpdateQty(ci.item.id, ci.quantity - 1, modKey); }}
             className="w-7 h-7 flex items-center justify-center active:bg-[var(--c-surface-hover)] rounded-l-lg transition-colors shrink-0"
           >
             <Minus className="w-3 h-3 text-[var(--c-hint)]" />
@@ -124,7 +125,7 @@ const CartItemRow = memo(function CartItemRow({
             {ci.quantity}
           </span>
           <button
-            onClick={() => { hapticFeedback('light'); onUpdateQty(ci.item.id, ci.quantity + 1); }}
+            onClick={() => { hapticFeedback('light'); onUpdateQty(ci.item.id, ci.quantity + 1, modKey); }}
             className="w-7 h-7 flex items-center justify-center active:bg-[var(--c-surface-hover)] rounded-r-lg transition-colors shrink-0"
           >
             <Plus className="w-3 h-3 text-[var(--c-hint)]" />
@@ -213,6 +214,7 @@ export function CheckView({ onBack }: CheckViewProps) {
     return () => {
       if (noteTimer.current) clearTimeout(noteTimer.current);
       if (cartSaveTimer.current) clearTimeout(cartSaveTimer.current);
+      if (playerSearchTimer.current) clearTimeout(playerSearchTimer.current);
       if (pendingNoteRef.current !== null) {
         updateCheckNote(pendingNoteRef.current);
       }
@@ -700,8 +702,8 @@ export function CheckView({ onBack }: CheckViewProps) {
                   }}
                 >
                   {rowItems.map((item) => {
-                    const inCart = cart.find((c) => c.item.id === item.id);
-                    return <MenuItem key={item.id} item={item} inCartQty={inCart?.quantity || 0} onAdd={handleAdd} />;
+                    const inCartQty = cart.filter((c) => c.item.id === item.id).reduce((s, c) => s + c.quantity, 0);
+                    return <MenuItem key={item.id} item={item} inCartQty={inCartQty} onAdd={handleAdd} />;
                   })}
                 </div>
               );
@@ -749,7 +751,7 @@ export function CheckView({ onBack }: CheckViewProps) {
           <div className="flex gap-2 pt-2">
             <Button
               variant="ghost"
-              onClick={() => { addToCart(modifierItem!); setShowModifiers(false); setModifierItem(null); }}
+              onClick={() => { if (modifierItem) addToCart(modifierItem); setShowModifiers(false); setModifierItem(null); }}
               className="flex-1"
             >
               Без добавок
@@ -816,9 +818,9 @@ export function CheckView({ onBack }: CheckViewProps) {
                       <>
                         <p className="text-[10px] text-[var(--c-muted)] font-semibold uppercase tracking-wider pt-2">На позицию</p>
                         <div className="space-y-1 max-h-[30vh] overflow-y-auto">
-                          {cart.map((ci) => (
-                            <div key={ci.item.id} className="p-2 rounded-xl bg-[var(--c-surface)]">
-                              <p className="text-[11px] font-medium text-[var(--c-text)] mb-1.5">{ci.item.name} ({fmtCur(ci.item.price * ci.quantity)})</p>
+                          {cart.map((ci, idx) => (
+                            <div key={ci.item.id + ':' + idx} className="p-2 rounded-xl bg-[var(--c-surface)]">
+                              <p className="text-[11px] font-medium text-[var(--c-text)] mb-1.5">{ci.item.name} ({fmtCur((ci.item.price + (ci.modifiers || []).reduce((s, m) => s + m.price, 0)) * ci.quantity)})</p>
                               <div className="flex gap-1 flex-wrap">
                                 {manualDiscounts.map((d) => (
                                   <button

@@ -35,9 +35,11 @@ export const PlayersModule = memo(function PlayersModule({ players, retentionRat
   }), [players]);
 
   const filtered = useMemo(() => {
-    if (segFilter === 'all') return players;
-    return players.filter((p) => p.segment === segFilter);
-  }, [players, segFilter]);
+    let list = players;
+    if (segFilter !== 'all') list = list.filter((p) => p.segment === segFilter);
+    if (search) list = list.filter((p) => p.nickname.toLowerCase().includes(search.toLowerCase()));
+    return list;
+  }, [players, segFilter, search]);
 
   const totalLTV = players.reduce((s, p) => s + p.total, 0);
 

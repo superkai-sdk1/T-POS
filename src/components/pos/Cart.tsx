@@ -9,8 +9,10 @@ export function Cart() {
   const cart = usePOSStore((s) => s.cart);
   const updateCartQuantity = usePOSStore((s) => s.updateCartQuantity);
   const removeFromCart = usePOSStore((s) => s.removeFromCart);
+  const appliedDiscounts = usePOSStore((s) => s.appliedDiscounts);
   const getCartTotal = usePOSStore((s) => s.getCartTotal);
   const total = getCartTotal();
+  void appliedDiscounts;
 
   if (cart.length === 0) {
     return (
@@ -24,13 +26,18 @@ export function Cart() {
   return (
     <div className="space-y-2">
       <div className="space-y-2">
-        {cart.map((cartItem) => (
+        {cart.map((cartItem) => {
+          const modKey = (cartItem.modifiers || []).map((m) => m.id).sort().join(',');
+          const cartKey = cartItem.item.id + (modKey ? ':' + modKey : '');
+          const modPrice = (cartItem.modifiers || []).reduce((s, m) => s + m.price, 0);
+          const unitPrice = cartItem.item.price + modPrice;
+          return (
           <CartSwipeableRow
-            key={cartItem.item.id}
+            key={cartKey}
             quantity={cartItem.quantity}
-            onIncrement={() => updateCartQuantity(cartItem.item.id, cartItem.quantity + 1)}
-            onDecrement={() => updateCartQuantity(cartItem.item.id, Math.max(1, cartItem.quantity - 1))}
-            onRemove={() => removeFromCart(cartItem.item.id)}
+            onIncrement={() => updateCartQuantity(cartItem.item.id, cartItem.quantity + 1, modKey)}
+            onDecrement={() => updateCartQuantity(cartItem.item.id, Math.max(1, cartItem.quantity - 1), modKey)}
+            onRemove={() => removeFromCart(cartItem.item.id, modKey)}
           >
             <div className="flex items-center gap-3 p-3 bg-[var(--c-surface)]">
               <div className="flex-1 min-w-0">
@@ -38,15 +45,24 @@ export function Cart() {
                   {cartItem.item.name}
                 </p>
                 <p className="text-xs text-[var(--c-hint)]">
-                  {fmtCur(cartItem.item.price)} × {cartItem.quantity}
+                  {fmtCur(unitPrice)} × {cartItem.quantity}
                 </p>
+                {cartItem.modifiers && cartItem.modifiers.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-0.5">
+                    {cartItem.modifiers.map((m, idx) => (
+                      <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400">
+                        {m.name}{m.price > 0 ? ` +${m.price}₽` : ''}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={() => {
                     hapticFeedback('light');
-                    updateCartQuantity(cartItem.item.id, cartItem.quantity - 1);
+                    updateCartQuantity(cartItem.item.id, cartItem.quantity - 1, modKey);
                   }}
                   className="w-9 h-9 rounded-lg bg-[var(--c-bg)] flex items-center justify-center hover:bg-[var(--c-surface-hover)] transition-colors active:scale-90 shrink-0"
                 >
@@ -58,7 +74,7 @@ export function Cart() {
                 <button
                   onClick={() => {
                     hapticFeedback('light');
-                    updateCartQuantity(cartItem.item.id, cartItem.quantity + 1);
+                    updateCartQuantity(cartItem.item.id, cartItem.quantity + 1, modKey);
                   }}
                   className="w-9 h-9 rounded-lg bg-[var(--c-bg)] flex items-center justify-center hover:bg-[var(--c-surface-hover)] transition-colors active:scale-90 shrink-0"
                 >
@@ -67,17 +83,18 @@ export function Cart() {
               </div>
 
               <p className="text-sm font-bold text-[var(--c-text)] min-w-[55px] text-right shrink-0 tabular-nums">
-                {fmtCur(cartItem.item.price * cartItem.quantity)}
+                {fmtCur(unitPrice * cartItem.quantity)}
               </p>
             </div>
           </CartSwipeableRow>
-        ))}
+          );
+        })}
       </div>
 
       <div className="flex items-center justify-between pt-4 border-t border-[var(--c-border)]">
         <span className="text-[var(--c-hint)] font-medium">Итого:</span>
         <span className="text-3xl font-bold text-[var(--c-text)]">
-          {total}₽
+          {fmtCur(total)}
         </span>
       </div>
     </div>

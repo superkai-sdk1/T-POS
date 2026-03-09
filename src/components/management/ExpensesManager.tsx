@@ -26,10 +26,16 @@ export function ExpensesManager() {
   const [category, setCategory] = useState<ExpenseCategory>('other');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const [expenseDate, setExpenseDate] = useState(new Date().toISOString().slice(0, 10));
+  const [expenseDate, setExpenseDate] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  });
   const [saving, setSaving] = useState(false);
   const [filterCat, setFilterCat] = useState<ExpenseCategory | 'all'>('all');
-  const [filterMonth, setFilterMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [filterMonth, setFilterMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   const load = useCallback(async () => {
     const start = filterMonth + '-01';

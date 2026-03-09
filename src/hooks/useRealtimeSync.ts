@@ -105,27 +105,85 @@ export function useRealtimeSync() {
 
     channelRef.current = channel;
 
-    // Aggressive reconnection on app resume
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
     const handleReconnect = () => {
       console.log('[T-POS] Reconnecting realtime channel');
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       if (channelRef.current) {
         channelRef.current.unsubscribe();
+        channelRef.current = null;
       }
-      setTimeout(() => {
+      reconnectTimer = setTimeout(() => {
         usePOSStore.getState().loadOpenChecks();
+        usePOSStore.getState().loadInventory();
         const freshChannel = supabase
           .channel('tpos-realtime-' + Date.now())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'checks' },
             (payload: PgPayload) => {
               if (payload.eventType === 'DELETE') usePOSStore.getState().deleteCheckLocal((payload.old as Record<string, string>).id);
               else usePOSStore.getState().refreshCheckById((payload.new as Record<string, string>).id);
+              emitTableChange('checks');
             }
           )
           .on('postgres_changes', { event: '*', schema: 'public', table: 'check_items' },
             (payload: PgPayload) => {
+              if (isSavingCart()) return;
               const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
               const checkId = rec?.check_id;
               if (checkId) usePOSStore.getState().refreshCheckById(checkId);
+              emitTableChange('check_items');
+            }
+          )
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'check_discounts' },
+            (payload: PgPayload) => {
+              const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
+              const checkId = rec?.check_id;
+              if (checkId) usePOSStore.getState().refreshCheckById(checkId);
+              emitTableChange('check_discounts');
+            }
+          )
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' },
+            (payload: PgPayload) => {
+              if (payload.eventType === 'DELETE') {
+                usePOSStore.getState().loadInventory();
+              } else {
+                usePOSStore.getState().upsertInventoryLocal(payload.new as unknown as Parameters<ReturnType<typeof usePOSStore.getState>['upsertInventoryLocal']>[0]);
+              }
+              emitTableChange('inventory');
+            }
+          )
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_categories' },
+            (payload: PgPayload) => {
+              if (payload.eventType !== 'DELETE') {
+                usePOSStore.getState().upsertCategoryLocal(payload.new as unknown as Parameters<ReturnType<typeof usePOSStore.getState>['upsertCategoryLocal']>[0]);
+              }
+              emitTableChange('menu_categories');
+            }
+          )
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'shifts' },
+            (payload: PgPayload) => {
+              if (payload.eventType !== 'DELETE') {
+                useShiftStore.getState().upsertShiftLocal(payload.new as unknown as Parameters<ReturnType<typeof useShiftStore.getState>['upsertShiftLocal']>[0]);
+              }
+              emitTableChange('shifts');
+            }
+          )
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' },
+            (payload: PgPayload) => {
+              if (payload.eventType !== 'DELETE') {
+                const rec = payload.new as Record<string, unknown>;
+                useAuthStore.getState().upsertProfileLocal(rec as unknown as Parameters<ReturnType<typeof useAuthStore.getState>['upsertProfileLocal']>[0]);
+                if (rec.role === 'staff' || rec.role === 'owner') {
+                  useAuthStore.getState().upsertStaffLocal({
+                    id: rec.id as string,
+                    nickname: rec.nickname as string,
+                    role: rec.role as string,
+                    hasPin: !!rec.pin
+                  });
+                }
+              }
+              emitTableChange('profiles');
             }
           )
           .subscribe();
@@ -147,7 +205,12 @@ export function useRealtimeSync() {
       window.removeEventListener('tpos:reconnect', handleReconnect);
       window.removeEventListener('online', handleReconnect);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      channel.unsubscribe();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (channelRef.current) {
+        channelRef.current.unsubscribe();
+      } else {
+        channel.unsubscribe();
+      }
     };
   }, []);
 }

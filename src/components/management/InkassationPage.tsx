@@ -103,6 +103,13 @@ export function InkassationPage() {
 
   const handleDelete = async (op: CashOperation) => {
     await supabase.from('cash_operations').delete().eq('id', op.id);
+    const reverseAmount = op.type === 'inkassation' ? op.amount : -op.amount;
+    await supabase.from('transactions').insert({
+      type: 'cash_operation',
+      amount: reverseAmount,
+      description: `Отмена: ${op.type === 'inkassation' ? 'Инкассация' : 'Внесение'} ${op.amount}₽${op.note ? ' — ' + op.note : ''}`,
+      created_by: user?.id,
+    });
     hapticNotification('success');
     setShowDeleteConfirm(null);
     loadOperations();

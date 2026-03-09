@@ -86,16 +86,20 @@ export function BonusManager() {
   const submitBonus = async () => {
     if (!selectedPlayer || !bonusAmount) return;
     const amount = Math.abs(Number(bonusAmount));
-    if (amount <= 0) return;
+    if (!Number.isFinite(amount) || amount <= 0) return;
+
+    const { data: fresh } = await supabase.from('profiles').select('bonus_points').eq('id', selectedPlayer.id).single();
+    const currentPoints = fresh?.bonus_points ?? selectedPlayer.bonus_points;
 
     const newPoints = bonusAction === 'add'
-      ? selectedPlayer.bonus_points + amount
-      : Math.max(0, selectedPlayer.bonus_points - amount);
+      ? currentPoints + amount
+      : Math.max(0, currentPoints - amount);
 
-    await supabase
+    const { error: updateErr } = await supabase
       .from('profiles')
       .update({ bonus_points: newPoints })
       .eq('id', selectedPlayer.id);
+    if (updateErr) { hapticNotification('error'); return; }
 
     await supabase.from('transactions').insert({
       type: bonusAction === 'add' ? 'bonus_accrual' : 'bonus_spend',
@@ -116,18 +120,15 @@ export function BonusManager() {
   };
 
   const saveSettings = async () => {
-    const entries: { key: string; value: string }[] = [
-      { key: 'bonus_accrual_rate', value: String(settings.bonus_accrual_rate) },
-      { key: 'bonus_min_purchase', value: String(settings.bonus_min_purchase) },
-      { key: 'bonus_enabled', value: String(settings.bonus_enabled) },
-      { key: 'bonus_accrual_on_debt', value: String(settings.bonus_accrual_on_debt) },
+    const entries: { key: string; value: string; updated_at: string }[] = [
+      { key: 'bonus_accrual_rate', value: String(settings.bonus_accrual_rate), updated_at: new Date().toISOString() },
+      { key: 'bonus_min_purchase', value: String(settings.bonus_min_purchase), updated_at: new Date().toISOString() },
+      { key: 'bonus_enabled', value: String(settings.bonus_enabled), updated_at: new Date().toISOString() },
+      { key: 'bonus_accrual_on_debt', value: String(settings.bonus_accrual_on_debt), updated_at: new Date().toISOString() },
     ];
-    for (const e of entries) {
-      await supabase
-        .from('app_settings')
-        .update({ value: e.value, updated_at: new Date().toISOString() })
-        .eq('key', e.key);
-    }
+    await supabase
+      .from('app_settings')
+      .upsert(entries, { onConflict: 'key' });
     setSettingsChanged(false);
     hapticNotification('success');
   };
