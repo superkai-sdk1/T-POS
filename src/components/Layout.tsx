@@ -27,7 +27,10 @@ function CheckPaymentPanel({ sidebarCollapsed }: { sidebarCollapsed: boolean }) 
 
   return (
     <div
-      className={`fixed bottom-5 z-[60] left-0 right-0 flex justify-center px-4 ${sidebarCollapsed ? 'lg:left-[88px]' : 'lg:left-[276px]'} lg:right-4`}
+      className={`fixed z-[60] left-0 right-0 flex justify-center px-4 ${
+        sidebarCollapsed ? 'lg:left-[88px]' : 'lg:left-[276px]'
+      } lg:right-4`}
+      style={{ bottom: 'calc(var(--safe-bottom, 0px) + 16px)' }}
     >
       <div className="relative w-full max-w-lg rounded-[2rem] border border-white/10 bg-white/[0.06] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
         <div className="relative p-3 flex items-center justify-between gap-3">
