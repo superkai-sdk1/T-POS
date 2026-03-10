@@ -524,7 +524,9 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
         {/* ── Floating mobile bottom nav (hidden on deep screens) / Payment panel (when viewing a check) ── */}
         {typeof document !== 'undefined' && (showCheckView || !hideNav) && createPortal(
           showCheckView ? (
-            <CheckPaymentPanel />
+            <div className="lg:hidden">
+              <CheckPaymentPanel />
+            </div>
           ) : (
           <div className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-[60]">
             <div className="absolute inset-0 bg-white/[0.06] backdrop-blur-3xl rounded-[2rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />

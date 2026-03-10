@@ -21,6 +21,7 @@ import { LoginPage } from '@/components/auth/LoginPage';
 import { Layout } from '@/components/Layout';
 import { OpenChecks } from '@/components/pos/OpenChecks';
 import { CheckView } from '@/components/pos/CheckView';
+import { CheckCartBar } from '@/components/pos/CheckCartBar';
 import { TabPanel } from '@/components/ui/TabPanel';
 
 const InventoryPage = lazy(() => import('@/components/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })));
@@ -194,14 +195,21 @@ export default function App() {
           ].filter(Boolean).join(' ')}
         >
           <div
-            className="shrink-0 min-h-0 overflow-y-auto overflow-x-hidden pr-1 scrollbar-none scroll-area min-w-[280px]"
+            className="flex flex-col shrink-0 min-h-0 min-w-[280px] pr-1"
             style={{
               width: showCheckView && !isMobile ? `${splitLeftPercent}%` : undefined,
               flex: showCheckView && !isMobile ? undefined : 1,
               overscrollBehaviorY: 'contain',
             }}
           >
-            <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
+            {showCheckView && !isMobile && (
+              <div className="shrink-0 pb-3">
+                <CheckCartBar />
+              </div>
+            )}
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-none scroll-area">
+              <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
+            </div>
           </div>
           {showCheckView && !isMobile && (
             <>
