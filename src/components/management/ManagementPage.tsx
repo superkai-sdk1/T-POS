@@ -69,40 +69,57 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
 
   const screenLabel = menuItems.find((m) => m.id === screen)?.label || 'Управление';
 
+  const screenMeta = menuItems.find((m) => m.id === screen);
+
   if (screen === 'menu') {
     return (
-      <div className="space-y-3">
-        <h2 className="text-lg font-bold text-[var(--c-text)]">Управление</h2>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 stagger-children">
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => startTransition(() => setScreen(item.id))}
-              className="flex items-center gap-2.5 p-3 rounded-xl card-interactive"
-            >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.color.split(' ')[0]}`}>
-                <item.icon className={`w-[18px] h-[18px] ${item.color.split(' ')[1]}`} />
-              </div>
-              <p className="font-semibold text-[12px] text-[var(--c-text)] text-left leading-tight truncate">{item.label}</p>
-            </button>
-          ))}
+      <div className="space-y-4 sm:space-y-6">
+        <div>
+          <h1 className="text-lg sm:text-2xl font-extrabold tracking-tight text-[var(--c-text)] leading-tight">Управление</h1>
+          <p className="text-[var(--c-muted)] text-[11px] sm:text-sm mt-0.5 font-medium">Панель администратора</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 stagger-children">
+          {menuItems.map((item) => {
+            const [bgClass, textClass] = item.color.split(' ');
+            return (
+              <button
+                key={item.id}
+                onClick={() => startTransition(() => setScreen(item.id))}
+                className="group relative text-left rounded-[20px] sm:rounded-[28px] p-4 sm:p-6 border border-[var(--c-border)] bg-[var(--c-surface)] transition-all duration-200 hover:bg-[var(--c-surface-hover)] hover:border-[var(--c-border-hover)] active:scale-[0.97] overflow-hidden"
+              >
+                <div className={`absolute -right-4 -top-4 w-20 h-20 ${bgClass} opacity-0 group-hover:opacity-40 blur-3xl transition-opacity duration-500`} />
+
+                <div className={`relative w-11 h-11 sm:w-14 sm:h-14 ${bgClass} rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-5 group-hover:scale-110 transition-transform duration-300`}>
+                  <item.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${textClass}`} />
+                </div>
+
+                <h3 className="relative text-[14px] sm:text-lg font-bold text-[var(--c-text)] mb-0.5 sm:mb-1 truncate">{item.label}</h3>
+                <p className="relative text-[var(--c-muted)] text-[11px] sm:text-xs font-medium line-clamp-1">{item.desc}</p>
+              </button>
+            );
+          })}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4 sm:space-y-6">
       {swipeIndicatorStyle && <div style={swipeIndicatorStyle} />}
       {overlayStyle && <div style={overlayStyle} />}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2.5 sm:gap-3">
         <button
           onClick={() => setScreen('menu')}
-          className="w-9 h-9 rounded-xl bg-[var(--c-surface)] flex items-center justify-center hover:bg-[var(--c-surface-hover)] active:scale-90 transition-transform shrink-0"
+          className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] flex items-center justify-center active:scale-95 transition-all shrink-0"
         >
-          <ArrowLeft className="w-4 h-4 text-[var(--c-text)]" />
+          <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--c-hint)]" />
         </button>
-        <h2 className="text-lg font-bold text-[var(--c-text)]">{screenLabel}</h2>
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-2xl font-extrabold tracking-tight text-[var(--c-text)] leading-tight truncate">{screenLabel}</h1>
+          {screenMeta && (
+            <p className="text-[var(--c-muted)] text-[11px] sm:text-sm mt-0.5 font-medium truncate">{screenMeta.desc}</p>
+          )}
+        </div>
       </div>
 
       {screen === 'menuEditor' && <MenuEditor />}
