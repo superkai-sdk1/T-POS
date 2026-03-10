@@ -139,8 +139,10 @@ export function ModifiersManager() {
     return modifiers.filter((m) => m.name.toLowerCase().includes(q));
   }, [modifiers, search]);
 
-  const getProductNames = (ids: string[]) => {
-    return ids.map((id) => inventory.find((i) => i.id === id)?.name).filter(Boolean);
+  const getProductNames = (ids: string[]): string[] => {
+    return ids
+      .map((id) => inventory.find((i) => i.id === id)?.name)
+      .filter((n): n is string => !!n);
   };
 
   if (isLoading) {
