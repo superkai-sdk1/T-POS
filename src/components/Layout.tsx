@@ -492,25 +492,23 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
         {typeof document !== 'undefined' && createPortal(
           <div className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-[60]">
             <div className="absolute inset-0 bg-white/[0.06] backdrop-blur-3xl rounded-[2rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
-            <nav className="relative p-2.5 flex items-center justify-between">
-              <div className="flex flex-1 justify-around items-center">
-                {tabs.slice(0, 2).map((tab) => {
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => onTabChange(tab.id)}
-                      className={`relative py-2 px-4 rounded-2xl transition-all flex flex-col items-center gap-1 tap ${isActive ? 'text-white' : 'text-white/30'}`}
-                    >
-                      {isActive && <div className="absolute inset-0 bg-white/[0.06] rounded-2xl border border-white/5" />}
-                      <tab.icon className="w-5 h-5 shrink-0 relative z-10" />
-                      <span className="text-[9px] font-black uppercase tracking-tighter relative z-10">{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+            <nav className="relative p-2.5 flex items-center justify-center">
+              {tabs.slice(0, 2).map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => onTabChange(tab.id)}
+                    className={`relative flex-1 py-2 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 tap ${isActive ? 'text-white' : 'text-white/30'}`}
+                  >
+                    {isActive && <div className="absolute inset-0 bg-white/[0.06] rounded-2xl border border-white/5" />}
+                    <tab.icon className="w-5 h-5 shrink-0 relative z-10" />
+                    <span className="text-[9px] font-black uppercase tracking-tighter relative z-10">{tab.label}</span>
+                  </button>
+                );
+              })}
 
-              <div className="px-1.5">
+              <div className="mx-2 shrink-0">
                 <button
                   onClick={() => {
                     hapticFeedback('medium');
@@ -528,22 +526,20 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                 </button>
               </div>
 
-              <div className="flex flex-1 justify-around items-center">
-                {tabs.slice(2).map((tab) => {
-                  const isActive = activeTab === tab.id;
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => onTabChange(tab.id)}
-                      className={`relative py-2 px-4 rounded-2xl transition-all flex flex-col items-center gap-1 tap ${isActive ? 'text-white' : 'text-white/30'}`}
-                    >
-                      {isActive && <div className="absolute inset-0 bg-white/[0.06] rounded-2xl border border-white/5" />}
-                      <tab.icon className="w-5 h-5 shrink-0 relative z-10" />
-                      <span className="text-[9px] font-black uppercase tracking-tighter relative z-10">{tab.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              {tabs.slice(2).map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => onTabChange(tab.id)}
+                    className={`relative flex-1 py-2 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 tap ${isActive ? 'text-white' : 'text-white/30'}`}
+                  >
+                    {isActive && <div className="absolute inset-0 bg-white/[0.06] rounded-2xl border border-white/5" />}
+                    <tab.icon className="w-5 h-5 shrink-0 relative z-10" />
+                    <span className="text-[9px] font-black uppercase tracking-tighter relative z-10">{tab.label}</span>
+                  </button>
+                );
+              })}
             </nav>
           </div>,
           document.body
