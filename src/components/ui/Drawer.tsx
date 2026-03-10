@@ -6,18 +6,47 @@ interface DrawerProps {
   open: boolean;
   onClose: () => void;
   title?: string;
-  /** Подзаголовок в шапке (например "Premium Selection") */
   subtitle?: string;
-  /** Иконка или буква в градиентном блоке слева от title */
   titleIcon?: ReactNode;
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
-const SIZE_RATIO: Record<string, number> = { sm: 0.6, md: 0.7, lg: 0.85, xl: 0.95 };
-const HEIGHT_VH: Record<string, string> = { sm: '65vh', md: '75vh', lg: '88vh', xl: '95vh' };
+const HEIGHT_VH: Record<string, number> = { sm: 65, md: 75, lg: 88, xl: 95 };
 
 let _drawerCount = 0;
+
+function useVisualViewport() {
+  const [height, setHeight] = useState(() =>
+    window.visualViewport?.height ?? window.innerHeight,
+  );
+  const [offsetTop, setOffsetTop] = useState(0);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    let raf = 0;
+    const sync = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        setHeight(vv.height);
+        setOffsetTop(vv.offsetTop);
+      });
+    };
+
+    sync();
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+    return () => {
+      cancelAnimationFrame(raf);
+      vv.removeEventListener('resize', sync);
+      vv.removeEventListener('scroll', sync);
+    };
+  }, []);
+
+  return { height, offsetTop };
+}
 
 export function Drawer({
   open,
@@ -29,13 +58,14 @@ export function Drawer({
   size = 'lg',
 }: DrawerProps) {
   const contentRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
   const startY = useRef(0);
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [closing, setClosing] = useState(false);
   const [visible, setVisible] = useState(false);
-  const [viewportBox, setViewportBox] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+
+  const { height: vvHeight, offsetTop: vvOffset } = useVisualViewport();
+  const keyboardOpen = vvHeight < window.innerHeight - 60;
 
   useEffect(() => {
     if (open && !closing) {
@@ -44,25 +74,6 @@ export function Drawer({
     }
     if (!open) setVisible(false);
   }, [open, closing]);
-
-  useEffect(() => {
-    if (!open) return;
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const sync = () => {
-      // In iOS PWA, keyboard showing shrinks visualViewport.
-      // We no longer strictly match box size to prevent layout jumps,
-      // but we do trigger a small reflow.
-      window.scrollTo(0, 0);
-    };
-    sync();
-    vv.addEventListener('resize', sync);
-    vv.addEventListener('scroll', sync);
-    return () => {
-      vv.removeEventListener('resize', sync);
-      vv.removeEventListener('scroll', sync);
-    };
-  }, [open]);
 
   useEffect(() => {
     if (open) {
@@ -79,8 +90,20 @@ export function Drawer({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    const resetScroll = () => {
+      window.scrollTo(0, 0);
+    };
+    resetScroll();
+    window.visualViewport?.addEventListener('resize', resetScroll);
+    return () => window.visualViewport?.removeEventListener('resize', resetScroll);
+  }, [open]);
+
   const handleClose = useCallback(() => {
     if (closing) return;
+    const active = document.activeElement as HTMLElement | null;
+    active?.blur();
     setClosing(true);
     setTimeout(() => {
       onClose();
@@ -91,8 +114,7 @@ export function Drawer({
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const el = contentRef.current;
     if (!el) return;
-    const isContentArea = el.contains((e.target as Node) || null);
-    if (isContentArea && el.scrollTop > 5) return;
+    if (el.contains(e.target as Node) && el.scrollTop > 5) return;
     startY.current = e.touches[0].clientY;
     setDragging(true);
   }, []);
@@ -115,57 +137,47 @@ export function Drawer({
 
   if (!open && !closing) return null;
 
-  const heightVh = HEIGHT_VH[size] ?? '88vh';
+  const maxPct = HEIGHT_VH[size] ?? 88;
+  const maxH = Math.min((maxPct / 100) * vvHeight, vvHeight - 20);
 
   const overlayOpacity = closing ? 0 : dragY > 0 ? Math.max(0, 1 - dragY / 200) : visible ? 1 : 0;
   const panelTranslate = closing ? '100%' : dragY > 0 ? `${dragY}px` : visible ? '0' : '100%';
 
   const drawerContent = (
     <div
-      ref={containerRef}
       role="dialog"
       aria-modal="true"
       aria-label={title || 'Окно'}
-      className="z-[100] flex items-end lg:items-center lg:justify-center overflow-hidden"
+      className="fixed inset-0 z-[100] flex items-end lg:items-center lg:justify-center overflow-hidden"
       style={{
-        position: 'fixed',
-        inset: 0,
-        height: '100%',
-        zIndex: 100,
+        top: vvOffset,
+        height: vvHeight,
+        transition: keyboardOpen ? 'none' : 'top 0.3s ease, height 0.3s ease',
       }}
     >
-      {/* Оверлей с глубоким размытием */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-[8px] transition-opacity duration-500"
-        style={{
-          opacity: overlayOpacity,
-          WebkitBackdropFilter: 'blur(8px)',
-        }}
+        style={{ opacity: overlayOpacity, WebkitBackdropFilter: 'blur(8px)' }}
         onClick={handleClose}
       />
 
-      {/* Bottom Sheet — контейнер */}
       <div
-        className="fixed bottom-0 left-0 right-0 w-full max-w-xl lg:max-w-2xl mx-auto z-[101] transition-transform duration-700 ease-out"
+        className="absolute bottom-0 left-0 right-0 w-full max-w-xl lg:max-w-2xl mx-auto z-[101]"
         style={{
           transform: `translateY(${panelTranslate}) translateZ(0)`,
           transition: dragging ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
           willChange: 'transform',
-          marginBottom: 'var(--safe-bottom)',
-          marginLeft: 'var(--safe-left)',
-          marginRight: 'var(--safe-right)',
         }}
       >
         <div
           onClick={(e) => e.stopPropagation()}
           className="bg-[#0c0c14] sm:bg-white/[0.03] backdrop-blur-[30px] border-t border-white/10 rounded-t-[32px] sm:rounded-t-[48px] shadow-2xl flex flex-col overflow-hidden"
           style={{
-            maxHeight: `min(${heightVh}, calc(100% - var(--safe-top) - var(--safe-bottom)))`,
-            marginTop: 'var(--safe-top)',
+            maxHeight: maxH,
             WebkitBackdropFilter: 'blur(30px)',
+            transition: keyboardOpen ? 'max-height 0.15s ease' : 'max-height 0.3s ease',
           }}
         >
-          {/* Декоративная ручка */}
           <div
             className="w-full flex justify-center pt-4 sm:pt-6 pb-2 shrink-0 cursor-grab active:cursor-grabbing touch-none lg:cursor-default"
             style={{ minHeight: '2.5rem' }}
@@ -176,7 +188,6 @@ export function Drawer({
             <div className="w-16 sm:w-20 h-1.5 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full" />
           </div>
 
-          {/* Заголовок */}
           <div className="px-6 sm:px-10 py-3 sm:py-4 flex items-center justify-between gap-3 shrink-0">
             <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
               {titleIcon != null ? (
@@ -211,7 +222,6 @@ export function Drawer({
             </button>
           </div>
 
-          {/* Контент */}
           <div
             ref={contentRef}
             className="px-6 sm:px-10 pb-6 sm:pb-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0 overscroll-contain"
