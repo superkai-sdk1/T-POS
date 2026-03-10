@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback, startTransition } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Badge } from '@/components/ui/Badge';
 import {
   Package, Truck, ClipboardList, Users, AlertTriangle, Wallet, Star, Banknote, UtensilsCrossed, UserCircle,
-  ArrowLeft, Percent, Info, SlidersHorizontal, Ticket, Receipt,
+  ArrowLeft, Percent, Info, SlidersHorizontal, Ticket, Receipt, History, Filter, ArrowDownToLine, TrendingDown, Box, MoreVertical, Search,
 } from 'lucide-react';
 import type { InventoryItem } from '@/types';
 import { SupplyPage } from '@/components/supply/SupplyPage';
@@ -20,6 +19,7 @@ import { ModifiersManager } from './ModifiersManager';
 import { CertificatesManager } from './CertificatesManager';
 import { ExpensesManager } from './ExpensesManager';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
+import { hapticFeedback } from '@/lib/telegram';
 
 type Screen = 'menu' | 'inventory' | 'supplies' | 'revision' | 'debtors' | 'staff' | 'bonus' | 'cash' | 'menuEditor' | 'clients' | 'discounts' | 'refunds' | 'modifiers' | 'certificates' | 'expenses' | 'about';
 
@@ -29,7 +29,7 @@ const categoryLabels: Record<string, string> = {
 
 const menuItems: { id: Screen; label: string; desc: string; icon: typeof Package; color: string }[] = [
   { id: 'menuEditor', label: 'Меню', desc: 'Позиции, модификаторы, разделы', icon: UtensilsCrossed, color: 'bg-orange-500/10 text-orange-400' },
-  { id: 'inventory', label: 'Склад', desc: 'Остатки, ревизии', icon: Package, color: 'bg-blue-500/10 text-blue-400' },
+  { id: 'inventory', label: 'Склад', desc: 'Контроль остатков и ревизии', icon: Package, color: 'bg-blue-500/10 text-blue-400' },
   { id: 'supplies', label: 'Поставки', desc: 'История и новые поставки', icon: Truck, color: 'bg-[var(--c-success-bg)] text-[var(--c-success)]' },
   { id: 'clients', label: 'Клиенты', desc: 'Профили, контакты, ДР', icon: UserCircle, color: 'bg-sky-500/10 text-sky-400' },
   { id: 'discounts', label: 'Скидки', desc: 'Процентные и фиксированные', icon: Percent, color: 'bg-pink-500/10 text-pink-400' },
@@ -125,19 +125,29 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
     <div className="space-y-4 sm:space-y-6">
       {swipeIndicatorStyle && <div style={swipeIndicatorStyle} />}
       {overlayStyle && <div style={overlayStyle} />}
-      <div className="flex items-center gap-2.5 sm:gap-3">
-        <button
-          onClick={() => setScreen('menu')}
-          className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] flex items-center justify-center active:scale-95 transition-all shrink-0"
-        >
-          <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--c-hint)]" />
-        </button>
-        <div className="min-w-0">
-          <h1 className="text-lg sm:text-2xl font-extrabold tracking-tight text-[var(--c-text)] leading-tight truncate">{screenLabel}</h1>
-          {screenMeta && (
-            <p className="text-[var(--c-muted)] text-[11px] sm:text-sm mt-0.5 font-medium truncate">{screenMeta.desc}</p>
-          )}
+      <div className="flex items-center justify-between gap-2.5 sm:gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <button
+            onClick={() => setScreen('menu')}
+            className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] flex items-center justify-center active:scale-95 transition-all shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--c-hint)]" />
+          </button>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-extrabold tracking-tight text-[var(--c-text)] leading-tight truncate">{screenLabel}</h1>
+            {screenMeta && (
+              <p className="text-[var(--c-muted)] text-[11px] sm:text-sm mt-0.5 font-medium truncate">{screenMeta.desc}</p>
+            )}
+          </div>
         </div>
+        {screen === 'inventory' && (
+          <button
+            onClick={() => { hapticFeedback('light'); setInventorySubTab('revision'); }}
+            className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] flex items-center justify-center active:scale-95 transition-all shrink-0 text-[var(--c-hint)] hover:text-[var(--c-text)]"
+          >
+            <History className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+        )}
       </div>
 
       {screen === 'menuEditor' && (
@@ -162,24 +172,32 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
         </div>
       )}
       {screen === 'inventory' && (
-        <div className="space-y-4">
-          <div className="flex gap-1 p-1 rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] w-fit">
+        <div className="space-y-6">
+          <div className="flex gap-1.5 p-1.5 rounded-[24px] bg-slate-900/50 border border-slate-800 max-w-md">
             <button
               onClick={() => setInventorySubTab('stock')}
-              className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${inventorySubTab === 'stock' ? 'bg-[var(--c-accent)] text-white shadow-md' : 'text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-[18px] font-bold text-sm transition-all ${
+                inventorySubTab === 'stock' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 hover:text-slate-300'
+              }`}
             >
-              <Package className="w-4 h-4" />
+              <Package size={18} />
               Остатки
             </button>
             <button
               onClick={() => setInventorySubTab('revision')}
-              className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${inventorySubTab === 'revision' ? 'bg-[var(--c-accent)] text-white shadow-md' : 'text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-[18px] font-bold text-sm transition-all ${
+                inventorySubTab === 'revision' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 hover:text-slate-300'
+              }`}
             >
-              <ClipboardList className="w-4 h-4" />
+              <ClipboardList size={18} />
               Ревизия
             </button>
           </div>
-          {inventorySubTab === 'stock' && <InventoryFull />}
+          {inventorySubTab === 'stock' && (
+            <InventoryFull
+              onNavigateToSupplies={() => startTransition(() => setScreen('supplies'))}
+            />
+          )}
           {inventorySubTab === 'revision' && <RevisionPage />}
         </div>
       )}
@@ -197,8 +215,9 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
   );
 }
 
-function InventoryFull() {
+function InventoryFull({ onNavigateToSupplies }: { onNavigateToSupplies?: () => void }) {
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const loadItems = useCallback(async () => {
     const { data } = await supabase
@@ -217,62 +236,127 @@ function InventoryFull() {
     (i) => i.min_threshold > 0 && i.stock_quantity <= i.min_threshold
   );
 
+  const filteredItems = searchQuery.trim()
+    ? items.filter((i) => i.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : items;
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-6 relative pb-24">
+      {/* Критический остаток */}
       {criticalItems.length > 0 && (
-        <div className="p-2.5 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-border)]">
-          <div className="flex items-center gap-2 mb-1.5">
-            <AlertTriangle className="w-3.5 h-3.5 text-[var(--c-danger)]" />
-            <span className="text-[11px] font-semibold text-[var(--c-danger)]">Критический остаток</span>
+        <div className="relative overflow-hidden bg-rose-500/5 border border-rose-500/20 rounded-[32px] p-6 lg:p-8">
+          <div className="absolute top-0 right-0 p-8 text-rose-500/10 pointer-events-none">
+            <AlertTriangle size={80} />
           </div>
-          <div className="flex flex-wrap gap-1">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-rose-500/20 text-rose-500 rounded-xl">
+              <TrendingDown className="w-5 h-5" />
+            </div>
+            <h2 className="text-rose-400 font-black uppercase tracking-wider text-sm">Критический остаток</h2>
+          </div>
+          <div className="flex flex-wrap gap-2">
             {criticalItems.map((item) => (
-              <Badge key={item.id} variant="danger" size="sm">
-                {item.name}: {item.stock_quantity}/{item.min_threshold}
-              </Badge>
+              <div
+                key={item.id}
+                className="px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-2 transition-all hover:bg-rose-500/20"
+              >
+                <span className="text-white font-bold text-sm">{item.name}</span>
+                <span className="text-rose-400 font-black text-xs bg-rose-950/40 px-2 py-0.5 rounded-md">
+                  {item.stock_quantity}/{item.min_threshold}
+                </span>
+              </div>
             ))}
           </div>
         </div>
       )}
 
-      <div className="space-y-1">
-        {items.map((item) => {
-          const isCritical = item.min_threshold > 0 && item.stock_quantity <= item.min_threshold;
+      {/* Поиск и фильтры */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
+          <input
+            type="text"
+            placeholder="Поиск товара по названию..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-slate-900/40 border border-slate-800 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-600 text-[var(--c-text)]"
+          />
+        </div>
+        <button className="h-12 w-12 sm:w-auto sm:px-5 bg-slate-900/40 border border-slate-800 rounded-2xl flex items-center justify-center gap-2 text-slate-400 hover:bg-slate-800 transition-all">
+          <Filter size={20} />
+          <span className="hidden sm:inline font-bold text-sm">Фильтры</span>
+        </button>
+      </div>
+
+      {/* Список товаров */}
+      {filteredItems.length === 0 ? (
+        <div className="text-center py-16">
+          <Package className="w-10 h-10 text-slate-500 mx-auto mb-3" />
+          <p className="text-slate-500 font-medium">
+            {searchQuery ? 'Ничего не найдено' : 'Нет товаров на складе'}
+          </p>
+        </div>
+      ) : (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {filteredItems.map((item) => {
+          const isLow = item.min_threshold > 0 && item.stock_quantity <= item.min_threshold;
           return (
             <div
               key={item.id}
-              className={`flex items-center justify-between p-2.5 rounded-xl ${isCritical ? 'bg-[var(--c-danger-bg)] border border-[var(--c-border)]' : 'card'
-                }`}
+              className={`group relative bg-slate-900/30 border ${isLow ? 'border-rose-500/30' : 'border-slate-800'} rounded-3xl p-5 hover:bg-slate-800/40 transition-all flex items-center justify-between shadow-lg`}
             >
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isCritical ? 'bg-[var(--c-danger-bg)]' : 'bg-[var(--c-surface)]'
-                  }`}>
-                  <Package className={`w-3.5 h-3.5 ${isCritical ? 'text-[var(--c-danger)]' : 'text-[var(--c-hint)]'}`} />
+              <div className="flex items-center gap-4">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner ${
+                  isLow ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800/80 text-slate-500'
+                }`}>
+                  <Box className="w-6 h-6" />
                 </div>
-                <div className="min-w-0">
-                  <p className="font-medium text-[13px] text-[var(--c-text)] truncate">
-                    {item.name}
-                  </p>
-                  <div className="flex gap-1 mt-0.5">
-                    <Badge size="sm">{categoryLabels[item.category] || item.category}</Badge>
-                    <Badge size="sm">{item.price}₽</Badge>
+                <div>
+                  <h3 className="text-lg font-bold text-[var(--c-text)] group-hover:text-indigo-400 transition-colors">{item.name}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-800/50 px-2 py-0.5 rounded-md">
+                      {categoryLabels[item.category] || item.category}
+                    </span>
+                    <span className="text-xs font-bold text-indigo-400/80">{item.price} ₽</span>
                   </div>
                 </div>
               </div>
-              <div className="text-right shrink-0 ml-2">
-                <p className={`text-base font-black tabular-nums ${isCritical ? 'text-[var(--c-danger)]' : 'text-[var(--c-text)]'}`}>
-                  {item.stock_quantity}
-                </p>
-                {item.min_threshold > 0 && (
-                  <p className="text-[10px] text-[var(--c-muted)]">
-                    мин: {item.min_threshold}
-                  </p>
-                )}
+
+              <div className="flex flex-col items-end">
+                <div className="flex items-baseline gap-1">
+                  <span className={`text-3xl font-black ${isLow ? 'text-rose-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'text-[var(--c-text)]'}`}>
+                    {item.stock_quantity}
+                  </span>
+                  <span className="text-slate-500 text-xs font-bold uppercase">шт</span>
+                </div>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">Мин:</span>
+                  <span className="text-[10px] text-slate-400 font-black bg-slate-800 px-1.5 py-0.5 rounded">{item.min_threshold}</span>
+                </div>
+              </div>
+
+              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button className="p-1.5 text-slate-600 hover:text-white">
+                  <MoreVertical size={18} />
+                </button>
               </div>
             </div>
           );
         })}
       </div>
+      )}
+
+      {/* FAB — Поставка */}
+      {onNavigateToSupplies && (
+        <div className="fixed bottom-10 right-10 z-20">
+          <button
+            onClick={() => { hapticFeedback(); onNavigateToSupplies(); }}
+            className="w-16 h-16 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-2xl shadow-indigo-600/40 hover:scale-110 active:scale-95 transition-all border-4 border-[var(--c-bg)]"
+          >
+            <ArrowDownToLine size={28} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
