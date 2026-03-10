@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef, useCallback, memo, startTransition } from 'react';
-import { createPortal } from 'react-dom';
 import { usePOSStore } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
 import { Button } from '@/components/ui/Button';
@@ -7,7 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/ui/Drawer';
 import { Input } from '@/components/ui/Input';
 import { ShiftHistory } from '@/components/shift/ShiftHistory';
-import { Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen, Home, Building2, Warehouse, Star, GraduationCap, Gamepad2, RotateCcw, PlusCircle } from 'lucide-react';
+import { Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen, Home, Building2, Warehouse, Star, GraduationCap, Gamepad2, RotateCcw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Profile, Space, VisitTariff, ClientTier, Check } from '@/types';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
@@ -147,6 +146,14 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   useEffect(() => {
     loadOpenChecks();
   }, [loadOpenChecks]);
+
+  useEffect(() => {
+    const handler = () => {
+      if (activeShift && !activeCheck) setShowNewCheck(true);
+    };
+    window.addEventListener('tpos:new-check', handler);
+    return () => window.removeEventListener('tpos:new-check', handler);
+  }, [activeShift, activeCheck]);
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -388,29 +395,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           )}
         </div>
 
-        {/* FAB — рендерим в body (iOS overflow scroll ломает fixed внутри) только в списке чеков (нет активного чека).
-            Привязываем к фиксированной высоте нижней навигации (h-16) + отступ. */}
-        {typeof document !== 'undefined' && !activeCheck && createPortal(
-          <div
-            className="lg:hidden fixed left-0 right-0 pointer-events-none z-[65] flex justify-center px-4 sm:px-6"
-            style={{ bottom: 'var(--fab-bottom-offset)' }}
-          >
-            <div className="max-w-xl mx-auto flex justify-center">
-              <button
-                type="button"
-                onClick={() => {
-                  if (activeShift) setShowNewCheck(true);
-                }}
-                disabled={!activeShift}
-                className="pointer-events-auto flex items-center gap-2 px-6 py-3.5 bg-[#8b5cf6] rounded-[20px] font-black uppercase tracking-widest shadow-[0_10px_24px_rgba(139,92,246,0.35)] hover:scale-105 active:scale-95 transition-all text-xs text-white disabled:opacity-40 disabled:hover:scale-100"
-              >
-                <PlusCircle className="w-5 h-5" />
-                Новый чек
-              </button>
-            </div>
-          </div>,
-          document.body
-        )}
+        {/* FAB integrated into floating nav in Layout */}
       </div>
 
       <Drawer open={showHistory} onClose={() => setShowHistory(false)} title="История смен">

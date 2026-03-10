@@ -18,10 +18,9 @@
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
 
   --nav-height: 3.5rem;
-  /* Mobile bottom bar geometry */
-  --bottom-bar-content-height: 49px;
-  --bottom-bar-height: 49px;
-  --fab-bottom-offset: calc(var(--bottom-bar-height) + 12px);
+  /* Mobile floating bottom bar */
+  --bottom-bar-height: 80px;
+  --fab-bottom-offset: calc(var(--bottom-bar-height) + 32px);
   /* PWA/MiniApp: use dvh when supported so address bar doesn't change layout */
   --app-height: 100vh;
   --app-height-dynamic: 100dvh;

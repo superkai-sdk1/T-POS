@@ -11,7 +11,7 @@ import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { ShiftAnalytics as ShiftAnalyticsModal } from '@/components/shift/ShiftAnalytics';
 import {
   Receipt, Package, BarChart3, LogOut, Settings, Calendar,
-  Menu, RefreshCw, PlayCircle, StopCircle, AlertTriangle, X
+  Menu, RefreshCw, PlayCircle, StopCircle, AlertTriangle, X, Plus
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -458,7 +458,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           className={`flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
-          style={{ WebkitOverflowScrolling: 'touch', paddingBottom: '58px' }}
+          style={{ WebkitOverflowScrolling: 'touch', paddingBottom: '120px' }}
         >
           {activeTab === 'pos' && !activeCheck && (
             <div
@@ -487,29 +487,64 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           {children}
         </main>
 
-        {/* ── Mobile bottom nav ── */}
+        {/* ── Floating mobile bottom nav ── */}
         {typeof document !== 'undefined' && createPortal(
-          <nav
-            className="lg:hidden fixed left-0 right-0 bottom-0 z-[60] bg-[#0d0d12] backdrop-blur-2xl border-t border-white/5 px-6 sm:px-12 pb-[5px]"
-          >
-            <div className="flex w-full max-w-3xl mx-auto items-center justify-between h-[49px]">
-              {tabs.map((tab) => {
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => onTabChange(tab.id)}
-                    className={`flex flex-col items-center justify-center gap-1 transition-all duration-200 flex-1 h-full ${isActive ? 'text-[#8b5cf6]' : 'text-white/20 hover:text-white/40'}`}
-                  >
-                    <tab.icon className="w-5 h-5 shrink-0" />
-                    <span className="text-[9px] font-black uppercase tracking-widest truncate w-full px-0.5">
-                      {tab.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </nav>,
+          <div className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-[60]">
+            <div className="absolute inset-0 bg-white/[0.06] backdrop-blur-3xl rounded-[2rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
+            <nav className="relative p-2.5 flex items-center justify-between">
+              <div className="flex flex-1 justify-around items-center">
+                {tabs.slice(0, 2).map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => onTabChange(tab.id)}
+                      className={`relative py-2 px-4 rounded-2xl transition-all flex flex-col items-center gap-1 tap ${isActive ? 'text-white' : 'text-white/30'}`}
+                    >
+                      {isActive && <div className="absolute inset-0 bg-white/[0.06] rounded-2xl border border-white/5" />}
+                      <tab.icon className="w-5 h-5 shrink-0 relative z-10" />
+                      <span className="text-[9px] font-black uppercase tracking-tighter relative z-10">{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="px-1.5">
+                <button
+                  onClick={() => {
+                    hapticFeedback('medium');
+                    if (activeTab !== 'pos') onTabChange('pos');
+                    window.dispatchEvent(new CustomEvent('tpos:new-check'));
+                  }}
+                  disabled={!activeShift}
+                  className="relative group flex items-center justify-center disabled:opacity-30"
+                >
+                  <div className="absolute inset-0 bg-[#8b5cf6] blur-2xl opacity-40 group-hover:opacity-60 transition-opacity rounded-full" />
+                  <div className="relative w-14 h-14 bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] rounded-full flex items-center justify-center shadow-[0_8px_30px_rgba(139,92,246,0.4)] border-4 border-[#0a0e1a] transition-all active:scale-90">
+                    <Plus className="w-7 h-7 text-white drop-shadow-md" />
+                    <div className="absolute top-1 left-2 w-7 h-3 bg-white/20 rounded-full blur-[2px] -rotate-15" />
+                  </div>
+                </button>
+              </div>
+
+              <div className="flex flex-1 justify-around items-center">
+                {tabs.slice(2).map((tab) => {
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => onTabChange(tab.id)}
+                      className={`relative py-2 px-4 rounded-2xl transition-all flex flex-col items-center gap-1 tap ${isActive ? 'text-white' : 'text-white/30'}`}
+                    >
+                      {isActive && <div className="absolute inset-0 bg-white/[0.06] rounded-2xl border border-white/5" />}
+                      <tab.icon className="w-5 h-5 shrink-0 relative z-10" />
+                      <span className="text-[9px] font-black uppercase tracking-tighter relative z-10">{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </nav>
+          </div>,
           document.body
         )}
       </div>
