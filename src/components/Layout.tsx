@@ -11,7 +11,8 @@ import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { ShiftAnalytics as ShiftAnalyticsModal } from '@/components/shift/ShiftAnalytics';
 import {
   Receipt, Package, BarChart3, LogOut, Settings, Calendar,
-  PlayCircle, StopCircle, AlertTriangle, X, Plus
+  PlayCircle, StopCircle, AlertTriangle, X, Plus,
+  PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -38,6 +39,10 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
 
   // Layout states
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('tpos-sidebar-collapsed') === '1';
+  });
   const scrollRef = useRef<HTMLElement>(null);
   const touchStartY = useRef(0);
   const [pullDistance, setPullDistance] = useState(0);
@@ -171,6 +176,14 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
     }
   };
 
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem('tpos-sidebar-collapsed', next ? '1' : '0');
+      return next;
+    });
+  };
+
   const triggerShiftAction = () => {
     hapticFeedback('heavy');
     if (activeShift) {
@@ -235,7 +248,11 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   return (
     <div className="min-h-[100dvh] h-full flex flex-col lg:flex-row overflow-hidden relative" style={{ backgroundColor: 'var(--c-bg)' }}>
       {/* ── Desktop floating sidebar ── */}
-      <aside className="hidden lg:flex fixed top-4 left-4 bottom-4 z-40 flex-col w-[260px] transition-all duration-300">
+      <aside
+        className={`hidden lg:flex fixed top-4 left-4 bottom-4 z-40 flex-col transition-all duration-300 ${
+          isSidebarCollapsed ? 'w-[72px]' : 'w-[260px]'
+        }`}
+      >
         <div
           className="flex-1 flex flex-col rounded-[2rem] overflow-hidden border border-white/10"
           style={{
@@ -245,27 +262,34 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
             boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)',
           }}
         >
-          {/* Logo */}
-          <div className="px-6 pt-6 pb-4 flex items-center gap-3">
+          {/* Logo + collapse */}
+          <div className={`pt-6 pb-4 flex items-center gap-2 ${isSidebarCollapsed ? 'px-3 flex-col' : 'px-6 flex-row'}`}>
             <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(6, 182, 212, 0.15))', boxShadow: '0 0 20px rgba(139, 92, 246, 0.15)' }}>
               <img src="/icons/tpos.svg" alt="T-POS" className="w-7 h-7 drop-shadow-lg" />
             </div>
-            <span className="font-bold text-white tracking-wide text-[15px]">T-POS</span>
+            {!isSidebarCollapsed && <span className="font-bold text-white tracking-wide text-[15px]">T-POS</span>}
+            <button
+              onClick={toggleSidebar}
+              className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 transition-all tap ${isSidebarCollapsed ? 'mt-2' : 'ml-auto'}`}
+              title={isSidebarCollapsed ? 'Развернуть меню' : 'Свернуть меню'}
+            >
+              {isSidebarCollapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+            </button>
           </div>
 
           {/* Nav tabs */}
-          <nav className="flex-1 flex flex-col px-3 gap-1 overflow-y-auto no-scrollbar">
+          <nav className={`flex-1 flex flex-col overflow-y-auto no-scrollbar ${isSidebarCollapsed ? 'px-2 gap-1' : 'px-3 gap-1'}`}>
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
-                  className={`relative w-full h-12 px-4 rounded-2xl flex items-center gap-3 transition-all duration-200 tap ${isActive ? 'text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/[0.04]'}`}
+                  className={`relative w-full rounded-2xl flex items-center transition-all duration-200 tap ${isSidebarCollapsed ? 'h-11 justify-center px-0' : 'h-12 px-4 gap-3'} ${isActive ? 'text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/[0.04]'}`}
                 >
                   {isActive && <div className="absolute inset-0 bg-white/[0.06] rounded-2xl border border-white/5" />}
                   <tab.icon className="w-5 h-5 shrink-0 relative z-10" />
-                  <span className="font-semibold text-[13px] relative z-10">{tab.label}</span>
+                  {!isSidebarCollapsed && <span className="font-semibold text-[13px] relative z-10">{tab.label}</span>}
                 </button>
               );
             })}
@@ -278,46 +302,70 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                 window.dispatchEvent(new CustomEvent('tpos:new-check'));
               }}
               disabled={!activeShift}
-              className="relative w-full h-12 mt-3 rounded-2xl flex items-center gap-3 px-4 transition-all tap disabled:opacity-30 text-white overflow-hidden"
+              className={`relative w-full mt-3 rounded-2xl flex items-center transition-all tap disabled:opacity-30 text-white overflow-hidden ${isSidebarCollapsed ? 'h-11 justify-center px-0' : 'h-12 gap-3 px-4'}`}
               style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', boxShadow: '0 8px 24px rgba(139, 92, 246, 0.3)' }}
             >
               <Plus className="w-5 h-5 shrink-0" />
-              <span className="font-black text-[12px] uppercase tracking-wider">Новый чек</span>
+              {!isSidebarCollapsed && <span className="font-black text-[12px] uppercase tracking-wider">Новый чек</span>}
             </button>
 
             {/* Shift info */}
-            <div className="mt-6 mb-2 px-1 space-y-3">
+            <div className={`mt-6 mb-2 space-y-3 ${isSidebarCollapsed ? 'px-1' : 'px-1'}`}>
               <div className="h-px w-full bg-white/[0.06]" />
-              <div className="px-2">
-                <p className="text-[10px] uppercase tracking-widest text-white/20 font-bold mb-2">Смена</p>
+              <div className={isSidebarCollapsed ? 'px-1 flex justify-center' : 'px-2'}>
+                {!isSidebarCollapsed && <p className="text-[10px] uppercase tracking-widest text-white/20 font-bold mb-2">Смена</p>}
                 {activeShift ? (
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center text-[13px]">
-                      <span className="text-white/40">Статус</span>
-                      <span className="text-[var(--c-success)] font-semibold flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[var(--c-success)] animate-pulse" /> Открыта
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-[13px]">
-                      <span className="text-white/40">Время</span>
-                      <span className="text-white tabular-nums">{shiftDurationStr}</span>
-                    </div>
-                    {cashInRegister !== null && (
-                      <div className="flex justify-between items-center text-[13px]">
-                        <span className="text-white/40">В кассе</span>
-                        <span className="text-white font-bold tabular-nums">{fmtCur(cashInRegister)}</span>
-                      </div>
+                  <div className={`space-y-2 ${isSidebarCollapsed ? 'flex flex-col items-center' : ''}`}>
+                    {!isSidebarCollapsed && (
+                      <>
+                        <div className="flex justify-between items-center text-[13px]">
+                          <span className="text-white/40">Статус</span>
+                          <span className="text-[var(--c-success)] font-semibold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--c-success)] animate-pulse" /> Открыта
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-[13px]">
+                          <span className="text-white/40">Время</span>
+                          <span className="text-white tabular-nums">{shiftDurationStr}</span>
+                        </div>
+                        {cashInRegister !== null && (
+                          <div className="flex justify-between items-center text-[13px]">
+                            <span className="text-white/40">В кассе</span>
+                            <span className="text-white font-bold tabular-nums">{fmtCur(cashInRegister)}</span>
+                          </div>
+                        )}
+                      </>
                     )}
-                    <Button fullWidth variant="danger" size="sm" onClick={handleStartClose} className="mt-3">
-                      Закрыть смену
-                    </Button>
+                    {isSidebarCollapsed ? (
+                      <button
+                        onClick={handleStartClose}
+                        className="w-10 h-10 rounded-xl flex items-center justify-center bg-[var(--c-danger)]/20 text-[var(--c-danger)] hover:bg-[var(--c-danger)]/30 tap"
+                        title="Закрыть смену"
+                      >
+                        <StopCircle className="w-5 h-5" />
+                      </button>
+                    ) : (
+                      <Button fullWidth variant="danger" size="sm" onClick={handleStartClose} className="mt-3">
+                        Закрыть смену
+                      </Button>
+                    )}
                   </div>
                 ) : (
-                  <div className="space-y-3 text-center py-2">
-                    <p className="text-[13px] text-[var(--c-danger)] font-semibold">Смена закрыта</p>
-                    <Button fullWidth variant="primary" size="sm" onClick={handleOpenDrawer}>
-                      Открыть смену
-                    </Button>
+                  <div className={`space-y-3 text-center py-2 ${isSidebarCollapsed ? '' : ''}`}>
+                    {!isSidebarCollapsed && <p className="text-[13px] text-[var(--c-danger)] font-semibold">Смена закрыта</p>}
+                    {isSidebarCollapsed ? (
+                      <button
+                        onClick={handleOpenDrawer}
+                        className="w-10 h-10 rounded-xl flex items-center justify-center bg-[var(--c-success)]/20 text-[var(--c-success)] hover:bg-[var(--c-success)]/30 tap"
+                        title="Открыть смену"
+                      >
+                        <PlayCircle className="w-5 h-5" />
+                      </button>
+                    ) : (
+                      <Button fullWidth variant="primary" size="sm" onClick={handleOpenDrawer}>
+                        Открыть смену
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
@@ -325,18 +373,20 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           </nav>
 
           {/* Bottom: user + logout */}
-          <div className="px-4 pb-5 pt-3 mt-auto shrink-0 flex flex-col gap-2">
+          <div className={`pb-5 pt-3 mt-auto shrink-0 flex flex-col gap-2 ${isSidebarCollapsed ? 'px-2' : 'px-4'}`}>
             <div className="h-px w-full bg-white/[0.06] mb-1" />
-            <div className="flex items-center gap-3 w-full px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+            <div className={`flex items-center w-full py-2 rounded-xl bg-white/[0.03] border border-white/[0.05] ${isSidebarCollapsed ? 'justify-center px-2' : 'gap-3 px-3'}`}>
               <div className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.1))', border: '1px solid rgba(139, 92, 246, 0.15)' }}>
                 <span className="text-[11px] font-bold text-[var(--c-accent-light)]">
                   {user?.nickname?.charAt(0).toUpperCase()}
                 </span>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-bold text-white truncate">{user?.nickname}</p>
-                <p className="text-[10px] text-white/30">{isOwner() ? 'Владелец' : 'Сотрудник'}</p>
-              </div>
+              {!isSidebarCollapsed && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-bold text-white truncate">{user?.nickname}</p>
+                  <p className="text-[10px] text-white/30">{isOwner() ? 'Владелец' : 'Сотрудник'}</p>
+                </div>
+              )}
               <button
                 onClick={() => useAuthStore.getState().logout()}
                 title="Выход"
@@ -351,7 +401,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
 
       {/* ── Main content ── */}
       <div
-        className="flex-1 flex flex-col overflow-hidden transition-all duration-300 lg:ml-[276px]"
+        className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-[88px]' : 'lg:ml-[276px]'}`}
       >
         {/* ── Mobile header: POS — статус смены + в кассе; остальные вкладки — заголовок ── */}
         {activeTab === 'pos' ? (

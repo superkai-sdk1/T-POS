@@ -9,7 +9,7 @@ import {
   ShoppingBag,
   MessageSquare, Percent, Trash2, Timer, Search,
   UserPlus, User, Star, GraduationCap, Gamepad2,
-  MoreHorizontal, Sparkles, ChevronRight,
+  MoreHorizontal, Sparkles,
 } from 'lucide-react';
 import { hapticFeedback } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase';
@@ -76,7 +76,11 @@ const MenuSheetItem = memo(function MenuSheetItem({
             : `${colors.bg} border-white/5 hover:bg-white/[0.08]`
       }`}
     >
-      <div className="flex-1 space-y-0.5 lg:space-y-1 text-left min-w-0">
+      <button
+        type="button"
+        onClick={() => onAdd(item)}
+        className="flex-1 space-y-0.5 lg:space-y-1 text-left min-w-0 active:scale-[0.98] transition-transform"
+      >
         <div className="flex items-center gap-1">
           <div className={`w-1.5 h-1.5 lg:w-1 h-1 rounded-full shrink-0 ${colors.active} shadow-[0_0_6px_rgba(255,255,255,0.1)]`} />
           <span className={`text-[8px] lg:text-[7px] font-black uppercase tracking-[0.15em] italic truncate ${colors.text}`}>
@@ -94,16 +98,8 @@ const MenuSheetItem = memo(function MenuSheetItem({
             </Badge>
           )}
         </div>
-      </div>
+      </button>
       <div className="flex flex-col items-center gap-1 shrink-0">
-        <button
-          onClick={() => onAdd(item)}
-          className={`w-9 h-9 lg:w-8 lg:h-8 rounded-lg flex items-center justify-center transition-all active:scale-90 shadow-md ${
-            inCartQty > 0 ? colors.active : 'bg-white/10 hover:bg-white/20'
-          }`}
-        >
-          <Plus className="w-4 h-4 lg:w-3.5 lg:h-3.5 text-white" />
-        </button>
         <DotIndicator count={inCartQty} colorClass={colors.active} />
         <button
           onClick={() => onDecrease(item)}
@@ -752,7 +748,7 @@ export function CheckView({ onBack }: CheckViewProps) {
                   })}
                 </div>
               </div>
-              <div className="px-4 sm:px-6 lg:px-6 pb-40 lg:pb-36 overflow-y-auto flex-1 min-h-0">
+              <div className="px-4 sm:px-6 lg:px-6 pb-6 overflow-y-auto flex-1 min-h-0">
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 lg:gap-3">
                   {filteredItems.map((item) => {
                     const inCartQty = cart.filter((c) => c.item.id === item.id).reduce((s, c) => s + c.quantity, 0);
@@ -778,32 +774,6 @@ export function CheckView({ onBack }: CheckViewProps) {
                   </div>
                 )}
               </div>
-              {cartCount > 0 && (
-                <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-5 pt-12 lg:pt-10 bg-gradient-to-t from-[#0d0d12] via-[#0d0d12]/95 to-transparent">
-                  <button
-                    onClick={() => { setShowMenu(false); setMenuCategory(null); setMenuSearch(''); }}
-                    className="w-full max-w-xl mx-auto bg-white text-black py-4 lg:py-3 rounded-xl lg:rounded-2xl flex items-center justify-between px-6 shadow-2xl active:scale-[0.98] transition-all group overflow-hidden"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 lg:w-10 lg:h-10 bg-black/5 rounded-xl flex items-center justify-center relative">
-                        <ShoppingBag className="w-5 h-5 lg:w-4 lg:h-4 text-black" />
-                        <div className="absolute -top-0.5 -right-0.5 w-5 h-5 lg:w-4 lg:h-4 bg-black text-white font-black text-[9px] rounded-full flex items-center justify-center border-2 border-white">
-                          {cartCount}
-                        </div>
-                      </div>
-                      <div className="text-left">
-                        <p className="text-[9px] font-black opacity-30 uppercase tracking-[0.2em] leading-none mb-0">
-                          ИТОГО В ЧЕК
-                        </p>
-                        <span className="text-xl lg:text-lg font-black italic tracking-tighter leading-none tabular-nums">
-                          {fmtCur(total)}
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 lg:w-4 lg:h-4 group-hover:translate-x-2 transition-transform" />
-                  </button>
-                </div>
-              )}
             </div>
           </div>
         </>

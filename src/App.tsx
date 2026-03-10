@@ -129,13 +129,13 @@ export default function App() {
             <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
           )}
         </div>
-        {/* Desktop: split view — list left, check right */}
-        <div className="hidden lg:flex gap-4 h-full">
-          <div className={`shrink-0 overflow-y-auto pr-1 transition-all duration-300 ${showCheckView ? 'lg:w-[30%] xl:w-[25%] min-w-[340px]' : 'flex-1'}`}>
+        {/* Desktop: split view — list left, check right (independent scroll) */}
+        <div className="hidden lg:flex gap-4 h-full min-h-0 overflow-hidden">
+          <div className={`shrink-0 min-h-0 overflow-y-auto overflow-x-hidden pr-1 transition-all duration-300 scrollbar-none ${showCheckView ? 'lg:w-[30%] xl:w-[25%] min-w-[280px]' : 'flex-1'}`}>
             <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
           </div>
           {showCheckView && (
-            <div className="flex-1 overflow-y-auto border-l border-[var(--c-border)] pl-4">
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden border-l border-[var(--c-border)] pl-4 scrollbar-none">
               <CheckView onBack={() => setShowCheckView(false)} />
             </div>
           )}
