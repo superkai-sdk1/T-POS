@@ -710,12 +710,12 @@ export function CheckView({ onBack }: CheckViewProps) {
       {showMenu && typeof document !== 'undefined' && createPortal(
         <>
           <div
-            className="fixed inset-0 bg-black/90 backdrop-blur-[12px] z-[55] transition-opacity duration-300"
+            className="fixed inset-0 bg-black/90 backdrop-blur-[12px] z-[61] transition-opacity duration-300"
             style={{ opacity: menuDragY > 0 ? Math.max(0, 1 - menuDragY / 200) : 1 }}
             onClick={closeMenu}
           />
           <div
-            className="fixed bottom-0 left-0 right-0 w-full max-w-4xl mx-auto z-[56]"
+            className="fixed bottom-0 left-0 right-0 w-full max-w-4xl mx-auto z-[62]"
             style={{
               transform: `translateY(${menuDragY}px)`,
               transition: menuDragY > 0 ? 'none' : 'transform 0.5s cubic-bezier(0.16,1,0.3,1)',

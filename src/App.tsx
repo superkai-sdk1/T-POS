@@ -1,4 +1,17 @@
 import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)');
+    const fn = () => setIsMobile(mq.matches);
+    mq.addEventListener('change', fn);
+    return () => mq.removeEventListener('change', fn);
+  }, []);
+  return isMobile;
+}
 import { useAuthStore } from '@/store/auth';
 import { usePOSStore } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
@@ -80,6 +93,7 @@ export default function App() {
   }, [user, loadInventory, loadOpenChecks, loadActiveShift, refreshProfile]);
 
   const [managementScreen, setManagementScreen] = useState<string | undefined>();
+  const isMobile = useIsMobile();
 
   const handleTabChange = useCallback((tab: string) => {
     if (showCheckView) {
@@ -124,22 +138,22 @@ export default function App() {
   return (
     <Layout activeTab={activeTab} onTabChange={handleTabChange} showCheckView={showCheckView}>
       <TabPanel id="pos" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
-        {/* Mobile: swap between list and check view. OpenChecks — главный экран (full-bleed). CheckView — с padding. */}
+        {/* Mobile: swap between list and check view. CheckView only when isMobile to avoid duplicate menus. */}
         <div className="lg:hidden flex-1 flex flex-col min-h-0">
-          {showCheckView ? (
+          {showCheckView && isMobile ? (
             <div className="flex-1 flex flex-col min-h-0 px-4 py-3">
               <CheckView onBack={() => setShowCheckView(false)} />
             </div>
-          ) : (
+          ) : isMobile ? (
             <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
-          )}
+          ) : null}
         </div>
-        {/* Desktop: split view — list left, check right (independent scroll) */}
+        {/* Desktop: split view — list left, check right. CheckView only when !isMobile to avoid duplicate. */}
         <div className="hidden lg:flex gap-4 h-full min-h-0 overflow-hidden">
           <div className={`shrink-0 min-h-0 overflow-y-auto overflow-x-hidden pr-1 transition-all duration-300 scrollbar-none scroll-area ${showCheckView ? 'lg:w-[30%] xl:w-[25%] min-w-[280px]' : 'flex-1'}`} style={{ overscrollBehaviorY: 'contain' }}>
             <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
           </div>
-          {showCheckView && (
+          {showCheckView && !isMobile && (
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden border-l border-[var(--c-border)] pl-4 scrollbar-none scroll-area">
               <CheckView onBack={() => setShowCheckView(false)} />
             </div>
