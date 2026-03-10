@@ -37,6 +37,8 @@ export interface InventoryItem {
   is_active: boolean;
   image_url: string | null;
   sort_order: number;
+  search_tags: string[];
+  is_top: boolean;
   created_at: string;
   updated_at: string;
 }

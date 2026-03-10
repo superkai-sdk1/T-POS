@@ -28,7 +28,9 @@ interface EditForm {
   category: string;
   min_threshold: string;
   is_active: boolean;
+  is_top: boolean;
   image_url: string;
+  search_tags: string;
 }
 
 const emptyForm: EditForm = {
@@ -37,7 +39,9 @@ const emptyForm: EditForm = {
   category: '',
   min_threshold: '0',
   is_active: true,
+  is_top: false,
   image_url: '',
+  search_tags: '',
 };
 
 interface CategoryForm {
@@ -106,7 +110,10 @@ export function MenuEditor() {
     .sort((a, b) => a.sort_order - b.sort_order);
 
   const directItems = items.filter((i) => {
-    if (search) return i.name.toLowerCase().includes(search.toLowerCase());
+    if (search) {
+      const q = search.toLowerCase();
+      return i.name.toLowerCase().includes(q) || (i.search_tags || []).some((t) => t.toLowerCase().includes(q));
+    }
     if (!currentCategory) {
       const topSlugs = getChildren(null).map((c) => c.slug);
       return !topSlugs.includes(i.category) || categories.length === 0;
@@ -146,7 +153,9 @@ export function MenuEditor() {
       category: item.category,
       min_threshold: String(item.min_threshold),
       is_active: item.is_active,
+      is_top: item.is_top ?? false,
       image_url: item.image_url || '',
+      search_tags: (item.search_tags || []).join(', '),
     });
     setShowEditor(true);
     hapticFeedback();
@@ -176,13 +185,19 @@ export function MenuEditor() {
 
   const handleSave = async () => {
     if (!form.name.trim() || !form.price) return;
+    const tags = form.search_tags
+      .split(',')
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean);
     const payload = {
       name: form.name.trim(),
       price: Number(form.price),
       category: form.category,
       min_threshold: Number(form.min_threshold) || 0,
       is_active: form.is_active,
+      is_top: form.is_top,
       image_url: form.image_url || null,
+      search_tags: tags,
     };
     let error;
     if (editingItem) {
@@ -583,6 +598,30 @@ export function MenuEditor() {
           </div>
 
           <Input label="Мин. остаток" type="number" placeholder="0 — не отслеживать" value={form.min_threshold} onChange={(e) => updateField('min_threshold', e.target.value)} min={0} />
+
+          <Input
+            label="Теги для поиска"
+            placeholder="кола, газировка, pepsi"
+            value={form.search_tags}
+            onChange={(e) => updateField('search_tags', e.target.value)}
+          />
+          <p className="text-[10px] text-[var(--c-muted)] -mt-3">Через запятую. Помогают найти позицию по альтернативным названиям.</p>
+
+          <button
+            onClick={() => updateField('is_top', !form.is_top)}
+            className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all active:scale-[0.98] ${form.is_top ? 'bg-amber-500/10 border-amber-500/30' : 'card border-[var(--c-border)]'
+              }`}
+          >
+            <div>
+              <span className="text-[13px] font-medium text-[var(--c-text)]">
+                {form.is_top ? 'Топ-позиция' : 'Обычная позиция'}
+              </span>
+              <p className="text-[10px] text-[var(--c-muted)] mt-0.5">Топ отображается первым в меню POS</p>
+            </div>
+            <div className={`w-10 h-6 rounded-full transition-colors relative ${form.is_top ? 'bg-amber-500' : 'bg-[var(--c-muted)]'}`}>
+              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${form.is_top ? 'left-5' : 'left-1'}`} />
+            </div>
+          </button>
 
           <button
             onClick={() => updateField('is_active', !form.is_active)}

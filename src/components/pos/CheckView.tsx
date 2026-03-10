@@ -115,6 +115,40 @@ const MenuSheetItem = memo(function MenuSheetItem({
   );
 });
 
+const TopSheetItem = memo(function TopSheetItem({
+  item,
+  inCartQty,
+  colors,
+  onAdd,
+}: {
+  item: InventoryItem;
+  inCartQty: number;
+  colors: ReturnType<typeof getCategoryColorConfig>;
+  onAdd: (item: InventoryItem) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onAdd(item)}
+      className={`relative border transition-all duration-300 rounded-xl p-2 lg:p-2.5 text-left active:scale-[0.96] ${
+        inCartQty > 0
+          ? `${colors.bgActive} border-white/15 ring-1 ring-white/10`
+          : `${colors.bg} border-white/5 hover:bg-white/[0.08]`
+      }`}
+    >
+      <h3 className="text-[11px] lg:text-xs font-black uppercase italic tracking-tighter leading-tight text-white/90 truncate">
+        {item.name}
+      </h3>
+      <span className="text-[11px] lg:text-xs font-black text-white/50 italic tracking-tighter tabular-nums">{fmtCur(item.price)}</span>
+      {inCartQty > 0 && (
+        <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${colors.active} flex items-center justify-center`}>
+          <span className="text-[8px] font-black text-white">{inCartQty}</span>
+        </div>
+      )}
+    </button>
+  );
+});
+
 const CartItemRow = memo(function CartItemRow({
   ci,
   onRemove,
@@ -393,10 +427,16 @@ export function CheckView({ onBack }: CheckViewProps) {
     if (menuCategory) items = items.filter((i) => i.category === menuCategory);
     if (menuSearch) {
       const q = menuSearch.toLowerCase();
-      items = items.filter((i) => i.name.toLowerCase().includes(q));
+      items = items.filter((i) =>
+        i.name.toLowerCase().includes(q) ||
+        (i.search_tags || []).some((t) => t.toLowerCase().includes(q)),
+      );
     }
     return items.sort((a, b) => a.sort_order - b.sort_order);
   }, [inventory, menuCategory, menuSearch]);
+
+  const topItems = useMemo(() => filteredItems.filter((i) => i.is_top), [filteredItems]);
+  const regularItems = useMemo(() => filteredItems.filter((i) => !i.is_top), [filteredItems]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -796,8 +836,33 @@ export function CheckView({ onBack }: CheckViewProps) {
                 </div>
               </div>
               <div className="px-4 sm:px-6 lg:px-6 pb-6 overflow-y-auto flex-1 min-h-0">
+                {topItems.length > 0 && !menuSearch && (
+                  <>
+                    <div className="grid grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 lg:gap-2 mb-3">
+                      {topItems.map((item) => {
+                        const inCartQty = cart.filter((c) => c?.item?.id === item.id).reduce((s, c) => s + c.quantity, 0);
+                        const cat = menuCategories.find((c) => c.slug === item.category);
+                        const colors = getCategoryColorConfig(cat?.color);
+                        return (
+                          <TopSheetItem
+                            key={item.id}
+                            item={item}
+                            inCartQty={inCartQty}
+                            colors={colors}
+                            onAdd={handleAdd}
+                          />
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="h-px flex-1 bg-white/5" />
+                      <span className="text-[8px] font-black uppercase tracking-[0.2em] text-white/15">Все позиции</span>
+                      <div className="h-px flex-1 bg-white/5" />
+                    </div>
+                  </>
+                )}
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 lg:gap-3">
-                  {filteredItems.map((item) => {
+                  {(menuSearch ? filteredItems : regularItems).map((item) => {
                     const inCartQty = cart.filter((c) => c?.item?.id === item.id).reduce((s, c) => s + c.quantity, 0);
                     const cat = menuCategories.find((c) => c.slug === item.category);
                     const colors = getCategoryColorConfig(cat?.color);
