@@ -327,7 +327,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const activeCount = openChecks.length;
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 relative bg-[#0d0d12] text-white">
+    <div className="flex-1 flex flex-col min-h-0 relative bg-[#0d0d12] text-white" style={{ paddingTop: 'var(--safe-top)' }}>
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden animate-fade-in">
         {/* Шапка смены — как в примере */}
         {activeShift && (

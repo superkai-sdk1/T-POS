@@ -361,54 +361,8 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
         className="flex-1 flex flex-col overflow-hidden transition-all duration-300"
         style={{ marginLeft: typeof window !== 'undefined' && window.innerWidth >= 1024 ? (isSidebarExpanded ? '240px' : '72px') : 0 }}
       >
-        {/* ── Mobile header ── */}
-        {activeTab === 'pos' ? (
-          /* Shift header — only on POS tab */
-          <header
-            className="lg:hidden shrink-0 z-40 select-none relative"
-            style={{
-              paddingTop: `var(--safe-top)`,
-              height: 'calc(var(--safe-top) + 65px)',
-              background: 'rgba(10, 14, 26, 0.85)',
-              backdropFilter: 'blur(40px) saturate(1.8)',
-              WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-            }}
-            onContextMenu={(e) => e.preventDefault()}
-          >
-            {/* Logout button — top-left */}
-            <button
-              onClick={() => useAuthStore.getState().logout()}
-              className="absolute top-0 left-3 z-10 w-9 h-9 rounded-xl flex items-center justify-center text-[var(--c-hint)] active:scale-90 transition-all"
-              style={{ marginTop: 'calc(var(--safe-top) + 10px)' }}
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-
-            {/* Shift info — tappable center */}
-            <div
-              className="absolute inset-0 flex flex-col items-center justify-center pt-[var(--safe-top)] cursor-pointer"
-              onClick={handleHeaderTap}
-            >
-              <h1 className={`text-[12px] uppercase tracking-[0.15em] font-black ${activeShift ? 'text-[var(--c-success)]' : 'text-[var(--c-danger)]'}`}>
-                {activeShift ? 'Смена открыта' : 'Смена закрыта'}
-              </h1>
-              <div className="flex items-center justify-center mt-1">
-                <span className={`text-[18px] font-black tabular-nums tracking-tight ${cashInRegister === null ? 'opacity-0' : 'text-white'}`}>
-                  {fmtCur(cashInRegister ?? 0)}
-                </span>
-              </div>
-            </div>
-
-            {/* Pull to refresh visual indicator */}
-            {isRefreshing && (
-              <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-[var(--c-accent)] flex items-center justify-center animate-bounce shadow-lg z-50">
-                <RefreshCw className="w-3.5 h-3.5 text-white animate-spin" />
-              </div>
-            )}
-          </header>
-        ) : (
-          /* Compact header — other tabs */
+        {/* ── Mobile header: только для не-POS; POS = OpenChecks как главный экран ── */}
+        {activeTab !== 'pos' && (
           <header
             className="lg:hidden shrink-0 z-40 select-none relative"
             style={{
@@ -438,7 +392,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           ref={scrollRef}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
-          className="flex-1 px-4 py-3 lg:px-5 lg:py-4 w-full overflow-y-auto overflow-x-hidden flex flex-col"
+          className={`flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {children}

@@ -119,10 +119,12 @@ export default function App() {
   return (
     <Layout activeTab={activeTab} onTabChange={handleTabChange}>
       <TabPanel id="pos" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
-        {/* Mobile: swap between list and check view */}
-        <div className="lg:hidden flex-1 flex flex-col">
+        {/* Mobile: swap between list and check view. OpenChecks — главный экран (full-bleed). CheckView — с padding. */}
+        <div className="lg:hidden flex-1 flex flex-col min-h-0">
           {showCheckView ? (
-            <CheckView onBack={() => setShowCheckView(false)} />
+            <div className="flex-1 flex flex-col min-h-0 px-4 py-3">
+              <CheckView onBack={() => setShowCheckView(false)} />
+            </div>
           ) : (
             <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
           )}
