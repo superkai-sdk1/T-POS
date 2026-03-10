@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/ui/Drawer';
 import { Input } from '@/components/ui/Input';
 import { ShiftHistory } from '@/components/shift/ShiftHistory';
-import { Plus, Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen, Home, Building2, Warehouse, Star, GraduationCap, Gamepad2, RotateCcw, PlusCircle } from 'lucide-react';
+import { Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen, Home, Building2, Warehouse, Star, GraduationCap, Gamepad2, RotateCcw, PlusCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Profile, Space, VisitTariff, ClientTier, Check } from '@/types';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
@@ -739,22 +739,6 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           })}
         </div>
       </Drawer>
-
-      {/* ── Fixed "New" button at the bottom ── */}
-      <div className="absolute bottom-0 left-0 right-0 px-0 pt-6 pb-4 z-20 pointer-events-none" style={{ background: 'linear-gradient(to top, rgba(10, 14, 26, 0.95) 70%, transparent)' }}>
-        <div className="max-w-md mx-auto pointer-events-auto px-4 lg:px-0">
-          <Button
-            size="lg"
-            fullWidth
-            onClick={() => setShowNewCheck(true)}
-            disabled={!activeShift}
-            className="glow-accent py-4"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Новый чек
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

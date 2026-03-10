@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useEffect, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuthStore } from '@/store/auth';
 import { useShiftStore } from '@/store/shift';
 import { usePOSStore } from '@/store/pos';
@@ -436,32 +437,35 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           {children}
         </main>
 
-        {/* ── Mobile bottom nav — прижата к низу экрана (PWA) ── */}
-        <nav
-          className="lg:hidden fixed bottom-0 left-0 right-0 z-[60] h-20 min-h-[4rem] bg-[#0d0d12]/95 backdrop-blur-2xl border-t border-white/5 px-8 sm:px-12 flex items-center justify-between"
-          style={{
-            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-            transform: 'translateZ(0)',
-          }}
-        >
-          <div className="flex w-full max-w-3xl mx-auto items-center justify-between">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => onTabChange(tab.id)}
-                  className={`flex flex-col items-center justify-center gap-1.5 transition-all duration-200 flex-1 min-h-[48px] ${isActive ? 'text-[#8b5cf6] scale-110' : 'text-white/20 hover:text-white/40'}`}
-                >
-                  <tab.icon className="w-6 h-6 shrink-0" />
-                  <span className="text-[9px] font-black uppercase tracking-widest truncate w-full px-0.5">
-                    {tab.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </nav>
+        {/* ── Mobile bottom nav — рендер в body, жёстко прижата к низу viewport ── */}
+        {typeof document !== 'undefined' && createPortal(
+          <nav
+            className="lg:hidden fixed left-0 right-0 bottom-0 z-[60] bg-[#0d0d12]/95 backdrop-blur-2xl border-t border-white/5 px-8 sm:px-12 flex items-center justify-between"
+            style={{
+              paddingBottom: 'max(8px, min(env(safe-area-inset-bottom, 0px), 34px))',
+              minHeight: '4rem',
+            }}
+          >
+            <div className="flex w-full max-w-3xl mx-auto items-center justify-between">
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => onTabChange(tab.id)}
+                    className={`flex flex-col items-center justify-center gap-1.5 transition-all duration-200 flex-1 min-h-[48px] ${isActive ? 'text-[#8b5cf6] scale-110' : 'text-white/20 hover:text-white/40'}`}
+                  >
+                    <tab.icon className="w-6 h-6 shrink-0" />
+                    <span className="text-[9px] font-black uppercase tracking-widest truncate w-full px-0.5">
+                      {tab.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>,
+          document.body
+        )}
       </div>
 
       {/* ── Shift Modals ── */}
