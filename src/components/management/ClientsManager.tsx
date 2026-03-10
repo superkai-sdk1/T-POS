@@ -520,75 +520,74 @@ export function ClientsManager() {
         size="md"
       >
         {detailClient && (
-          <div className="space-y-4">
-            {/* Photo + name */}
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-20 h-20 rounded-full overflow-hidden bg-[var(--c-surface-hover)] flex items-center justify-center">
+          <div className="space-y-3">
+            {/* Компактный блок: аватар + статус (имя уже в заголовке) */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full overflow-hidden bg-[var(--c-surface-hover)] flex items-center justify-center shrink-0">
                 {detailClient.photo_url ? (
-                  <img src={detailClient.photo_url} alt={detailClient.nickname} className="w-full h-full object-cover" />
+                  <img src={detailClient.photo_url} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <User className="w-10 h-10 text-[var(--c-muted)]" />
+                  <User className="w-6 h-6 text-[var(--c-muted)]" />
                 )}
               </div>
-              <div className="text-center">
-                <p className="text-lg font-bold text-[var(--c-text)]">{detailClient.nickname}</p>
+              <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
                 {detailClient.client_tier === 'resident' && <Badge variant="success" size="sm">Резидент</Badge>}
                 {detailClient.client_tier === 'student' && <Badge variant="accent" size="sm">Студент</Badge>}
+                <span className="text-[10px] text-[var(--c-muted)]">
+                  Зарегистрирован: {new Date(detailClient.created_at).toLocaleDateString('ru-RU')}
+                </span>
               </div>
             </div>
 
-            {/* Info cards */}
-            <div className="space-y-2">
+            {/* Контакты и дата — плотнее */}
+            <div className="space-y-1.5">
               {detailClient.tg_username && (
-                <div className="flex items-center gap-3 p-2.5 rounded-xl card">
-                  <Send className="w-4 h-4 text-sky-400/60" />
-                  <div className="flex-1">
+                <div className="flex items-center gap-2.5 py-2 px-2.5 rounded-lg card">
+                  <Send className="w-3.5 h-3.5 text-sky-400/60 shrink-0" />
+                  <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">Telegram</p>
-                    <p className="text-[13px] text-sky-400">@{detailClient.tg_username}</p>
+                    <p className="text-[12px] text-sky-400 truncate">@{detailClient.tg_username}</p>
                   </div>
                 </div>
               )}
               {detailClient.phone && (
-                <div className="flex items-center gap-3 p-2.5 rounded-xl card">
-                  <Phone className="w-4 h-4 text-[var(--c-hint)]" />
-                  <div className="flex-1">
+                <div className="flex items-center gap-2.5 py-2 px-2.5 rounded-lg card">
+                  <Phone className="w-3.5 h-3.5 text-[var(--c-hint)] shrink-0" />
+                  <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">Телефон</p>
-                    <p className="text-[13px] text-[var(--c-text)]">{detailClient.phone}</p>
+                    <p className="text-[12px] text-[var(--c-text)]">{detailClient.phone}</p>
                   </div>
                 </div>
               )}
               {detailClient.birthday && (
-                <div className="flex items-center gap-3 p-2.5 rounded-xl card">
-                  <Calendar className="w-4 h-4 text-[var(--c-hint)]" />
-                  <div className="flex-1">
+                <div className="flex items-center gap-2.5 py-2 px-2.5 rounded-lg card">
+                  <Calendar className="w-3.5 h-3.5 text-[var(--c-hint)] shrink-0" />
+                  <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">День рождения</p>
-                    <p className="text-[13px] text-[var(--c-text)]">
+                    <p className="text-[12px] text-[var(--c-text)]">
                       {formatBirthday(detailClient.birthday)}
-                      <span className="text-[var(--c-hint)] ml-2">({getAge(detailClient.birthday)} лет)</span>
+                      <span className="text-[var(--c-hint)] ml-1">({getAge(detailClient.birthday)} лет)</span>
                     </p>
                   </div>
                 </div>
               )}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="p-3 rounded-xl bg-[var(--c-warning-bg)] text-center">
-                  <Star className="w-4 h-4 text-[var(--c-warning)] mx-auto mb-1" />
-                  <p className="text-lg font-bold text-[var(--c-warning)]">{detailClient.bonus_points}</p>
+              <div className="grid grid-cols-2 gap-1.5 mt-2">
+                <div className="py-2 px-2 rounded-lg bg-[var(--c-warning-bg)] text-center">
+                  <Star className="w-3.5 h-3.5 text-[var(--c-warning)] mx-auto mb-0.5" />
+                  <p className="text-base font-bold text-[var(--c-warning)]">{detailClient.bonus_points}</p>
                   <p className="text-[10px] text-[var(--c-hint)]">Баллов</p>
                 </div>
-                <div className="p-2.5 rounded-xl card text-center">
-                  <CreditCard className="w-4 h-4 text-[var(--c-hint)] mx-auto mb-1" />
-                  <p className={`text-lg font-bold ${detailClient.balance < 0 ? 'text-[var(--c-danger)]' : 'text-[var(--c-text)]'}`}>
+                <div className="py-2 px-2 rounded-lg card text-center">
+                  <CreditCard className="w-3.5 h-3.5 text-[var(--c-hint)] mx-auto mb-0.5" />
+                  <p className={`text-base font-bold ${detailClient.balance < 0 ? 'text-[var(--c-danger)]' : 'text-[var(--c-text)]'}`}>
                     {detailClient.balance}₽
                   </p>
                   <p className="text-[10px] text-[var(--c-hint)]">Баланс</p>
                 </div>
               </div>
-              <p className="text-[10px] text-[var(--c-muted)] text-center">
-                Зарегистрирован: {new Date(detailClient.created_at).toLocaleDateString('ru-RU')}
-              </p>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 pt-0.5">
               <Button
                 fullWidth
                 onClick={() => { setShowDetail(false); openEdit(detailClient); }}

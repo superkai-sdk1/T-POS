@@ -149,10 +149,10 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
           borderBottom: 'none',
         }}
       >
-        {/* ── Drag Handle (PWA/MiniApp: 44px touch zone) ── */}
+        {/* ── Drag Handle (compact, 44px touch zone) ── */}
         <div
-          className="flex flex-col items-center pt-3 pb-1 lg:hidden cursor-grab active:cursor-grabbing shrink-0 touch-none"
-          style={{ minHeight: '2.75rem' }}
+          className="flex flex-col items-center pt-2 pb-0.5 lg:hidden cursor-grab active:cursor-grabbing shrink-0 touch-none"
+          style={{ minHeight: '2.25rem' }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -166,7 +166,7 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
         </div>
 
         {/* ── Title Bar ── */}
-        <div className="flex items-center justify-between gap-2 min-h-[2.75rem] px-4 py-3 shrink-0">
+        <div className="flex items-center justify-between gap-2 min-h-[2.5rem] px-3 py-2 shrink-0">
           {title ? (
             <h3 className="text-base font-bold text-[var(--c-text)] truncate min-w-0 flex-1">
               {title}
@@ -191,7 +191,7 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
         {/* ── Content (smooth scroll, touch pan-y for PWA/MiniApp) ── */}
         <div
           ref={contentRef}
-          className="overflow-y-auto overflow-x-hidden px-4 pt-2 pb-5 flex-1 min-h-0 overscroll-contain"
+          className="overflow-y-auto overflow-x-hidden px-3 pt-1 pb-4 flex-1 min-h-0 overscroll-contain"
           style={{
             WebkitOverflowScrolling: 'touch',
             touchAction: 'pan-y',
