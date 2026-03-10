@@ -6,7 +6,8 @@ import {
   Package, Music, Gamepad2, Sparkles, ShoppingBag,
   Flame, Grape, IceCream, Salad, Beer, Wine,
   Sandwich, Popcorn, CupSoda, Candy, FolderOpen,
-  LayoutGrid,
+  LayoutGrid, Zap, GlassWater, Martini, Leaf,
+  Timer, Pizza, Soup, Wheat, Cherry,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -15,7 +16,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Package, Music, Gamepad2, Sparkles, ShoppingBag,
   Flame, Grape, IceCream, Salad, Beer, Wine,
   Sandwich, Popcorn, CupSoda, Candy, FolderOpen,
-  LayoutGrid,
+  LayoutGrid, Zap, GlassWater, Martini, Leaf,
+  Timer, Pizza, Soup, Wheat, Cherry,
 };
 
 export const AVAILABLE_ICONS = Object.keys(ICON_MAP);
