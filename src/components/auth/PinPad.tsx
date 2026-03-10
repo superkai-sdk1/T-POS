@@ -78,10 +78,11 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center p-4 relative overflow-hidden"
+      className="h-full flex flex-col items-center justify-center p-4 relative overflow-hidden"
       style={{
         paddingTop: 'var(--safe-top)',
         paddingBottom: 'var(--safe-bottom)',
+        backgroundColor: 'var(--c-bg)',
         background: 'linear-gradient(135deg, #0a0e1a 0%, #0f172a 40%, #1a1040 100%)',
       }}
     >
