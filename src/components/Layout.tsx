@@ -2,7 +2,7 @@ import { useMemo, useState, useRef, useEffect, useCallback, type ReactNode } fro
 import { createPortal } from 'react-dom';
 import { useAuthStore } from '@/store/auth';
 import { useShiftStore } from '@/store/shift';
-import { useLayoutStore, useHideNav } from '@/store/layout';
+import { useHideNav } from '@/store/layout';
 import { usePOSStore } from '@/store/pos';
 import { supabase } from '@/lib/supabase';
 import { Drawer } from '@/components/ui/Drawer';
@@ -248,20 +248,10 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
   };
 
   const hideNav = useHideNav();
-  const addHideReason = useLayoutStore((s) => s.addHideReason);
-  const removeHideReason = useLayoutStore((s) => s.removeHideReason);
-
-  // Hide sidebar when viewing a check
-  useEffect(() => {
-    if (showCheckView) addHideReason('check-view');
-    else removeHideReason('check-view');
-    return () => removeHideReason('check-view');
-  }, [showCheckView, addHideReason, removeHideReason]);
 
   return (
     <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden relative" style={{ backgroundColor: 'var(--c-bg)' }}>
-      {/* ── Desktop floating sidebar ── */}
-      {!hideNav && (
+      {/* ── Desktop floating sidebar (always visible on desktop, hideNav only affects mobile bottom nav) ── */}
       <aside
         className={`hidden lg:flex fixed top-4 left-4 bottom-4 z-40 flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-[72px]' : 'w-[260px]'
           }`}
@@ -412,11 +402,10 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
           </div>
         </div>
       </aside>
-      )}
 
       {/* ── Main content ── */}
       <div
-        className={`flex-1 flex flex-col min-h-0 overflow-hidden transition-all duration-300 ${hideNav ? 'lg:ml-0' : isSidebarCollapsed ? 'lg:ml-[88px]' : 'lg:ml-[276px]'}`}
+        className={`flex-1 flex flex-col min-h-0 overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-[88px]' : 'lg:ml-[276px]'}`}
       >
         {/* ── Mobile header: POS — статус смены + в кассе; остальные вкладки — заголовок ── */}
         {activeTab === 'pos' ? (
@@ -512,7 +501,12 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
           <main
             ref={scrollRef}
             className={`flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
-            style={{ WebkitOverflowScrolling: 'touch', paddingBottom: '120px', overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
+            style={{
+              WebkitOverflowScrolling: 'touch',
+              paddingBottom: showCheckView || !hideNav ? '120px' : 0,
+              overscrollBehaviorY: 'contain',
+              touchAction: 'pan-y',
+            }}
           >
             {children}
           </main>
