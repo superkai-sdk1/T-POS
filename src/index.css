@@ -18,11 +18,10 @@
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
 
   --nav-height: 3.5rem;
-  /* Mobile bottom bar geometry (content area + safe area) */
-  --bottom-bar-content-height: 56px;
-  /* Make the bar background fill safe-area down to the screen edge */
-  --bottom-bar-height: calc(var(--bottom-bar-content-height) + var(--safe-bottom-capped));
-  --fab-bottom-offset: calc(var(--bottom-bar-height) + 12px);
+  /* Mobile bottom bar geometry */
+  --bottom-bar-content-height: 64px;
+  --bottom-bar-height: var(--bottom-bar-content-height);
+  --fab-bottom-offset: calc(var(--bottom-bar-content-height) + 12px);
   /* PWA/MiniApp: use dvh when supported so address bar doesn't change layout */
   --app-height: 100vh;
   --app-height-dynamic: 100dvh;

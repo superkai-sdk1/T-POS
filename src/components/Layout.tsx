@@ -459,7 +459,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           className={`flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
-          style={{ WebkitOverflowScrolling: 'touch', paddingBottom: 'var(--bottom-bar-height)' }}
+          style={{ WebkitOverflowScrolling: 'touch', paddingBottom: '4.5rem' }}
         >
           {activeTab === 'pos' && !activeCheck && (
             <div
@@ -489,26 +489,19 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           {children}
         </main>
 
-        {/* ── Mobile bottom nav — рендер в body, жёстко прижата к низу viewport ── */}
+        {/* ── Mobile bottom nav — максимально простая: фиксированная высота, без safe-area математики ── */}
         {typeof document !== 'undefined' && createPortal(
           <nav
-            className="lg:hidden fixed left-0 right-0 bottom-0 z-[60] bg-[#0d0d12]/95 backdrop-blur-2xl border-t border-white/5 px-6 sm:px-12 flex items-end justify-between"
-            style={{
-              // Fill safe-area with the bar background down to the screen edge,
-              // while keeping the interactive content in the visible 56px area.
-              paddingBottom: 'var(--safe-bottom-capped)',
-              paddingTop: '8px',
-              height: 'var(--bottom-bar-height)',
-            }}
+            className="lg:hidden fixed left-0 right-0 bottom-0 h-16 z-[60] bg-[#0d0d12]/95 backdrop-blur-2xl border-t border-white/5 px-6 sm:px-12 flex items-center justify-between"
           >
-            <div className="flex w-full max-w-3xl mx-auto items-end justify-between">
+            <div className="flex w-full max-w-3xl mx-auto items-center justify-between">
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => onTabChange(tab.id)}
-                    className={`flex flex-col items-center justify-end gap-1.5 transition-all duration-200 flex-1 min-h-[44px] ${isActive ? 'text-[#8b5cf6] scale-110' : 'text-white/20 hover:text-white/40'}`}
+                    className={`flex flex-col items-center justify-center gap-1.5 transition-all duration-200 flex-1 min-h-[44px] ${isActive ? 'text-[#8b5cf6] scale-110' : 'text-white/20 hover:text-white/40'}`}
                   >
                     <tab.icon className="w-6 h-6 shrink-0" />
                     <span className="text-[9px] font-black uppercase tracking-widest truncate w-full px-0.5">
