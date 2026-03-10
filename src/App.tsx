@@ -187,11 +187,11 @@ export default function App() {
         {/* Desktop: split view — list left, check right. Resizable when split. */}
         <div
           ref={splitRef}
-          className={cn(
+          className={[
             'hidden lg:flex h-full min-h-0 overflow-hidden',
             showCheckView && !isMobile ? 'gap-0' : 'gap-4',
             isResizing && 'select-none',
-          )}
+          ].filter(Boolean).join(' ')}
         >
           <div
             className="shrink-0 min-h-0 overflow-y-auto overflow-x-hidden pr-1 scrollbar-none scroll-area min-w-[280px]"

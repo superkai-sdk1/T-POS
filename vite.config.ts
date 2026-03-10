@@ -17,7 +17,7 @@ export default defineConfig({
         description: 'POS-система клуба спортивной мафии «Титан»',
         start_url: '/',
         display: 'standalone',
-        orientation: 'portrait',
+        orientation: 'any',
         background_color: '#0a0e1a',
         theme_color: '#0a0e1a',
         icons: [
