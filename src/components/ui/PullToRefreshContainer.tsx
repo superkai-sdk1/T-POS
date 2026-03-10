@@ -1,6 +1,5 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { useRef, useEffect, type ReactNode } from 'react';
 import { usePOSStore } from '@/store/pos';
-import { hapticFeedback } from '@/lib/telegram';
 
 interface PullToRefreshContainerProps {
     children: ReactNode;
@@ -13,47 +12,18 @@ interface PullToRefreshContainerProps {
 const PULL_THRESHOLD = 80;
 const PULL_MAX = 120;
 
-const getScrollContainer = (target: EventTarget | null, fallback: HTMLElement | null): HTMLElement | null => {
-    let el = target instanceof HTMLElement ? target : null;
-    while (el) {
-        const { overflowY } = getComputedStyle(el);
-        const { scrollTop, scrollHeight, clientHeight } = el;
-        if ((overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') && scrollHeight > clientHeight) {
-            return el;
-        }
-        el = el.parentElement;
-    }
-    return fallback;
-};
-
-const canPullToRefresh = (scrollEl: HTMLElement | null) => {
-    if (!scrollEl) return false;
-    return scrollEl.scrollTop <= 2;
-};
-
 export function PullToRefreshContainer({
     children,
     activeTab,
     isRefreshing,
-    setIsRefreshing,
-    scrollRef,
 }: PullToRefreshContainerProps) {
     const activeCheck = usePOSStore((s) => s.activeCheck);
-    const isOverlayOpen = () => !!document.querySelector('[role="dialog"]');
 
-    // DOM Refs to avoid re-renders
     const spinnerRef = useRef<HTMLDivElement>(null);
     const iconRef = useRef<HTMLDivElement>(null);
     const textRef = useRef<HTMLSpanElement>(null);
 
-    const touchStartY = useRef(0);
-    const isPullingRef = useRef(false);
-    const shouldPreventScrollRef = useRef(false);
-    const pullReadyRef = useRef(false);
-    const pullScrollContainerRef = useRef<HTMLElement | null>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
-
-    const updateSpinnerUI = (distance: number, ready: boolean, isRefreshingState = false) => {
+    const updateSpinnerUI = (_distance: number, _ready: boolean, isRefreshingState = false) => {
         if (!spinnerRef.current || !iconRef.current || !textRef.current) return;
 
         if (isRefreshingState) {
@@ -67,111 +37,28 @@ export function PullToRefreshContainer({
 
             textRef.current.textContent = 'Обновление…';
             textRef.current.className = 'text-[10px] font-black uppercase tracking-widest transition-colors text-white/70';
-            return;
-        }
-
-        spinnerRef.current.style.top = `${Math.min(distance, PULL_MAX) - 40}px`;
-        spinnerRef.current.style.opacity = String(Math.min(distance / 40, 1));
-        spinnerRef.current.style.transition = isPullingRef.current ? 'none' : 'top 300ms cubic-bezier(.2,1,.3,1), opacity 200ms ease';
-
-        iconRef.current.style.transform = `rotate(${distance * 3}deg)`;
-        iconRef.current.style.animation = 'none';
-
-        if (ready) {
-            textRef.current.textContent = 'Отпустите';
-            textRef.current.className = 'text-[10px] font-black uppercase tracking-widest transition-colors text-white/70';
         } else {
+            spinnerRef.current.style.top = '-40px';
+            spinnerRef.current.style.opacity = '0';
+            spinnerRef.current.style.transition = 'top 300ms cubic-bezier(.2,1,.3,1), opacity 200ms ease';
+
+            iconRef.current.style.transform = '';
+            iconRef.current.style.animation = 'none';
             textRef.current.textContent = 'Потяните вниз';
             textRef.current.className = 'text-[10px] font-black uppercase tracking-widest transition-colors text-white/30';
         }
     };
 
-    const handleTouchStart = (e: React.TouchEvent) => {
-        if (activeTab !== 'pos' || activeCheck || isOverlayOpen()) return;
-        const scrollEl = getScrollContainer(e.target as HTMLElement, scrollRef.current);
-        if (!canPullToRefresh(scrollEl)) return;
-
-        touchStartY.current = e.touches[0].clientY;
-        pullScrollContainerRef.current = scrollEl;
-        isPullingRef.current = true;
-        pullReadyRef.current = false;
-    };
-
-    const handleTouchMove = (e: React.TouchEvent) => {
-        if (!isPullingRef.current || isRefreshing) return;
-
-        const scrollEl = pullScrollContainerRef.current ?? getScrollContainer(e.target as HTMLElement, scrollRef.current);
-        if (!canPullToRefresh(scrollEl)) {
-            isPullingRef.current = false;
-            shouldPreventScrollRef.current = false;
-            pullScrollContainerRef.current = null;
-            pullReadyRef.current = false;
-            updateSpinnerUI(0, false);
-            return;
-        }
-
-        const dy = e.touches[0].clientY - touchStartY.current;
-        if (dy <= 0) {
-            shouldPreventScrollRef.current = false;
-            pullReadyRef.current = false;
-            updateSpinnerUI(0, false);
-            return;
-        }
-
-        shouldPreventScrollRef.current = true;
-        // prevent default overscroll rubber-banding behavior if pulling
-        if (e.cancelable) {
-            e.preventDefault();
-        }
-
-        const damped = Math.min(dy * 0.5, PULL_MAX);
-        const ready = damped >= PULL_THRESHOLD;
-
-        if (ready !== pullReadyRef.current) {
-            if (ready) hapticFeedback('light');
-            pullReadyRef.current = ready;
-        }
-
-        updateSpinnerUI(damped, ready);
-    };
-
-    const handleTouchEnd = () => {
-        if (!isPullingRef.current) return;
-        isPullingRef.current = false;
-        shouldPreventScrollRef.current = false;
-
-        const scrollEl = pullScrollContainerRef.current;
-        pullScrollContainerRef.current = null;
-
-        if (!isRefreshing && pullReadyRef.current && canPullToRefresh(scrollEl)) {
-            hapticFeedback('medium');
-            setIsRefreshing(true);
-            updateSpinnerUI(PULL_THRESHOLD, true, true);
-            setTimeout(() => window.location.reload(), 400);
-            return;
-        }
-
-        pullReadyRef.current = false;
-        updateSpinnerUI(0, false);
-    };
-
-    // Ensure spinner reflects refreshing state from parent immediately
     useEffect(() => {
         if (isRefreshing) {
             updateSpinnerUI(PULL_THRESHOLD, true, true);
-        } else if (!isPullingRef.current) {
+        } else {
             updateSpinnerUI(0, false, false);
         }
     }, [isRefreshing]);
 
     return (
-        <div
-            className="contents relative h-full w-full"
-            ref={containerRef}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-        >
+        <div className="contents relative h-full w-full">
             {/* ── Spinner UI ── */}
             {activeTab === 'pos' && !activeCheck && (
                 <div

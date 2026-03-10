@@ -53,7 +53,8 @@ html {
   overscroll-behavior: none;
   overscroll-behavior-x: none;
   font-size: 17px;
-  touch-action: manipulation;
+  /* pan-y allows vertical scroll in nested containers (Telegram WebView) */
+  touch-action: pan-y pan-x;
 }
 
 @media (min-width: 1024px) {
