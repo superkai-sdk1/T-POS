@@ -12,7 +12,7 @@ import { ShiftAnalytics as ShiftAnalyticsModal } from '@/components/shift/ShiftA
 import {
   Receipt, Package, BarChart3, LogOut, Settings, Calendar,
   PlayCircle, StopCircle, AlertTriangle, X, Plus,
-  PanelLeftClose, PanelLeftOpen,
+  PanelLeftClose, PanelLeftOpen, RefreshCw,
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -48,7 +48,6 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const [pullDistance, setPullDistance] = useState(0);
   const [pullReady, setPullReady] = useState(false);
   const isPullingRef = useRef(false);
-  const pullDirectionLock = useRef<'none' | 'pull' | 'scroll'>('none');
 
   const tabs = useMemo(() => isOwner()
     ? [
@@ -205,41 +204,32 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
 
   const PULL_THRESHOLD = 80;
   const PULL_MAX = 120;
-  const PULL_DIRECTION_PX = 18;
-  const SCROLL_TOP_MAX = 2;
+
+  const canPullToRefresh = () => {
+    const el = scrollRef.current;
+    if (!el) return false;
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    const atTop = scrollTop <= 0;
+    const noScrollNeeded = scrollHeight <= clientHeight + 2;
+    return atTop && noScrollNeeded;
+  };
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (activeTab !== 'pos' || activeCheck || isOverlayOpen()) return;
-    if (!scrollRef.current || scrollRef.current.scrollTop > SCROLL_TOP_MAX) return;
+    if (!canPullToRefresh()) return;
     touchStartY.current = e.touches[0].clientY;
     isPullingRef.current = true;
-    pullDirectionLock.current = 'none';
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isPullingRef.current || isRefreshing) return;
-    if (!scrollRef.current) return;
-    if (scrollRef.current.scrollTop > SCROLL_TOP_MAX) {
+    if (!canPullToRefresh()) {
       isPullingRef.current = false;
-      pullDirectionLock.current = 'none';
       setPullDistance(0);
       setPullReady(false);
       return;
     }
     const dy = e.touches[0].clientY - touchStartY.current;
-
-    if (pullDirectionLock.current === 'none') {
-      if (dy > PULL_DIRECTION_PX) pullDirectionLock.current = 'pull';
-      else if (dy < -PULL_DIRECTION_PX) {
-        pullDirectionLock.current = 'scroll';
-        isPullingRef.current = false;
-        setPullDistance(0);
-        setPullReady(false);
-        return;
-      } else return;
-    }
-    if (pullDirectionLock.current === 'scroll') return;
-
     if (dy <= 0) {
       setPullDistance(0);
       setPullReady(false);
@@ -257,8 +247,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const handleTouchEnd = () => {
     if (!isPullingRef.current) return;
     isPullingRef.current = false;
-    pullDirectionLock.current = 'none';
-    if (!isRefreshing && pullReady) {
+    if (!isRefreshing && pullReady && canPullToRefresh()) {
       hapticFeedback('medium');
       setIsRefreshing(true);
       setPullDistance(PULL_THRESHOLD);
@@ -455,7 +444,21 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                   )}
                 </button>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (!isRefreshing) {
+                      hapticFeedback('medium');
+                      setIsRefreshing(true);
+                      setTimeout(() => window.location.reload(), 200);
+                    }
+                  }}
+                  disabled={isRefreshing}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white/40 hover:text-white/70 active:scale-90 transition-all shrink-0 disabled:opacity-50"
+                  aria-label="Обновить"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </button>
                 <div className="flex flex-col items-end">
                   <span className="text-[9px] text-white/40 uppercase tracking-widest">В кассе</span>
                   <span className="text-xl font-black tracking-tight text-white italic tabular-nums">

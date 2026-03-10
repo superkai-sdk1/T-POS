@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/ui/Drawer';
 import { Input } from '@/components/ui/Input';
-import { ShiftHistory } from '@/components/shift/ShiftHistory';
+import { ShiftClosedChecks } from '@/components/shift/ShiftClosedChecks';
 import { Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen, Home, Building2, Warehouse, Star, GraduationCap, Gamepad2, RotateCcw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Profile, Space, VisitTariff, ClientTier, Check } from '@/types';
@@ -408,8 +408,8 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         {/* FAB integrated into floating nav in Layout */}
       </div>
 
-      <Drawer open={showHistory} onClose={() => setShowHistory(false)} title="История смен">
-        <ShiftHistory />
+      <Drawer open={showHistory} onClose={() => setShowHistory(false)} title="Закрытые чеки смены">
+        <ShiftClosedChecks />
       </Drawer>
 
       <Drawer open={showRefunds} onClose={() => setShowRefunds(false)} title="Возвраты" size="md">
