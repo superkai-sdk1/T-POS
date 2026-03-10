@@ -11,11 +11,17 @@
   --safe-bottom: max(var(--tg-safe-bottom), env(safe-area-inset-bottom, 0px));
   --safe-left: max(var(--tg-safe-left), env(safe-area-inset-left, 0px));
   --safe-right: max(var(--tg-safe-right), env(safe-area-inset-right, 0px));
+  /* iOS PWA sometimes reports exaggerated insets; cap to iPhone home-indicator max (~34px) */
+  --safe-bottom-capped: min(var(--safe-bottom), 34px);
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
 
   --nav-height: 3.5rem;
+  /* Mobile bottom bar geometry (content area + safe area) */
+  --bottom-bar-content-height: 64px;
+  --bottom-bar-height: calc(var(--bottom-bar-content-height) + var(--safe-bottom-capped));
+  --fab-bottom-offset: calc(var(--bottom-bar-height) + 12px);
   /* PWA/MiniApp: use dvh when supported so address bar doesn't change layout */
   --app-height: 100vh;
   --app-height-dynamic: 100dvh;

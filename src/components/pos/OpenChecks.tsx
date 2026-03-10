@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback, memo, startTransition } from 'react';
+import { createPortal } from 'react-dom';
 import { usePOSStore } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
 import { Button } from '@/components/ui/Button';
@@ -357,8 +358,8 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           </div>
         </div>
 
-        {/* Сетка чеков — уменьшенные карточки */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 pb-24 min-h-0 scrollbar-none">
+        {/* Сетка чеков — скролл делаем на уровне Layout (без вложенного overflow) */}
+        <div className="flex-1 overflow-x-hidden px-4 sm:px-6 min-h-0 scrollbar-none">
           {!checksLoaded ? (
             <div className="grid grid-cols-2 gap-2.5">
               {[1, 2, 3, 4].map((i) => (
@@ -387,25 +388,25 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           )}
         </div>
 
-        {/* FAB — закреплён над панелью навигации (fixed) */}
-        <div
-          className="fixed left-0 right-0 px-4 sm:px-6 pointer-events-none z-[65] flex justify-center"
-          style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
-        >
-          <div className="max-w-xl mx-auto flex justify-center">
-            <button
-              type="button"
-              onClick={() => {
-                if (activeShift) setShowNewCheck(true);
-              }}
-              disabled={!activeShift}
-              className="pointer-events-auto flex items-center gap-2 px-6 py-3.5 bg-[#8b5cf6] rounded-[20px] font-black uppercase tracking-widest shadow-[0_10px_24px_rgba(139,92,246,0.35)] hover:scale-105 active:scale-95 transition-all text-xs text-white disabled:opacity-40 disabled:hover:scale-100"
-            >
-              <PlusCircle className="w-5 h-5" />
-              Новый чек
-            </button>
-          </div>
-        </div>
+        {/* FAB — рендерим в body (iOS overflow scroll ломает fixed внутри) */}
+        {typeof document !== 'undefined' && createPortal(
+          <div className="lg:hidden fixed left-0 right-0 pointer-events-none z-[65] flex justify-center px-4 sm:px-6" style={{ bottom: 'var(--fab-bottom-offset)' }}>
+            <div className="max-w-xl mx-auto flex justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeShift) setShowNewCheck(true);
+                }}
+                disabled={!activeShift}
+                className="pointer-events-auto flex items-center gap-2 px-6 py-3.5 bg-[#8b5cf6] rounded-[20px] font-black uppercase tracking-widest shadow-[0_10px_24px_rgba(139,92,246,0.35)] hover:scale-105 active:scale-95 transition-all text-xs text-white disabled:opacity-40 disabled:hover:scale-100"
+              >
+                <PlusCircle className="w-5 h-5" />
+                Новый чек
+              </button>
+            </div>
+          </div>,
+          document.body
+        )}
       </div>
 
       <Drawer open={showHistory} onClose={() => setShowHistory(false)} title="История смен">

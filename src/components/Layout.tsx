@@ -41,6 +41,9 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const scrollRef = useRef<HTMLElement>(null);
   const touchStartY = useRef(0);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [pullReady, setPullReady] = useState(false);
+  const isPullingRef = useRef(false);
 
   const tabs = useMemo(() => isOwner()
     ? [
@@ -191,18 +194,41 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
     if (activeTab !== 'pos' || activeCheck || isOverlayOpen()) return;
     if (!scrollRef.current || scrollRef.current.scrollTop > 5) return;
     touchStartY.current = e.touches[0].clientY;
+    isPullingRef.current = true;
+    setPullDistance(0);
+    setPullReady(false);
   };
   const handleTouchMove = (e: React.TouchEvent) => {
     if (activeTab !== 'pos' || activeCheck || isOverlayOpen()) return;
     if (isRefreshing || !scrollRef.current || scrollRef.current.scrollTop > 5) return;
+    if (!isPullingRef.current) return;
     const dy = e.touches[0].clientY - touchStartY.current;
-    if (dy > 120) {
+    if (dy <= 0) {
+      setPullDistance(0);
+      setPullReady(false);
+      return;
+    }
+    const clamped = Math.min(dy, 140);
+    setPullDistance(clamped);
+    setPullReady(clamped >= 110);
+  };
+
+  const handleTouchEnd = () => {
+    if (!isPullingRef.current) return;
+    isPullingRef.current = false;
+    if (activeTab !== 'pos' || activeCheck || isOverlayOpen()) {
+      setPullDistance(0);
+      setPullReady(false);
+      return;
+    }
+    if (!isRefreshing && pullReady) {
       hapticFeedback('medium');
       setIsRefreshing(true);
-      setTimeout(() => {
-        window.location.reload();
-      }, 300);
+      setTimeout(() => window.location.reload(), 250);
+      return;
     }
+    setPullDistance(0);
+    setPullReady(false);
   };
 
   return (
@@ -431,29 +457,56 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           ref={scrollRef}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
-          className={`flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
-          style={{ WebkitOverflowScrolling: 'touch' }}
+          onTouchEnd={handleTouchEnd}
+          className={`flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
+          style={{ WebkitOverflowScrolling: 'touch', paddingBottom: 'var(--bottom-bar-height)' }}
         >
+          {activeTab === 'pos' && !activeCheck && (
+            <div
+              className="pointer-events-none sticky top-0 z-[50] flex justify-center"
+              style={{
+                height: 0,
+                transform: `translateY(${Math.max(0, Math.min(pullDistance, 90))}px)`,
+                transition: isPullingRef.current ? 'none' : 'transform 180ms ease',
+              }}
+            >
+              <div className="mt-2 px-3 py-2 rounded-2xl border border-white/10 bg-[#0d0d12]/80 backdrop-blur-xl flex items-center gap-2">
+                <div
+                  className={`w-4 h-4 rounded-full border-2 ${
+                    isRefreshing
+                      ? 'border-white/20 border-t-white/70 animate-spin'
+                      : pullReady
+                        ? 'border-violet-400/40 border-t-violet-400'
+                        : 'border-white/20 border-t-white/40'
+                  }`}
+                />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/50">
+                  {isRefreshing ? 'Обновляю…' : pullReady ? 'Отпустите для обновления' : 'Потяните вниз для обновления'}
+                </span>
+              </div>
+            </div>
+          )}
           {children}
         </main>
 
         {/* ── Mobile bottom nav — рендер в body, жёстко прижата к низу viewport ── */}
         {typeof document !== 'undefined' && createPortal(
           <nav
-            className="lg:hidden fixed left-0 right-0 bottom-0 z-[60] bg-[#0d0d12]/95 backdrop-blur-2xl border-t border-white/5 px-8 sm:px-12 flex items-center justify-between"
+            className="lg:hidden fixed left-0 right-0 bottom-0 z-[60] bg-[#0d0d12]/95 backdrop-blur-2xl border-t border-white/5 px-6 sm:px-12 flex items-end justify-between"
             style={{
-              paddingBottom: 'max(8px, min(env(safe-area-inset-bottom, 0px), 34px))',
-              minHeight: '4rem',
+              paddingBottom: 'var(--safe-bottom-capped)',
+              paddingTop: '10px',
+              height: 'var(--bottom-bar-height)',
             }}
           >
-            <div className="flex w-full max-w-3xl mx-auto items-center justify-between">
+            <div className="flex w-full max-w-3xl mx-auto items-end justify-between">
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => onTabChange(tab.id)}
-                    className={`flex flex-col items-center justify-center gap-1.5 transition-all duration-200 flex-1 min-h-[48px] ${isActive ? 'text-[#8b5cf6] scale-110' : 'text-white/20 hover:text-white/40'}`}
+                    className={`flex flex-col items-center justify-end gap-1.5 transition-all duration-200 flex-1 min-h-[44px] ${isActive ? 'text-[#8b5cf6] scale-110' : 'text-white/20 hover:text-white/40'}`}
                   >
                     <tab.icon className="w-6 h-6 shrink-0" />
                     <span className="text-[9px] font-black uppercase tracking-widest truncate w-full px-0.5">
