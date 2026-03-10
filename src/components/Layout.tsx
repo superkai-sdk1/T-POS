@@ -361,8 +361,46 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
         className="flex-1 flex flex-col overflow-hidden transition-all duration-300"
         style={{ marginLeft: typeof window !== 'undefined' && window.innerWidth >= 1024 ? (isSidebarExpanded ? '240px' : '72px') : 0 }}
       >
-        {/* ── Mobile header: только для не-POS; POS = OpenChecks как главный экран ── */}
-        {activeTab !== 'pos' && (
+        {/* ── Mobile header: POS — статус смены + в кассе; остальные вкладки — заголовок ── */}
+        {activeTab === 'pos' ? (
+          <header
+            className="lg:hidden shrink-0 z-40 select-none bg-[#0d0d12] border-b border-white/5"
+            style={{
+              paddingTop: 'var(--safe-top)',
+              paddingBottom: '12px',
+              paddingLeft: 'var(--safe-left)',
+              paddingRight: 'var(--safe-right)',
+            }}
+          >
+            <div className="flex items-center justify-between px-4">
+              <div className="flex items-center gap-2">
+                {activeShift ? (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#12231c] border border-[#1b3a2e] rounded-full text-[#10b981] font-bold uppercase tracking-widest text-[9px]">
+                    <div className="w-1.5 h-1.5 bg-[#10b981] rounded-full shadow-[0_0_6px_#10b981]" />
+                    Смена открыта
+                  </div>
+                ) : (
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/30">Смена закрыта</span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col items-end">
+                  <span className="text-[9px] text-white/40 uppercase tracking-widest">В кассе</span>
+                  <span className="text-xl font-black tracking-tight text-white italic tabular-nums">
+                    {cashInRegister != null ? `${cashInRegister.toLocaleString('ru-RU')} ₽` : '—'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => useAuthStore.getState().logout()}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white/40 hover:text-rose-400 active:scale-90 transition-all shrink-0"
+                  aria-label="Выйти"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </header>
+        ) : (
           <header
             className="lg:hidden shrink-0 z-40 select-none relative"
             style={{
@@ -392,17 +430,17 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           ref={scrollRef}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
-          className={`flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
+          className={`flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
           style={{ WebkitOverflowScrolling: 'touch' }}
         >
           {children}
         </main>
 
-        {/* ── Mobile bottom nav — финальный дизайн ── */}
+        {/* ── Mobile bottom nav — прижата к низу экрана (PWA) ── */}
         <nav
-          className="lg:hidden shrink-0 z-[60] h-24 bg-[#0d0d12]/90 backdrop-blur-2xl border-t border-white/5 px-8 sm:px-12 flex items-center justify-between"
+          className="lg:hidden fixed bottom-0 left-0 right-0 z-[60] h-20 min-h-[4rem] bg-[#0d0d12]/95 backdrop-blur-2xl border-t border-white/5 px-8 sm:px-12 flex items-center justify-between"
           style={{
-            paddingBottom: 'max(var(--tg-safe-bottom), env(safe-area-inset-bottom, 0px))',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)',
             transform: 'translateZ(0)',
           }}
         >

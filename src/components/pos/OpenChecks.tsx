@@ -71,38 +71,38 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
     <button
       type="button"
       onClick={() => onSelect(check)}
-      className={`relative flex flex-col justify-between p-4 rounded-[32px] transition-all border min-h-[160px] text-left active:scale-[0.98] ${
+      className={`relative flex flex-col justify-between p-3 rounded-[24px] transition-all border min-h-[120px] text-left active:scale-[0.98] ${
         isEmpty
           ? 'bg-transparent border-dashed border-white/5 opacity-30'
-          : 'bg-[#1b1b26] border-white/5 shadow-2xl'
+          : 'bg-[#1b1b26] border-white/5 shadow-xl'
       }`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2">
         <div className="relative shrink-0">
-          <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#252535] border border-white/10 flex items-center justify-center shadow-inner">
+          <div className="w-10 h-10 rounded-xl overflow-hidden bg-[#252535] border border-white/10 flex items-center justify-center shadow-inner">
             {hasSpace ? (
               (() => {
                 const Icon = spaceIconMap[check.space!.type] || DoorOpen;
-                return <Icon className="w-7 h-7 text-violet-400" />;
+                return <Icon className="w-5 h-5 text-violet-400" />;
               })()
             ) : avatarUrl ? (
               <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
-              <User className={`w-7 h-7 ${isEmpty ? 'text-white/5' : 'text-white/20'}`} />
+              <User className={`w-5 h-5 ${isEmpty ? 'text-white/5' : 'text-white/20'}`} />
             )}
           </div>
           {!isEmpty && (
-            <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#0d0d12] rounded-full flex items-center justify-center">
-              <div className="w-2 h-2 rounded-full bg-[#10b981] shadow-[0_0_6px_#10b981]" />
+            <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-[#0d0d12] rounded-full flex items-center justify-center">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#10b981] shadow-[0_0_4px_#10b981]" />
             </div>
           )}
         </div>
-        <div className="flex-1 pt-1 overflow-hidden min-w-0">
-          <h3 className="text-[13px] font-black tracking-tight uppercase leading-tight line-clamp-2 text-white/90">
+        <div className="flex-1 pt-0.5 overflow-hidden min-w-0">
+          <h3 className="text-[11px] font-black tracking-tight uppercase leading-tight line-clamp-2 text-white/90">
             {displayName}
           </h3>
-          <div className="flex items-center gap-1 text-[8px] font-bold text-white/20 uppercase tracking-widest mt-1.5">
-            <Clock className="w-2.5 h-2.5 shrink-0" />
+          <div className="flex items-center gap-0.5 text-[7px] font-bold text-white/20 uppercase tracking-widest mt-1">
+            <Clock className="w-2 h-2 shrink-0" />
             <ElapsedTime since={check.created_at} />
           </div>
         </div>
@@ -110,7 +110,7 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
 
       <div className="flex justify-end items-end mt-auto">
         <div
-          className={`text-2xl font-black italic tracking-tighter tabular-nums ${
+          className={`text-lg font-black italic tracking-tighter tabular-nums ${
             isEmpty ? 'text-white/5' : 'text-[#8b5cf6]'
           }`}
         >
@@ -124,7 +124,6 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
 export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const { openChecks, loadOpenChecks, createCheck, selectCheck, addToCart, saveCartToDb, inventory, checksLoaded } = usePOSStore();
   const activeShift = useShiftStore((s) => s.activeShift);
-  const cashInRegister = useShiftStore((s) => s.cashInRegister);
   const [showNewCheck, setShowNewCheck] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showRefunds, setShowRefunds] = useState(false);
@@ -324,102 +323,75 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     return null;
   };
 
-  const kassaAmount = cashInRegister != null ? cashInRegister : 0;
   const activeCount = openChecks.length;
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 relative bg-[#0d0d12] text-white" style={{ paddingTop: 'var(--safe-top)' }}>
+    <div className="flex-1 flex flex-col min-h-0 relative bg-[#0d0d12] text-white">
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden animate-fade-in">
-        {/* Шапка смены — финальный дизайн */}
-        {activeShift && (
-          <div className="px-6 pt-12 pb-6 text-center shrink-0 space-y-1">
-            <div className="flex justify-center mb-2">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-[#12231c] border border-[#1b3a2e] rounded-full text-[#10b981] font-bold uppercase tracking-widest text-[10px]">
-                <div className="w-2 h-2 bg-[#10b981] rounded-full shadow-[0_0_8px_#10b981]" />
-                Смена открыта
-              </div>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-white/40 text-[10px] font-black uppercase tracking-widest mb-1">В кассе</span>
-              <h1 className="text-5xl font-black tracking-tight text-white italic">
-                {kassaAmount.toLocaleString('ru-RU')} ₽
-              </h1>
-            </div>
-          </div>
-        )}
-
-        {/* Заголовок КАССА и Действия — финальный дизайн */}
-        <div className="px-6 sm:px-10 mb-6 shrink-0">
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white">КАССА</h2>
-            <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">
+        {/* Заголовок КАССА и Действия — компактно */}
+        <div className="px-4 sm:px-6 py-3 shrink-0">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xl font-black italic uppercase tracking-tighter text-white">Касса</h2>
+            <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">
               {activeCount} активн{activeCount === 1 ? 'ый' : 'ых'}
             </span>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <button
               type="button"
               onClick={() => setShowHistory(true)}
-              className="flex-1 flex items-center justify-center gap-3 py-4 bg-[#1b1b26] hover:bg-[#252535] rounded-2xl transition-all border border-white/5 shadow-xl group"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#1b1b26] hover:bg-[#252535] rounded-xl transition-all border border-white/5 shadow-lg group"
             >
-              <History className="w-5 h-5 text-white/40 group-hover:text-violet-400" />
-              <span className="text-[11px] font-black uppercase tracking-widest text-white/40 group-hover:text-white">История</span>
+              <History className="w-4 h-4 text-white/40 group-hover:text-violet-400" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-white">История</span>
             </button>
             <button
               type="button"
               onClick={() => setShowRefunds(true)}
               disabled={!activeShift}
-              className="flex-1 flex items-center justify-center gap-3 py-4 bg-[#1b1b26] hover:bg-rose-500/10 rounded-2xl transition-all border border-white/5 shadow-xl group disabled:opacity-40 disabled:pointer-events-none"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#1b1b26] hover:bg-rose-500/10 rounded-xl transition-all border border-white/5 shadow-lg group disabled:opacity-40 disabled:pointer-events-none"
             >
-              <RotateCcw className="w-5 h-5 text-rose-500/40 group-hover:text-rose-500" />
-              <span className="text-[11px] font-black uppercase tracking-widest text-rose-500/40 group-hover:text-rose-500">Возвраты</span>
+              <RotateCcw className="w-4 h-4 text-rose-500/40 group-hover:text-rose-500" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-rose-500/40 group-hover:text-rose-500">Возвраты</span>
             </button>
           </div>
         </div>
 
-        {/* Сетка чеков — финальный дизайн */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 sm:px-10 pb-44 min-h-0 scrollbar-none">
+        {/* Сетка чеков — уменьшенные карточки */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 pb-24 min-h-0 scrollbar-none">
           {!checksLoaded ? (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2.5">
               {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className="p-4 rounded-[32px] animate-pulse border border-white/5 min-h-[160px] bg-[#1b1b26]"
+                  className="p-3 rounded-[24px] animate-pulse border border-white/5 min-h-[120px] bg-[#1b1b26]"
                   style={{ opacity: 1 - i * 0.2 }}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className="w-14 h-14 rounded-2xl bg-[#252535] shrink-0" />
-                    <div className="flex-1 space-y-1.5 min-w-0">
-                      <div className="h-3 w-16 rounded bg-white/5" />
-                      <div className="h-2.5 w-10 rounded bg-white/5" />
+                  <div className="flex items-start gap-2">
+                    <div className="w-10 h-10 rounded-xl bg-[#252535] shrink-0" />
+                    <div className="flex-1 space-y-1 min-w-0">
+                      <div className="h-2.5 w-12 rounded bg-white/5" />
+                      <div className="h-2 w-8 rounded bg-white/5" />
                     </div>
                   </div>
-                  <div className="mt-2 h-7 w-24 rounded bg-white/5 ml-auto" />
+                  <div className="mt-1.5 h-5 w-16 rounded bg-white/5 ml-auto" />
                 </div>
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2.5">
               {openChecks.map((check) => (
                 <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} />
               ))}
-              {/* Пустая ячейка добавления — финальный дизайн */}
-              <button
-                type="button"
-                onClick={() => activeShift && setShowNewCheck(true)}
-                disabled={!activeShift}
-                className="border-2 border-dashed border-white/5 rounded-[32px] flex items-center justify-center min-h-[160px] group cursor-pointer hover:bg-white/[0.01] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
-              >
-                <div className="w-10 h-10 rounded-full border-2 border-white/5 flex items-center justify-center group-hover:border-violet-500/30 transition-colors">
-                  <Plus className="w-6 h-6 text-white/5 group-hover:text-violet-500/40" />
-                </div>
-              </button>
             </div>
           )}
         </div>
 
-        {/* FAB — финальный дизайн (фиолетовый) */}
-        <div className="absolute bottom-28 left-0 right-0 px-10 pointer-events-none z-50">
+        {/* FAB — закреплён над панелью навигации (fixed) */}
+        <div
+          className="fixed left-0 right-0 px-4 sm:px-6 pointer-events-none z-[65] flex justify-center"
+          style={{ bottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}
+        >
           <div className="max-w-xl mx-auto flex justify-center">
             <button
               type="button"
@@ -427,9 +399,9 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                 if (activeShift) setShowNewCheck(true);
               }}
               disabled={!activeShift}
-              className="pointer-events-auto flex items-center gap-3 px-10 py-5 bg-[#8b5cf6] rounded-[24px] font-black uppercase tracking-widest shadow-[0_15px_30px_rgba(139,92,246,0.4)] hover:scale-105 active:scale-95 transition-all text-sm text-white disabled:opacity-40 disabled:hover:scale-100"
+              className="pointer-events-auto flex items-center gap-2 px-6 py-3.5 bg-[#8b5cf6] rounded-[20px] font-black uppercase tracking-widest shadow-[0_10px_24px_rgba(139,92,246,0.35)] hover:scale-105 active:scale-95 transition-all text-xs text-white disabled:opacity-40 disabled:hover:scale-100"
             >
-              <PlusCircle className="w-6 h-6" />
+              <PlusCircle className="w-5 h-5" />
               Новый чек
             </button>
           </div>
