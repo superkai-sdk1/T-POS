@@ -98,12 +98,12 @@ const CartItemRow = memo(function CartItemRow({
       onDecrement={() => onUpdateQty(ci.item.id, Math.max(1, ci.quantity - 1), modKey)}
       onRemove={() => onRemove(ci.item.id, modKey)}
     >
-      <div className="flex items-center gap-2.5 py-2 px-1">
+      <div className="flex items-center justify-between p-4 bg-white/5 backdrop-blur-lg rounded-[1.5rem] border border-white/5 hover:border-white/15 transition-all shadow-lg">
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-medium text-[var(--c-text)] truncate leading-tight">
+          <p className="font-bold text-sm tracking-tight text-white truncate">
             {ci.item.name}
           </p>
-          <p className="text-[11px] text-[var(--c-muted)] mt-0.5 tabular-nums">{fmtCur(ci.item.price)}</p>
+          <p className="text-[10px] text-white/30 font-bold mt-0.5 uppercase tracking-widest">{fmtCur(ci.item.price)}</p>
           {ci.modifiers && ci.modifiers.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
               {ci.modifiers.map((m, idx) => (
@@ -114,26 +114,26 @@ const CartItemRow = memo(function CartItemRow({
             </div>
           )}
         </div>
-        <div className="flex items-center gap-px bg-[var(--c-surface)] rounded-lg shrink-0">
-          <button
-            onClick={() => { hapticFeedback('light'); onUpdateQty(ci.item.id, ci.quantity - 1, modKey); }}
-            className="w-7 h-7 flex items-center justify-center active:bg-[var(--c-surface-hover)] rounded-l-lg transition-colors shrink-0"
-          >
-            <Minus className="w-3 h-3 text-[var(--c-hint)]" />
-          </button>
-          <span className="w-6 text-center text-xs font-bold text-[var(--c-text)] tabular-nums shrink-0">
-            {ci.quantity}
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center bg-black/40 rounded-2xl border border-white/5 p-0.5">
+            <button
+              onClick={() => { hapticFeedback('light'); onUpdateQty(ci.item.id, ci.quantity - 1, modKey); }}
+              className="p-2 hover:text-[#8b5cf6] transition-colors"
+            >
+              <Minus className="w-3.5 h-3.5" />
+            </button>
+            <span className="w-7 text-center font-black italic text-sm text-white">{ci.quantity}</span>
+            <button
+              onClick={() => { hapticFeedback('light'); onUpdateQty(ci.item.id, ci.quantity + 1, modKey); }}
+              className="p-2 hover:text-[#8b5cf6] transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <span className="w-16 text-right font-black italic text-lg text-white/90 tabular-nums">
+            {fmtCur(unitPrice * ci.quantity)}
           </span>
-          <button
-            onClick={() => { hapticFeedback('light'); onUpdateQty(ci.item.id, ci.quantity + 1, modKey); }}
-            className="w-7 h-7 flex items-center justify-center active:bg-[var(--c-surface-hover)] rounded-r-lg transition-colors shrink-0"
-          >
-            <Plus className="w-3 h-3 text-[var(--c-hint)]" />
-          </button>
         </div>
-        <p className="text-[13px] font-bold text-[var(--c-text)] min-w-[48px] text-right tabular-nums shrink-0">
-          {fmtCur(unitPrice * ci.quantity)}
-        </p>
       </div>
     </CartSwipeableRow>
   );
@@ -452,69 +452,62 @@ export function CheckView({ onBack }: CheckViewProps) {
     <div className="flex flex-col flex-1">
       {swipeIndicatorStyle && <div style={swipeIndicatorStyle} />}
       {overlayStyle && <div style={overlayStyle} />}
-      {/* Sticky header */}
-      <div className="sticky top-0 z-20 -mx-4 px-4 py-2 bg-[var(--c-bg)]/95 backdrop-blur-sm border-b border-[var(--c-border)] mb-3" style={{ transform: 'translateZ(0)' }}>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleBack}
-            className="w-9 h-9 rounded-xl bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform shrink-0"
-          >
-            <ArrowLeft className="w-4 h-4 text-[var(--c-text)]" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-[13px] font-bold text-[var(--c-text)] truncate leading-tight">
-              {activeCheck.space
-                ? activeCheck.space.name
-                : (() => {
-                  const names: string[] = [];
-                  if (activeCheck.player?.nickname) names.push(activeCheck.player.nickname);
-                  if (activeCheck.guest_names) names.push(...activeCheck.guest_names.split(', '));
-                  return names.length > 0 ? names.join(', ') : 'Без клиента';
-                })()
-              }
-            </h2>
-            <p className="text-[10px] text-[var(--c-hint)] leading-tight">
-              {activeCheck.space && activeCheck.player && <>{activeCheck.player.nickname}{activeCheck.guest_names ? `, ${activeCheck.guest_names}` : ''} · </>}
-              {new Date(activeCheck.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-              {cartCount > 0 && <> · {cartCount} поз.</>}
-            </p>
+      {/* Glass header */}
+      <div className="sticky top-0 z-20 -mx-4 px-3 py-2 mb-3" style={{ transform: 'translateZ(0)' }}>
+        <div className="flex items-center justify-between bg-white/5 backdrop-blur-xl p-3 rounded-[2rem] border border-white/10 shadow-xl">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={handleBack}
+              className="p-2.5 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors shrink-0 active:scale-90"
+            >
+              <ArrowLeft className="w-5 h-5 text-white" />
+            </button>
+            <div className="min-w-0">
+              <h2 className="text-[15px] font-black italic uppercase leading-none truncate text-white">
+                {activeCheck.space
+                  ? activeCheck.space.name
+                  : (() => {
+                    const names: string[] = [];
+                    if (activeCheck.player?.nickname) names.push(activeCheck.player.nickname);
+                    if (activeCheck.guest_names) names.push(...activeCheck.guest_names.split(', '));
+                    return names.length > 0 ? names.join(', ') : 'Без клиента';
+                  })()
+                }
+              </h2>
+              <p className="text-[10px] text-white/40 font-bold uppercase mt-0.5 tracking-widest">
+                {new Date(activeCheck.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                {cartCount > 0 && <> · {cartCount} поз.</>}
+              </p>
+            </div>
           </div>
-          {total > 0 && (
-            <span className="text-base font-black text-[var(--c-text)] tabular-nums shrink-0">
-              {fmtCur(total)}
-            </span>
-          )}
-          <div className="flex gap-1 shrink-0">
+          <div className="flex gap-1.5 shrink-0">
             <button
               onClick={() => { loadDiscountsList(); setShowDiscounts(true); }}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 transition-transform ${appliedDiscounts.length > 0 ? 'bg-pink-500/10' : 'bg-[var(--c-surface)]'
-                }`}
+              className={`p-2.5 rounded-2xl border transition-colors active:scale-90 ${appliedDiscounts.length > 0 ? 'bg-pink-500/10 border-pink-500/20 text-pink-400' : 'bg-white/5 border-white/10 text-white/40'}`}
             >
-              <Percent className={`w-3.5 h-3.5 ${appliedDiscounts.length > 0 ? 'text-pink-400' : 'text-[var(--c-muted)]'}`} />
+              <Percent className="w-[18px] h-[18px]" />
             </button>
             <button
               onClick={() => setShowNote(!showNote)}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center active:scale-90 transition-transform ${note ? 'bg-[var(--c-warning-bg)]' : 'bg-[var(--c-surface)]'
-                }`}
+              className={`p-2.5 rounded-2xl border transition-colors active:scale-90 ${note ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-white/5 border-white/10 text-white/40'}`}
             >
-              <MessageSquare className={`w-3.5 h-3.5 ${note ? 'text-[var(--c-warning)]' : 'text-[var(--c-muted)]'}`} />
+              <MessageSquare className="w-[18px] h-[18px]" />
             </button>
             <button
               onClick={() => setShowCancelConfirm(true)}
-              className="w-8 h-8 rounded-lg bg-[var(--c-danger-bg)] flex items-center justify-center active:scale-90 transition-transform"
+              className="p-2.5 bg-[#f43f5e]/10 rounded-2xl border border-[#f43f5e]/20 text-[#f43f5e] active:scale-90 transition-colors"
             >
-              <X className="w-3.5 h-3.5 text-[var(--c-danger)]" />
+              <X className="w-[18px] h-[18px]" />
             </button>
           </div>
         </div>
 
-        {/* Rental mini-bar */}
         {activeCheck.space && activeCheck.space.hourly_rate != null && (
-          <div className="flex items-center justify-between mt-1.5 px-1">
+          <div className="flex items-center justify-between mt-2 px-4">
             <div className="flex items-center gap-1.5 text-indigo-400/70">
               <Timer className="w-3 h-3" />
               <span className="text-[11px] tabular-nums">{Math.floor(rentalMinutes / 60)}ч {String(rentalMinutes % 60).padStart(2, '0')}м</span>
-              <span className="text-[var(--c-muted)]">·</span>
+              <span className="text-white/20">·</span>
               <span className="text-[11px]">{activeCheck.space.hourly_rate}₽/ч</span>
             </div>
             <span className="text-[11px] font-bold text-indigo-400 tabular-nums">{fmtCur(rentalAmount)}</span>
@@ -539,22 +532,21 @@ export function CheckView({ onBack }: CheckViewProps) {
       <div className="flex-1 pb-24">
         {cart.length === 0 ? (
           <div className="text-center py-16 animate-fade-in">
-            <div className="w-16 h-16 rounded-2xl bg-[var(--c-surface)] flex items-center justify-center mx-auto mb-3">
-              <ShoppingBag className="w-8 h-8 text-[var(--c-muted)]" />
+            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3">
+              <ShoppingBag className="w-8 h-8 text-white/20" />
             </div>
-            <p className="text-[var(--c-hint)] text-sm font-medium">Чек пока пуст</p>
-            <p className="text-xs text-[var(--c-muted)] mt-1 mb-5">Добавьте позиции из меню</p>
+            <p className="text-white/50 text-sm font-bold">Чек пока пуст</p>
+            <p className="text-xs text-white/25 mt-1 mb-5">Добавьте позиции из меню</p>
             <button
               onClick={openMenu}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold active:scale-95 transition-transform"
-              style={{ background: 'linear-gradient(135deg, var(--c-accent), var(--c-accent-light))', boxShadow: '0 4px 20px rgba(var(--c-accent-rgb), 0.3)' }}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-white text-sm font-black uppercase tracking-widest active:scale-95 transition-transform bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] shadow-xl shadow-[#8b5cf6]/30"
             >
               <Plus className="w-4 h-4" />
-              Открыть меню
+              Меню
             </button>
           </div>
         ) : (
-          <div className="space-y-1 stagger-children">
+          <div className="space-y-3 stagger-children">
             {cart.map((ci, cartIdx) => {
               const cartKey = ci.item.id + ((ci.modifiers || []).map((m) => m.id).sort().join(','));
               return (
@@ -605,37 +597,35 @@ export function CheckView({ onBack }: CheckViewProps) {
         )}
       </div>
 
-      {/* Bottom bar */}
-      <div className="sticky bottom-0 z-30 -mx-4 px-4 pb-3 pt-2 bg-gradient-to-t from-[var(--c-bg)] via-[var(--c-bg)] to-transparent" style={{ transform: 'translateZ(0)' }}>
-        <div className="max-w-5xl mx-auto flex gap-2 items-center">
-          <button
-            onClick={openMenu}
-            className="w-10 h-10 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] flex items-center justify-center active:scale-90 transition-transform shrink-0"
-          >
-            <Plus className="w-5 h-5 text-[var(--c-hint)]" />
-          </button>
-          <button
-            onClick={() => { setShowAddPlayer(true); setPlayerSearch(''); setPlayerResults([]); }}
-            className="w-10 h-10 rounded-xl bg-[var(--c-success-bg)] border border-[var(--c-success-border)] flex items-center justify-center active:scale-90 transition-transform shrink-0"
-            title="Добавить игрока"
-          >
-            <UserPlus className="w-4.5 h-4.5 text-emerald-400/70" />
-          </button>
-          <div className="flex-1 min-w-0">
+      {/* Floating bottom action bar */}
+      <div className="sticky bottom-0 z-30 -mx-4 px-3 pb-3 pt-2" style={{ transform: 'translateZ(0)' }}>
+        <div className="flex items-center justify-between gap-3 p-3 bg-black/60 backdrop-blur-2xl rounded-[2rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+          <div className="flex gap-2">
+            <button
+              onClick={openMenu}
+              className="w-11 h-11 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 text-white/40 hover:text-white active:scale-90 transition-all"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => { setShowAddPlayer(true); setPlayerSearch(''); setPlayerResults([]); }}
+              className="w-11 h-11 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 text-[#10b981] active:scale-90 transition-all"
+              title="Добавить игрока"
+            >
+              <UserPlus className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="flex items-baseline gap-2">
             {cartCount > 0 && (
-              <p className="text-xl font-black text-[var(--c-text)] tabular-nums leading-none">
-                {fmtCur(total)}
-              </p>
+              <span className="text-2xl font-black italic text-white tabular-nums">{fmtCur(total)}</span>
             )}
           </div>
           {cartCount > 0 && (
             <button
               onClick={() => { hapticFeedback('medium'); setShowPayment(true); }}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-bold text-sm active:scale-[0.96] transition-transform animate-pop-in"
-              style={{ background: 'linear-gradient(135deg, var(--c-accent), var(--c-accent-light))', boxShadow: '0 4px 20px rgba(var(--c-accent-rgb), 0.3)' }}
+              className="flex-1 max-w-[160px] bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-xl shadow-[#8b5cf6]/30 font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all text-white"
             >
-              <CreditCard className="w-4 h-4" />
-              Оплата
+              <CreditCard className="w-[18px] h-[18px]" /> Оплата
             </button>
           )}
         </div>
