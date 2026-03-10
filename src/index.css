@@ -20,7 +20,7 @@
   --nav-height: 3.5rem;
   /* Mobile bottom bar geometry */
   --bottom-bar-content-height: 49px;
-  --bottom-bar-height: calc(var(--bottom-bar-content-height) + env(safe-area-inset-bottom, 0px));
+  --bottom-bar-height: 49px;
   --fab-bottom-offset: calc(var(--bottom-bar-height) + 12px);
   /* PWA/MiniApp: use dvh when supported so address bar doesn't change layout */
   --app-height: 100vh;
@@ -49,11 +49,6 @@ textarea {
 html {
   width: 100%;
   height: 100%;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
   overflow: hidden;
   overscroll-behavior: none;
   font-size: 17px;
@@ -69,11 +64,7 @@ html {
 body {
   width: 100%;
   height: 100%;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  margin: 0;
   overflow: hidden;
   overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
@@ -81,8 +72,6 @@ body {
   color: var(--c-text);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
-  padding-left: var(--safe-left);
-  padding-right: var(--safe-right);
   transition: background 0.4s ease, color 0.3s ease;
 }
 
@@ -147,14 +136,16 @@ body::after {
 
 #root {
   width: 100%;
-  height: 100%;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  height: 100dvh;
+  height: 100vh;
   overflow: hidden;
   z-index: 1;
+}
+
+@supports (height: 100dvh) {
+  #root {
+    height: 100dvh;
+  }
 }
 
 input[type="number"]::-webkit-inner-spin-button,
