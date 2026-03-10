@@ -389,6 +389,9 @@ export function CheckView({ onBack }: CheckViewProps) {
     return counts;
   }, [inventory]);
 
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+
   const searchPlayersForAdd = useCallback((query: string) => {
     setPlayerSearch(query);
     if (playerSearchTimer.current) clearTimeout(playerSearchTimer.current);
@@ -401,6 +404,7 @@ export function CheckView({ onBack }: CheckViewProps) {
         .ilike('nickname', `%${query}%`)
         .is('deleted_at', null)
         .limit(20);
+      if (!mountedRef.current) return;
       setPlayerResults((data as Profile[]) || []);
       setIsPlayerSearching(false);
     }, 300);

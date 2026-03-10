@@ -505,13 +505,13 @@ export const usePOSStore = create<POSState>((set, get) => ({
       }
     }
 
-    const newCart: CartItem[] = loadedItems.map((ci) => ({
-      item: ci.item!,
+    const newCart: CartItem[] = loadedItems.filter((ci) => ci.item).map((ci) => ({
+      item: ci.item as InventoryItem,
       quantity: ci.quantity,
       modifiers: modMap[ci.id] || undefined,
     }));
 
-    const mkFp = (c: CartItem[]) => c.map((ci) => {
+    const mkFp = (c: CartItem[]) => c.filter((ci) => ci?.item).map((ci) => {
       const mids = (ci.modifiers || []).map((m) => m.id).sort().join('+');
       return `${ci.item.id}:${ci.quantity}:${mids}`;
     }).sort().join('|');
@@ -537,13 +537,13 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const { activeCheck, cart } = get();
     if (!activeCheck) return true;
 
-    const modKey = cart.map((c) => {
+    const modKey = cart.filter((c) => c?.item).map((c) => {
       const mids = (c.modifiers || []).map((m) => m.id).sort().join('+');
       return `${c.item.id}:${c.quantity}:${mids}`;
     }).sort().join('|');
     if (modKey === _lastCartFingerprint) return true;
 
-    let success = false;
+    let success = true;
     const doSave = async () => {
       _savingCart = true;
       try {
@@ -582,7 +582,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
         const itemsToDelete: string[] = [];
         const itemsToUpsert: UpsertItem[] = [];
 
-        const cartWithKeys = cart.map(c => ({
+        const cartWithKeys = cart.filter((c) => c?.item).map(c => ({
           ...c,
           key: (c.modifiers || []).map(m => m.id).sort().join(',')
         }));
@@ -640,7 +640,10 @@ export const usePOSStore = create<POSState>((set, get) => ({
             const { error: upErr } = await supabase
               .from('check_items')
               .upsert(existingItems.map(({ _temp_modifiers, ...rest }) => { void _temp_modifiers; return rest; }));
-            if (upErr) console.error('saveCartToDb upsert error:', upErr);
+            if (upErr) {
+              console.error('saveCartToDb upsert error:', upErr);
+              success = false;
+            }
           }
 
           // Insert new items one-by-one to reliably get IDs for modifier mapping
@@ -655,6 +658,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
             if (insErr || !saved) {
               console.error('saveCartToDb insert error:', insErr);
+              success = false;
               continue;
             }
 
@@ -675,9 +679,9 @@ export const usePOSStore = create<POSState>((set, get) => ({
         }
 
         _lastCartFingerprint = modKey;
-        success = true;
       } catch (err) {
         console.error('saveCartToDb error:', err);
+        success = false;
       } finally {
         setTimeout(() => { _savingCart = false; }, 600);
         _savePromise = null;
@@ -865,7 +869,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     });
 
     const qtyByItemId = new Map<string, number>();
-    for (const c of cart) {
+    for (const c of cart.filter((x) => x?.item)) {
       qtyByItemId.set(c.item.id, (qtyByItemId.get(c.item.id) || 0) + c.quantity);
     }
     const uniqueItemIds = [...qtyByItemId.keys()];
@@ -1067,12 +1071,12 @@ export const usePOSStore = create<POSState>((set, get) => ({
       const newItemsMap = { ...state.openCheckItems, [checkId]: newItems };
 
       const prevCart = state.openCheckCarts[checkId] || [];
-      const newCart: CartItem[] = newItems.map(ci => {
+      const newCart: CartItem[] = newItems.filter((ci) => ci.item).map(ci => {
         if (ci.id === item.id && modifiers !== undefined) {
-          return { item: ci.item!, quantity: ci.quantity, modifiers };
+          return { item: ci.item as InventoryItem, quantity: ci.quantity, modifiers };
         }
         const existing = prevCart.find(pc => pc.item?.id === ci.item_id);
-        return { item: ci.item!, quantity: ci.quantity, modifiers: existing?.modifiers || [] };
+        return { item: ci.item as InventoryItem, quantity: ci.quantity, modifiers: existing?.modifiers || [] };
       });
 
       const newCartsMap = { ...state.openCheckCarts, [checkId]: newCart };

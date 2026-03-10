@@ -57,7 +57,7 @@ const fmtCur = (n: number) =>
 const CheckTile = memo(({ check, onSelect, listMode }: { check: Check; onSelect: (check: Check) => void; listMode?: boolean }) => {
   const hasSpace = !!check.space;
   const displayName = hasSpace
-    ? check.space!.name
+    ? check.space?.name ?? ''
     : (() => {
         const names: string[] = [];
         if (check.player?.nickname) names.push(check.player.nickname);
@@ -86,7 +86,7 @@ const CheckTile = memo(({ check, onSelect, listMode }: { check: Check; onSelect:
           <div className={`rounded-xl overflow-hidden bg-[#252535] border border-white/10 flex items-center justify-center shadow-inner ${listMode ? 'w-9 h-9' : 'w-10 h-10'}`}>
             {hasSpace ? (
               (() => {
-                const Icon = spaceIconMap[check.space!.type] || DoorOpen;
+                const Icon = spaceIconMap[check.space?.type ?? ''] || DoorOpen;
                 return <Icon className={listMode ? 'w-4 h-4' : 'w-5 h-5'} />;
               })()
             ) : avatarUrl ? (
@@ -162,6 +162,8 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   }, [activeShift, activeCheck]);
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   const searchPlayers = useCallback((query: string) => {
     startTransition(() => setSearchQuery(query));
@@ -173,7 +175,6 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     }
     setIsSearching(true);
     searchTimerRef.current = setTimeout(async () => {
-      // Search by nickname
       const { data } = await supabase
         .from('profiles')
         .select('*')
@@ -183,7 +184,6 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
       const nicknameResults = (data as Profile[]) || [];
       const nicknameIds = new Set(nicknameResults.map(r => r.id));
 
-      // Also search by tags — fetch all clients with tags and filter client-side
       let tagResults: Profile[] = [];
       if (nicknameResults.length < 20) {
         const { data: allWithTags } = await supabase
@@ -201,6 +201,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         }
       }
 
+      if (!mountedRef.current) return;
       setPlayers([...nicknameResults, ...tagResults].slice(0, 20));
       setIsSearching(false);
     }, 300);

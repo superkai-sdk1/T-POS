@@ -50,7 +50,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
         .single()
         .then(({ data }) => {
           if (data) setPlayerInfo(data as Profile);
-        });
+        }, () => setPlayerInfo(null));
     } else {
       setPlayerInfo(null);
     }
@@ -161,7 +161,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
     if (remainder > 0) payments.push({ method: remainderMethod, amount: remainder });
     const ok = await closeCheck(payments, 0, spaceRental);
     if (ok) {
-      await supabase
+      const { error: updErr } = await supabase
         .from('certificates')
         .update({
           balance: certBalance - certAmount,
@@ -169,8 +169,15 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
           used_by: activeCheck.player_id || null,
         })
         .eq('id', appliedCert.id);
-      hapticNotification('success');
-      onSuccess();
+      if (updErr) {
+        console.error('Certificate update error:', updErr);
+        hapticNotification('error');
+      } else {
+        hapticNotification('success');
+        onSuccess();
+      }
+    } else {
+      hapticNotification('error');
     }
     setIsProcessing(false);
   };
