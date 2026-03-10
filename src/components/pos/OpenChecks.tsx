@@ -54,7 +54,7 @@ const spaceIconMap: Record<string, typeof Home> = {
 const fmtCur = (n: number) =>
   new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
 
-const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: Check) => void }) => {
+const CheckTile = memo(({ check, onSelect, listMode }: { check: Check; onSelect: (check: Check) => void; listMode?: boolean }) => {
   const hasSpace = !!check.space;
   const displayName = hasSpace
     ? check.space!.name
@@ -71,24 +71,28 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
     <button
       type="button"
       onClick={() => onSelect(check)}
-      className={`relative flex flex-col justify-between p-3 lg:p-4 rounded-[24px] transition-all border min-h-[120px] lg:min-h-[150px] text-left active:scale-[0.98] hover:border-white/15 ${
+      className={`relative flex text-left active:scale-[0.98] transition-all border rounded-[20px] lg:rounded-2xl ${
+        listMode
+          ? 'flex-row items-center justify-between gap-3 p-3 min-h-0'
+          : 'flex-col justify-between p-3 lg:p-4 min-h-[120px] lg:min-h-[150px]'
+      } ${
         isEmpty
           ? 'bg-transparent border-dashed border-white/5 opacity-30'
-          : 'bg-[#1b1b26] border-white/5 shadow-xl hover:bg-[#1f1f30]'
+          : 'bg-[#1b1b26] border-white/5 shadow-xl hover:border-white/15 hover:bg-[#1f1f30]'
       }`}
     >
-      <div className="flex items-start gap-2">
+      <div className={`flex items-center gap-2 min-w-0 ${listMode ? 'flex-1' : 'flex items-start'}`}>
         <div className="relative shrink-0">
-          <div className="w-10 h-10 rounded-xl overflow-hidden bg-[#252535] border border-white/10 flex items-center justify-center shadow-inner">
+          <div className={`rounded-xl overflow-hidden bg-[#252535] border border-white/10 flex items-center justify-center shadow-inner ${listMode ? 'w-9 h-9' : 'w-10 h-10'}`}>
             {hasSpace ? (
               (() => {
                 const Icon = spaceIconMap[check.space!.type] || DoorOpen;
-                return <Icon className="w-5 h-5 text-violet-400" />;
+                return <Icon className={listMode ? 'w-4 h-4' : 'w-5 h-5'} />;
               })()
             ) : avatarUrl ? (
               <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
-              <User className={`w-5 h-5 ${isEmpty ? 'text-white/5' : 'text-white/20'}`} />
+              <User className={`${listMode ? 'w-4 h-4' : 'w-5 h-5'} ${isEmpty ? 'text-white/5' : 'text-white/20'}`} />
             )}
           </div>
           {!isEmpty && (
@@ -97,20 +101,20 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
             </div>
           )}
         </div>
-        <div className="flex-1 pt-0.5 overflow-hidden min-w-0">
-          <h3 className="text-[11px] font-black tracking-tight uppercase leading-tight line-clamp-2 text-white/90">
+        <div className="flex-1 overflow-hidden min-w-0">
+          <h3 className={`font-black tracking-tight uppercase leading-tight text-white/90 ${listMode ? 'text-[13px] line-clamp-1' : 'text-[11px] line-clamp-2'}`}>
             {displayName}
           </h3>
-          <div className="flex items-center gap-0.5 text-[7px] font-bold text-white/20 uppercase tracking-widest mt-1">
+          <div className="flex items-center gap-0.5 text-[7px] font-bold text-white/20 uppercase tracking-widest mt-0.5">
             <Clock className="w-2 h-2 shrink-0" />
             <ElapsedTime since={check.created_at} />
           </div>
         </div>
       </div>
 
-      <div className="flex justify-end items-end mt-auto">
+      <div className={`flex items-center shrink-0 ${listMode ? '' : 'justify-end items-end mt-auto'}`}>
         <div
-          className={`text-lg font-black italic tracking-tighter tabular-nums ${
+          className={`font-black italic tracking-tighter tabular-nums ${listMode ? 'text-base' : 'text-lg'} ${
             isEmpty ? 'text-white/5' : 'text-[#8b5cf6]'
           }`}
         >
@@ -370,7 +374,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         {/* Сетка чеков — скролл делаем на уровне Layout (без вложенного overflow) */}
         <div className="flex-1 overflow-x-hidden px-4 sm:px-6 lg:px-8 min-h-0 scrollbar-none">
           {!checksLoaded ? (
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 lg:gap-4">
+            <div className={`grid gap-3 lg:gap-4 ${activeCheck ? 'lg:grid-cols-1' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'}`}>
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div
                   key={i}
@@ -389,9 +393,13 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 lg:gap-4">
+            <div className={`grid gap-3 lg:gap-4 ${
+              activeCheck
+                ? 'lg:grid-cols-1'
+                : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+            }`}>
               {openChecks.map((check) => (
-                <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} />
+                <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} listMode={!!activeCheck} />
               ))}
             </div>
           )}

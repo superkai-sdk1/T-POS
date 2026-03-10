@@ -68,26 +68,26 @@ const MenuSheetItem = memo(function MenuSheetItem({
   const isCritical = item.stock_quantity <= item.min_threshold && item.min_threshold > 0;
   return (
     <div
-      className={`group relative border transition-all duration-500 rounded-[2rem] p-5 flex items-center gap-4 ${
+      className={`group relative border transition-all duration-500 rounded-xl lg:rounded-2xl p-3 lg:p-4 flex items-center gap-2 lg:gap-3 ${
         inCartQty > 0
-          ? `${colors.bgActive} border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.3)] ring-1 ring-white/10`
+          ? `${colors.bgActive} border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.3)] ring-1 ring-white/10`
           : isCritical
             ? 'bg-red-500/20 border-red-500/30'
             : `${colors.bg} border-white/5 hover:bg-white/[0.08]`
       }`}
     >
-      <div className="flex-1 space-y-2 text-left min-w-0">
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full shrink-0 ${colors.active} shadow-[0_0_8px_rgba(255,255,255,0.1)]`} />
-          <span className={`text-[10px] font-black uppercase tracking-[0.2em] italic truncate ${colors.text}`}>
+      <div className="flex-1 space-y-0.5 lg:space-y-1 text-left min-w-0">
+        <div className="flex items-center gap-1">
+          <div className={`w-1.5 h-1.5 lg:w-1 h-1 rounded-full shrink-0 ${colors.active} shadow-[0_0_6px_rgba(255,255,255,0.1)]`} />
+          <span className={`text-[8px] lg:text-[7px] font-black uppercase tracking-[0.15em] italic truncate ${colors.text}`}>
             {categoryName}
           </span>
         </div>
-        <h3 className="text-lg font-black uppercase italic tracking-tighter leading-none text-white/90 truncate">
+        <h3 className="text-[13px] lg:text-sm font-black uppercase italic tracking-tighter leading-none text-white/90 truncate">
           {item.name}
         </h3>
-        <div className="flex items-center gap-2">
-          <span className="text-xl font-black text-white italic tracking-tighter tabular-nums">{fmtCur(item.price)}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm lg:text-base font-black text-white italic tracking-tighter tabular-nums">{fmtCur(item.price)}</span>
           {item.min_threshold > 0 && (
             <Badge variant={isCritical ? 'danger' : 'default'} size="sm">
               Ост: {item.stock_quantity}
@@ -95,23 +95,23 @@ const MenuSheetItem = memo(function MenuSheetItem({
           )}
         </div>
       </div>
-      <div className="flex flex-col items-center gap-2 shrink-0">
+      <div className="flex flex-col items-center gap-1 shrink-0">
         <button
           onClick={() => onAdd(item)}
-          className={`w-12 h-12 rounded-[1.25rem] flex items-center justify-center transition-all active:scale-90 shadow-lg ${
+          className={`w-9 h-9 lg:w-8 lg:h-8 rounded-lg flex items-center justify-center transition-all active:scale-90 shadow-md ${
             inCartQty > 0 ? colors.active : 'bg-white/10 hover:bg-white/20'
           }`}
         >
-          <Plus className="w-5 h-5 text-white" />
+          <Plus className="w-4 h-4 lg:w-3.5 lg:h-3.5 text-white" />
         </button>
         <DotIndicator count={inCartQty} colorClass={colors.active} />
         <button
           onClick={() => onDecrease(item)}
-          className={`w-12 h-12 rounded-[1.25rem] flex items-center justify-center transition-all active:scale-90 border border-white/10 ${
+          className={`w-9 h-9 lg:w-8 lg:h-8 rounded-lg flex items-center justify-center transition-all active:scale-90 border border-white/10 ${
             inCartQty > 0 ? 'bg-white/10 opacity-100 hover:bg-white/20' : 'opacity-0 pointer-events-none'
           }`}
         >
-          <Minus className="w-5 h-5 text-white/30" />
+          <Minus className="w-4 h-4 lg:w-3.5 lg:h-3.5 text-white/30" />
         </button>
       </div>
     </div>
@@ -685,47 +685,47 @@ export function CheckView({ onBack }: CheckViewProps) {
             className="fixed bottom-0 left-0 right-0 w-full max-w-4xl mx-auto z-[101] transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
             style={{ transform: showMenu ? 'translateY(0)' : 'translateY(100%)' }}
           >
-            <div className="bg-[#0d0d12] border-t border-white/5 rounded-t-[3rem] shadow-2xl flex flex-col h-[94dvh] max-h-[94vh] overflow-hidden">
-              <div className="w-full flex justify-center pt-4 pb-1 shrink-0">
-                <div className="w-16 h-1 bg-white/5 rounded-full" />
+            <div className="bg-[#0d0d12] border-t border-white/5 rounded-t-[2rem] lg:rounded-t-[1.5rem] shadow-2xl flex flex-col h-[85dvh] sm:h-[88dvh] lg:h-[80dvh] max-h-[90vh] overflow-hidden">
+              <div className="w-full flex justify-center pt-3 lg:pt-2 pb-0.5 shrink-0">
+                <div className="w-12 h-0.5 lg:w-10 bg-white/5 rounded-full" />
               </div>
-              <div className="px-6 sm:px-10 py-3 shrink-0 flex items-center justify-between">
-                <h2 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter text-white/90">
+              <div className="px-4 sm:px-6 lg:px-6 py-2 lg:py-2 shrink-0 flex items-center justify-between">
+                <h2 className="text-lg sm:text-xl lg:text-2xl font-black uppercase italic tracking-tighter text-white/90">
                   ВЫБОР ТОВАРОВ
                 </h2>
                 <button
                   onClick={() => { setShowMenu(false); setMenuCategory(null); setMenuSearch(''); }}
-                  className="w-12 h-12 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center transition-all group"
+                  className="w-9 h-9 lg:w-10 lg:h-10 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center transition-all group"
                 >
-                  <X className="w-6 h-6 text-white/30 group-hover:text-white" />
+                  <X className="w-4 h-4 lg:w-5 lg:h-5 text-white/30 group-hover:text-white" />
                 </button>
               </div>
-              <div className="px-6 sm:px-10 py-2 shrink-0">
-                <div className="relative group bg-white/[0.03] border border-white/5 focus-within:border-white/20 rounded-[1.75rem] flex items-center px-5 transition-all">
-                  <Search className="w-5 h-5 text-white/10 group-focus-within:text-white/40 shrink-0" />
+              <div className="px-4 sm:px-6 lg:px-6 py-1.5 shrink-0">
+                <div className="relative group bg-white/[0.03] border border-white/5 focus-within:border-white/20 rounded-xl lg:rounded-2xl flex items-center px-4 transition-all">
+                  <Search className="w-4 h-4 text-white/10 group-focus-within:text-white/40 shrink-0" />
                   <input
                     type="text"
                     placeholder="ПОИСК..."
                     value={menuSearch}
                     onChange={(e) => startTransition(() => setMenuSearch(e.target.value))}
-                    className="w-full bg-transparent py-4 px-4 text-base text-white outline-none placeholder:text-white/20 font-bold uppercase tracking-widest"
+                    className="w-full bg-transparent py-3 lg:py-2.5 px-3 text-sm text-white outline-none placeholder:text-white/20 font-bold uppercase tracking-widest"
                   />
                 </div>
               </div>
-              <div className="px-6 sm:px-10 my-4 shrink-0">
-                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+              <div className="px-4 sm:px-6 lg:px-6 my-2 lg:my-3 shrink-0">
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                   <button
                     onClick={() => setMenuCategory(null)}
-                    className={`flex flex-col items-center justify-center gap-2 min-w-[100px] p-4 rounded-[2rem] transition-all duration-300 border shrink-0 ${
+                    className={`flex flex-col items-center justify-center gap-1 min-w-[72px] lg:min-w-[64px] p-2.5 lg:p-2 rounded-xl transition-all duration-300 border shrink-0 ${
                       !menuCategory
                         ? 'bg-slate-500 border-transparent shadow-xl shadow-slate-500/20 scale-105 z-10'
                         : 'bg-white/[0.02] border-white/5 text-white/20 hover:bg-white/[0.04]'
                     }`}
                   >
-                    <div className={`p-2.5 rounded-xl transition-all ${!menuCategory ? 'bg-white/20 shadow-inner' : 'bg-white/5'}`}>
-                      <ShoppingBag className={`w-6 h-6 ${!menuCategory ? 'text-white' : 'text-slate-400'}`} />
+                    <div className={`p-1.5 lg:p-2 rounded-lg transition-all ${!menuCategory ? 'bg-white/20 shadow-inner' : 'bg-white/5'}`}>
+                      <ShoppingBag className={`w-5 h-5 lg:w-4 lg:h-4 ${!menuCategory ? 'text-white' : 'text-slate-400'}`} />
                     </div>
-                    <span className={`text-[10px] font-black uppercase tracking-[0.15em] ${!menuCategory ? 'text-white' : 'text-white/30'}`}>
+                    <span className={`text-[9px] lg:text-[8px] font-black uppercase tracking-[0.12em] ${!menuCategory ? 'text-white' : 'text-white/30'}`}>
                       Все
                     </span>
                   </button>
@@ -737,14 +737,14 @@ export function CheckView({ onBack }: CheckViewProps) {
                       <button
                         key={cat.id}
                         onClick={() => setMenuCategory(cat.slug)}
-                        className={`flex flex-col items-center justify-center gap-2 min-w-[100px] p-4 rounded-[2rem] transition-all duration-300 border shrink-0 ${
+                        className={`flex flex-col items-center justify-center gap-1 min-w-[72px] lg:min-w-[64px] p-2.5 lg:p-2 rounded-xl transition-all duration-300 border shrink-0 ${
                           isActive ? `${colors.active} border-transparent shadow-xl ${colors.glow} scale-105 z-10` : 'bg-white/[0.02] border-white/5 text-white/20 hover:bg-white/[0.04]'
                         }`}
                       >
-                        <div className={`p-2.5 rounded-xl transition-all ${isActive ? 'bg-white/20 shadow-inner' : 'bg-white/5'}`}>
-                          <CatIcon className={`w-6 h-6 ${isActive ? 'text-white' : colors.text}`} />
+                        <div className={`p-1.5 lg:p-2 rounded-lg transition-all ${isActive ? 'bg-white/20 shadow-inner' : 'bg-white/5'}`}>
+                          <CatIcon className={`w-5 h-5 lg:w-4 lg:h-4 ${isActive ? 'text-white' : colors.text}`} />
                         </div>
-                        <span className={`text-[10px] font-black uppercase tracking-[0.15em] ${isActive ? 'text-white' : 'text-white/30'}`}>
+                        <span className={`text-[9px] lg:text-[8px] font-black uppercase tracking-[0.12em] ${isActive ? 'text-white' : 'text-white/30'}`}>
                           {cat.name}
                         </span>
                       </button>
@@ -752,8 +752,8 @@ export function CheckView({ onBack }: CheckViewProps) {
                   })}
                 </div>
               </div>
-              <div className="px-6 sm:px-10 pb-48 overflow-y-auto flex-1 min-h-0">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="px-4 sm:px-6 lg:px-6 pb-40 lg:pb-36 overflow-y-auto flex-1 min-h-0">
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 lg:gap-3">
                   {filteredItems.map((item) => {
                     const inCartQty = cart.filter((c) => c.item.id === item.id).reduce((s, c) => s + c.quantity, 0);
                     const cat = menuCategories.find((c) => c.slug === item.category);
@@ -779,28 +779,28 @@ export function CheckView({ onBack }: CheckViewProps) {
                 )}
               </div>
               {cartCount > 0 && (
-                <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 pt-16 bg-gradient-to-t from-[#0d0d12] via-[#0d0d12]/95 to-transparent">
+                <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 lg:p-5 pt-12 lg:pt-10 bg-gradient-to-t from-[#0d0d12] via-[#0d0d12]/95 to-transparent">
                   <button
                     onClick={() => { setShowMenu(false); setMenuCategory(null); setMenuSearch(''); }}
-                    className="w-full max-w-2xl mx-auto bg-white text-black py-5 rounded-[2rem] flex items-center justify-between px-8 shadow-2xl active:scale-[0.98] transition-all group overflow-hidden"
+                    className="w-full max-w-xl mx-auto bg-white text-black py-4 lg:py-3 rounded-xl lg:rounded-2xl flex items-center justify-between px-6 shadow-2xl active:scale-[0.98] transition-all group overflow-hidden"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 bg-black/5 rounded-[1.25rem] flex items-center justify-center relative">
-                        <ShoppingBag className="w-7 h-7 text-black" />
-                        <div className="absolute -top-0.5 -right-0.5 w-6 h-6 bg-black text-white font-black text-[10px] rounded-full flex items-center justify-center border-[3px] border-white">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 lg:w-10 lg:h-10 bg-black/5 rounded-xl flex items-center justify-center relative">
+                        <ShoppingBag className="w-5 h-5 lg:w-4 lg:h-4 text-black" />
+                        <div className="absolute -top-0.5 -right-0.5 w-5 h-5 lg:w-4 lg:h-4 bg-black text-white font-black text-[9px] rounded-full flex items-center justify-center border-2 border-white">
                           {cartCount}
                         </div>
                       </div>
                       <div className="text-left">
-                        <p className="text-[10px] font-black opacity-30 uppercase tracking-[0.3em] leading-none mb-0.5">
+                        <p className="text-[9px] font-black opacity-30 uppercase tracking-[0.2em] leading-none mb-0">
                           ИТОГО В ЧЕК
                         </p>
-                        <span className="text-2xl font-black italic tracking-tighter leading-none tabular-nums">
+                        <span className="text-xl lg:text-lg font-black italic tracking-tighter leading-none tabular-nums">
                           {fmtCur(total)}
                         </span>
                       </div>
                     </div>
-                    <ChevronRight className="w-7 h-7 group-hover:translate-x-2 transition-transform" />
+                    <ChevronRight className="w-5 h-5 lg:w-4 lg:h-4 group-hover:translate-x-2 transition-transform" />
                   </button>
                 </div>
               )}
