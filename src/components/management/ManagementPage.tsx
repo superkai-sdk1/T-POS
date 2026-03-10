@@ -20,6 +20,7 @@ import { CertificatesManager } from './CertificatesManager';
 import { ExpensesManager } from './ExpensesManager';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { hapticFeedback } from '@/lib/telegram';
+import { useLayoutStore } from '@/store/layout';
 
 type Screen = 'menu' | 'inventory' | 'supplies' | 'revision' | 'debtors' | 'staff' | 'bonus' | 'cash' | 'menuEditor' | 'clients' | 'discounts' | 'refunds' | 'modifiers' | 'certificates' | 'expenses' | 'about';
 
@@ -77,6 +78,15 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
   }, [initialScreen]);
 
   const goToMenu = useCallback(() => startTransition(() => setScreen('menu')), []);
+  const addHideReason = useLayoutStore((s) => s.addHideReason);
+  const removeHideReason = useLayoutStore((s) => s.removeHideReason);
+
+  useEffect(() => {
+    if (screen !== 'menu') addHideReason('management-deep');
+    else removeHideReason('management-deep');
+    return () => removeHideReason('management-deep');
+  }, [screen, addHideReason, removeHideReason]);
+
   const { swipeIndicatorStyle, overlayStyle } = useSwipeBack({
     onBack: goToMenu,
     enabled: screen !== 'menu' && isActive,
