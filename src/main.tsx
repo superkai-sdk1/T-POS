@@ -6,6 +6,17 @@ import './store/theme'
 import App from './App'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 
+// Block system back/forward swipe gestures in PWA (iOS Safari, Android Chrome)
+const EDGE_ZONE_PX = 20;
+history.pushState({ tpos: true }, '', location.href);
+window.addEventListener('popstate', () => {
+  history.pushState({ tpos: true }, '', location.href);
+});
+document.addEventListener('touchstart', (e: TouchEvent) => {
+  const x = e.touches[0]?.pageX ?? 0;
+  if (x <= EDGE_ZONE_PX) e.preventDefault(); // block system back swipe (left edge)
+}, { passive: false, capture: true });
+
 // Register service worker with auto-update
 const updateSW = registerSW({
   immediate: true,

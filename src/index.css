@@ -48,6 +48,7 @@ html {
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
+  overscroll-behavior-x: none;
   font-size: 17px;
   touch-action: manipulation;
 }
@@ -63,7 +64,8 @@ body {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  overscroll-behavior-y: none;
+  overscroll-behavior: none;
+  overscroll-behavior-x: none;
   -webkit-overflow-scrolling: touch;
   background: var(--c-bg);
   color: var(--c-text);

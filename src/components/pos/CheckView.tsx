@@ -439,8 +439,6 @@ export function CheckView({ onBack }: CheckViewProps) {
     saveCartToDb();
   };
 
-  if (!activeCheck) return null;
-
   const handleAdd = (item: InventoryItem) => {
     hapticFeedback('light');
 
@@ -519,6 +517,8 @@ export function CheckView({ onBack }: CheckViewProps) {
     if (menuDragY > 80) closeMenu();
     else setMenuDragY(0);
   }, [menuDragY, closeMenu]);
+
+  if (!activeCheck) return null;
 
   return (
     <div className="flex flex-col flex-1">
