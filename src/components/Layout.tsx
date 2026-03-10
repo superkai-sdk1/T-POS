@@ -48,6 +48,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const [pullDistance, setPullDistance] = useState(0);
   const [pullReady, setPullReady] = useState(false);
   const isPullingRef = useRef(false);
+  const pullDirectionLock = useRef<'none' | 'pull' | 'scroll'>('none');
 
   const tabs = useMemo(() => isOwner()
     ? [
@@ -204,24 +205,46 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
 
   const PULL_THRESHOLD = 80;
   const PULL_MAX = 120;
+  const PULL_DIRECTION_PX = 18;
+  const SCROLL_TOP_MAX = 2;
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (activeTab !== 'pos' || activeCheck || isOverlayOpen()) return;
-    if (!scrollRef.current || scrollRef.current.scrollTop > 5) return;
+    if (!scrollRef.current || scrollRef.current.scrollTop > SCROLL_TOP_MAX) return;
     touchStartY.current = e.touches[0].clientY;
     isPullingRef.current = true;
+    pullDirectionLock.current = 'none';
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isPullingRef.current || isRefreshing) return;
-    if (!scrollRef.current || scrollRef.current.scrollTop > 5) {
+    if (!scrollRef.current) return;
+    if (scrollRef.current.scrollTop > SCROLL_TOP_MAX) {
       isPullingRef.current = false;
+      pullDirectionLock.current = 'none';
       setPullDistance(0);
       setPullReady(false);
       return;
     }
     const dy = e.touches[0].clientY - touchStartY.current;
-    if (dy <= 0) { setPullDistance(0); setPullReady(false); return; }
+
+    if (pullDirectionLock.current === 'none') {
+      if (dy > PULL_DIRECTION_PX) pullDirectionLock.current = 'pull';
+      else if (dy < -PULL_DIRECTION_PX) {
+        pullDirectionLock.current = 'scroll';
+        isPullingRef.current = false;
+        setPullDistance(0);
+        setPullReady(false);
+        return;
+      } else return;
+    }
+    if (pullDirectionLock.current === 'scroll') return;
+
+    if (dy <= 0) {
+      setPullDistance(0);
+      setPullReady(false);
+      return;
+    }
     const damped = Math.min(dy * 0.5, PULL_MAX);
     setPullDistance(damped);
     const ready = damped >= PULL_THRESHOLD;
@@ -234,6 +257,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const handleTouchEnd = () => {
     if (!isPullingRef.current) return;
     isPullingRef.current = false;
+    pullDirectionLock.current = 'none';
     if (!isRefreshing && pullReady) {
       hapticFeedback('medium');
       setIsRefreshing(true);
@@ -416,14 +440,20 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           >
             <div className="flex items-center justify-between px-4">
               <div className="flex items-center gap-2">
-                {activeShift ? (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#12231c] border border-[#1b3a2e] rounded-full text-[#10b981] font-bold uppercase tracking-widest text-[9px]">
-                    <div className="w-1.5 h-1.5 bg-[#10b981] rounded-full shadow-[0_0_6px_#10b981]" />
-                    Смена открыта
-                  </div>
-                ) : (
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/30">Смена закрыта</span>
-                )}
+                <button
+                  type="button"
+                  onClick={triggerShiftAction}
+                  className="active:scale-[0.98] transition-transform touch-manipulation"
+                >
+                  {activeShift ? (
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#12231c] border border-[#1b3a2e] rounded-full text-[#10b981] font-bold uppercase tracking-widest text-[9px]">
+                      <div className="w-1.5 h-1.5 bg-[#10b981] rounded-full shadow-[0_0_6px_#10b981]" />
+                      Смена открыта
+                    </div>
+                  ) : (
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-white/30">Смена закрыта</span>
+                  )}
+                </button>
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex flex-col items-end">

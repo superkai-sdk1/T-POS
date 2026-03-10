@@ -13,6 +13,7 @@ interface DrawerProps {
 }
 
 const HEIGHT_VH: Record<string, number> = { sm: 65, md: 75, lg: 88, xl: 95 };
+const MOBILE_HEADER_OFFSET = 70;
 
 let _drawerCount = 0;
 
@@ -48,6 +49,19 @@ function useVisualViewport() {
   return { height, offsetTop };
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)');
+    const fn = () => setIsMobile(mq.matches);
+    mq.addEventListener('change', fn);
+    return () => mq.removeEventListener('change', fn);
+  }, []);
+  return isMobile;
+}
+
 export function Drawer({
   open,
   onClose,
@@ -65,6 +79,7 @@ export function Drawer({
   const [visible, setVisible] = useState(false);
 
   const { height: vvHeight, offsetTop: vvOffset } = useVisualViewport();
+  const isMobile = useIsMobile();
   const keyboardOpen = vvHeight < window.innerHeight - 60;
 
   useEffect(() => {
@@ -138,7 +153,10 @@ export function Drawer({
   if (!open && !closing) return null;
 
   const maxPct = HEIGHT_VH[size] ?? 88;
-  const maxH = Math.min((maxPct / 100) * vvHeight, vvHeight - 20);
+  const maxH = Math.min(
+    (maxPct / 100) * vvHeight,
+    vvHeight - (isMobile ? MOBILE_HEADER_OFFSET : 20),
+  );
 
   const overlayOpacity = closing ? 0 : dragY > 0 ? Math.max(0, 1 - dragY / 200) : visible ? 1 : 0;
   const panelTranslate = closing ? '100%' : dragY > 0 ? `${dragY}px` : visible ? '0' : '100%';
