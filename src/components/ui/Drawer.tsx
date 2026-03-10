@@ -50,12 +50,9 @@ export function Drawer({
     const vv = window.visualViewport;
     if (!vv) return;
     const sync = () => {
-      setViewportBox({
-        top: vv.offsetTop,
-        left: vv.offsetLeft,
-        width: vv.width,
-        height: vv.height,
-      });
+      // In iOS PWA, keyboard showing shrinks visualViewport.
+      // We no longer strictly match box size to prevent layout jumps,
+      // but we do trigger a small reflow.
       window.scrollTo(0, 0);
     };
     sync();
@@ -64,7 +61,6 @@ export function Drawer({
     return () => {
       vv.removeEventListener('resize', sync);
       vv.removeEventListener('scroll', sync);
-      setViewportBox(null);
     };
   }, [open]);
 
@@ -131,23 +127,12 @@ export function Drawer({
       aria-modal="true"
       aria-label={title || 'Окно'}
       className="z-[100] flex items-end lg:items-center lg:justify-center overflow-hidden"
-      style={
-        viewportBox != null
-          ? {
-              position: 'fixed',
-              top: viewportBox.top,
-              left: viewportBox.left,
-              width: viewportBox.width,
-              height: viewportBox.height,
-              zIndex: 100,
-            }
-          : {
-              position: 'fixed',
-              inset: 0,
-              height: '100dvh',
-              zIndex: 100,
-            }
-      }
+      style={{
+        position: 'fixed',
+        inset: 0,
+        height: '100%',
+        zIndex: 100,
+      }}
     >
       {/* Оверлей с глубоким размытием */}
       <div
@@ -175,10 +160,7 @@ export function Drawer({
           onClick={(e) => e.stopPropagation()}
           className="bg-[#0c0c14] sm:bg-white/[0.03] backdrop-blur-[30px] border-t border-white/10 rounded-t-[32px] sm:rounded-t-[48px] shadow-2xl flex flex-col overflow-hidden"
           style={{
-            maxHeight:
-              viewportBox != null
-                ? `min(${heightVh}, ${viewportBox.height}px)`
-                : `min(${heightVh}, calc(100dvh - var(--safe-top) - var(--safe-bottom)))`,
+            maxHeight: `min(${heightVh}, calc(100% - var(--safe-top) - var(--safe-bottom)))`,
             marginTop: 'var(--safe-top)',
             WebkitBackdropFilter: 'blur(30px)',
           }}
