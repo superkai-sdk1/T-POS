@@ -71,10 +71,10 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
     <button
       type="button"
       onClick={() => onSelect(check)}
-      className={`relative flex flex-col justify-between p-3 rounded-[24px] transition-all border min-h-[120px] text-left active:scale-[0.98] ${
+      className={`relative flex flex-col justify-between p-3 lg:p-4 rounded-[24px] transition-all border min-h-[120px] lg:min-h-[150px] text-left active:scale-[0.98] hover:border-white/15 ${
         isEmpty
           ? 'bg-transparent border-dashed border-white/5 opacity-30'
-          : 'bg-[#1b1b26] border-white/5 shadow-xl'
+          : 'bg-[#1b1b26] border-white/5 shadow-xl hover:bg-[#1f1f30]'
       }`}
     >
       <div className="flex items-start gap-2">
@@ -339,43 +339,43 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     <div className="flex-1 flex flex-col min-h-0 relative bg-[#0d0d12] text-white">
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden animate-fade-in">
         {/* Заголовок КАССА и Действия — компактно */}
-        <div className="px-4 sm:px-6 py-3 shrink-0">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xl font-black italic uppercase tracking-tighter text-white">Касса</h2>
-            <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">
+        <div className="px-4 sm:px-6 lg:px-8 py-3 lg:py-5 shrink-0">
+          <div className="flex items-center justify-between mb-3 lg:mb-4">
+            <h2 className="text-xl lg:text-2xl font-black italic uppercase tracking-tighter text-white">Касса</h2>
+            <span className="text-[9px] lg:text-[11px] font-bold text-white/30 uppercase tracking-widest">
               {activeCount} активн{activeCount === 1 ? 'ый' : 'ых'}
             </span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 lg:gap-3">
             <button
               type="button"
               onClick={() => setShowHistory(true)}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#1b1b26] hover:bg-[#252535] rounded-xl transition-all border border-white/5 shadow-lg group"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 lg:py-3 bg-[#1b1b26] hover:bg-[#252535] rounded-xl lg:rounded-2xl transition-all border border-white/5 shadow-lg group"
             >
               <History className="w-4 h-4 text-white/40 group-hover:text-violet-400" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-white">История</span>
+              <span className="text-[10px] lg:text-xs font-black uppercase tracking-widest text-white/40 group-hover:text-white">История</span>
             </button>
             <button
               type="button"
               onClick={() => setShowRefunds(true)}
               disabled={!activeShift}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#1b1b26] hover:bg-rose-500/10 rounded-xl transition-all border border-white/5 shadow-lg group disabled:opacity-40 disabled:pointer-events-none"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 lg:py-3 bg-[#1b1b26] hover:bg-rose-500/10 rounded-xl lg:rounded-2xl transition-all border border-white/5 shadow-lg group disabled:opacity-40 disabled:pointer-events-none"
             >
               <RotateCcw className="w-4 h-4 text-rose-500/40 group-hover:text-rose-500" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-rose-500/40 group-hover:text-rose-500">Возвраты</span>
+              <span className="text-[10px] lg:text-xs font-black uppercase tracking-widest text-rose-500/40 group-hover:text-rose-500">Возвраты</span>
             </button>
           </div>
         </div>
 
         {/* Сетка чеков — скролл делаем на уровне Layout (без вложенного overflow) */}
-        <div className="flex-1 overflow-x-hidden px-4 sm:px-6 min-h-0 scrollbar-none">
+        <div className="flex-1 overflow-x-hidden px-4 sm:px-6 lg:px-8 min-h-0 scrollbar-none">
           {!checksLoaded ? (
-            <div className="grid grid-cols-2 gap-2.5">
-              {[1, 2, 3, 4].map((i) => (
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 lg:gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div
                   key={i}
-                  className="p-3 rounded-[24px] animate-pulse border border-white/5 min-h-[120px] bg-[#1b1b26]"
-                  style={{ opacity: 1 - i * 0.2 }}
+                  className="p-3 lg:p-4 rounded-[24px] animate-pulse border border-white/5 min-h-[120px] lg:min-h-[140px] bg-[#1b1b26]"
+                  style={{ opacity: 1 - i * 0.15 }}
                 >
                   <div className="flex items-start gap-2">
                     <div className="w-10 h-10 rounded-xl bg-[#252535] shrink-0" />
@@ -389,7 +389,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 lg:gap-4">
               {openChecks.map((check) => (
                 <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} />
               ))}

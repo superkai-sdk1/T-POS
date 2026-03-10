@@ -11,7 +11,7 @@ import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { ShiftAnalytics as ShiftAnalyticsModal } from '@/components/shift/ShiftAnalytics';
 import {
   Receipt, Package, BarChart3, LogOut, Settings, Calendar,
-  Menu, RefreshCw, PlayCircle, StopCircle, AlertTriangle, X, Plus
+  PlayCircle, StopCircle, AlertTriangle, X, Plus
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -37,7 +37,6 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const [showAnalytics, setShowAnalytics] = useState(false);
 
   // Layout states
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const scrollRef = useRef<HTMLElement>(null);
   const touchStartY = useRef(0);
@@ -235,87 +234,77 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
 
   return (
     <div className="min-h-[100dvh] h-full flex flex-col lg:flex-row overflow-hidden relative" style={{ backgroundColor: 'var(--c-bg)' }}>
-      {/* ── Desktop sidebar ── */}
-      <aside
-        className={`hidden lg:flex flex-col shrink-0 fixed top-0 left-0 h-full z-40 transition-all duration-300 ${isSidebarExpanded ? 'w-[240px]' : 'w-[72px] items-center'}`}
-        style={{
-          paddingTop: 'var(--safe-top)',
-          paddingBottom: 'var(--safe-bottom)',
-          background: 'rgba(10, 14, 26, 0.75)',
-          backdropFilter: 'blur(40px) saturate(1.5)',
-          WebkitBackdropFilter: 'blur(40px) saturate(1.5)',
-          borderRight: '1px solid rgba(255, 255, 255, 0.06)',
-        }}
-      >
-        <div className={`py-5 flex items-center ${isSidebarExpanded ? 'px-5 justify-between' : 'justify-center'}`}>
-          <div className="flex items-center gap-3">
+      {/* ── Desktop floating sidebar ── */}
+      <aside className="hidden lg:flex fixed top-4 left-4 bottom-4 z-40 flex-col w-[260px] transition-all duration-300">
+        <div
+          className="flex-1 flex flex-col rounded-[2rem] overflow-hidden border border-white/10"
+          style={{
+            background: 'rgba(255, 255, 255, 0.04)',
+            backdropFilter: 'blur(40px) saturate(1.6)',
+            WebkitBackdropFilter: 'blur(40px) saturate(1.6)',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)',
+          }}
+        >
+          {/* Logo */}
+          <div className="px-6 pt-6 pb-4 flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(6, 182, 212, 0.15))', boxShadow: '0 0 20px rgba(139, 92, 246, 0.15)' }}>
               <img src="/icons/tpos.svg" alt="T-POS" className="w-7 h-7 drop-shadow-lg" />
             </div>
-            {isSidebarExpanded && <span className="font-bold text-white tracking-wide">T-POS</span>}
+            <span className="font-bold text-white tracking-wide text-[15px]">T-POS</span>
           </div>
-          {isSidebarExpanded && (
-            <button onClick={() => setIsSidebarExpanded(false)} className="text-[var(--c-hint)] hover:text-white transition-colors">
-              <X className="w-5 h-5" />
+
+          {/* Nav tabs */}
+          <nav className="flex-1 flex flex-col px-3 gap-1 overflow-y-auto no-scrollbar">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange(tab.id)}
+                  className={`relative w-full h-12 px-4 rounded-2xl flex items-center gap-3 transition-all duration-200 tap ${isActive ? 'text-white' : 'text-white/40 hover:text-white/70 hover:bg-white/[0.04]'}`}
+                >
+                  {isActive && <div className="absolute inset-0 bg-white/[0.06] rounded-2xl border border-white/5" />}
+                  <tab.icon className="w-5 h-5 shrink-0 relative z-10" />
+                  <span className="font-semibold text-[13px] relative z-10">{tab.label}</span>
+                </button>
+              );
+            })}
+
+            {/* New check FAB */}
+            <button
+              onClick={() => {
+                hapticFeedback('medium');
+                if (activeTab !== 'pos') onTabChange('pos');
+                window.dispatchEvent(new CustomEvent('tpos:new-check'));
+              }}
+              disabled={!activeShift}
+              className="relative w-full h-12 mt-3 rounded-2xl flex items-center gap-3 px-4 transition-all tap disabled:opacity-30 text-white overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', boxShadow: '0 8px 24px rgba(139, 92, 246, 0.3)' }}
+            >
+              <Plus className="w-5 h-5 shrink-0" />
+              <span className="font-black text-[12px] uppercase tracking-wider">Новый чек</span>
             </button>
-          )}
-        </div>
 
-        {!isSidebarExpanded && (
-          <button
-            onClick={() => setIsSidebarExpanded(true)}
-            className="w-11 h-11 mx-auto mt-2 rounded-xl flex items-center justify-center text-[var(--c-hint)] hover:text-white transition-all bg-[rgba(255,255,255,0.02)] hover:bg-[rgba(255,255,255,0.06)]"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-        )}
-
-        <nav className={`flex-1 flex flex-col pt-4 overflow-y-auto no-scrollbar ${isSidebarExpanded ? 'px-3 gap-1' : 'items-center gap-1.5'}`}>
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => onTabChange(tab.id)}
-                title={isSidebarExpanded ? undefined : tab.label}
-                className={`transition-all duration-200 tap relative flex items-center ${isSidebarExpanded ? 'w-full h-12 px-3 rounded-xl gap-3' : 'w-11 h-11 rounded-2xl justify-center'
-                  } ${isActive ? 'text-white' : 'text-[var(--c-hint)] hover:text-[var(--c-text)] hover:bg-[rgba(255,255,255,0.06)]'}`}
-                style={isActive ? {
-                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(6, 182, 212, 0.1))',
-                  boxShadow: '0 0 16px rgba(139, 92, 246, 0.15)',
-                } : undefined}
-              >
-                {isActive && !isSidebarExpanded && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
-                    style={{ background: 'linear-gradient(180deg, #8b5cf6, #06b6d4)', boxShadow: '0 0 8px rgba(139, 92, 246, 0.4)' }}
-                  />
-                )}
-                <tab.icon className={`w-5 h-5 shrink-0 ${isActive ? 'stroke-[2.5]' : ''}`} />
-                {isSidebarExpanded && <span className="font-semibold text-[13px]">{tab.label}</span>}
-              </button>
-            );
-          })}
-
-          {isSidebarExpanded && (
-            <div className="mt-8 mb-4 px-1 space-y-3">
-              <div className="h-px w-full bg-[rgba(255,255,255,0.06)]" />
+            {/* Shift info */}
+            <div className="mt-6 mb-2 px-1 space-y-3">
+              <div className="h-px w-full bg-white/[0.06]" />
               <div className="px-2">
-                <p className="text-[10px] uppercase tracking-widest text-[var(--c-muted)] font-bold mb-2">Смена</p>
+                <p className="text-[10px] uppercase tracking-widest text-white/20 font-bold mb-2">Смена</p>
                 {activeShift ? (
                   <div className="space-y-2">
                     <div className="flex justify-between items-center text-[13px]">
-                      <span className="text-[var(--c-hint)]">Статус</span>
+                      <span className="text-white/40">Статус</span>
                       <span className="text-[var(--c-success)] font-semibold flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-[var(--c-success)] animate-pulse" /> Открыта
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-[13px]">
-                      <span className="text-[var(--c-hint)]">Время</span>
+                      <span className="text-white/40">Время</span>
                       <span className="text-white tabular-nums">{shiftDurationStr}</span>
                     </div>
                     {cashInRegister !== null && (
                       <div className="flex justify-between items-center text-[13px]">
-                        <span className="text-[var(--c-hint)]">В кассе</span>
+                        <span className="text-white/40">В кассе</span>
                         <span className="text-white font-bold tabular-nums">{fmtCur(cashInRegister)}</span>
                       </div>
                     )}
@@ -333,61 +322,36 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                 )}
               </div>
             </div>
-          )}
-        </nav>
+          </nav>
 
-        <div className={`pb-5 pt-3 mt-auto shrink-0 ${isSidebarExpanded ? 'px-4 flex flex-col gap-2' : 'flex flex-col items-center gap-3'}`}>
-          <div className="h-px w-full bg-[rgba(255,255,255,0.06)] mb-2" />
-
-          {/* Shift button in collapsed sidebar */}
-          {!isSidebarExpanded && (
-            <button
-              onClick={triggerShiftAction}
-              title={activeShift ? 'Закрыть смену' : 'Открыть смену'}
-              className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all tap ${activeShift
-                ? 'text-[var(--c-danger)] hover:bg-[rgba(251,113,133,0.08)]'
-                : 'text-[var(--c-success)] hover:bg-[rgba(52,211,153,0.08)]'
-                }`}
-            >
-              {activeShift ? <StopCircle className="w-5 h-5" /> : <PlayCircle className="w-5 h-5" />}
-            </button>
-          )}
-          {isSidebarExpanded && (
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full h-11 rounded-xl flex items-center gap-3 px-3 text-[var(--c-hint)] hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-all tap"
-            >
-              <RefreshCw className="w-5 h-5 shrink-0" />
-              <span className="font-semibold text-[13px]">Обновить</span>
-            </button>
-          )}
-          <div className={`flex items-center gap-3 ${isSidebarExpanded ? 'w-full px-3 py-2 rounded-xl bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.04)]' : 'flex-col'}`}>
-            <div className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.1))', border: '1px solid rgba(139, 92, 246, 0.15)' }}>
-              <span className="text-[11px] font-bold text-[var(--c-accent-light)]">
-                {user?.nickname?.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            {isSidebarExpanded && (
+          {/* Bottom: user + logout */}
+          <div className="px-4 pb-5 pt-3 mt-auto shrink-0 flex flex-col gap-2">
+            <div className="h-px w-full bg-white/[0.06] mb-1" />
+            <div className="flex items-center gap-3 w-full px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+              <div className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.1))', border: '1px solid rgba(139, 92, 246, 0.15)' }}>
+                <span className="text-[11px] font-bold text-[var(--c-accent-light)]">
+                  {user?.nickname?.charAt(0).toUpperCase()}
+                </span>
+              </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-bold text-white truncate">{user?.nickname}</p>
-                <p className="text-[10px] text-[var(--c-muted)]">{isOwner() ? 'Владелец' : 'Сотрудник'}</p>
+                <p className="text-[10px] text-white/30">{isOwner() ? 'Владелец' : 'Сотрудник'}</p>
               </div>
-            )}
-            <button
-              onClick={() => useAuthStore.getState().logout()}
-              title="Выход"
-              className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center text-[var(--c-hint)] hover:bg-[rgba(251,113,133,0.08)] hover:text-[var(--c-danger)] transition-all tap"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+              <button
+                onClick={() => useAuthStore.getState().logout()}
+                title="Выход"
+                className="w-9 h-9 shrink-0 rounded-xl flex items-center justify-center text-white/30 hover:bg-[rgba(251,113,133,0.08)] hover:text-[var(--c-danger)] transition-all tap"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </aside>
 
       {/* ── Main content ── */}
       <div
-        className="flex-1 flex flex-col overflow-hidden transition-all duration-300"
-        style={{ marginLeft: typeof window !== 'undefined' && window.innerWidth >= 1024 ? (isSidebarExpanded ? '240px' : '72px') : 0 }}
+        className="flex-1 flex flex-col overflow-hidden transition-all duration-300 lg:ml-[276px]"
       >
         {/* ── Mobile header: POS — статус смены + в кассе; остальные вкладки — заголовок ── */}
         {activeTab === 'pos' ? (
