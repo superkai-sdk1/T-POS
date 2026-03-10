@@ -73,7 +73,7 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
       onClick={() => onSelect(check)}
       className={`relative group flex flex-col justify-between p-3.5 rounded-[28px] transition-all duration-300 active:scale-[0.97] border min-h-[120px] sm:min-h-[140px] text-left ${
         isEmpty
-          ? 'bg-transparent border-dashed border-white/10 opacity-60'
+          ? 'bg-transparent border-dashed border-white/10 opacity-40'
           : 'bg-white/[0.03] hover:bg-white/[0.07] border-white/5 shadow-lg shadow-black/40'
       }`}
     >
@@ -87,7 +87,7 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
           ) : avatarUrl ? (
             <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
           ) : (
-            <User className="w-6 h-6 text-white/40" />
+            <User className={`w-6 h-6 ${isEmpty ? 'text-white/10' : 'text-white/40'}`} />
           )}
         </div>
         <div className="flex-1 pt-0.5 overflow-hidden min-w-0">
@@ -104,7 +104,7 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
       <div className="flex justify-end items-center mt-2 pr-1">
         <div
           className={`text-[16px] sm:text-[22px] font-black tracking-tighter italic tabular-nums ${
-            isEmpty ? 'text-white/10' : 'text-indigo-400 group-hover:text-white transition-colors'
+            isEmpty ? 'text-white/5' : 'text-indigo-400 group-hover:text-white transition-colors'
           }`}
         >
           {isEmpty ? '—' : `${(check.total_amount || 0).toLocaleString('ru-RU')} ₽`}
@@ -327,11 +327,11 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const activeCount = openChecks.length;
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 relative bg-[#020205]">
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+    <div className="flex-1 flex flex-col min-h-0 relative bg-[#020205] text-white">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden animate-fade-in">
         {/* Шапка смены */}
         {activeShift && (
-          <div className="px-6 pt-6 sm:pt-8 pb-4 text-center shrink-0">
+          <div className="px-6 pt-8 pb-4 text-center shrink-0">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 font-black uppercase tracking-widest text-[9px] mb-1">
               <div className="w-1 h-1 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_6px_#34d399]" />
               Смена открыта
@@ -374,19 +374,19 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           </div>
         </div>
 
-        {/* Список чеков (сетка) */}
-        <div className="flex-1 overflow-y-auto px-6 sm:px-8 pb-32 min-h-0">
+        {/* Список чеков (сетка) — как в макете: flex-1 overflow-y-auto, pb-32 */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 sm:px-8 pb-32 min-h-0 scrollbar-none">
           {!checksLoaded ? (
             <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
               {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className="p-3.5 rounded-[28px] animate-pulse border border-white/5 min-h-[120px]"
+                  className="p-3.5 rounded-[28px] animate-pulse border border-white/5 min-h-[120px] sm:min-h-[140px]"
                   style={{ opacity: 1 - i * 0.2, background: 'rgba(255, 255, 255, 0.03)' }}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/5" />
-                    <div className="flex-1 space-y-1.5">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/5 shrink-0" />
+                    <div className="flex-1 space-y-1.5 min-w-0">
                       <div className="h-3 w-16 rounded bg-white/5" />
                       <div className="h-2.5 w-10 rounded bg-white/5" />
                     </div>
@@ -395,35 +395,26 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                 </div>
               ))}
             </div>
-          ) : openChecks.length === 0 ? (
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
-              <div className="col-span-2 border border-dashed border-white/5 rounded-[28px] flex flex-col items-center justify-center min-h-[160px] py-8">
-                <p className="text-white/40 text-sm font-medium">Нет открытых чеков</p>
-                <p className="text-xs text-white/20 mt-1">
-                  {activeShift ? 'Нажмите «Новый чек» ниже' : 'Откройте смену для начала'}
-                </p>
-              </div>
-            </div>
           ) : (
             <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
               {openChecks.map((check) => (
                 <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} />
               ))}
-              {/* Пустая ячейка добавления */}
+              {/* Пустая ячейка добавления — как в макете: dashed, min-h-[120px], PlusCircle white/5 → white/20 */}
               <button
                 type="button"
                 onClick={() => activeShift && setShowNewCheck(true)}
                 disabled={!activeShift}
-                className="border border-dashed border-white/5 rounded-[28px] flex items-center justify-center min-h-[120px] sm:min-h-[140px] group cursor-pointer hover:bg-white/[0.02] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="border border-dashed border-white/5 rounded-[28px] flex items-center justify-center min-h-[120px] group cursor-pointer hover:bg-white/[0.01] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                <PlusCircle className="w-7 h-7 text-white/10 group-hover:text-white/25 transition-colors" />
+                <PlusCircle className="w-7 h-7 text-white/5 group-hover:text-white/20 transition-colors" />
               </button>
             </div>
           )}
         </div>
 
-        {/* FAB — Новый чек */}
-        <div className="absolute bottom-20 sm:bottom-24 left-0 right-0 px-6 sm:px-8 pointer-events-none z-10">
+        {/* FAB — Новый чек: bottom-24 как в макете */}
+        <div className="absolute bottom-24 left-0 right-0 px-6 sm:px-8 pointer-events-none z-10">
           <div className="max-w-xl mx-auto flex justify-center">
             <button
               type="button"
