@@ -180,6 +180,8 @@ interface CheckViewProps {
 
 export function CheckView({ onBack }: CheckViewProps) {
   const { activeCheck, cart, addToCart, updateCartQuantity, removeFromCart, inventory, leaveCheck, cancelCheck, getCartTotal, getDiscountTotal, updateCheckNote, saveCartToDb, appliedDiscounts, applyDiscount, removeDiscount } = usePOSStore();
+
+  if (!activeCheck) return null;
   const [showPayment, setShowPayment] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [menuDragY, setMenuDragY] = useState(0);
@@ -218,8 +220,8 @@ export function CheckView({ onBack }: CheckViewProps) {
       pendingNoteRef.current = null;
     }
     if (cartSaveTimer.current) clearTimeout(cartSaveTimer.current);
-    await leaveCheck();
     onBack();
+    setTimeout(() => leaveCheck(), 0);
   }, [updateCheckNote, leaveCheck, onBack]);
 
   const { swipeIndicatorStyle, overlayStyle } = useSwipeBack({

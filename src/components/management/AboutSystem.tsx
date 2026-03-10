@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/Button';
 import { useThemeStore, THEMES } from '@/store/theme';
 import {
   Download, CheckCircle, AlertCircle, RefreshCw, ExternalLink,
-  GitBranch, Clock, Server, Code2, Sparkles, RotateCcw, Palette,
+  GitBranch, Clock, Server, Code2, Sparkles, RotateCcw, Palette, Trash2,
 } from 'lucide-react';
 
 const UPDATE_API = '/api/system';
@@ -186,6 +186,34 @@ export function AboutSystem() {
 
   const handleReload = () => {
     window.location.reload();
+  };
+
+  const [showClearCacheConfirm, setShowClearCacheConfirm] = useState(false);
+
+  const handleClearCacheAndReload = async () => {
+    try {
+      if ('caches' in window) {
+        const names = await caches.keys();
+        await Promise.all(names.map((name) => caches.delete(name)));
+      }
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((r) => r.unregister()));
+      }
+      localStorage.clear();
+      sessionStorage.clear();
+      if ('indexedDB' in window) {
+        if (indexedDB.databases) {
+          const dbs = await indexedDB.databases();
+          for (const db of dbs) {
+            if (db.name) indexedDB.deleteDatabase(db.name);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Clear cache error:', e);
+    }
+    window.location.href = window.location.origin + window.location.pathname + '?nocache=' + Date.now();
   };
 
   const progressPct = totalSteps > 0 ? Math.round((currentStep / totalSteps) * 100) : 0;
@@ -396,6 +424,51 @@ export function AboutSystem() {
 
       {/* Theme selector */}
       <ThemeSelector />
+
+      {/* PWA: Clear cache & reload */}
+      <div className="space-y-2 pt-2 border-t border-[var(--c-border)]">
+        <div className="flex items-center gap-2">
+          <Trash2 className="w-3.5 h-3.5 text-[var(--c-hint)]" />
+          <p className="text-[10px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">PWA</p>
+        </div>
+        {showClearCacheConfirm ? (
+          <div className="p-3 rounded-xl bg-[var(--c-warning-bg)] border border-[var(--c-border)] space-y-2">
+            <p className="text-xs text-[var(--c-text)]">
+              Удалить весь кэш, локальные данные и перезагрузить приложение с нуля? Потребуется повторный вход.
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                fullWidth
+                onClick={() => setShowClearCacheConfirm(false)}
+              >
+                Отмена
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                fullWidth
+                onClick={handleClearCacheAndReload}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Очистить и перезагрузить
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            fullWidth
+            variant="secondary"
+            size="md"
+            onClick={() => setShowClearCacheConfirm(true)}
+            className="border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10"
+          >
+            <Trash2 className="w-4 h-4" />
+            Очистить кэш и перезагрузить
+          </Button>
+        )}
+      </div>
 
       {/* Developer info */}
       <div className="space-y-2 pt-2 border-t border-[var(--c-border)]">

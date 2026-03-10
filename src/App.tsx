@@ -81,16 +81,21 @@ export default function App() {
 
   const [managementScreen, setManagementScreen] = useState<string | undefined>();
 
-  const handleTabChange = useCallback(async (tab: string) => {
-    if (showCheckView && activeCheck) {
-      await leaveCheck();
+  const handleTabChange = useCallback((tab: string) => {
+    if (showCheckView) {
+      setShowCheckView(false);
+      setTimeout(() => leaveCheck(), 0);
+    } else if (activeCheck && tab !== 'pos') {
+      setTimeout(() => leaveCheck(), 0);
     }
 
-    // Reset internal states when clicking the same tab
     if (tab === activeTab) {
-      setTabKeys((prev) => ({ ...prev, [tab]: (prev[tab] || 0) + 1 }));
-      setManagementScreen(undefined);
-      setShowCheckView(false);
+      if (tab === 'management') {
+        setManagementScreen('menu');
+      } else {
+        setTabKeys((prev) => ({ ...prev, [tab]: (prev[tab] || 0) + 1 }));
+        setManagementScreen(undefined);
+      }
     } else {
       if (tab !== 'management') setManagementScreen(undefined);
       if (tab !== 'pos') setShowCheckView(false);

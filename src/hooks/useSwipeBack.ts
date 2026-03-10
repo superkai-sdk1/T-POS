@@ -14,6 +14,23 @@ const VERTICAL_CANCEL_RATIO = 0.45;
 /** Don't show indicator until drag exceeds this (avoids accidental flicker) */
 const MIN_SHOW_PX = 20;
 
+/** Only the last (innermost) swipe-back handler runs when multiple are active (e.g. SupplyPage create + ManagementPage) */
+let pendingSwipeBack: (() => void) | null = null;
+let flushScheduled = false;
+
+function scheduleSwipeBack(onBack: () => void) {
+  pendingSwipeBack = onBack;
+  if (!flushScheduled) {
+    flushScheduled = true;
+    queueMicrotask(() => {
+      flushScheduled = false;
+      const cb = pendingSwipeBack;
+      pendingSwipeBack = null;
+      cb?.();
+    });
+  }
+}
+
 export function useSwipeBack({
   onBack,
   edgeWidth = 36,
@@ -79,7 +96,7 @@ export function useSwipeBack({
       setIsTracking(false);
       setDragX((prev) => {
         if (prev >= thresholdRef.current) {
-          setTimeout(() => onBackRef.current(), 0);
+          scheduleSwipeBack(() => onBackRef.current());
         }
         return 0;
       });
