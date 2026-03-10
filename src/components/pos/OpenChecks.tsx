@@ -148,7 +148,9 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   }, [loadOpenChecks]);
 
   useEffect(() => {
-    const handler = () => {
+    const handler = (e: Event) => {
+      if (e.defaultPrevented) return;
+      e.preventDefault();
       if (activeShift && !activeCheck) setShowNewCheck(true);
     };
     window.addEventListener('tpos:new-check', handler);
