@@ -23,6 +23,8 @@ interface AuthState {
   loginWithTelegram: () => Promise<boolean>;
   loginWithPin: (pin: string) => Promise<boolean>;
   loginWithPinForUser: (userId: string, pin: string) => Promise<boolean>;
+  /** Find user by PIN and log in (for PIN-first login screen) */
+  loginByPinOnly: (pin: string) => Promise<boolean>;
   loadStaffUsers: () => Promise<void>;
   setupPin: (pin: string) => Promise<boolean>;
   skipPinSetup: () => void;
@@ -152,6 +154,37 @@ export const useAuthStore = create<AuthState>()(
             .eq('id', userId)
             .eq('pin', pin)
             .single();
+
+          if (error || !data) {
+            set({ error: 'Неверный PIN-код', isLoading: false });
+            return false;
+          }
+
+          const profile = data as Profile;
+          set({
+            user: profile,
+            rememberedUserId: profile.id,
+            rememberedNickname: profile.nickname,
+            needsPinSetup: false,
+            isLoading: false,
+          });
+          return true;
+        } catch {
+          set({ error: 'Ошибка подключения', isLoading: false });
+          return false;
+        }
+      },
+
+      loginByPinOnly: async (pin: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('pin', pin)
+            .in('role', ['owner', 'staff'])
+            .limit(1)
+            .maybeSingle();
 
           if (error || !data) {
             set({ error: 'Неверный PIN-код', isLoading: false });
