@@ -310,26 +310,26 @@ export function MenuEditor() {
   const activeItems = items.filter((i) => i.is_active).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* ============ HEADER ============ */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           {!categoriesView && (
             <button
               onClick={() => { setViewMode('categories'); setActiveCategory(null); setSearch(''); }}
-              className="p-2.5 rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] active:scale-95 transition-all shrink-0"
+              className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] active:scale-95 transition-all shrink-0"
             >
-              <ArrowLeft className="w-5 h-5 text-[var(--c-hint)]" />
+              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--c-hint)]" />
             </button>
           )}
-          <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-[var(--c-text)] leading-tight">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-extrabold tracking-tight text-[var(--c-text)] leading-tight truncate">
               {categoriesView ? 'Меню' : activeCategory?.name || 'Все позиции'}
             </h1>
-            <p className="text-[var(--c-muted)] text-xs sm:text-sm mt-0.5 font-medium">
+            <p className="text-[var(--c-muted)] text-[11px] sm:text-sm mt-0.5 font-medium">
               {categoriesView
-                ? 'Структура вашего заведения'
-                : `${filteredItems.length} позиций в разделе`
+                ? 'Структура заведения'
+                : `${filteredItems.length} позиций`
               }
             </p>
           </div>
@@ -339,7 +339,7 @@ export function MenuEditor() {
           {categoriesView && (
             <button
               onClick={() => openCreateCategory()}
-              className="h-10 sm:h-11 px-4 sm:px-5 rounded-2xl flex items-center gap-2 font-semibold text-sm transition-all active:scale-95 bg-[var(--c-surface)] border border-[var(--c-border)] text-[var(--c-text)] hover:bg-[var(--c-surface-hover)]"
+              className="h-9 sm:h-11 px-3 sm:px-5 rounded-xl sm:rounded-2xl flex items-center gap-1.5 sm:gap-2 font-semibold text-xs sm:text-sm transition-all active:scale-95 bg-[var(--c-surface)] border border-[var(--c-border)] text-[var(--c-text)] hover:bg-[var(--c-surface-hover)] shrink-0"
             >
               <FolderPlus className="w-4 h-4" />
               <span className="hidden sm:inline">Раздел</span>
@@ -347,22 +347,22 @@ export function MenuEditor() {
           )}
           <button
             onClick={openCreate}
-            className="h-10 sm:h-11 px-4 sm:px-5 rounded-2xl flex items-center gap-2 font-bold text-sm transition-all active:scale-95 text-white [background:linear-gradient(135deg,#8b5cf6,#06b6d4)] [box-shadow:0_4px_20px_rgba(139,92,246,0.25)]"
+            className="h-9 sm:h-11 px-3 sm:px-5 rounded-xl sm:rounded-2xl flex items-center gap-1.5 sm:gap-2 font-bold text-xs sm:text-sm transition-all active:scale-95 text-white [background:linear-gradient(135deg,#8b5cf6,#06b6d4)] [box-shadow:0_4px_20px_rgba(139,92,246,0.25)] shrink-0"
           >
-            <Plus className="w-5 h-5" />
-            <span>{categoriesView ? 'Позиция' : 'Позиция'}</span>
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="hidden xs:inline">{categoriesView ? 'Позиция' : 'Позиция'}</span>
           </button>
         </div>
       </div>
 
       {/* ============ SEARCH + STATS ============ */}
-      <div className="flex gap-3">
+      <div className="flex gap-2 sm:gap-3">
         <div className="flex-1 relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--c-muted)]" size={18} />
+          <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-[var(--c-muted)]" size={16} />
           <input
             type="text"
-            placeholder="Поиск по названию..."
-            className="w-full bg-[var(--c-surface)] border border-[var(--c-border)] rounded-2xl py-3 sm:py-3.5 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/40 transition-all placeholder:text-[var(--c-muted)] text-sm text-[var(--c-text)]"
+            placeholder="Поиск..."
+            className="w-full bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl sm:rounded-2xl py-2.5 sm:py-3.5 pl-9 sm:pl-11 pr-3 sm:pr-4 focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/40 transition-all placeholder:text-[var(--c-muted)] text-[13px] sm:text-sm text-[var(--c-text)]"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -411,7 +411,7 @@ export function MenuEditor() {
 
       {/* ============ CONTENT GRID ============ */}
       {search ? (
-        <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-2.5 sm:gap-3 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {filteredItems.map((item) => (
             <ItemCard
               key={item.id}
@@ -429,7 +429,7 @@ export function MenuEditor() {
           )}
         </div>
       ) : categoriesView ? (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
           {topCategories.sort((a, b) => a.sort_order - b.sort_order).map((cat) => {
             const Icon = getIconComponent(cat.icon_name);
             const count = countForCategory(cat);
@@ -439,44 +439,44 @@ export function MenuEditor() {
             return (
               <div
                 key={cat.id}
-                className="group relative rounded-[28px] p-5 sm:p-6 cursor-pointer overflow-hidden transition-all duration-200 border hover:scale-[1.01] active:scale-[0.98]"
+                className="group relative rounded-[20px] sm:rounded-[28px] p-3.5 sm:p-6 cursor-pointer overflow-hidden transition-all duration-200 border hover:scale-[1.01] active:scale-[0.98]"
                 style={{ borderColor: 'var(--c-border)' }}
                 onClick={() => { setActiveCategory(cat); setViewMode('items'); }}
               >
                 <div className={`absolute inset-0 ${colorCfg.bg} opacity-60 group-hover:opacity-100 transition-opacity`} />
 
                 <div className="relative z-10">
-                  <div className="flex items-start justify-between mb-6">
-                    <div className={`w-14 h-14 ${colorCfg.bg} ${colorCfg.text} rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 border ${colorCfg.border}`}>
-                      <Icon className="w-6 h-6" />
+                  <div className="flex items-start justify-between mb-3 sm:mb-6">
+                    <div className={`w-10 h-10 sm:w-14 sm:h-14 ${colorCfg.bg} ${colorCfg.text} rounded-xl sm:rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 border ${colorCfg.border}`}>
+                      <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
+                    <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-all sm:translate-x-2 sm:group-hover:translate-x-0">
                       <button
                         onClick={(e) => { e.stopPropagation(); openEditCategory(cat); }}
-                        className="p-2 bg-[var(--c-surface)] text-[var(--c-hint)] hover:text-[var(--c-accent)] rounded-xl transition-colors border border-[var(--c-border)] active:scale-90"
+                        className="p-1.5 sm:p-2 bg-[var(--c-surface)] text-[var(--c-hint)] hover:text-[var(--c-accent)] rounded-lg sm:rounded-xl transition-colors border border-[var(--c-border)] active:scale-90"
                       >
-                        <Pencil className="w-3.5 h-3.5" />
+                        <Pencil className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); setDeleteCatTarget(cat); }}
-                        className="p-2 bg-[var(--c-surface)] text-[var(--c-hint)] hover:text-[var(--c-danger)] rounded-xl transition-colors border border-[var(--c-border)] active:scale-90"
+                        className="p-1.5 sm:p-2 bg-[var(--c-surface)] text-[var(--c-hint)] hover:text-[var(--c-danger)] rounded-lg sm:rounded-xl transition-colors border border-[var(--c-border)] active:scale-90"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                       </button>
                     </div>
                   </div>
 
-                  <h3 className="text-lg sm:text-xl font-bold text-[var(--c-text)] mb-2">{cat.name}</h3>
-                  <div className="flex items-center gap-2 text-[var(--c-muted)] font-medium">
-                    <span className="bg-[var(--c-surface)] px-2.5 py-1 rounded-lg text-xs border border-[var(--c-border)]">
+                  <h3 className="text-[15px] sm:text-xl font-bold text-[var(--c-text)] mb-1 sm:mb-2 truncate">{cat.name}</h3>
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-[var(--c-muted)] font-medium flex-wrap">
+                    <span className="bg-[var(--c-surface)] px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg text-[11px] sm:text-xs border border-[var(--c-border)]">
                       {count} шт.
                     </span>
                     {children.length > 0 && (
-                      <span className="text-xs">{children.length} подразд.</span>
+                      <span className="text-[11px] sm:text-xs">{children.length} подразд.</span>
                     )}
                   </div>
 
-                  <div className="absolute bottom-0 right-0 text-[var(--c-muted)] group-hover:text-[var(--c-accent)] transition-all group-hover:translate-x-1">
+                  <div className="absolute bottom-0 right-0 text-[var(--c-muted)] group-hover:text-[var(--c-accent)] transition-all group-hover:translate-x-1 hidden sm:block">
                     <ChevronRight className="w-6 h-6" />
                   </div>
                 </div>
@@ -499,7 +499,7 @@ export function MenuEditor() {
         </div>
       ) : (
         <>
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-2.5 sm:gap-3 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {filteredItems.map((item) => (
               <ItemCard
                 key={item.id}
@@ -722,22 +722,22 @@ function ItemCard({
 
   return (
     <div
-      className={`group rounded-[22px] p-4 sm:p-5 flex flex-col justify-between transition-all duration-200 border border-[var(--c-border)] hover:border-[var(--c-accent)]/30 bg-[var(--c-surface)] ${!item.is_active ? 'opacity-50' : ''}`}
+      className={`group rounded-[16px] sm:rounded-[22px] p-3 sm:p-5 flex flex-col justify-between transition-all duration-200 border border-[var(--c-border)] hover:border-[var(--c-accent)]/30 bg-[var(--c-surface)] ${!item.is_active ? 'opacity-50' : ''}`}
     >
-      <div className="flex justify-between items-start mb-4">
-        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${colorCfg.bg} ${colorCfg.text} border ${colorCfg.border} group-hover:scale-105 transition-transform`}>
+      <div className="flex justify-between items-start mb-2.5 sm:mb-4">
+        <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center ${colorCfg.bg} ${colorCfg.text} border ${colorCfg.border} group-hover:scale-105 transition-transform overflow-hidden`}>
           {item.image_url ? (
-            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover rounded-2xl" />
+            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
           ) : (
-            <CatIcon className="w-5 h-5" />
+            <CatIcon className="w-4 h-4 sm:w-5 sm:h-5" />
           )}
         </div>
         <div className="relative">
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-1.5 hover:bg-[var(--c-surface-hover)] rounded-xl text-[var(--c-muted)] transition-colors active:scale-90"
+            className="p-1 sm:p-1.5 hover:bg-[var(--c-surface-hover)] rounded-lg sm:rounded-xl text-[var(--c-muted)] transition-colors active:scale-90"
           >
-            <MoreVertical className="w-4 h-4" />
+            <MoreVertical className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
           {showMenu && (
             <>
@@ -769,21 +769,21 @@ function ItemCard({
         className="cursor-pointer"
         onClick={() => onEdit(item)}
       >
-        <h4 className="text-sm font-bold text-[var(--c-text)] group-hover:text-white transition-colors leading-snug line-clamp-2">
+        <h4 className="text-[13px] sm:text-sm font-bold text-[var(--c-text)] group-hover:text-white transition-colors leading-snug line-clamp-2">
           {item.name}
         </h4>
         {!item.is_active && (
-          <span className="inline-block mt-1 text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-lg bg-[var(--c-muted)]/15 text-[var(--c-muted)]">
+          <span className="inline-block mt-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg bg-[var(--c-muted)]/15 text-[var(--c-muted)]">
             Скрыт
           </span>
         )}
-        <div className="flex items-end justify-between mt-3">
+        <div className="flex items-end justify-between mt-2 sm:mt-3">
           <div className="flex flex-col">
-            <span className="text-[var(--c-muted)] text-[10px] font-bold uppercase tracking-wider">Цена</span>
-            <span className="text-xl font-black text-[var(--c-accent)]">{item.price} ₽</span>
+            <span className="text-[var(--c-muted)] text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">Цена</span>
+            <span className="text-base sm:text-xl font-black text-[var(--c-accent)]">{item.price} ₽</span>
           </div>
           {item.min_threshold > 0 && (
-            <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-xl border ${
+            <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border ${
               item.stock_quantity < item.min_threshold
                 ? 'bg-red-500/10 text-red-400 border-red-500/20'
                 : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
