@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback, memo, startTransition } from 'react';
+import { createPortal } from 'react-dom';
 import { usePOSStore } from '@/store/pos';
 import { PaymentDrawer } from './PaymentDrawer';
 import { Badge } from '@/components/ui/Badge';
@@ -496,10 +497,15 @@ export function CheckView({ onBack }: CheckViewProps) {
     }
   }, [cancelCheck, leaveCheck, onBack]);
 
+  const isDraggingHandleRef = useRef(false);
+  const menuDragYRef = useRef(0);
+
   const openMenu = () => {
     setMenuCategory(null);
     setMenuSearch('');
     setMenuDragY(0);
+    isDraggingHandleRef.current = false;
+    menuDragYRef.current = 0;
     setShowMenu(true);
   };
 
@@ -508,21 +514,30 @@ export function CheckView({ onBack }: CheckViewProps) {
     setMenuCategory(null);
     setMenuSearch('');
     setMenuDragY(0);
+    isDraggingHandleRef.current = false;
+    menuDragYRef.current = 0;
   }, []);
 
   const handleMenuSwipeStart = useCallback((e: React.TouchEvent) => {
+    isDraggingHandleRef.current = true;
     menuSwipeStartY.current = e.touches[0].clientY;
   }, []);
 
   const handleMenuSwipeMove = useCallback((e: React.TouchEvent) => {
+    if (!isDraggingHandleRef.current) return;
     const dy = e.touches[0].clientY - menuSwipeStartY.current;
-    setMenuDragY(Math.max(0, dy));
+    const val = Math.max(0, dy);
+    menuDragYRef.current = val;
+    setMenuDragY(val);
   }, []);
 
   const handleMenuSwipeEnd = useCallback(() => {
-    if (menuDragY > 80) closeMenu();
+    isDraggingHandleRef.current = false;
+    const y = menuDragYRef.current;
+    if (y > 80) closeMenu();
     else setMenuDragY(0);
-  }, [menuDragY, closeMenu]);
+    menuDragYRef.current = 0;
+  }, [closeMenu]);
 
   if (!activeCheck) return null;
 
@@ -711,8 +726,8 @@ export function CheckView({ onBack }: CheckViewProps) {
         </div>
       </div>
 
-      {/* Menu sheet */}
-      {showMenu && (
+      {/* Menu sheet — portaled to body to avoid parent transform affecting fixed position */}
+      {showMenu && typeof document !== 'undefined' && createPortal(
         <>
           <div
             className="fixed inset-0 bg-black/90 backdrop-blur-[12px] z-[55] transition-opacity duration-300"
@@ -828,7 +843,8 @@ export function CheckView({ onBack }: CheckViewProps) {
               </div>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
 
       {/* Modifiers selection */}

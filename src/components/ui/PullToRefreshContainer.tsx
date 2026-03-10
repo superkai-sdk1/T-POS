@@ -52,7 +52,6 @@ export function PullToRefreshContainer({
     const pullReadyRef = useRef(false);
     const pullScrollContainerRef = useRef<HTMLElement | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const listenersAttached = useRef(false);
 
     const updateSpinnerUI = (distance: number, ready: boolean, isRefreshingState = false) => {
         if (!spinnerRef.current || !iconRef.current || !textRef.current) return;
@@ -164,23 +163,6 @@ export function PullToRefreshContainer({
             updateSpinnerUI(0, false, false);
         }
     }, [isRefreshing]);
-
-    useEffect(() => {
-        const el = containerRef.current;
-        if (!el || listenersAttached.current) return;
-        listenersAttached.current = true;
-        const opts: AddEventListenerOptions = { passive: false };
-        const touchHandler = (e: TouchEvent) => {
-            if (shouldPreventScrollRef.current && e.cancelable) {
-                e.preventDefault();
-            }
-        };
-        el.addEventListener('touchmove', touchHandler, opts);
-        return () => {
-            el.removeEventListener('touchmove', touchHandler);
-            listenersAttached.current = false;
-        };
-    }, []);
 
     return (
         <div

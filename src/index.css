@@ -169,6 +169,7 @@ input[type="number"] {
 /* Smooth touch scroll for overflow containers */
 [class*="overflow-y-auto"] {
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 .scrollbar-none::-webkit-scrollbar {

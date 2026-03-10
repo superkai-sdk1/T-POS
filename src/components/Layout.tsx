@@ -453,7 +453,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
           <main
             ref={scrollRef}
             className={`flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
-            style={{ WebkitOverflowScrolling: 'touch', paddingBottom: '120px', overscrollBehaviorY: 'contain' }}
+            style={{ WebkitOverflowScrolling: 'touch', paddingBottom: '120px', overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
           >
             {children}
           </main>
