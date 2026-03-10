@@ -74,15 +74,15 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
       className={`relative group flex flex-col justify-between p-3.5 rounded-[28px] transition-all duration-300 active:scale-[0.97] border min-h-[120px] sm:min-h-[140px] text-left ${
         isEmpty
           ? 'bg-transparent border-dashed border-white/10 opacity-40'
-          : 'bg-white/[0.03] hover:bg-white/[0.07] border-white/5 shadow-lg shadow-black/40'
+          : 'bg-[#1b1b26] hover:bg-[#252535] border-white/5 shadow-xl shadow-black/40'
       }`}
     >
       <div className="flex items-start gap-3">
-        <div className="shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center shadow-inner">
+        <div className="shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden bg-[#2a2a3a] border border-white/10 flex items-center justify-center shadow-inner">
           {hasSpace ? (
             (() => {
               const Icon = spaceIconMap[check.space!.type] || DoorOpen;
-              return <Icon className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-400" />;
+              return <Icon className="w-6 h-6 sm:w-7 sm:h-7 text-violet-400" />;
             })()
           ) : avatarUrl ? (
             <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
@@ -90,8 +90,8 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
             <User className={`w-6 h-6 ${isEmpty ? 'text-white/10' : 'text-white/40'}`} />
           )}
         </div>
-        <div className="flex-1 pt-0.5 overflow-hidden min-w-0">
-          <h3 className="text-[12px] sm:text-[15px] font-black tracking-tight uppercase leading-tight line-clamp-2 group-hover:text-indigo-400 transition-colors text-white">
+        <div className="flex-1 pt-0.5 overflow-hidden min-w-0 text-left">
+          <h3 className="text-[12px] sm:text-[15px] font-black tracking-tight uppercase leading-tight line-clamp-2 group-hover:text-violet-400 transition-colors text-white/90">
             {displayName}
           </h3>
           <div className="flex items-center gap-1 text-[8px] sm:text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1.5">
@@ -104,7 +104,7 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
       <div className="flex justify-end items-center mt-2 pr-1">
         <div
           className={`text-[16px] sm:text-[22px] font-black tracking-tighter italic tabular-nums ${
-            isEmpty ? 'text-white/5' : 'text-indigo-400 group-hover:text-white transition-colors'
+            isEmpty ? 'text-white/5' : 'text-violet-400 group-hover:text-white transition-colors'
           }`}
         >
           {isEmpty ? '—' : `${(check.total_amount || 0).toLocaleString('ru-RU')} ₽`}
@@ -327,9 +327,9 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const activeCount = openChecks.length;
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 relative bg-[#020205] text-white">
+    <div className="flex-1 flex flex-col min-h-0 relative bg-[#0d0d12] text-white">
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden animate-fade-in">
-        {/* Шапка смены */}
+        {/* Шапка смены — как в примере */}
         {activeShift && (
           <div className="px-6 pt-8 pb-4 text-center shrink-0">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 font-black uppercase tracking-widest text-[9px] mb-1">
@@ -338,17 +338,17 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
             </div>
             <div className="flex flex-col items-center">
               <span className="text-white/30 text-[9px] font-black uppercase tracking-widest">В кассе</span>
-              <h1 className="text-3xl sm:text-4xl font-black tracking-tighter bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tighter text-white">
                 {kassaAmount.toLocaleString('ru-RU')} ₽
               </h1>
             </div>
           </div>
         )}
 
-        {/* Действия */}
+        {/* Действия — как в примере: bg-[#1b1b26], violet hover */}
         <div className="px-6 sm:px-8 mb-4 shrink-0 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-black uppercase italic tracking-tight text-white">Касса</h2>
+            <h2 className="text-xl font-black uppercase italic tracking-tight text-white/90">Касса</h2>
             <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">
               {activeCount} активн{activeCount === 1 ? 'ый' : 'ых'}
             </span>
@@ -357,16 +357,16 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
             <button
               type="button"
               onClick={() => setShowHistory(true)}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5 group"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-[#1b1b26] hover:bg-[#252535] rounded-xl transition-all border border-white/5 group shadow-lg"
             >
-              <History className="w-3.5 h-3.5 text-white/40 group-hover:text-white transition-colors" />
+              <History className="w-3.5 h-3.5 text-white/40 group-hover:text-violet-400 transition-colors" />
               <span className="text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-white">История</span>
             </button>
             <button
               type="button"
               onClick={() => setShowRefunds(true)}
               disabled={!activeShift}
-              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-rose-500/5 hover:bg-rose-500/15 rounded-xl transition-all border border-rose-500/10 group disabled:opacity-40 disabled:pointer-events-none"
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-rose-500/5 hover:bg-rose-500/15 rounded-xl transition-all border border-rose-500/10 group shadow-lg disabled:opacity-40 disabled:pointer-events-none"
             >
               <RotateCcw className="w-3.5 h-3.5 text-rose-500/40 group-hover:text-rose-500 transition-colors" />
               <span className="text-[10px] font-black uppercase tracking-widest text-rose-500/40 group-hover:text-rose-500">Возвраты</span>
@@ -374,18 +374,18 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           </div>
         </div>
 
-        {/* Список чеков (сетка) — как в макете: flex-1 overflow-y-auto, pb-32 */}
+        {/* Список чеков (сетка) — как в примере */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 sm:px-8 pb-32 min-h-0 scrollbar-none">
           {!checksLoaded ? (
             <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
               {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className="p-3.5 rounded-[28px] animate-pulse border border-white/5 min-h-[120px] sm:min-h-[140px]"
-                  style={{ opacity: 1 - i * 0.2, background: 'rgba(255, 255, 255, 0.03)' }}
+                  className="p-3.5 rounded-[28px] animate-pulse border border-white/5 min-h-[120px] sm:min-h-[140px] bg-[#1b1b26]"
+                  style={{ opacity: 1 - i * 0.2 }}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/5 shrink-0" />
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#2a2a3a] shrink-0" />
                     <div className="flex-1 space-y-1.5 min-w-0">
                       <div className="h-3 w-16 rounded bg-white/5" />
                       <div className="h-2.5 w-10 rounded bg-white/5" />
@@ -400,20 +400,20 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               {openChecks.map((check) => (
                 <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} />
               ))}
-              {/* Пустая ячейка добавления — как в макете: dashed, min-h-[120px], PlusCircle white/5 → white/20 */}
+              {/* Пустая ячейка добавления — как в примере */}
               <button
                 type="button"
                 onClick={() => activeShift && setShowNewCheck(true)}
                 disabled={!activeShift}
-                className="border border-dashed border-white/5 rounded-[28px] flex items-center justify-center min-h-[120px] group cursor-pointer hover:bg-white/[0.01] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="border border-dashed border-white/5 rounded-[28px] flex items-center justify-center min-h-[120px] group cursor-pointer hover:bg-white/[0.02] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
-                <PlusCircle className="w-7 h-7 text-white/5 group-hover:text-white/20 transition-colors" />
+                <PlusCircle className="w-7 h-7 text-white/5 group-hover:text-violet-500/40 transition-all" />
               </button>
             </div>
           )}
         </div>
 
-        {/* FAB — Новый чек: bottom-24 как в макете */}
+        {/* FAB — как в примере: violet gradient, shadow */}
         <div className="absolute bottom-24 left-0 right-0 px-6 sm:px-8 pointer-events-none z-10">
           <div className="max-w-xl mx-auto flex justify-center">
             <button
@@ -422,7 +422,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                 if (activeShift) setShowNewCheck(true);
               }}
               disabled={!activeShift}
-              className="pointer-events-auto flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl font-black uppercase tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all text-[11px] disabled:opacity-40 disabled:hover:scale-100 text-white"
+              className="pointer-events-auto flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-violet-600 to-purple-600 rounded-2xl font-black uppercase tracking-widest shadow-[0_10px_30px_rgba(124,58,237,0.3)] hover:scale-105 active:scale-95 transition-all text-[11px] text-white disabled:opacity-40 disabled:hover:scale-100"
             >
               <PlusCircle className="w-4.5 h-4.5" />
               Новый чек

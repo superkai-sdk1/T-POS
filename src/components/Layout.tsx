@@ -444,59 +444,25 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           {children}
         </main>
 
-        {/* ── Mobile bottom nav — glass tab bar ── */}
+        {/* ── Mobile bottom nav — как в примере главного экрана ── */}
         <nav
-          className="lg:hidden shrink-0 z-40"
+          className="lg:hidden shrink-0 z-[60] h-20 bg-[#0d0d12]/80 backdrop-blur-2xl border-t border-white/5 px-6 sm:px-12 flex items-center justify-between"
           style={{
-            paddingBottom: 'max(var(--tg-safe-bottom), calc(env(safe-area-inset-bottom, 0px) * 0.5))',
+            paddingBottom: 'max(var(--tg-safe-bottom), env(safe-area-inset-bottom, 0px))',
             transform: 'translateZ(0)',
-            background: 'rgba(10, 14, 26, 0.85)',
-            backdropFilter: 'blur(40px) saturate(1.6)',
-            WebkitBackdropFilter: 'blur(40px) saturate(1.6)',
-            borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-            boxShadow: '0 -4px 30px rgba(0, 0, 0, 0.3)',
           }}
         >
-          <div className="flex max-w-3xl mx-auto" style={{ height: 'var(--nav-height)' }}>
+          <div className="flex w-full max-w-3xl mx-auto items-center justify-between">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
-                  className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-all duration-200 active:scale-90 relative shrink-0 min-w-0 min-h-[48px]`}
+                  className={`flex flex-col items-center justify-center gap-1 transition-all duration-200 flex-1 min-h-[48px] ${isActive ? 'text-violet-400 scale-110' : 'text-white/20 hover:text-white/40'}`}
                 >
-                  {/* Active glow indicator */}
-                  {isActive && (
-                    <div
-                      className="absolute -top-px left-1/2 -translate-x-1/2 h-[2px] rounded-full"
-                      style={{
-                        width: '28px',
-                        background: 'linear-gradient(90deg, #8b5cf6, #06b6d4)',
-                        boxShadow: '0 0 10px rgba(139, 92, 246, 0.5), 0 0 20px rgba(139, 92, 246, 0.2)',
-                        animation: 'nav-indicator-glow 3s ease-in-out infinite',
-                      }}
-                    />
-                  )}
-
-                  {/* Icon with glow background */}
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 ${isActive ? '' : ''
-                      }`}
-                    style={isActive ? {
-                      background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.08))',
-                    } : undefined}
-                  >
-                    <tab.icon
-                      className={`w-[22px] h-[22px] shrink-0 transition-all duration-200 ${isActive ? 'stroke-[2.5] text-white' : 'stroke-[1.5] text-[var(--c-hint)]'
-                        }`}
-                    />
-                  </div>
-
-                  <span
-                    className={`text-[10px] font-semibold truncate w-full px-1 transition-all duration-200 ${isActive ? 'text-white opacity-100' : 'text-[var(--c-hint)] opacity-50'
-                      }`}
-                  >
+                  <tab.icon className="w-6 h-6 shrink-0" />
+                  <span className="text-[8.5px] font-black uppercase tracking-widest truncate w-full px-0.5">
                     {tab.label}
                   </span>
                 </button>
