@@ -7,10 +7,17 @@ interface SwipeBackConfig {
   enabled?: boolean;
 }
 
+/** Minimum horizontal movement to "commit" to swipe (vs scroll) */
+const COMMIT_PX = 18;
+/** Cancel gesture if vertical movement exceeds this fraction of horizontal */
+const VERTICAL_CANCEL_RATIO = 0.45;
+/** Don't show indicator until drag exceeds this (avoids accidental flicker) */
+const MIN_SHOW_PX = 20;
+
 export function useSwipeBack({
   onBack,
-  edgeWidth = 50,
-  threshold = 60,
+  edgeWidth = 36,
+  threshold = 100,
   enabled = true,
 }: SwipeBackConfig) {
   const startX = useRef(0);
@@ -46,14 +53,14 @@ export function useSwipeBack({
       const dx = e.touches[0].clientX - startX.current;
       const dy = Math.abs(e.touches[0].clientY - startY.current);
 
-      if (!committed.current && dy > Math.abs(dx) * 0.6 && dx < 12) {
+      if (!committed.current && dy > Math.abs(dx) * VERTICAL_CANCEL_RATIO && dx < COMMIT_PX) {
         tracking.current = false;
         setIsTracking(false);
         setDragX(0);
         return;
       }
 
-      if (dx > 8) committed.current = true;
+      if (dx > COMMIT_PX) committed.current = true;
 
       if (committed.current && dx > 0) {
         e.preventDefault();
@@ -95,21 +102,27 @@ export function useSwipeBack({
   }, [enabled, edgeWidth]);
 
   const progress = Math.min(dragX / threshold, 1);
-  const show = dragX > 6;
+  const show = dragX > MIN_SHOW_PX;
+  const visualProgress = Math.sqrt(progress);
+
+  const slideOut = Math.min(dragX * 0.35, 28);
+  const scale = 0.55 + visualProgress * 0.45;
+  const opacity = 0.25 + visualProgress * 0.55;
+  const overlayOpacity = visualProgress * 0.12;
 
   const swipeIndicatorStyle: React.CSSProperties | undefined = show
     ? {
         position: 'fixed' as const,
         left: 0,
         top: '50%',
-        transform: `translate(${Math.min(dragX * 0.4, 24) - 24}px, -50%) scale(${0.6 + progress * 0.4})`,
+        transform: `translate(${slideOut - 28}px, -50%) scale(${scale})`,
         width: 24,
         height: 48,
         borderRadius: '0 12px 12px 0',
-        background: `rgba(108, 92, 231, ${0.3 + progress * 0.5})`,
+        background: `rgba(108, 92, 231, ${opacity})`,
         zIndex: 9999,
         pointerEvents: 'none' as const,
-        transition: isTracking ? 'none' : 'all 0.22s cubic-bezier(0.22,1,0.36,1)',
+        transition: isTracking ? 'none' : 'all 0.28s cubic-bezier(0.34, 1.2, 0.64, 1)',
       }
     : undefined;
 
@@ -117,10 +130,10 @@ export function useSwipeBack({
     ? {
         position: 'fixed' as const,
         inset: 0,
-        background: `rgba(0,0,0,${progress * 0.08})`,
+        background: `rgba(0,0,0,${overlayOpacity})`,
         zIndex: 9998,
         pointerEvents: 'none' as const,
-        transition: isTracking ? 'none' : 'all 0.22s cubic-bezier(0.22,1,0.36,1)',
+        transition: isTracking ? 'none' : 'all 0.28s cubic-bezier(0.34, 1.2, 0.64, 1)',
       }
     : undefined;
 

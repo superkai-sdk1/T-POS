@@ -182,6 +182,8 @@ export function CheckView({ onBack }: CheckViewProps) {
   const { activeCheck, cart, addToCart, updateCartQuantity, removeFromCart, inventory, leaveCheck, cancelCheck, getCartTotal, getDiscountTotal, updateCheckNote, saveCartToDb, appliedDiscounts, applyDiscount, removeDiscount } = usePOSStore();
   const [showPayment, setShowPayment] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [menuDragY, setMenuDragY] = useState(0);
+  const menuSwipeStartY = useRef(0);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [showDiscounts, setShowDiscounts] = useState(false);
   const [discountsList, setDiscountsList] = useState<Discount[]>([]);
@@ -484,8 +486,30 @@ export function CheckView({ onBack }: CheckViewProps) {
   const openMenu = () => {
     setMenuCategory(null);
     setMenuSearch('');
+    setMenuDragY(0);
     setShowMenu(true);
   };
+
+  const closeMenu = useCallback(() => {
+    setShowMenu(false);
+    setMenuCategory(null);
+    setMenuSearch('');
+    setMenuDragY(0);
+  }, []);
+
+  const handleMenuSwipeStart = useCallback((e: React.TouchEvent) => {
+    menuSwipeStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleMenuSwipeMove = useCallback((e: React.TouchEvent) => {
+    const dy = e.touches[0].clientY - menuSwipeStartY.current;
+    setMenuDragY(Math.max(0, dy));
+  }, []);
+
+  const handleMenuSwipeEnd = useCallback(() => {
+    if (menuDragY > 80) closeMenu();
+    else setMenuDragY(0);
+  }, [menuDragY, closeMenu]);
 
   return (
     <div className="flex flex-col flex-1">
@@ -674,27 +698,38 @@ export function CheckView({ onBack }: CheckViewProps) {
       {showMenu && (
         <>
           <div
-            className="fixed inset-0 bg-black/90 backdrop-blur-[12px] transition-opacity duration-300 z-[100]"
-            onClick={() => { setShowMenu(false); setMenuCategory(null); setMenuSearch(''); }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-[12px] z-[55] transition-opacity duration-300"
+            style={{ opacity: menuDragY > 0 ? Math.max(0, 1 - menuDragY / 200) : 1 }}
+            onClick={closeMenu}
           />
           <div
-            className="fixed bottom-0 left-0 right-0 w-full max-w-4xl mx-auto z-[101] transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
-            style={{ transform: showMenu ? 'translateY(0)' : 'translateY(100%)' }}
+            className="fixed bottom-0 left-0 right-0 w-full max-w-4xl mx-auto z-[56]"
+            style={{
+              transform: `translateY(${menuDragY}px)`,
+              transition: menuDragY > 0 ? 'none' : 'transform 0.5s cubic-bezier(0.16,1,0.3,1)',
+            }}
           >
             <div className="bg-[#0d0d12] border-t border-white/5 rounded-t-[2rem] lg:rounded-t-[1.5rem] shadow-2xl flex flex-col h-[85dvh] sm:h-[88dvh] lg:h-[80dvh] max-h-[90vh] overflow-hidden">
-              <div className="w-full flex justify-center pt-3 lg:pt-2 pb-0.5 shrink-0">
-                <div className="w-12 h-0.5 lg:w-10 bg-white/5 rounded-full" />
-              </div>
-              <div className="px-4 sm:px-6 lg:px-6 py-2 lg:py-2 shrink-0 flex items-center justify-between">
-                <h2 className="text-lg sm:text-xl lg:text-2xl font-black uppercase italic tracking-tighter text-white/90">
-                  ВЫБОР ТОВАРОВ
-                </h2>
-                <button
-                  onClick={() => { setShowMenu(false); setMenuCategory(null); setMenuSearch(''); }}
-                  className="w-9 h-9 lg:w-10 lg:h-10 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center transition-all group"
-                >
-                  <X className="w-4 h-4 lg:w-5 lg:h-5 text-white/30 group-hover:text-white" />
-                </button>
+              <div
+                className="shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
+                onTouchStart={handleMenuSwipeStart}
+                onTouchMove={handleMenuSwipeMove}
+                onTouchEnd={handleMenuSwipeEnd}
+              >
+                <div className="w-full flex justify-center pt-3 lg:pt-2 pb-0.5">
+                  <div className="w-12 h-0.5 lg:w-10 bg-white/5 rounded-full" />
+                </div>
+                <div className="px-4 sm:px-6 lg:px-6 py-2 lg:py-2 flex items-center justify-between">
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-black uppercase italic tracking-tighter text-white/90">
+                    МЕНЮ
+                  </h2>
+                  <button
+                    onClick={closeMenu}
+                    className="w-9 h-9 lg:w-10 lg:h-10 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center transition-all group"
+                  >
+                    <X className="w-4 h-4 lg:w-5 lg:h-5 text-white/30 group-hover:text-white" />
+                  </button>
+                </div>
               </div>
               <div className="px-4 sm:px-6 lg:px-6 py-1.5 shrink-0">
                 <div className="relative group bg-white/[0.03] border border-white/5 focus-within:border-white/20 rounded-xl lg:rounded-2xl flex items-center px-4 transition-all">

@@ -11,19 +11,23 @@ interface CartSwipeableRowProps {
     disabled?: boolean;
 }
 
+const LOCK_THRESHOLD = 12; // px to decide scroll vs swipe
+const SWIPE_THRESHOLD = 50;
+
 export function CartSwipeableRow({ children, quantity, onIncrement, onDecrement, onRemove, disabled }: CartSwipeableRowProps) {
     const startX = useRef(0);
+    const startY = useRef(0);
+    const lockedHorizontal = useRef<boolean | null>(null);
     const [offsetX, setOffsetX] = useState(0);
     const [swiping, setSwiping] = useState(false);
     const [removing, setRemoving] = useState(false);
     const crossedThreshold = useRef(false);
 
-    // The threshold absolute value. 50px is a solid, distinct swipe
-    const THRESHOLD = 50;
-
     const handleTouchStart = useCallback((e: React.TouchEvent) => {
         if (disabled) return;
         startX.current = e.touches[0].clientX;
+        startY.current = e.touches[0].clientY;
+        lockedHorizontal.current = null;
         setSwiping(true);
         crossedThreshold.current = false;
     }, [disabled]);
@@ -31,18 +35,34 @@ export function CartSwipeableRow({ children, quantity, onIncrement, onDecrement,
     const handleTouchMove = useCallback((e: React.TouchEvent) => {
         if (!swiping || disabled) return;
         const dx = e.touches[0].clientX - startX.current;
+        const dy = e.touches[0].clientY - startY.current;
+
+        // Direction lock: vertical scroll vs horizontal swipe
+        if (lockedHorizontal.current === null) {
+            const absDx = Math.abs(dx);
+            const absDy = Math.abs(dy);
+            if (absDy > absDx && absDy > LOCK_THRESHOLD) {
+                lockedHorizontal.current = false; // vertical scroll — don't swipe
+                setSwiping(false);
+                return;
+            }
+            if (absDx > absDy && absDx > LOCK_THRESHOLD) {
+                lockedHorizontal.current = true;
+            } else {
+                return;
+            }
+        }
+        if (!lockedHorizontal.current) return;
 
         // We allow swiping from -80 (Left swipe) to +80 (Right swipe)
         const clamped = Math.max(-80, Math.min(80, dx));
         setOffsetX(clamped);
 
-        // Provide haptic feedback when a threshold is crossed (either left or right)
-        if (Math.abs(clamped) > THRESHOLD && !crossedThreshold.current) {
+        if (Math.abs(clamped) > SWIPE_THRESHOLD && !crossedThreshold.current) {
             crossedThreshold.current = true;
             hapticFeedback('light');
         }
-        // Reset if user scrubs back past threshold
-        if (Math.abs(clamped) < THRESHOLD && crossedThreshold.current) {
+        if (Math.abs(clamped) < SWIPE_THRESHOLD && crossedThreshold.current) {
             crossedThreshold.current = false;
         }
     }, [swiping, disabled]);
@@ -51,13 +71,13 @@ export function CartSwipeableRow({ children, quantity, onIncrement, onDecrement,
         if (!swiping) return;
         setSwiping(false);
 
-        if (offsetX > THRESHOLD) {
+        if (offsetX > SWIPE_THRESHOLD) {
             // Swiped Right -> Increment
             hapticFeedback('medium');
             onIncrement();
             // Snap back to 0
             setOffsetX(0);
-        } else if (offsetX < -THRESHOLD) {
+        } else if (offsetX < -SWIPE_THRESHOLD) {
             // Swiped Left -> Decrement or Remove
             hapticFeedback('medium');
             if (quantity > 1) {

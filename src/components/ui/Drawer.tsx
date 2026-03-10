@@ -179,16 +179,19 @@ export function Drawer({
           }}
         >
           <div
-            className="w-full flex justify-center pt-4 sm:pt-6 pb-2 shrink-0 cursor-grab active:cursor-grabbing touch-none lg:cursor-default"
-            style={{ minHeight: '2.5rem' }}
+            className="shrink-0 cursor-grab active:cursor-grabbing touch-none lg:cursor-default select-none"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
           >
-            <div className="w-16 sm:w-20 h-1.5 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full" />
-          </div>
+            <div
+              className="w-full flex justify-center pt-4 sm:pt-6 pb-2"
+              style={{ minHeight: '2.5rem' }}
+            >
+              <div className="w-16 sm:w-20 h-1.5 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full" />
+            </div>
 
-          <div className="px-6 sm:px-10 py-3 sm:py-4 flex items-center justify-between gap-3 shrink-0">
+            <div className="px-6 sm:px-10 py-3 sm:py-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
               {titleIcon != null ? (
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/20 shrink-0 text-white font-black text-lg sm:text-xl">
@@ -220,6 +223,7 @@ export function Drawer({
             >
               <X className="w-5 h-5 sm:w-6 h-6 text-white/40 group-hover:text-rose-400 transition-colors" />
             </button>
+            </div>
           </div>
 
           <div
