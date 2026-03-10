@@ -458,7 +458,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           className={`flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
-          style={{ WebkitOverflowScrolling: 'touch', paddingBottom: '4.5rem' }}
+          style={{ WebkitOverflowScrolling: 'touch', paddingBottom: 'calc(49px + env(safe-area-inset-bottom, 0px))' }}
         >
           {activeTab === 'pos' && !activeCheck && (
             <div
@@ -490,9 +490,10 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
         {/* ── Mobile bottom nav — максимально простая: фиксированная высота, без safe-area математики ── */}
         {typeof document !== 'undefined' && createPortal(
           <nav
-            className="lg:hidden fixed left-0 right-0 bottom-0 min-h-[calc(4rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] z-[60] bg-[#0d0d12]/95 backdrop-blur-2xl border-t border-white/5 px-6 sm:px-12 flex items-center justify-between"
+            className="lg:hidden fixed left-0 right-0 bottom-0 z-[60] bg-[#0d0d12]/95 backdrop-blur-2xl border-t border-white/5 px-6 sm:px-12"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
           >
-            <div className="flex w-full max-w-3xl mx-auto items-center justify-between pt-1">
+            <div className="flex w-full max-w-3xl mx-auto items-center justify-between h-[49px]">
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (

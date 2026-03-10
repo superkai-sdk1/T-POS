@@ -393,7 +393,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         {typeof document !== 'undefined' && !activeCheck && createPortal(
           <div
             className="lg:hidden fixed left-0 right-0 pointer-events-none z-[65] flex justify-center px-4 sm:px-6"
-            style={{ bottom: '4.75rem' }}
+            style={{ bottom: 'var(--fab-bottom-offset)' }}
           >
             <div className="max-w-xl mx-auto flex justify-center">
               <button

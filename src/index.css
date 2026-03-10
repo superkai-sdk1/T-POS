@@ -19,9 +19,9 @@
 
   --nav-height: 3.5rem;
   /* Mobile bottom bar geometry */
-  --bottom-bar-content-height: 64px;
-  --bottom-bar-height: var(--bottom-bar-content-height);
-  --fab-bottom-offset: calc(var(--bottom-bar-content-height) + 12px);
+  --bottom-bar-content-height: 49px;
+  --bottom-bar-height: calc(var(--bottom-bar-content-height) + env(safe-area-inset-bottom, 0px));
+  --fab-bottom-offset: calc(var(--bottom-bar-height) + 12px);
   /* PWA/MiniApp: use dvh when supported so address bar doesn't change layout */
   --app-height: 100vh;
   --app-height-dynamic: 100dvh;
