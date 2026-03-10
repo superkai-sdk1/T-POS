@@ -11,8 +11,8 @@ create extension if not exists "pgcrypto";
 create type user_role as enum ('owner', 'staff', 'client');
 create type item_category as enum ('drinks', 'food', 'bar', 'hookah', 'services');
 create type check_status as enum ('open', 'closed');
-create type payment_method as enum ('cash', 'card', 'debt', 'bonus');
-create type transaction_type as enum ('supply', 'write_off', 'sale', 'revision', 'bonus_accrual', 'bonus_spend', 'cash_operation', 'debt_adjustment');
+create type payment_method as enum ('cash', 'card', 'debt', 'bonus', 'split');
+create type transaction_type as enum ('supply', 'write_off', 'sale', 'revision', 'bonus_accrual', 'bonus_spend', 'cash_operation', 'debt_adjustment', 'refund');
 
 -- ==================
 -- profiles
@@ -608,22 +608,24 @@ create policy "spaces_all" on spaces for all to anon, authenticated using (true)
 create policy "bookings_all" on bookings for all to anon, authenticated using (true) with check (true);
 
 -- ==============================
--- Events (offsite)
+-- Events (titan & offsite)
 -- ==============================
-create type event_status as enum ('planned', 'completed', 'cancelled');
-
 create table events (
   id uuid primary key default gen_random_uuid(),
-  name text not null,
-  location text not null,
-  start_time timestamptz not null,
-  end_time timestamptz not null,
-  amount numeric not null default 0,
-  note text,
-  status event_status not null default 'planned',
-  check_id uuid references checks(id),
-  created_by uuid references profiles(id),
-  created_at timestamptz not null default now()
+  type text not null check (type in ('titan', 'exit')),
+  location text,
+  date date not null default current_date,
+  start_time time not null,
+  end_time time,
+  payment_type text not null default 'fixed' check (payment_type in ('fixed', 'hourly')),
+  fixed_amount numeric(10, 2),
+  status text not null default 'planned' check (status in ('planned', 'active', 'completed')),
+  comment text,
+  reminders jsonb default '[]'::jsonb,
+  check_id uuid references checks(id) on delete set null,
+  created_by uuid references profiles(id) on delete set null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
 );
 
 alter table events enable row level security;
@@ -718,7 +720,7 @@ create policy "refund_items_all" on refund_items for all to anon, authenticated 
 -- ==============================
 -- Realtime
 -- ==============================
-alter publication supabase_realtime add table checks, check_items, check_discounts, inventory, shifts, cash_operations, bookings, profiles, events, discounts, supplies, revisions, refunds;
+alter publication supabase_realtime add table checks, check_items, check_discounts, inventory, shifts, cash_operations, bookings, profiles, events, discounts, supplies, revisions, refunds, menu_categories;
 alter table checks replica identity full;
 alter table check_items replica identity full;
 alter table check_discounts replica identity full;
@@ -732,6 +734,7 @@ alter table discounts replica identity full;
 alter table supplies replica identity full;
 alter table revisions replica identity full;
 alter table refunds replica identity full;
+alter table menu_categories replica identity full;
 
 -- ==============================
 -- Modifiers (add-ons for menu items)

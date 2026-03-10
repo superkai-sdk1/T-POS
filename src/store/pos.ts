@@ -890,7 +890,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       .from('events')
       .update({ status: 'completed' })
       .eq('check_id', activeCheck.id)
-      .neq('status', 'cancelled');
+      .neq('status', 'completed');
 
     await get().loadOpenChecks();
     await get().loadInventory();

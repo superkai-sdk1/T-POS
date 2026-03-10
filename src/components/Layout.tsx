@@ -357,7 +357,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
 
       {/* ── Main content ── */}
       <div
-        className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-[88px]' : 'lg:ml-[276px]'}`}
+        className={`flex-1 flex flex-col min-h-0 overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-[88px]' : 'lg:ml-[276px]'}`}
       >
         {/* ── Mobile header: POS — статус смены + в кассе; остальные вкладки — заголовок ── */}
         {activeTab === 'pos' ? (
@@ -452,7 +452,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
         >
           <main
             ref={scrollRef}
-            className={`flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
+            className={`flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
             style={{ WebkitOverflowScrolling: 'touch', paddingBottom: '120px', overscrollBehaviorY: 'contain', touchAction: 'pan-y' }}
           >
             {children}

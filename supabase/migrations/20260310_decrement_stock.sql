@@ -1,4 +1,4 @@
-CREATE OR REPLACE FUNCTION decrement_stock(p_item_id uuid, p_qty int)
+CREATE OR REPLACE FUNCTION decrement_stock(p_item_id uuid, p_qty numeric)
 RETURNS void AS $$
 BEGIN
   UPDATE inventory
