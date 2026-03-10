@@ -458,7 +458,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           className={`flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
-          style={{ WebkitOverflowScrolling: 'touch', paddingBottom: 'calc(53px + env(safe-area-inset-bottom, 0px))' }}
+          style={{ WebkitOverflowScrolling: 'touch', paddingBottom: '58px' }}
         >
           {activeTab === 'pos' && !activeCheck && (
             <div
@@ -490,8 +490,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
         {/* ── Mobile bottom nav ── */}
         {typeof document !== 'undefined' && createPortal(
           <nav
-            className="lg:hidden fixed left-0 right-0 bottom-0 z-[60] bg-[#0d0d12] backdrop-blur-2xl border-t border-white/5 px-6 sm:px-12"
-            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+            className="lg:hidden fixed left-0 right-0 bottom-0 z-[60] bg-[#0d0d12] backdrop-blur-2xl border-t border-white/5 px-6 sm:px-12 pb-[5px]"
           >
             <div className="flex w-full max-w-3xl mx-auto items-center justify-between h-[49px]">
               {tabs.map((tab) => {
