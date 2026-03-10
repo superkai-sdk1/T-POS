@@ -123,7 +123,7 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
 });
 
 export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
-  const { openChecks, loadOpenChecks, createCheck, selectCheck, addToCart, saveCartToDb, inventory, checksLoaded } = usePOSStore();
+  const { openChecks, loadOpenChecks, createCheck, selectCheck, addToCart, saveCartToDb, inventory, checksLoaded, activeCheck } = usePOSStore();
   const activeShift = useShiftStore((s) => s.activeShift);
   const [showNewCheck, setShowNewCheck] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -388,9 +388,12 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           )}
         </div>
 
-        {/* FAB — рендерим в body (iOS overflow scroll ломает fixed внутри) */}
-        {typeof document !== 'undefined' && createPortal(
-          <div className="lg:hidden fixed left-0 right-0 pointer-events-none z-[65] flex justify-center px-4 sm:px-6" style={{ bottom: 'var(--fab-bottom-offset)' }}>
+        {/* FAB — рендерим в body (iOS overflow scroll ломает fixed внутри) только в списке чеков (нет активного чека) */}
+        {typeof document !== 'undefined' && !activeCheck && createPortal(
+          <div
+            className="lg:hidden fixed left-0 right-0 pointer-events-none z-[65] flex justify-center px-4 sm:px-6"
+            style={{ bottom: 'var(--fab-bottom-offset)' }}
+          >
             <div className="max-w-xl mx-auto flex justify-center">
               <button
                 type="button"
