@@ -378,7 +378,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         </div>
 
         {/* Сетка чеков — скролл */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 lg:px-8 min-h-0 scrollbar-none">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 lg:px-8 min-h-0 scrollbar-none scroll-area">
           {!checksLoaded ? (
             <div className={`grid gap-3 lg:gap-4 ${activeCheck ? 'lg:grid-cols-1' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'}`}>
               {[1, 2, 3, 4, 5, 6].map((i) => (

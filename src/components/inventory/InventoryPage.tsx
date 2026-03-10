@@ -125,7 +125,7 @@ export function InventoryPage() {
         />
       </div>
 
-      <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto min-h-[200px]">
+      <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto min-h-[200px] scroll-area">
         <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
             const item = filtered[virtualRow.index];

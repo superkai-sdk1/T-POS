@@ -181,7 +181,7 @@ export function EventsPage() {
             </div>
 
             {/* Event list */}
-            <div className="flex-1 overflow-y-auto min-h-0 pb-4 space-y-3">
+            <div className="flex-1 overflow-y-auto min-h-0 pb-4 space-y-3 scroll-area">
                 {loading ? (
                     <div className="flex justify-center py-12">
                         <div className="w-7 h-7 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin" />

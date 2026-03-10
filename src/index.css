@@ -66,6 +66,7 @@ html {
 body {
   width: 100%;
   height: 100%;
+  min-height: 0;
   margin: 0;
   overflow: hidden;
   overscroll-behavior: none;
@@ -76,6 +77,8 @@ body {
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   transition: background 0.4s ease, color 0.3s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Animated Background Mesh ── */
@@ -138,11 +141,15 @@ body::after {
 }
 
 #root {
+  flex: 1;
+  min-height: 0;
   width: 100%;
   height: 100dvh;
   height: 100vh;
   overflow: hidden;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 @supports (height: 100dvh) {
@@ -171,6 +178,12 @@ input[type="number"] {
 [class*="overflow-y-auto"] {
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
+}
+
+/* Explicit max-height for scroll areas (flex chain fallback) */
+.scroll-area {
+  -webkit-overflow-scrolling: touch;
+  max-height: calc(100dvh - 150px);
 }
 
 .scrollbar-none::-webkit-scrollbar {

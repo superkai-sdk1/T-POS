@@ -29,7 +29,7 @@ export function TabPanel({ id, activeTab, prevTab, tabOrder, children }: TabPane
 
   return (
     <div
-      className={isActive ? `flex-1 flex flex-col min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain ${animClass}` : 'hidden'}
+      className={isActive ? `flex-1 flex flex-col min-h-0 min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain scroll-area ${animClass}` : 'hidden'}
       aria-hidden={!isActive}
     >
       {children}

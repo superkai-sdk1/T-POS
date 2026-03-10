@@ -202,7 +202,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
   };
 
   return (
-    <div className="min-h-[100dvh] h-full flex flex-col lg:flex-row overflow-hidden relative" style={{ backgroundColor: 'var(--c-bg)' }}>
+    <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden relative" style={{ backgroundColor: 'var(--c-bg)' }}>
       {/* ── Desktop floating sidebar ── */}
       <aside
         className={`hidden lg:flex fixed top-4 left-4 bottom-4 z-40 flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-[72px]' : 'w-[260px]'
