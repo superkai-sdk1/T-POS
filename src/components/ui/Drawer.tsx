@@ -35,7 +35,7 @@ export function Drawer({
   const [dragging, setDragging] = useState(false);
   const [closing, setClosing] = useState(false);
   const [visible, setVisible] = useState(false);
-  const [viewportH, setViewportH] = useState<number | null>(null);
+  const [viewportBox, setViewportBox] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
 
   useEffect(() => {
     if (open && !closing) {
@@ -50,7 +50,12 @@ export function Drawer({
     const vv = window.visualViewport;
     if (!vv) return;
     const sync = () => {
-      setViewportH(vv.height);
+      setViewportBox({
+        top: vv.offsetTop,
+        left: vv.offsetLeft,
+        width: vv.width,
+        height: vv.height,
+      });
       window.scrollTo(0, 0);
     };
     sync();
@@ -59,7 +64,7 @@ export function Drawer({
     return () => {
       vv.removeEventListener('resize', sync);
       vv.removeEventListener('scroll', sync);
-      setViewportH(null);
+      setViewportBox(null);
     };
   }, [open]);
 
@@ -115,7 +120,6 @@ export function Drawer({
   if (!open && !closing) return null;
 
   const heightVh = HEIGHT_VH[size] ?? '88vh';
-  const containerHeight = viewportH != null ? `${viewportH}px` : '100dvh';
 
   const overlayOpacity = closing ? 0 : dragY > 0 ? Math.max(0, 1 - dragY / 200) : visible ? 1 : 0;
   const panelTranslate = closing ? '100%' : dragY > 0 ? `${dragY}px` : visible ? '0' : '100%';
@@ -126,8 +130,24 @@ export function Drawer({
       role="dialog"
       aria-modal="true"
       aria-label={title || 'Окно'}
-      className="fixed inset-0 z-[100] flex items-end lg:items-center lg:justify-center overflow-hidden"
-      style={{ height: containerHeight }}
+      className="z-[100] flex items-end lg:items-center lg:justify-center overflow-hidden"
+      style={
+        viewportBox != null
+          ? {
+              position: 'fixed',
+              top: viewportBox.top,
+              left: viewportBox.left,
+              width: viewportBox.width,
+              height: viewportBox.height,
+              zIndex: 100,
+            }
+          : {
+              position: 'fixed',
+              inset: 0,
+              height: '100dvh',
+              zIndex: 100,
+            }
+      }
     >
       {/* Оверлей с глубоким размытием */}
       <div
@@ -155,7 +175,10 @@ export function Drawer({
           onClick={(e) => e.stopPropagation()}
           className="bg-[#0c0c14] sm:bg-white/[0.03] backdrop-blur-[30px] border-t border-white/10 rounded-t-[32px] sm:rounded-t-[48px] shadow-2xl flex flex-col overflow-hidden"
           style={{
-            maxHeight: `min(${heightVh}, calc(100dvh - var(--safe-top) - var(--safe-bottom)))`,
+            maxHeight:
+              viewportBox != null
+                ? `min(${heightVh}, ${viewportBox.height}px)`
+                : `min(${heightVh}, calc(100dvh - var(--safe-top) - var(--safe-bottom)))`,
             marginTop: 'var(--safe-top)',
             WebkitBackdropFilter: 'blur(30px)',
           }}

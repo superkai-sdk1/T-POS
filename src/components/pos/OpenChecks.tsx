@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/ui/Drawer';
 import { Input } from '@/components/ui/Input';
 import { ShiftHistory } from '@/components/shift/ShiftHistory';
-import { Plus, Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen, Home, Building2, Warehouse, Star, GraduationCap, Gamepad2, RotateCcw } from 'lucide-react';
+import { Plus, Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen, Home, Building2, Warehouse, Star, GraduationCap, Gamepad2, RotateCcw, PlusCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Profile, Space, VisitTariff, ClientTier, Check } from '@/types';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
@@ -56,69 +56,66 @@ const fmtCur = (n: number) =>
 
 const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: Check) => void }) => {
   const hasSpace = !!check.space;
+  const displayName = hasSpace
+    ? check.space!.name
+    : (() => {
+        const names: string[] = [];
+        if (check.player?.nickname) names.push(check.player.nickname);
+        if (check.guest_names) names.push(...check.guest_names.split(', ').filter(Boolean));
+        return names.length > 0 ? names.join(', ') : 'Без клиента';
+      })();
+  const isEmpty = !check.player && !check.space && check.total_amount === 0;
+  const avatarUrl = check.player?.photo_url ?? null;
+
   return (
     <button
+      type="button"
       onClick={() => onSelect(check)}
-      className="group text-left p-3 flex flex-col gap-2 rounded-2xl active:scale-[0.97] transition-all duration-300 hover:bg-[rgba(255,255,255,0.06)] hover:border-[rgba(255,255,255,0.2)] hover:shadow-[0_8px_24px_rgba(139,92,246,0.15)]"
-      style={{
-        background: 'rgba(255, 255, 255, 0.04)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04)',
-      }}
+      className={`relative group flex flex-col justify-between p-3.5 rounded-[28px] transition-all duration-300 active:scale-[0.97] border min-h-[120px] sm:min-h-[140px] text-left ${
+        isEmpty
+          ? 'bg-transparent border-dashed border-white/10 opacity-60'
+          : 'bg-white/[0.03] hover:bg-white/[0.07] border-white/5 shadow-lg shadow-black/40'
+      }`}
     >
-      <div className="flex items-center gap-2">
-        <div
-          className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
-          style={{
-            background: hasSpace
-              ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(99, 102, 241, 0.05))'
-              : check.player
-                ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.08))'
-                : 'rgba(255, 255, 255, 0.06)',
-          }}
-        >
-          {hasSpace ? (() => { const Icon = spaceIconMap[check.space!.type] || DoorOpen; return <Icon className="w-3.5 h-3.5 text-indigo-400" />; })()
-            : check.player?.photo_url
-              ? <img src={check.player.photo_url} alt="" className="w-full h-full object-cover" />
-              : check.player
-                ? <span className="text-xs font-bold text-[var(--c-accent-light)]">{check.player.nickname?.charAt(0).toUpperCase()}</span>
-                : <UserX className="w-3.5 h-3.5 text-[var(--c-muted)]" />}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold text-[13px] text-[var(--c-text)] truncate leading-tight">
-            {hasSpace
-              ? check.space!.name
-              : (() => {
-                const names: string[] = [];
-                if (check.player?.nickname) names.push(check.player.nickname);
-                if (check.guest_names) names.push(...check.guest_names.split(', '));
-                return names.length > 0 ? names.join(', ') : 'Без клиента';
-              })()
-            }
-          </p>
-          {hasSpace && check.player && (
-            <p className="text-[10px] text-indigo-400/50 truncate">
-              {check.player.nickname}{check.guest_names ? `, ${check.guest_names}` : ''}
-            </p>
+      <div className="flex items-start gap-3">
+        <div className="shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center shadow-inner">
+          {hasSpace ? (
+            (() => {
+              const Icon = spaceIconMap[check.space!.type] || DoorOpen;
+              return <Icon className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-400" />;
+            })()
+          ) : avatarUrl ? (
+            <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <User className="w-6 h-6 text-white/40" />
           )}
+        </div>
+        <div className="flex-1 pt-0.5 overflow-hidden min-w-0">
+          <h3 className="text-[12px] sm:text-[15px] font-black tracking-tight uppercase leading-tight line-clamp-2 group-hover:text-indigo-400 transition-colors text-white">
+            {displayName}
+          </h3>
+          <div className="flex items-center gap-1 text-[8px] sm:text-[9px] font-bold text-white/20 uppercase tracking-widest mt-1.5">
+            <Clock className="w-2.5 h-2.5 shrink-0" />
+            <ElapsedTime since={check.created_at} />
+          </div>
         </div>
       </div>
 
-      <div className="flex items-end justify-between mt-auto">
-        <div className="flex items-center gap-1 text-[var(--c-muted)]">
-          <Clock className="w-3 h-3" />
-          <span className="text-[10px] tabular-nums"><ElapsedTime since={check.created_at} /></span>
+      <div className="flex justify-end items-center mt-2 pr-1">
+        <div
+          className={`text-[16px] sm:text-[22px] font-black tracking-tighter italic tabular-nums ${
+            isEmpty ? 'text-white/10' : 'text-indigo-400 group-hover:text-white transition-colors'
+          }`}
+        >
+          {isEmpty ? '—' : `${(check.total_amount || 0).toLocaleString('ru-RU')} ₽`}
         </div>
-        {check.total_amount > 0 ? (
-          <span className="text-base font-black text-[var(--c-text)] tabular-nums leading-none">
-            {fmtCur(check.total_amount)}
-          </span>
-        ) : (
-          <Badge variant="default" size="sm">Пусто</Badge>
-        )}
       </div>
+
+      {!isEmpty && (
+        <div className="absolute top-2.5 right-2.5">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+        </div>
+      )}
     </button>
   );
 });
@@ -126,6 +123,7 @@ const CheckTile = memo(({ check, onSelect }: { check: Check; onSelect: (check: C
 export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const { openChecks, loadOpenChecks, createCheck, selectCheck, addToCart, saveCartToDb, inventory, checksLoaded } = usePOSStore();
   const activeShift = useShiftStore((s) => s.activeShift);
+  const cashInRegister = useShiftStore((s) => s.cashInRegister);
   const [showNewCheck, setShowNewCheck] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showRefunds, setShowRefunds] = useState(false);
@@ -325,83 +323,121 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     return null;
   };
 
+  const kassaAmount = cashInRegister != null ? cashInRegister : 0;
+  const activeCount = openChecks.length;
+
   return (
-    <div className="flex-1 flex flex-col min-h-0 relative">
-      <div className="flex-1 space-y-4 pb-24 overflow-y-auto no-scrollbar">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-bold text-[var(--c-text)]">Касса</h2>
-            <p className="text-[11px] text-[var(--c-hint)]">
-              {openChecks.length > 0 ? `${openChecks.length} открыт${openChecks.length === 1 ? '' : 'о'}` : 'Нет открытых чеков'}
-            </p>
+    <div className="flex-1 flex flex-col min-h-0 relative bg-[#020205]">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        {/* Шапка смены */}
+        {activeShift && (
+          <div className="px-6 pt-6 sm:pt-8 pb-4 text-center shrink-0">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 font-black uppercase tracking-widest text-[9px] mb-1">
+              <div className="w-1 h-1 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_6px_#34d399]" />
+              Смена открыта
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="text-white/30 text-[9px] font-black uppercase tracking-widest">В кассе</span>
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tighter bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent">
+                {kassaAmount.toLocaleString('ru-RU')} ₽
+              </h1>
+            </div>
+          </div>
+        )}
+
+        {/* Действия */}
+        <div className="px-6 sm:px-8 mb-4 shrink-0 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-black uppercase italic tracking-tight text-white">Касса</h2>
+            <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">
+              {activeCount} активн{activeCount === 1 ? 'ый' : 'ых'}
+            </span>
           </div>
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={() => setShowHistory(true)}
-              className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-90"
-              style={{
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
-              }}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-white/5 hover:bg-white/10 rounded-xl transition-all border border-white/5 group"
             >
-              <History className="w-4 h-4 text-[var(--c-hint)]" />
+              <History className="w-3.5 h-3.5 text-white/40 group-hover:text-white transition-colors" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-white">История</span>
             </button>
-            <Button size="sm" variant="danger" onClick={() => setShowRefunds(true)} disabled={!activeShift}>
-              <RotateCcw className="w-3.5 h-3.5" />
-              Возвраты
-            </Button>
+            <button
+              type="button"
+              onClick={() => setShowRefunds(true)}
+              disabled={!activeShift}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-rose-500/5 hover:bg-rose-500/15 rounded-xl transition-all border border-rose-500/10 group disabled:opacity-40 disabled:pointer-events-none"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-rose-500/40 group-hover:text-rose-500 transition-colors" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-rose-500/40 group-hover:text-rose-500">Возвраты</span>
+            </button>
           </div>
         </div>
 
-        {!checksLoaded ? (
-          <div className="grid grid-cols-2 gap-2.5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
-            {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="p-3 rounded-2xl animate-pulse space-y-2"
-                style={{
-                  opacity: 1 - i * 0.2,
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.06)',
-                }}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg" style={{ background: 'rgba(255,255,255,0.06)' }} />
-                  <div className="flex-1"><div className="h-3 w-20 rounded" style={{ background: 'rgba(255,255,255,0.06)' }} /></div>
+        {/* Список чеков (сетка) */}
+        <div className="flex-1 overflow-y-auto px-6 sm:px-8 pb-32 min-h-0">
+          {!checksLoaded ? (
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div
+                  key={i}
+                  className="p-3.5 rounded-[28px] animate-pulse border border-white/5 min-h-[120px]"
+                  style={{ opacity: 1 - i * 0.2, background: 'rgba(255, 255, 255, 0.03)' }}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/5" />
+                    <div className="flex-1 space-y-1.5">
+                      <div className="h-3 w-16 rounded bg-white/5" />
+                      <div className="h-2.5 w-10 rounded bg-white/5" />
+                    </div>
+                  </div>
+                  <div className="mt-2 h-6 w-20 rounded bg-white/5 ml-auto" />
                 </div>
-                <div className="flex items-end justify-between">
-                  <div className="h-2.5 w-12 rounded" style={{ background: 'rgba(255,255,255,0.04)' }} />
-                  <div className="h-5 w-14 rounded" style={{ background: 'rgba(255,255,255,0.06)' }} />
-                </div>
+              ))}
+            </div>
+          ) : openChecks.length === 0 ? (
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+              <div className="col-span-2 border border-dashed border-white/5 rounded-[28px] flex flex-col items-center justify-center min-h-[160px] py-8">
+                <p className="text-white/40 text-sm font-medium">Нет открытых чеков</p>
+                <p className="text-xs text-white/20 mt-1">
+                  {activeShift ? 'Нажмите «Новый чек» ниже' : 'Откройте смену для начала'}
+                </p>
               </div>
-            ))}
-          </div>
-        ) : openChecks.length === 0 ? (
-          <div className="text-center py-20 animate-fade-in">
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+              {openChecks.map((check) => (
+                <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} />
+              ))}
+              {/* Пустая ячейка добавления */}
+              <button
+                type="button"
+                onClick={() => activeShift && setShowNewCheck(true)}
+                disabled={!activeShift}
+                className="border border-dashed border-white/5 rounded-[28px] flex items-center justify-center min-h-[120px] sm:min-h-[140px] group cursor-pointer hover:bg-white/[0.02] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <PlusCircle className="w-7 h-7 text-white/10 group-hover:text-white/25 transition-colors" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* FAB — Новый чек */}
+        <div className="absolute bottom-20 sm:bottom-24 left-0 right-0 px-6 sm:px-8 pointer-events-none z-10">
+          <div className="max-w-xl mx-auto flex justify-center">
             <button
-              onClick={() => activeShift && setShowNewCheck(true)}
-              disabled={!activeShift}
-              className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 active:scale-90 transition-transform disabled:opacity-30"
-              style={{
-                background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(6, 182, 212, 0.06))',
-                border: '1px solid rgba(139, 92, 246, 0.15)',
-                boxShadow: '0 0 30px rgba(139, 92, 246, 0.08)',
+              type="button"
+              onClick={() => {
+                if (activeShift) setShowNewCheck(true);
               }}
+              disabled={!activeShift}
+              className="pointer-events-auto flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl font-black uppercase tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all text-[11px] disabled:opacity-40 disabled:hover:scale-100 text-white"
             >
-              <Plus className="w-7 h-7 text-[var(--c-accent-light)] animate-pulse" />
+              <PlusCircle className="w-4.5 h-4.5" />
+              Новый чек
             </button>
-            <p className="text-[var(--c-hint)] text-sm font-medium">Нет открытых чеков</p>
-            <p className="text-xs text-[var(--c-muted)] mt-1">
-              {activeShift ? 'Нажмите чтобы создать' : 'Откройте смену для начала'}
-            </p>
           </div>
-        ) : (
-          <div className="grid gap-2.5 stagger-children" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', transform: 'translateZ(0)' }}>
-            {openChecks.map((check) => (
-              <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} />
-            ))}
-          </div>
-        )}
+        </div>
       </div>
 
       <Drawer open={showHistory} onClose={() => setShowHistory(false)} title="История смен">
