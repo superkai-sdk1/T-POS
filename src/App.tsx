@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, lazy, Suspense } from 'react';
+import { useEffect, useState, useCallback, useRef, lazy, Suspense } from 'react';
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(
@@ -95,6 +95,42 @@ export default function App() {
   const [managementScreen, setManagementScreen] = useState<string | undefined>();
   const isMobile = useIsMobile();
 
+  // Resizable split: left panel width % (20-60), persisted
+  const [splitLeftPercent, setSplitLeftPercent] = useState(() => {
+    if (typeof window === 'undefined') return 30;
+    const v = localStorage.getItem('tpos-split-left');
+    const n = v ? Number(v) : 30;
+    return Math.max(20, Math.min(60, n)) || 30;
+  });
+  const splitRef = useRef<HTMLDivElement>(null);
+  const [isResizing, setIsResizing] = useState(false);
+
+  const handleSplitResize = useCallback((e: MouseEvent | TouchEvent) => {
+    const container = splitRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const x = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    let pct = ((x - rect.left) / rect.width) * 100;
+    pct = Math.max(20, Math.min(60, pct));
+    setSplitLeftPercent(pct);
+    localStorage.setItem('tpos-split-left', String(pct));
+  }, []);
+
+  useEffect(() => {
+    if (!isResizing) return;
+    const onUp = () => setIsResizing(false);
+    window.addEventListener('mousemove', handleSplitResize);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('touchmove', handleSplitResize, { passive: true });
+    window.addEventListener('touchend', onUp);
+    return () => {
+      window.removeEventListener('mousemove', handleSplitResize);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', handleSplitResize);
+      window.removeEventListener('touchend', onUp);
+    };
+  }, [isResizing, handleSplitResize]);
+
   const handleTabChange = useCallback((tab: string) => {
     if (showCheckView) {
       setShowCheckView(false);
@@ -148,15 +184,40 @@ export default function App() {
             <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
           ) : null}
         </div>
-        {/* Desktop: split view — list left, check right. CheckView only when !isMobile to avoid duplicate. */}
-        <div className="hidden lg:flex gap-4 h-full min-h-0 overflow-hidden">
-          <div className={`shrink-0 min-h-0 overflow-y-auto overflow-x-hidden pr-1 transition-all duration-300 scrollbar-none scroll-area ${showCheckView ? 'lg:w-[30%] xl:w-[25%] min-w-[280px]' : 'flex-1'}`} style={{ overscrollBehaviorY: 'contain' }}>
+        {/* Desktop: split view — list left, check right. Resizable when split. */}
+        <div
+          ref={splitRef}
+          className={cn(
+            'hidden lg:flex h-full min-h-0 overflow-hidden',
+            showCheckView && !isMobile ? 'gap-0' : 'gap-4',
+            isResizing && 'select-none',
+          )}
+        >
+          <div
+            className="shrink-0 min-h-0 overflow-y-auto overflow-x-hidden pr-1 scrollbar-none scroll-area min-w-[280px]"
+            style={{
+              width: showCheckView && !isMobile ? `${splitLeftPercent}%` : undefined,
+              flex: showCheckView && !isMobile ? undefined : 1,
+              overscrollBehaviorY: 'contain',
+            }}
+          >
             <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
           </div>
           {showCheckView && !isMobile && (
-            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden border-l border-[var(--c-border)] pl-4 scrollbar-none scroll-area">
-              <CheckView onBack={() => setShowCheckView(false)} />
-            </div>
+            <>
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                className="shrink-0 w-2 flex items-center justify-center cursor-col-resize group touch-none"
+                onMouseDown={() => setIsResizing(true)}
+                onTouchStart={() => setIsResizing(true)}
+              >
+                <div className="w-0.5 h-8 rounded-full bg-[var(--c-border)] group-hover:bg-[var(--c-fg-muted)] transition-colors" />
+              </div>
+              <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pl-4 scrollbar-none scroll-area min-w-0">
+                <CheckView onBack={() => setShowCheckView(false)} />
+              </div>
+            </>
           )}
         </div>
       </TabPanel>
