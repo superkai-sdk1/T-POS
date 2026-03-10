@@ -123,6 +123,7 @@ const CartItemRow = memo(function CartItemRow({
   onRemove: (id: string, modifierKey?: string) => void;
   onUpdateQty: (id: string, qty: number, modifierKey?: string) => void;
 }) {
+  if (!ci?.item) return null;
   const modPrice = (ci.modifiers || []).reduce((s, m) => s + m.price, 0);
   const unitPrice = ci.item.price + modPrice;
   const modKey = (ci.modifiers || []).map((m) => m.id).sort().join(',');
@@ -181,7 +182,6 @@ interface CheckViewProps {
 export function CheckView({ onBack }: CheckViewProps) {
   const { activeCheck, cart, addToCart, updateCartQuantity, removeFromCart, inventory, leaveCheck, cancelCheck, getCartTotal, getDiscountTotal, updateCheckNote, saveCartToDb, appliedDiscounts, applyDiscount, removeDiscount } = usePOSStore();
 
-  if (!activeCheck) return null;
   const [showPayment, setShowPayment] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [menuDragY, setMenuDragY] = useState(0);
@@ -231,6 +231,11 @@ export function CheckView({ onBack }: CheckViewProps) {
   useEffect(() => {
     setNote(activeCheck?.note || '');
   }, [activeCheck?.id, activeCheck?.note]);
+
+  // Close view when activeCheck disappears (e.g. cancelled or deleted remotely)
+  useEffect(() => {
+    if (!activeCheck) onBack();
+  }, [activeCheck, onBack]);
 
   const debouncedSaveCart = useCallback(() => {
     if (cartSaveTimer.current) clearTimeout(cartSaveTimer.current);
@@ -291,6 +296,7 @@ export function CheckView({ onBack }: CheckViewProps) {
   }, [activeCheck?.space, activeCheck?.created_at]);
 
   const cartSubtotal = cart.reduce((s, c) => {
+    if (!c?.item) return s;
     const modPrice = (c.modifiers || []).reduce((ms, m) => ms + m.price, 0);
     return s + (c.item.price + modPrice) * c.quantity;
   }, 0);
@@ -329,7 +335,7 @@ export function CheckView({ onBack }: CheckViewProps) {
           const alreadyApplied = currentDiscounts.find((ad) => ad.discount_id === qd.id);
 
           if (qd.item_id) {
-            const ci = cart.find((c) => c.item.id === qd.item_id);
+            const ci = cart.find((c) => c?.item?.id === qd.item_id);
             const qty = ci?.quantity || 0;
             if (qty >= minQty && !alreadyApplied) {
               await applyDiscount(qd.id, qd.name, qd.type, qd.value, 'item', qd.item_id);
@@ -452,7 +458,7 @@ export function CheckView({ onBack }: CheckViewProps) {
   };
 
   const handleDecrease = useCallback((item: InventoryItem) => {
-    const ci = cart.find((c) => c.item.id === item.id);
+    const ci = cart.find((c) => c?.item?.id === item.id);
     if (!ci) return;
     hapticFeedback('light');
     const modKey = (ci.modifiers || []).map((m) => m.id).sort().join(',');
@@ -476,14 +482,15 @@ export function CheckView({ onBack }: CheckViewProps) {
     setModifierItem(null);
   };
 
-  const handleCancel = async () => {
+  const handleCancel = useCallback(async () => {
     const ok = await cancelCheck();
     if (ok) {
       hapticFeedback('medium');
       setShowCancelConfirm(false);
       onBack();
+      setTimeout(() => leaveCheck(), 0);
     }
-  };
+  }, [cancelCheck, leaveCheck, onBack]);
 
   const openMenu = () => {
     setMenuCategory(null);
@@ -612,7 +619,7 @@ export function CheckView({ onBack }: CheckViewProps) {
           </div>
         ) : (
           <div className="space-y-3 stagger-children">
-            {cart.map((ci, cartIdx) => {
+            {cart.filter((ci) => ci?.item).map((ci, cartIdx) => {
               const cartKey = ci.item.id + ((ci.modifiers || []).map((m) => m.id).sort().join(','));
               return (
                 <CartItemRow
@@ -788,7 +795,7 @@ export function CheckView({ onBack }: CheckViewProps) {
               <div className="px-4 sm:px-6 lg:px-6 pb-6 overflow-y-auto flex-1 min-h-0">
                 <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 lg:gap-3">
                   {filteredItems.map((item) => {
-                    const inCartQty = cart.filter((c) => c.item.id === item.id).reduce((s, c) => s + c.quantity, 0);
+                    const inCartQty = cart.filter((c) => c?.item?.id === item.id).reduce((s, c) => s + c.quantity, 0);
                     const cat = menuCategories.find((c) => c.slug === item.category);
                     const colors = getCategoryColorConfig(cat?.color);
                     return (
@@ -922,7 +929,7 @@ export function CheckView({ onBack }: CheckViewProps) {
                       <>
                         <p className="text-[10px] text-[var(--c-muted)] font-semibold uppercase tracking-wider pt-2">На позицию</p>
                         <div className="space-y-1 max-h-[30vh] overflow-y-auto">
-                          {cart.map((ci, idx) => (
+                          {cart.filter((ci) => ci?.item).map((ci, idx) => (
                             <div key={ci.item.id + ':' + idx} className="p-2 rounded-xl bg-[var(--c-surface)]">
                               <p className="text-[11px] font-medium text-[var(--c-text)] mb-1.5">{ci.item.name} ({fmtCur((ci.item.price + (ci.modifiers || []).reduce((s, m) => s + m.price, 0)) * ci.quantity)})</p>
                               <div className="flex gap-1 flex-wrap">

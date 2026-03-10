@@ -45,6 +45,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   });
   const scrollRef = useRef<HTMLElement>(null);
   const touchStartY = useRef(0);
+  const pullScrollContainerRef = useRef<HTMLElement | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [pullReady, setPullReady] = useState(false);
   const isPullingRef = useRef(false);
@@ -205,26 +206,39 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const PULL_THRESHOLD = 80;
   const PULL_MAX = 120;
 
-  const canPullToRefresh = () => {
-    const el = scrollRef.current;
-    if (!el) return false;
-    const { scrollTop, scrollHeight, clientHeight } = el;
-    const atTop = scrollTop <= 0;
-    const noScrollNeeded = scrollHeight <= clientHeight + 2;
-    return atTop && noScrollNeeded;
+  const getScrollContainer = (target: EventTarget | null): HTMLElement | null => {
+    let el = target instanceof HTMLElement ? target : null;
+    while (el) {
+      const { overflowY } = getComputedStyle(el);
+      const { scrollTop, scrollHeight, clientHeight } = el;
+      if ((overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') && scrollHeight > clientHeight) {
+        return el;
+      }
+      el = el.parentElement;
+    }
+    return scrollRef.current;
+  };
+
+  const canPullToRefresh = (scrollEl: HTMLElement | null) => {
+    if (!scrollEl) return false;
+    return scrollEl.scrollTop <= 2;
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (activeTab !== 'pos' || activeCheck || isOverlayOpen()) return;
-    if (!canPullToRefresh()) return;
+    const scrollEl = getScrollContainer(e.target as HTMLElement);
+    if (!canPullToRefresh(scrollEl)) return;
     touchStartY.current = e.touches[0].clientY;
+    pullScrollContainerRef.current = scrollEl;
     isPullingRef.current = true;
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isPullingRef.current || isRefreshing) return;
-    if (!canPullToRefresh()) {
+    const scrollEl = pullScrollContainerRef.current ?? getScrollContainer(e.target as HTMLElement);
+    if (!canPullToRefresh(scrollEl)) {
       isPullingRef.current = false;
+      pullScrollContainerRef.current = null;
       setPullDistance(0);
       setPullReady(false);
       return;
@@ -247,7 +261,9 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const handleTouchEnd = () => {
     if (!isPullingRef.current) return;
     isPullingRef.current = false;
-    if (!isRefreshing && pullReady && canPullToRefresh()) {
+    const scrollEl = pullScrollContainerRef.current;
+    pullScrollContainerRef.current = null;
+    if (!isRefreshing && pullReady && canPullToRefresh(scrollEl)) {
       hapticFeedback('medium');
       setIsRefreshing(true);
       setPullDistance(PULL_THRESHOLD);
@@ -507,7 +523,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           className={`flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
-          style={{ WebkitOverflowScrolling: 'touch', paddingBottom: '120px' }}
+          style={{ WebkitOverflowScrolling: 'touch', paddingBottom: '120px', overscrollBehaviorY: 'contain' }}
         >
           {activeTab === 'pos' && !activeCheck && (pullDistance > 0 || isRefreshing) && (
             <div

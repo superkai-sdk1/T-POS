@@ -26,7 +26,7 @@ export function Cart() {
   return (
     <div className="space-y-2">
       <div className="space-y-2">
-        {cart.map((cartItem) => {
+        {cart.filter((cartItem) => cartItem?.item).map((cartItem) => {
           const modKey = (cartItem.modifiers || []).map((m) => m.id).sort().join(',');
           const cartKey = cartItem.item.id + (modKey ? ':' + modKey : '');
           const modPrice = (cartItem.modifiers || []).reduce((s, m) => s + m.price, 0);

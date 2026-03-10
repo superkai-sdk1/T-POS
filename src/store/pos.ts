@@ -280,7 +280,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const items = get().openCheckItems[check.id] || [];
     const discounts = get().openCheckDiscounts[check.id] || [];
 
-    _lastCartFingerprint = cart.map((c) => {
+    _lastCartFingerprint = cart.filter((c) => c?.item).map((c) => {
       const mids = (c.modifiers || []).map((m) => m.id).sort().join('+');
       return `${c.item.id}:${c.quantity}:${mids}`;
     }).sort().join('|');
@@ -300,7 +300,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       ? modifiers.map((m) => m.id).sort().join(',')
       : '';
     const idx = currentCart.findIndex((c) => {
-      if (c.item.id !== item.id) return false;
+      if (!c?.item || c.item.id !== item.id) return false;
       const cKey = (c.modifiers || []).map((m) => m.id).sort().join(',');
       return cKey === modKey;
     });
@@ -319,6 +319,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const key = modifierKey ?? '';
     set({
       cart: get().cart.filter((c) => {
+        if (!c?.item) return false;
         if (c.item.id !== itemId) return true;
         const cKey = (c.modifiers || []).map((m) => m.id).sort().join(',');
         return cKey !== key;
@@ -334,7 +335,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const key = modifierKey ?? '';
     set({
       cart: get().cart.map((c) => {
-        if (c.item.id !== itemId) return c;
+        if (!c?.item || c.item.id !== itemId) return c;
         const cKey = (c.modifiers || []).map((m) => m.id).sort().join(',');
         return cKey === key ? { ...c, quantity } : c;
       }),
@@ -345,6 +346,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
   getCartTotal: () => {
     const subtotal = get().cart.reduce((sum, c) => {
+      if (!c?.item) return sum;
       const modPrice = (c.modifiers || []).reduce((ms, m) => ms + m.price, 0);
       return sum + (c.item.price + modPrice) * c.quantity;
     }, 0);
@@ -363,12 +365,13 @@ export const usePOSStore = create<POSState>((set, get) => ({
     let amount = 0;
     if (target === 'check') {
       const subtotal = cart.reduce((s, c) => {
+        if (!c?.item) return s;
         const modPrice = (c.modifiers || []).reduce((ms, m) => ms + m.price, 0);
         return s + (c.item.price + modPrice) * c.quantity;
       }, 0);
       amount = discountType === 'percentage' ? Math.round(subtotal * discountValue / 100) : discountValue;
     } else if (itemId) {
-      const ci = cart.find((c) => c.item.id === itemId);
+      const ci = cart.find((c) => c?.item?.id === itemId);
       if (ci) {
         const modPrice = (ci.modifiers || []).reduce((ms, m) => ms + m.price, 0);
         const itemTotal = (ci.item.price + modPrice) * ci.quantity;
@@ -689,24 +692,26 @@ export const usePOSStore = create<POSState>((set, get) => ({
   cancelCheck: async () => {
     const { activeCheck, cart, checkItems, appliedDiscounts } = get();
     if (!activeCheck) return false;
+    const checkId = activeCheck.id;
     const prevFp = _lastCartFingerprint;
     _lastCartFingerprint = '';
     set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
-    const { error: discErr } = await supabase.from('check_discounts').delete().eq('check_id', activeCheck.id);
-    const { error: itemsErr } = await supabase.from('check_items').delete().eq('check_id', activeCheck.id);
+    const { error: discErr } = await supabase.from('check_discounts').delete().eq('check_id', checkId);
+    const { error: itemsErr } = await supabase.from('check_items').delete().eq('check_id', checkId);
     if (discErr || itemsErr) {
       console.error('cancelCheck cleanup error:', discErr || itemsErr);
       _lastCartFingerprint = prevFp;
       set({ activeCheck, cart, checkItems, appliedDiscounts });
       return false;
     }
-    const { error } = await supabase.from('checks').delete().eq('id', activeCheck.id);
+    const { error } = await supabase.from('checks').delete().eq('id', checkId);
     if (error) {
       console.error('cancelCheck error:', error);
       _lastCartFingerprint = prevFp;
       set({ activeCheck, cart, checkItems, appliedDiscounts });
       return false;
     }
+    get().deleteCheckLocal(checkId);
     await get().loadOpenChecks();
     return true;
   },

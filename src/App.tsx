@@ -136,7 +136,7 @@ export default function App() {
         </div>
         {/* Desktop: split view — list left, check right (independent scroll) */}
         <div className="hidden lg:flex gap-4 h-full min-h-0 overflow-hidden">
-          <div className={`shrink-0 min-h-0 overflow-y-auto overflow-x-hidden pr-1 transition-all duration-300 scrollbar-none ${showCheckView ? 'lg:w-[30%] xl:w-[25%] min-w-[280px]' : 'flex-1'}`}>
+          <div className={`shrink-0 min-h-0 overflow-y-auto overflow-x-hidden pr-1 transition-all duration-300 scrollbar-none ${showCheckView ? 'lg:w-[30%] xl:w-[25%] min-w-[280px]' : 'flex-1'}`} style={{ overscrollBehaviorY: 'contain' }}>
             <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
           </div>
           {showCheckView && (

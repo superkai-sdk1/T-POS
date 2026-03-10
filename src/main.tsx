@@ -4,6 +4,7 @@ import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import './store/theme'
 import App from './App'
+import { ErrorBoundary } from './components/ui/ErrorBoundary'
 
 // Register service worker with auto-update
 const updateSW = registerSW({
@@ -34,7 +35,9 @@ window.addEventListener('focusout', (e) => {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )
 
