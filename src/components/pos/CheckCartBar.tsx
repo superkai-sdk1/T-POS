@@ -13,7 +13,7 @@ export function CheckCartBar() {
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
 
   return (
-    <div className="shrink-0 p-3 rounded-2xl border border-white/10 bg-white/[0.04] flex items-center justify-between gap-3">
+    <div className="shrink-0 p-2 lg:p-0 lg:rounded-none lg:border-0 lg:bg-transparent flex items-center justify-between gap-3">
       <div className="flex gap-2">
         <button
           onClick={() => {

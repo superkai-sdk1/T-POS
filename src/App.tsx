@@ -195,7 +195,7 @@ export default function App() {
           ].filter(Boolean).join(' ')}
         >
           <div
-            className="flex flex-col shrink-0 min-h-0 min-w-[280px] pr-1"
+            className="flex flex-col shrink-0 min-h-0 min-w-[280px] lg:pr-0"
             style={{
               width: showCheckView && !isMobile ? `${splitLeftPercent}%` : undefined,
               flex: showCheckView && !isMobile ? undefined : 1,
@@ -203,7 +203,7 @@ export default function App() {
             }}
           >
             {showCheckView && !isMobile && (
-              <div className="shrink-0 pb-3">
+              <div className="shrink-0 pb-2 lg:pb-0">
                 <CheckCartBar />
               </div>
             )}
@@ -222,7 +222,7 @@ export default function App() {
               >
                 <div className="w-0.5 h-8 rounded-full bg-[var(--c-border)] group-hover:bg-[var(--c-fg-muted)] transition-colors" />
               </div>
-              <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pl-4 scrollbar-none scroll-area min-w-0">
+              <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pl-2 lg:pl-0 scrollbar-none scroll-area min-w-0">
                 <CheckView onBack={() => setShowCheckView(false)} />
               </div>
             </>

@@ -596,12 +596,12 @@ export function CheckView({ onBack }: CheckViewProps) {
   if (!activeCheck) return null;
 
   return (
-    <div className="flex flex-col flex-1">
+    <div className="flex flex-col flex-1 min-h-0">
       {swipeIndicatorStyle && <div style={swipeIndicatorStyle} />}
       {overlayStyle && <div style={overlayStyle} />}
-      {/* Glass header */}
-      <div className="sticky top-0 z-20 -mx-4 px-3 py-2 mb-3" style={{ transform: 'translateZ(0)' }}>
-        <div className="flex items-center justify-between bg-white/5 backdrop-blur-xl p-3 rounded-[2rem] border border-white/10 shadow-xl">
+      {/* Glass header (на десктопе без бордера и паддингов) */}
+      <div className="sticky top-0 z-20 -mx-4 lg:mx-0 px-3 lg:px-0 py-2 lg:py-0 mb-3 lg:mb-0" style={{ transform: 'translateZ(0)' }}>
+        <div className="flex items-center justify-between bg-white/5 backdrop-blur-xl p-3 lg:p-0 rounded-[2rem] lg:rounded-none border border-white/10 lg:border-0 shadow-xl lg:shadow-none">
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={handleBack}
@@ -677,8 +677,8 @@ export function CheckView({ onBack }: CheckViewProps) {
         </div>
       )}
 
-      {/* Cart */}
-      <div className="flex-1 pb-24">
+      {/* Cart (pb-24 под плавающую нав на мобиле, на десктопе pb-0) */}
+      <div className="flex-1 pb-24 lg:pb-0 min-h-0">
         {cart.length === 0 ? (
           <div className="text-center py-16 animate-fade-in">
             <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3">
