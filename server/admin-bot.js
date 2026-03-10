@@ -23,6 +23,10 @@ function loadEnv() {
 const env = loadEnv();
 const BOT_TOKEN = env.VITE_TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN;
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const ALLOWED_CHAT_IDS = (env.OWNER_CHAT_IDS || process.env.OWNER_CHAT_IDS || '')
+    .split(',')
+    .map(id => id.trim())
+    .filter(Boolean);
 
 async function tg(method, body) {
     const res = await fetch(`${API}/${method}`, {
@@ -126,7 +130,13 @@ async function main() {
             for (const update of json.result) {
                 pollOffset = update.update_id + 1;
                 if (update.message?.text) {
-                    console.log(`[AdminBot] Message from ${update.message.from.id}: ${update.message.text}`);
+                    const senderId = String(update.message.from.id);
+                    console.log(`[AdminBot] Message from ${senderId}: ${update.message.text}`);
+                    if (ALLOWED_CHAT_IDS.length > 0 && !ALLOWED_CHAT_IDS.includes(senderId)) {
+                        console.log(`[AdminBot] Unauthorized user ${senderId}, ignoring`);
+                        await sendMessage(update.message.chat.id, '⛔ Доступ запрещён.');
+                        continue;
+                    }
                     await handleAiMessage(update.message);
                 }
             }

@@ -872,27 +872,11 @@ export const usePOSStore = create<POSState>((set, get) => ({
     for (const c of cart.filter((x) => x?.item)) {
       qtyByItemId.set(c.item.id, (qtyByItemId.get(c.item.id) || 0) + c.quantity);
     }
-    const uniqueItemIds = [...qtyByItemId.keys()];
-    const { data: freshItems } = await supabase
-      .from('inventory')
-      .select('id, stock_quantity')
-      .in('id', uniqueItemIds);
-    if (freshItems) {
-      const stockMap = new Map(freshItems.map((i) => [i.id, i.stock_quantity as number]));
-      await Promise.all(
-        uniqueItemIds.map((itemId) => {
-          const current = stockMap.get(itemId) ?? 0;
-          const soldQty = qtyByItemId.get(itemId) ?? 0;
-          if (current > 0 && soldQty > 0) {
-            return supabase
-              .from('inventory')
-              .update({ stock_quantity: Math.max(0, current - soldQty) })
-              .eq('id', itemId);
-          }
-          return Promise.resolve();
-        }),
-      );
-    }
+    await Promise.all(
+      [...qtyByItemId.entries()].map(([itemId, soldQty]) =>
+        supabase.rpc('decrement_stock', { p_item_id: itemId, p_qty: soldQty })
+      ),
+    );
 
     if (activeCheck.space_id) {
       await supabase

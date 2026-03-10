@@ -55,7 +55,14 @@ async function answerCallback(callbackQueryId, text) {
   return tg('answerCallbackQuery', { callback_query_id: callbackQueryId, text });
 }
 
+const WEBHOOK_SECRET = env.WEBHOOK_SECRET || process.env.WEBHOOK_SECRET || '';
+
 const fmt = (n) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n);
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
 
 async function findProfileByTgId(tgId) {
   const { data } = await supabase
@@ -74,7 +81,8 @@ async function findProfileByUsername(username) {
     .select('*')
     .ilike('tg_username', clean)
     .eq('role', 'client')
-    .single();
+    .limit(1)
+    .maybeSingle();
   return data;
 }
 
@@ -114,7 +122,7 @@ async function createLinkRequest(tgId, tgUsername, tgFirstName, profileId) {
 function welcomeMessage(profile) {
   return (
     `<b>TITAN Wallet</b>\n\n` +
-    `Привет, <b>${profile.nickname}</b>!\n\n` +
+    `Привет, <b>${escapeHtml(profile.nickname)}</b>!\n\n` +
     `Твой баланс бонусов: <b>${fmt(profile.bonus_points)} баллов</b>\n` +
     (profile.balance < 0 ? `Долг: <b>${fmt(Math.abs(profile.balance))}₽</b>\n` : '') +
     `\nОткрой кошелёк, чтобы увидеть детали:`
@@ -162,7 +170,7 @@ async function handleStart(msg) {
     }
 
     if (target.tg_id && target.tg_id !== String(tgId)) {
-      await sendMessage(chatId, `❌ Профиль <b>${target.nickname}</b> уже привязан к другому Telegram.`);
+      await sendMessage(chatId, `❌ Профиль <b>${escapeHtml(target.nickname)}</b> уже привязан к другому Telegram.`);
       return;
     }
 
@@ -173,7 +181,7 @@ async function handleStart(msg) {
     const linked = { ...target, tg_id: String(tgId) };
     await sendMessage(
       chatId,
-      `✅ <b>Привязка выполнена!</b>\n\nТвой профиль: <b>${target.nickname}</b>\n\n` + welcomeMessage(linked),
+      `✅ <b>Привязка выполнена!</b>\n\nТвой профиль: <b>${escapeHtml(target.nickname)}</b>\n\n` + welcomeMessage(linked),
       walletButton(profileId)
     );
     return;
@@ -228,7 +236,7 @@ async function sendClientPage(chatId, tgFirstName, clients, page, pageSize) {
 
   await sendMessage(
     chatId,
-    `👋 <b>${tgFirstName || 'Привет'}</b>, выбери свой игровой никнейм:\n\n<i>Страница ${page + 1} из ${totalPages}</i>`,
+    `👋 <b>${escapeHtml(tgFirstName) || 'Привет'}</b>, выбери свой игровой никнейм:\n\n<i>Страница ${page + 1} из ${totalPages}</i>`,
     { reply_markup: { inline_keyboard: keyboard } }
   );
 }
@@ -248,7 +256,7 @@ async function handleCallback(cb) {
       await tg('editMessageText', {
         chat_id: chatId,
         message_id: cb.message.message_id,
-        text: `👋 <b>${tgFirstName || 'Привет'}</b>, выбери свой игровой никнейм:\n\n<i>Страница ${page + 1} из ${Math.ceil(clients.length / 8)}</i>`,
+        text: `👋 <b>${escapeHtml(tgFirstName) || 'Привет'}</b>, выбери свой игровой никнейм:\n\n<i>Страница ${page + 1} из ${Math.ceil(clients.length / 8)}</i>`,
         parse_mode: 'HTML',
         reply_markup: {
           inline_keyboard: buildClientKeyboard(clients, page, 8),
@@ -283,7 +291,7 @@ async function handleCallback(cb) {
       await tg('editMessageText', {
         chat_id: chatId,
         message_id: cb.message.message_id,
-        text: `✅ <b>Заявка отправлена</b>\n\nТы выбрал никнейм <b>${profile.nickname}</b>.\nОжидай подтверждения от администратора.`,
+        text: `✅ <b>Заявка отправлена</b>\n\nТы выбрал никнейм <b>${escapeHtml(profile.nickname)}</b>.\nОжидай подтверждения от администратора.`,
         parse_mode: 'HTML',
       });
     } catch { /* */ }
@@ -311,12 +319,13 @@ function buildClientKeyboard(clients, page, pageSize) {
 }
 
 const OWNER_TOKEN = env.VITE_TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN;
-const OWNER_CHAT_IDS = ['556525624', '1005574994'];
+const OWNER_CHAT_IDS = (env.OWNER_CHAT_IDS || process.env.OWNER_CHAT_IDS || '556525624,1005574994')
+  .split(',').map(id => id.trim()).filter(Boolean);
 
 async function notifyOwnersAboutLinkRequest(tgName, tgUsername, nickname) {
   if (!OWNER_TOKEN) return;
-  const uTag = tgUsername ? `@${tgUsername}` : tgName || '?';
-  const text = `🔗 <b>Заявка на привязку</b>\n\nПользователь ${uTag} хочет привязаться к профилю <b>${nickname}</b>.\n\nПодтвердите в разделе «Клиенты».`;
+  const uTag = tgUsername ? `@${escapeHtml(tgUsername)}` : escapeHtml(tgName) || '?';
+  const text = `🔗 <b>Заявка на привязку</b>\n\nПользователь ${uTag} хочет привязаться к профилю <b>${escapeHtml(nickname)}</b>.\n\nПодтвердите в разделе «Клиенты».`;
 
   for (const chatId of OWNER_CHAT_IDS) {
     try {
@@ -410,8 +419,18 @@ async function handleUpdate(update) {
 function startWebhookServer() {
   const server = createServer((req, res) => {
     if (req.method === 'POST' && req.url === WEBHOOK_PATH) {
+      if (WEBHOOK_SECRET && req.headers['x-telegram-bot-api-secret-token'] !== WEBHOOK_SECRET) {
+        res.writeHead(403);
+        res.end('Forbidden');
+        return;
+      }
       let body = '';
-      req.on('data', (chunk) => { body += chunk; });
+      let bodySize = 0;
+      req.on('data', (chunk) => {
+        bodySize += chunk.length;
+        if (bodySize > 1024 * 1024) { req.destroy(); return; }
+        body += chunk;
+      });
       req.on('end', () => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end('{"ok":true}');
@@ -438,11 +457,13 @@ function startWebhookServer() {
 
 async function registerWebhook() {
   const webhookUrl = `https://${POS_DOMAIN}${WEBHOOK_PATH}`;
-  const result = await tg('setWebhook', {
+  const webhookParams = {
     url: webhookUrl,
     allowed_updates: ['message', 'callback_query'],
     drop_pending_updates: false,
-  });
+  };
+  if (WEBHOOK_SECRET) webhookParams.secret_token = WEBHOOK_SECRET;
+  const result = await tg('setWebhook', webhookParams);
   if (result.ok) {
     console.log(`Webhook registered: ${webhookUrl}`);
   } else {

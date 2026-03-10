@@ -10,12 +10,13 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  retryCount: number;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { hasError: false, error: null };
+  state: State = { hasError: false, error: null, retryCount: 0 };
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
   }
 
@@ -24,7 +25,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false, error: null });
+    this.setState((prev) => ({ hasError: false, error: null, retryCount: prev.retryCount + 1 }));
   };
 
   handleReload = () => {
@@ -55,6 +56,6 @@ export class ErrorBoundary extends Component<Props, State> {
         </div>
       );
     }
-    return this.props.children;
+    return <div key={this.state.retryCount}>{this.props.children}</div>;
   }
 }

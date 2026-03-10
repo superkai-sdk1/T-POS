@@ -27,7 +27,11 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const isOwner = useAuthStore((s) => s.isOwner);
 
   // Shift logic & states
-  const activeShift, openShift, closeShift, getShiftAnalytics, cashInRegister = useShiftStore((s) => s.activeShift, openShift, closeShift, getShiftAnalytics, cashInRegister);
+  const activeShift = useShiftStore((s) => s.activeShift);
+  const openShift = useShiftStore((s) => s.openShift);
+  const closeShift = useShiftStore((s) => s.closeShift);
+  const getShiftAnalytics = useShiftStore((s) => s.getShiftAnalytics);
+  const cashInRegister = useShiftStore((s) => s.cashInRegister);
   const [showOpen, setShowOpen] = useState(false);
   const [showClose, setShowClose] = useState(false);
   const [cashStart, setCashStart] = useState('');
@@ -228,7 +232,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           </div>
 
           {/* Nav tabs */}
-          <nav className={`flex-1 flex flex-col overflow-y-auto no-scrollbar ${isSidebarCollapsed ? 'px-2 gap-1' : 'px-3 gap-1'}`}>
+          <nav className={`flex-1 flex flex-col overflow-y-auto scrollbar-none ${isSidebarCollapsed ? 'px-2 gap-1' : 'px-3 gap-1'}`}>
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               return (

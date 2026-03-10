@@ -257,16 +257,28 @@ export const useShiftStore = create<ShiftState>()(
 
         let totalRevenue = 0;
 
+        const checkIds = (checksData || []).map((c) => c.id);
+        const { data: allItemsData } = checkIds.length > 0
+          ? await supabase
+              .from('check_items')
+              .select('check_id, item_id, quantity, price_at_time, item:inventory(name, category)')
+              .in('check_id', checkIds)
+          : { data: [] };
+
+        const itemsByCheckId = new Map<string, typeof allItemsData>();
+        for (const ci of allItemsData || []) {
+          const list = itemsByCheckId.get(ci.check_id) || [];
+          list.push(ci);
+          itemsByCheckId.set(ci.check_id, list);
+        }
+
         for (const c of checksData || []) {
           const player = Array.isArray(c.player) ? c.player[0] : c.player;
           const nickname = player?.nickname || 'Неизвестный';
 
-          const { data: items } = await supabase
-            .from('check_items')
-            .select('item_id, quantity, price_at_time, item:inventory(name, category)')
-            .eq('check_id', c.id);
+          const items = itemsByCheckId.get(c.id) || [];
 
-          const checkItems = (items || []).map((ci: Record<string, unknown>) => {
+          const checkItems = items.map((ci: Record<string, unknown>) => {
             const item = Array.isArray(ci.item) ? ci.item[0] : ci.item;
             return {
               item_id: ci.item_id as string,

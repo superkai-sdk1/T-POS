@@ -153,7 +153,7 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
             {[0, 1, 2, 3].map((i) => (
               <div
                 key={i}
-                className={`w-4 h-4 rounded-full transition-all duration-250 ${pin.length > i ? 'scale-110' : ''
+                className={`w-4 h-4 rounded-full transition-all duration-200 ${pin.length > i ? 'scale-110' : ''
                   }`}
                 style={pin.length > i ? {
                   background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)',

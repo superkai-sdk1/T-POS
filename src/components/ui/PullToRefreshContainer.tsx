@@ -50,6 +50,8 @@ export function PullToRefreshContainer({
     const isPullingRef = useRef(false);
     const pullReadyRef = useRef(false);
     const pullScrollContainerRef = useRef<HTMLElement | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const listenersAttached = useRef(false);
 
     const updateSpinnerUI = (distance: number, ready: boolean, isRefreshingState = false) => {
         if (!spinnerRef.current || !iconRef.current || !textRef.current) return;
@@ -158,25 +160,30 @@ export function PullToRefreshContainer({
         }
     }, [isRefreshing]);
 
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el || listenersAttached.current) return;
+        listenersAttached.current = true;
+        const opts: AddEventListenerOptions = { passive: false };
+        const touchHandler = (e: TouchEvent) => {
+            if (isPullingRef.current && e.cancelable) {
+                e.preventDefault();
+            }
+        };
+        el.addEventListener('touchmove', touchHandler, opts);
+        return () => {
+            el.removeEventListener('touchmove', touchHandler);
+            listenersAttached.current = false;
+        };
+    }, []);
+
     return (
         <div
             className="contents relative h-full w-full"
+            ref={containerRef}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            // need to stop passive events for e.preventDefault() to work on move
-            ref={(el) => {
-                if (!el) return;
-                const opts = { passive: false };
-                const touchHandler = (e: TouchEvent) => {
-                    if (isPullingRef.current && e.cancelable) {
-                        e.preventDefault();
-                    }
-                };
-                el.addEventListener('touchmove', touchHandler, opts);
-                el.addEventListener('touchend', () => { }, opts);
-                el.addEventListener('touchstart', () => { }, opts);
-            }}
         >
             {/* ── Spinner UI ── */}
             {activeTab === 'pos' && !activeCheck && (

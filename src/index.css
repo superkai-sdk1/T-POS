@@ -32,9 +32,12 @@
 
 * {
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+button, a, nav, [role="button"] {
   -webkit-user-select: none;
   user-select: none;
-  -webkit-touch-callout: none;
 }
 
 input,

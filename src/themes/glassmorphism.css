@@ -1,6 +1,5 @@
 /* ── Glassmorphism 2.0 ── */
-:root,
-[data-theme="glassmorphism"] {
+:root {
     color-scheme: dark;
 
     /* ── Background ── */
@@ -76,8 +75,7 @@
 }
 
 /* ── GLASS CARD SYSTEM ── */
-[data-theme="glassmorphism"] .card,
-:root .card {
+.card {
     background: rgba(255, 255, 255, 0.04);
     backdrop-filter: blur(20px) saturate(1.3);
     -webkit-backdrop-filter: blur(20px) saturate(1.3);
@@ -86,8 +84,7 @@
     box-shadow: var(--shadow-card);
 }
 
-[data-theme="glassmorphism"] .card-interactive,
-:root .card-interactive {
+.card-interactive {
     background: rgba(255, 255, 255, 0.04);
     backdrop-filter: blur(20px) saturate(1.3);
     -webkit-backdrop-filter: blur(20px) saturate(1.3);
@@ -97,8 +94,7 @@
     transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-[data-theme="glassmorphism"] .card-interactive:active,
-:root .card-interactive:active {
+.card-interactive:active {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(139, 92, 246, 0.2);
     box-shadow: var(--shadow-card-hover);
@@ -106,16 +102,14 @@
 }
 
 /* ── GLASS NAVIGATION ── */
-[data-theme="glassmorphism"] .glass,
-:root .glass {
+.glass {
     background: rgba(15, 23, 42, 0.65);
     backdrop-filter: blur(24px) saturate(1.5);
     -webkit-backdrop-filter: blur(24px) saturate(1.5);
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-[data-theme="glassmorphism"] .glass-strong,
-:root .glass-strong {
+.glass-strong {
     background: rgba(10, 14, 26, 0.88);
     backdrop-filter: blur(40px) saturate(1.6);
     -webkit-backdrop-filter: blur(40px) saturate(1.6);
@@ -124,8 +118,7 @@
 }
 
 /* ── SKELETON ── */
-[data-theme="glassmorphism"] .skeleton,
-:root .skeleton {
+.skeleton {
     background: linear-gradient(90deg,
             rgba(255, 255, 255, 0.03) 0%,
             rgba(255, 255, 255, 0.08) 50%,

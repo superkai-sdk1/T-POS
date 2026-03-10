@@ -30,10 +30,23 @@ function getVersion() {
   } catch { return '0.0.0'; }
 }
 
+const API_SECRET = process.env.API_SECRET || '';
+
 function cors(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const allowedOrigin = process.env.POS_DOMAIN
+    ? `https://${process.env.POS_DOMAIN}`
+    : '*';
+  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+}
+
+function checkAuth(req, res) {
+  if (!API_SECRET) return true;
+  const auth = req.headers['authorization'] || '';
+  if (auth === `Bearer ${API_SECRET}`) return true;
+  json(res, { error: 'Unauthorized' }, 401);
+  return false;
 }
 
 function json(res, data, status = 200) {
@@ -43,6 +56,26 @@ function json(res, data, status = 200) {
 }
 
 let updateInProgress = false;
+
+const MAX_BODY_SIZE = 1024 * 1024; // 1 MB
+
+let _cachedInfo = null;
+let _cachedInfoAt = 0;
+const INFO_CACHE_MS = 5 * 60 * 1000; // 5 minutes
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = '';
+    let size = 0;
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > MAX_BODY_SIZE) { req.destroy(); reject(new Error('Body too large')); return; }
+      body += chunk;
+    });
+    req.on('end', () => resolve(body));
+    req.on('error', reject);
+  });
+}
 
 const server = http.createServer((req, res) => {
   if (req.method === 'OPTIONS') {
@@ -55,6 +88,10 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
   if (url.pathname === '/api/system/info' && req.method === 'GET') {
+    if (_cachedInfo && (Date.now() - _cachedInfoAt) < INFO_CACHE_MS) {
+      json(res, _cachedInfo);
+      return;
+    }
     let hash = '?', date = '?', branch = '?', behindCount = 0;
     try {
       hash = execSync('git rev-parse --short HEAD', { cwd: PROJECT_DIR }).toString().trim();
@@ -64,17 +101,20 @@ const server = http.createServer((req, res) => {
       const behind = execSync(`git rev-list HEAD..origin/${branch} --count`, { cwd: PROJECT_DIR }).toString().trim();
       behindCount = parseInt(behind) || 0;
     } catch { }
-    json(res, {
+    _cachedInfo = {
       version: getVersion(),
       git: { hash, date, branch },
       updateAvailable: behindCount > 0,
       behindCount,
       nodeVersion: process.version,
-    });
+    };
+    _cachedInfoAt = Date.now();
+    json(res, _cachedInfo);
     return;
   }
 
   if (url.pathname === '/api/system/update' && req.method === 'POST') {
+    if (!checkAuth(req, res)) return;
     if (updateInProgress) {
       json(res, { error: 'Обновление уже выполняется' }, 409);
       return;
@@ -152,9 +192,8 @@ const server = http.createServer((req, res) => {
   }
 
   if (url.pathname === '/api/ai' && req.method === 'POST') {
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', async () => {
+    if (!checkAuth(req, res)) return;
+    readBody(req).then(async (body) => {
       try {
         const { messages, context } = JSON.parse(body);
         const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
@@ -350,17 +389,18 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
         json(res, { response: text });
       } catch (e) {
         console.error('AI Route Error:', e);
-        json(res, { error: String(e) }, 200);
+        json(res, { error: String(e) }, 500);
       }
+    }).catch((e) => {
+      json(res, { error: String(e) }, 400);
     });
     return;
   }
 
   // AI Agent Actions
   if (url.pathname === '/api/ai/action' && req.method === 'POST') {
-    let body = '';
-    req.on('data', (chunk) => { body += chunk; });
-    req.on('end', async () => {
+    if (!checkAuth(req, res)) return;
+    readBody(req).then(async (body) => {
       try {
         const { action, params, staffId } = JSON.parse(body);
         const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
@@ -452,6 +492,10 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
           return;
         } else if (action === 'add_items') {
           const { checkId, items } = params; // items: [{ name, quantity }]
+          if (!checkId || !Array.isArray(items) || items.length === 0) {
+            json(res, { success: false, error: 'checkId и items[] обязательны' });
+            return;
+          }
           const invRes = await fetch(
             `${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=id,name,price`,
             { headers: sbHeaders }
@@ -461,9 +505,11 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
           let totalAdded = 0;
 
           for (const item of items) {
-            const found = inventory.find((inv) => inv.name.toLowerCase().includes(item.name.toLowerCase()));
+            const nameLower = (item.name || '').toLowerCase();
+            const found = inventory.find((inv) => inv.name.toLowerCase() === nameLower)
+              || inventory.find((inv) => inv.name.toLowerCase().includes(nameLower));
             if (found) {
-              const qty = item.quantity || 1;
+              const qty = Math.max(1, parseInt(item.quantity) || 1);
               await fetch(`${SUPABASE_URL}/rest/v1/check_items`, {
                 method: 'POST',
                 headers: sbHeaders,
@@ -479,12 +525,17 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
             }
           }
 
-          // Update check total
           if (totalAdded > 0) {
-            await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${checkId}`, {
+            const checkRes = await fetch(
+              `${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkId)}&select=total_amount`,
+              { headers: sbHeaders }
+            );
+            const checkData = await checkRes.json();
+            const currentTotal = (checkData && checkData[0] && checkData[0].total_amount) || 0;
+            await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkId)}`, {
               method: 'PATCH',
               headers: sbHeaders,
-              body: JSON.stringify({ total_amount: totalAdded }),
+              body: JSON.stringify({ total_amount: currentTotal + totalAdded }),
             });
           }
 
@@ -511,8 +562,10 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
         }
       } catch (e) {
         console.error('AI Action Error:', e);
-        json(res, { error: String(e) }, 200);
+        json(res, { error: String(e) }, 500);
       }
+    }).catch((e) => {
+      json(res, { error: String(e) }, 400);
     });
     return;
   }

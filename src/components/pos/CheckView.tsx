@@ -279,6 +279,7 @@ export function CheckView({ onBack }: CheckViewProps) {
 
   const [rentalAmount, setRentalAmount] = useState(0);
   const [rentalMinutes, setRentalMinutes] = useState(0);
+  const [billedMinutes, setBilledMinutes] = useState(0);
 
   useEffect(() => {
     if (!activeCheck?.space || !activeCheck.space.hourly_rate) return;
@@ -288,6 +289,7 @@ export function CheckView({ onBack }: CheckViewProps) {
       const elapsed = (Date.now() - new Date(activeCheck.created_at).getTime()) / 60000;
       const rounded = Math.max(1, Math.ceil(elapsed / 30)) * 30;
       setRentalMinutes(Math.round(elapsed));
+      setBilledMinutes(rounded);
       setRentalAmount(Math.round((rounded / 60) * rate));
     };
     tick();
@@ -583,6 +585,8 @@ export function CheckView({ onBack }: CheckViewProps) {
             <div className="flex items-center gap-1.5 text-indigo-400/70">
               <Timer className="w-3 h-3" />
               <span className="text-[11px] tabular-nums">{Math.floor(rentalMinutes / 60)}ч {String(rentalMinutes % 60).padStart(2, '0')}м</span>
+              <span className="text-white/20">·</span>
+              <span className="text-[11px] text-white/40">тариф {Math.floor(billedMinutes / 60)}ч {String(billedMinutes % 60).padStart(2, '0')}м</span>
               <span className="text-white/20">·</span>
               <span className="text-[11px]">{activeCheck.space.hourly_rate}₽/ч</span>
             </div>

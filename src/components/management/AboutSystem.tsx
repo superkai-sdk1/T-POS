@@ -1,9 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/Button';
-import { useThemeStore, THEMES } from '@/store/theme';
 import {
   Download, CheckCircle, AlertCircle, RefreshCw, ExternalLink,
-  GitBranch, Clock, Server, Code2, Sparkles, RotateCcw, Palette, Trash2,
+  GitBranch, Clock, Server, Code2, Sparkles, RotateCcw, Trash2,
 } from 'lucide-react';
 
 const UPDATE_API = '/api/system';
@@ -25,60 +24,6 @@ interface LogEntry {
   total?: number;
   text?: string;
   message?: string;
-}
-
-function ThemeSelector() {
-  const { theme, setTheme } = useThemeStore();
-  return (
-    <div className="space-y-2 pt-2 border-t border-[var(--c-border)]">
-      <div className="flex items-center gap-2">
-        <Palette className="w-3.5 h-3.5 text-[var(--c-hint)]" />
-        <p className="text-[10px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">Внешний вид</p>
-      </div>
-      <div className="grid grid-cols-3 gap-2">
-        {THEMES.map((t) => {
-          const active = theme === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTheme(t.id)}
-              className={`relative p-3 rounded-xl transition-all duration-200 active:scale-95 ${
-                active
-                  ? 'ring-2 ring-[var(--c-accent)] bg-[rgba(var(--c-accent-rgb),0.08)]'
-                  : 'card-interactive'
-              }`}
-            >
-              <div className="flex flex-col items-center gap-2">
-                <div
-                  className="w-10 h-10 rounded-xl border-2 flex items-center justify-center"
-                  style={{
-                    background: t.bg,
-                    borderColor: t.accent,
-                    boxShadow: active ? `0 0 12px ${t.accent}40` : 'none',
-                  }}
-                >
-                  <div
-                    className="w-4 h-4 rounded-full"
-                    style={{ background: t.accent }}
-                  />
-                </div>
-                <span className={`text-[11px] font-semibold leading-tight text-center ${
-                  active ? 'text-[var(--c-accent)]' : 'text-[var(--c-text)]'
-                }`}>
-                  {t.name}
-                </span>
-              </div>
-              {active && (
-                <div className="absolute top-1.5 right-1.5">
-                  <CheckCircle className="w-3.5 h-3.5 text-[var(--c-accent)]" />
-                </div>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
 }
 
 export function AboutSystem() {
@@ -421,9 +366,6 @@ export function AboutSystem() {
           )}
         </div>
       )}
-
-      {/* Theme selector */}
-      <ThemeSelector />
 
       {/* PWA: Clear cache & reload */}
       <div className="space-y-2 pt-2 border-t border-[var(--c-border)]">
