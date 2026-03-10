@@ -232,7 +232,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   };
 
   return (
-    <div className="min-h-[100dvh] h-[100dvh] flex flex-col lg:flex-row overflow-hidden relative">
+    <div className="min-h-[100dvh] h-full flex flex-col lg:flex-row overflow-hidden relative" style={{ backgroundColor: 'var(--c-bg)' }}>
       {/* ── Desktop sidebar ── */}
       <aside
         className={`hidden lg:flex flex-col shrink-0 fixed top-0 left-0 h-full z-40 transition-all duration-300 ${isSidebarExpanded ? 'w-[240px]' : 'w-[72px] items-center'}`}
@@ -343,8 +343,8 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
               onClick={triggerShiftAction}
               title={activeShift ? 'Закрыть смену' : 'Открыть смену'}
               className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all tap ${activeShift
-                  ? 'text-[var(--c-danger)] hover:bg-[rgba(251,113,133,0.08)]'
-                  : 'text-[var(--c-success)] hover:bg-[rgba(52,211,153,0.08)]'
+                ? 'text-[var(--c-danger)] hover:bg-[rgba(251,113,133,0.08)]'
+                : 'text-[var(--c-success)] hover:bg-[rgba(52,211,153,0.08)]'
                 }`}
             >
               {activeShift ? <StopCircle className="w-5 h-5" /> : <PlayCircle className="w-5 h-5" />}
@@ -472,10 +472,10 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
               <div className="mt-2 px-3 py-2 rounded-2xl border border-white/10 bg-[#0d0d12]/80 backdrop-blur-xl flex items-center gap-2">
                 <div
                   className={`w-4 h-4 rounded-full border-2 ${isRefreshing
-                      ? 'border-white/20 border-t-white/70 animate-spin'
-                      : pullReady
-                        ? 'border-violet-400/40 border-t-violet-400'
-                        : 'border-white/20 border-t-white/40'
+                    ? 'border-white/20 border-t-white/70 animate-spin'
+                    : pullReady
+                      ? 'border-violet-400/40 border-t-violet-400'
+                      : 'border-white/20 border-t-white/40'
                     }`}
                 />
                 <span className="text-[10px] font-black uppercase tracking-widest text-white/50">
@@ -490,9 +490,9 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
         {/* ── Mobile bottom nav — максимально простая: фиксированная высота, без safe-area математики ── */}
         {typeof document !== 'undefined' && createPortal(
           <nav
-            className="lg:hidden fixed left-0 right-0 bottom-0 min-h-16 pb-[var(--safe-bottom-capped)] z-[60] bg-[#0d0d12]/95 backdrop-blur-2xl border-t border-white/5 px-6 sm:px-12 flex items-center justify-between"
+            className="lg:hidden fixed left-0 right-0 bottom-0 min-h-[calc(4rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] z-[60] bg-[#0d0d12]/95 backdrop-blur-2xl border-t border-white/5 px-6 sm:px-12 flex items-center justify-between"
           >
-            <div className="flex w-full max-w-3xl mx-auto items-center justify-between">
+            <div className="flex w-full max-w-3xl mx-auto items-center justify-between pt-1">
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
