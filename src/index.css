@@ -166,6 +166,11 @@ input[type="number"] {
   -ms-overflow-style: none;
 }
 
+/* Smooth touch scroll for overflow containers */
+[class*="overflow-y-auto"] {
+  -webkit-overflow-scrolling: touch;
+}
+
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }

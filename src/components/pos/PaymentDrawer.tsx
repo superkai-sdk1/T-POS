@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { SwipeableRow } from '@/components/ui/SwipeableRow';
@@ -24,8 +25,46 @@ const methodConfig: { method: PaymentMethod; label: string; icon: typeof Banknot
 
 type PayScreen = 'main' | 'bonus' | 'split' | 'certificate';
 
+function useVisualViewport() {
+  const [height, setHeight] = useState(() => window.visualViewport?.height ?? window.innerHeight);
+  const [offsetTop, setOffsetTop] = useState(0);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const sync = () => {
+      setHeight(vv.height);
+      setOffsetTop(vv.offsetTop);
+    };
+    sync();
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+    return () => {
+      vv.removeEventListener('resize', sync);
+      vv.removeEventListener('scroll', sync);
+    };
+  }, []);
+  return { height, offsetTop };
+}
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1023px)').matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)');
+    const fn = () => setIsMobile(mq.matches);
+    mq.addEventListener('change', fn);
+    return () => mq.removeEventListener('change', fn);
+  }, []);
+  return isMobile;
+}
+
 export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: PaymentDrawerProps) {
   const { activeCheck, getCartTotal, closeCheck } = usePOSStore();
+  const { height: vvHeight, offsetTop: vvOffset } = useVisualViewport();
+  const isMobile = useIsMobile();
+  const [visible, setVisible] = useState(false);
+  const [closing, setClosing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [playerInfo, setPlayerInfo] = useState<Profile | null>(null);
   const [screen, setScreen] = useState<PayScreen>('main');
@@ -39,6 +78,32 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
   const [certLoading, setCertLoading] = useState(false);
 
   const total = getCartTotal() + spaceRental;
+
+  useEffect(() => {
+    if (open && !closing) {
+      const t = requestAnimationFrame(() => setVisible(true));
+      return () => cancelAnimationFrame(t);
+    }
+    if (!open) setVisible(false);
+  }, [open, closing]);
+
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      if (open) document.body.style.overflow = '';
+    };
+  }, [open]);
+
+  const handleClose = () => {
+    if (closing) return;
+    setClosing(true);
+    setTimeout(() => {
+      onClose();
+      setClosing(false);
+    }, 300);
+  };
 
   const activePlayerId = activeCheck?.player_id;
   useEffect(() => {
@@ -197,18 +262,54 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
     setBonusAmount((v) => Math.max(0, Math.min(maxBonus, v + delta * step)));
   };
 
-  if (!open) return null;
+  if (!open && !closing) return null;
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center px-4 pb-6 sm:items-center animate-in fade-in duration-300">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-xl" onClick={onClose} />
+  const overlayOpacity = closing ? 0 : visible ? 1 : 0;
+  const panelTranslate = closing ? '100%' : visible ? '0' : '100%';
+  const mobileHeaderOffset = typeof document !== 'undefined'
+    ? Math.max((parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-top')) || 0) + 56, 70)
+    : 70;
+  const maxH = isMobile ? vvHeight - mobileHeaderOffset : Math.min(vvHeight * 0.9, 600);
 
-      <div className="relative w-full max-w-lg bg-[#0e0e12]/80 backdrop-blur-3xl border border-white/10 rounded-[3rem] p-7 shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden max-h-[90vh] overflow-y-auto">
+  const content = (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Оплата"
+      className="fixed inset-0 z-[100] flex items-end lg:items-center lg:justify-center overflow-hidden"
+      style={{
+        top: vvOffset,
+        height: vvHeight,
+        transition: 'top 0.3s ease, height 0.3s ease',
+      }}
+    >
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-xl transition-opacity duration-300"
+        style={{ opacity: overlayOpacity, WebkitBackdropFilter: 'blur(12px)' }}
+        onClick={handleClose}
+      />
+
+      <div
+        className="absolute bottom-0 left-0 right-0 w-full max-w-lg mx-auto z-[101]"
+        style={{
+          transform: `translateY(${panelTranslate}) translateZ(0)`,
+          transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+          willChange: 'transform',
+        }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="relative w-full bg-[#0e0e12]/95 backdrop-blur-3xl border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] p-7 shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden overflow-y-auto"
+          style={{
+            maxHeight: maxH,
+            WebkitBackdropFilter: 'blur(30px)',
+          }}
+        >
         <div className="absolute top-0 right-0 w-32 h-32 bg-[#8b5cf6] blur-[80px] opacity-20 pointer-events-none" />
 
         <div className="flex justify-between items-center mb-6 relative z-10">
           <h2 className="text-3xl font-black italic tracking-tighter uppercase text-white">Оплата</h2>
-          <button onClick={onClose} className="p-3 bg-white/5 rounded-full border border-white/10 text-white/40 hover:text-white transition-colors">
+          <button onClick={handleClose} className="p-3 bg-white/5 rounded-full border border-white/10 text-white/40 hover:text-white transition-colors">
             <X size={20} />
           </button>
         </div>
@@ -630,5 +731,8 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
         </div>
       </div>
     </div>
+    </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(content, document.body) : null;
 }

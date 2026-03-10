@@ -91,7 +91,7 @@ export function InventoryPage() {
   });
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col min-h-0 flex-1 space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold text-[var(--c-text)]">Остатки</h2>
@@ -125,7 +125,7 @@ export function InventoryPage() {
         />
       </div>
 
-      <div ref={listRef} className="overflow-y-auto" style={{ height: Math.min(filtered.length * 72, 600) }}>
+      <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto min-h-[200px]">
         <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
             const item = filtered[virtualRow.index];

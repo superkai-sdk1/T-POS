@@ -488,7 +488,7 @@ export function ClientsManager() {
           </p>
         </div>
       ) : (
-        <div ref={clientListRef} className="overflow-y-auto flex-1" style={{ maxHeight: 'calc(100dvh - 320px)', minHeight: 200 }}>
+        <div ref={clientListRef} className="overflow-y-auto flex-1 min-h-[200px]" style={{ maxHeight: 'calc(100dvh - 280px)', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ height: `${clientVirtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
             {clientVirtualizer.getVirtualItems().map((virtualRow) => {
               const client = filtered[virtualRow.index];

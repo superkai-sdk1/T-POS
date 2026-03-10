@@ -48,6 +48,7 @@ export function PullToRefreshContainer({
 
     const touchStartY = useRef(0);
     const isPullingRef = useRef(false);
+    const shouldPreventScrollRef = useRef(false);
     const pullReadyRef = useRef(false);
     const pullScrollContainerRef = useRef<HTMLElement | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -103,6 +104,7 @@ export function PullToRefreshContainer({
         const scrollEl = pullScrollContainerRef.current ?? getScrollContainer(e.target as HTMLElement, scrollRef.current);
         if (!canPullToRefresh(scrollEl)) {
             isPullingRef.current = false;
+            shouldPreventScrollRef.current = false;
             pullScrollContainerRef.current = null;
             pullReadyRef.current = false;
             updateSpinnerUI(0, false);
@@ -111,11 +113,13 @@ export function PullToRefreshContainer({
 
         const dy = e.touches[0].clientY - touchStartY.current;
         if (dy <= 0) {
+            shouldPreventScrollRef.current = false;
             pullReadyRef.current = false;
             updateSpinnerUI(0, false);
             return;
         }
 
+        shouldPreventScrollRef.current = true;
         // prevent default overscroll rubber-banding behavior if pulling
         if (e.cancelable) {
             e.preventDefault();
@@ -135,6 +139,7 @@ export function PullToRefreshContainer({
     const handleTouchEnd = () => {
         if (!isPullingRef.current) return;
         isPullingRef.current = false;
+        shouldPreventScrollRef.current = false;
 
         const scrollEl = pullScrollContainerRef.current;
         pullScrollContainerRef.current = null;
@@ -166,7 +171,7 @@ export function PullToRefreshContainer({
         listenersAttached.current = true;
         const opts: AddEventListenerOptions = { passive: false };
         const touchHandler = (e: TouchEvent) => {
-            if (isPullingRef.current && e.cancelable) {
+            if (shouldPreventScrollRef.current && e.cancelable) {
                 e.preventDefault();
             }
         };
