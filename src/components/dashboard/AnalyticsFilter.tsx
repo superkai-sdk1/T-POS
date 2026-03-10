@@ -24,7 +24,15 @@ interface Props {
 }
 
 export const AnalyticsFilter = memo(function AnalyticsFilter({ admins = [], showSearch }: Props) {
-  const { preset, setPreset, setCustomRange, paymentFilter, setPaymentFilter, adminFilter, setAdminFilter, search, setSearch } = useAnalyticsStore();
+  const preset = useAnalyticsStore((s) => s.preset);
+  const setPreset = useAnalyticsStore((s) => s.setPreset);
+  const setCustomRange = useAnalyticsStore((s) => s.setCustomRange);
+  const paymentFilter = useAnalyticsStore((s) => s.paymentFilter);
+  const setPaymentFilter = useAnalyticsStore((s) => s.setPaymentFilter);
+  const adminFilter = useAnalyticsStore((s) => s.adminFilter);
+  const setAdminFilter = useAnalyticsStore((s) => s.setAdminFilter);
+  const search = useAnalyticsStore((s) => s.search);
+  const setSearch = useAnalyticsStore((s) => s.setSearch);
   const [expanded, setExpanded] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
@@ -52,8 +60,8 @@ export const AnalyticsFilter = memo(function AnalyticsFilter({ admins = [], show
             key={p.id}
             onClick={() => { setPreset(p.id); setShowDatePicker(false); }}
             className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all active:scale-95 ${preset === p.id && !showDatePicker
-                ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)] shadow-sm'
-                : 'bg-[var(--c-surface)] text-[var(--c-hint)] hover:bg-[var(--c-surface-hover)]'
+              ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)] shadow-sm'
+              : 'bg-[var(--c-surface)] text-[var(--c-hint)] hover:bg-[var(--c-surface-hover)]'
               }`}
           >
             {p.label}
@@ -62,8 +70,8 @@ export const AnalyticsFilter = memo(function AnalyticsFilter({ admins = [], show
         <button
           onClick={() => setShowDatePicker(!showDatePicker)}
           className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold whitespace-nowrap transition-all active:scale-95 flex items-center gap-1 ${showDatePicker || preset === 'custom'
-              ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)] shadow-sm'
-              : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
+            ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)] shadow-sm'
+            : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
             }`}
         >
           <CalendarDays className="w-3 h-3" />

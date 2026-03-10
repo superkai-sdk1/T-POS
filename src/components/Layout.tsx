@@ -1,10 +1,11 @@
-import { useMemo, useState, useRef, useEffect, type ReactNode } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuthStore } from '@/store/auth';
 import { useShiftStore } from '@/store/shift';
 import { usePOSStore } from '@/store/pos';
 import { supabase } from '@/lib/supabase';
 import { Drawer } from '@/components/ui/Drawer';
+import { PullToRefreshContainer } from '@/components/ui/PullToRefreshContainer';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
@@ -26,7 +27,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const isOwner = useAuthStore((s) => s.isOwner);
 
   // Shift logic & states
-  const { activeShift, openShift, closeShift, getShiftAnalytics, cashInRegister } = useShiftStore();
+  const activeShift, openShift, closeShift, getShiftAnalytics, cashInRegister = useShiftStore((s) => s.activeShift, openShift, closeShift, getShiftAnalytics, cashInRegister);
   const [showOpen, setShowOpen] = useState(false);
   const [showClose, setShowClose] = useState(false);
   const [cashStart, setCashStart] = useState('');
@@ -37,18 +38,9 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const [analytics, setAnalytics] = useState<Awaited<ReturnType<typeof getShiftAnalytics>>>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
 
-  // Layout states
+  // Pull-to-refresh global state needed in Layout
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem('tpos-sidebar-collapsed') === '1';
-  });
   const scrollRef = useRef<HTMLElement>(null);
-  const touchStartY = useRef(0);
-  const pullScrollContainerRef = useRef<HTMLElement | null>(null);
-  const [pullDistance, setPullDistance] = useState(0);
-  const [pullReady, setPullReady] = useState(false);
-  const isPullingRef = useRef(false);
 
   const tabs = useMemo(() => isOwner()
     ? [
@@ -177,6 +169,11 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
     }
   };
 
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('tpos-sidebar-collapsed') === '1';
+  });
+
   const toggleSidebar = () => {
     setIsSidebarCollapsed((prev) => {
       const next = !prev;
@@ -199,88 +196,12 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
     triggerShiftAction();
   };
 
-  // Pull to refresh hook — only on POS open checks screen, no overlays
-  const activeCheck = usePOSStore((s) => s.activeCheck);
-  const isOverlayOpen = () => !!document.querySelector('[role="dialog"]');
-
-  const PULL_THRESHOLD = 80;
-  const PULL_MAX = 120;
-
-  const getScrollContainer = (target: EventTarget | null): HTMLElement | null => {
-    let el = target instanceof HTMLElement ? target : null;
-    while (el) {
-      const { overflowY } = getComputedStyle(el);
-      const { scrollTop, scrollHeight, clientHeight } = el;
-      if ((overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') && scrollHeight > clientHeight) {
-        return el;
-      }
-      el = el.parentElement;
-    }
-    return scrollRef.current;
-  };
-
-  const canPullToRefresh = (scrollEl: HTMLElement | null) => {
-    if (!scrollEl) return false;
-    return scrollEl.scrollTop <= 2;
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (activeTab !== 'pos' || activeCheck || isOverlayOpen()) return;
-    const scrollEl = getScrollContainer(e.target as HTMLElement);
-    if (!canPullToRefresh(scrollEl)) return;
-    touchStartY.current = e.touches[0].clientY;
-    pullScrollContainerRef.current = scrollEl;
-    isPullingRef.current = true;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isPullingRef.current || isRefreshing) return;
-    const scrollEl = pullScrollContainerRef.current ?? getScrollContainer(e.target as HTMLElement);
-    if (!canPullToRefresh(scrollEl)) {
-      isPullingRef.current = false;
-      pullScrollContainerRef.current = null;
-      setPullDistance(0);
-      setPullReady(false);
-      return;
-    }
-    const dy = e.touches[0].clientY - touchStartY.current;
-    if (dy <= 0) {
-      setPullDistance(0);
-      setPullReady(false);
-      return;
-    }
-    const damped = Math.min(dy * 0.5, PULL_MAX);
-    setPullDistance(damped);
-    const ready = damped >= PULL_THRESHOLD;
-    if (ready !== pullReady) {
-      if (ready) hapticFeedback('light');
-      setPullReady(ready);
-    }
-  };
-
-  const handleTouchEnd = () => {
-    if (!isPullingRef.current) return;
-    isPullingRef.current = false;
-    const scrollEl = pullScrollContainerRef.current;
-    pullScrollContainerRef.current = null;
-    if (!isRefreshing && pullReady && canPullToRefresh(scrollEl)) {
-      hapticFeedback('medium');
-      setIsRefreshing(true);
-      setPullDistance(PULL_THRESHOLD);
-      setTimeout(() => window.location.reload(), 400);
-      return;
-    }
-    setPullDistance(0);
-    setPullReady(false);
-  };
-
   return (
     <div className="min-h-[100dvh] h-full flex flex-col lg:flex-row overflow-hidden relative" style={{ backgroundColor: 'var(--c-bg)' }}>
       {/* ── Desktop floating sidebar ── */}
       <aside
-        className={`hidden lg:flex fixed top-4 left-4 bottom-4 z-40 flex-col transition-all duration-300 ${
-          isSidebarCollapsed ? 'w-[72px]' : 'w-[260px]'
-        }`}
+        className={`hidden lg:flex fixed top-4 left-4 bottom-4 z-40 flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-[72px]' : 'w-[260px]'
+          }`}
       >
         <div
           className="flex-1 flex flex-col rounded-[2rem] overflow-hidden border border-white/10"
@@ -517,39 +438,20 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           </header>
         )}
 
-        <main
-          ref={scrollRef}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          className={`flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
-          style={{ WebkitOverflowScrolling: 'touch', paddingBottom: '120px', overscrollBehaviorY: 'contain' }}
+        <PullToRefreshContainer
+          activeTab={activeTab}
+          isRefreshing={isRefreshing}
+          setIsRefreshing={setIsRefreshing}
+          scrollRef={scrollRef}
         >
-          {activeTab === 'pos' && !activeCheck && (pullDistance > 0 || isRefreshing) && (
-            <div
-              className="pointer-events-none absolute left-0 right-0 z-[50] flex justify-center"
-              style={{
-                top: `${Math.min(pullDistance, PULL_MAX) - 40}px`,
-                opacity: Math.min(pullDistance / 40, 1),
-                transition: isPullingRef.current ? 'none' : 'top 300ms cubic-bezier(.2,1,.3,1), opacity 200ms ease',
-              }}
-            >
-              <div className="px-4 py-2 rounded-full bg-white/[0.08] backdrop-blur-2xl border border-white/10 flex items-center gap-2.5 shadow-lg">
-                <div
-                  className="w-5 h-5 rounded-full border-2 border-white/15 border-t-violet-400 transition-transform"
-                  style={{
-                    transform: isRefreshing ? undefined : `rotate(${pullDistance * 3}deg)`,
-                    animation: isRefreshing ? 'spin 0.6s linear infinite' : undefined,
-                  }}
-                />
-                <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${pullReady || isRefreshing ? 'text-white/70' : 'text-white/30'}`}>
-                  {isRefreshing ? 'Обновление…' : pullReady ? 'Отпустите' : 'Потяните вниз'}
-                </span>
-              </div>
-            </div>
-          )}
-          {children}
-        </main>
+          <main
+            ref={scrollRef}
+            className={`flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
+            style={{ WebkitOverflowScrolling: 'touch', paddingBottom: '120px', overscrollBehaviorY: 'contain' }}
+          >
+            {children}
+          </main>
+        </PullToRefreshContainer>
 
         {/* ── Floating mobile bottom nav ── */}
         {typeof document !== 'undefined' && createPortal(

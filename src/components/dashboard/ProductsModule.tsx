@@ -26,7 +26,7 @@ const categoryLabels: Record<string, string> = {
 export const ProductsModule = memo(function ProductsModule({ products, allCheckItems, checks }: Props) {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [abcFilter, setAbcFilter] = useState<'all' | 'A' | 'B' | 'C'>('all');
-  const { search, setSearch } = useAnalyticsStore();
+  const search, setSearch = useAnalyticsStore((s) => s.search, setSearch);
 
   const filtered = useMemo(() => {
     let list = products;

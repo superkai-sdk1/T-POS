@@ -59,11 +59,11 @@ const CheckTile = memo(({ check, onSelect, listMode }: { check: Check; onSelect:
   const displayName = hasSpace
     ? check.space?.name ?? ''
     : (() => {
-        const names: string[] = [];
-        if (check.player?.nickname) names.push(check.player.nickname);
-        if (check.guest_names) names.push(...check.guest_names.split(', ').filter(Boolean));
-        return names.length > 0 ? names.join(', ') : 'БЕЗ КЛИЕНТА';
-      })();
+      const names: string[] = [];
+      if (check.player?.nickname) names.push(check.player.nickname);
+      if (check.guest_names) names.push(...check.guest_names.split(', ').filter(Boolean));
+      return names.length > 0 ? names.join(', ') : 'БЕЗ КЛИЕНТА';
+    })();
   const isEmpty = !check.player && !check.space && check.total_amount === 0;
   const avatarUrl = check.player?.photo_url ?? null;
 
@@ -71,15 +71,13 @@ const CheckTile = memo(({ check, onSelect, listMode }: { check: Check; onSelect:
     <button
       type="button"
       onClick={() => onSelect(check)}
-      className={`relative flex text-left active:scale-[0.98] transition-all border rounded-[20px] lg:rounded-2xl ${
-        listMode
+      className={`relative flex text-left active:scale-[0.98] transition-all border rounded-[20px] lg:rounded-2xl ${listMode
           ? 'flex-row items-center justify-between gap-3 p-3 min-h-0'
           : 'flex-col justify-between p-3 lg:p-4 min-h-[120px] lg:min-h-[150px]'
-      } ${
-        isEmpty
+        } ${isEmpty
           ? 'bg-transparent border-dashed border-white/5 opacity-30'
           : 'bg-[#1b1b26] border-white/5 shadow-xl hover:border-white/15 hover:bg-[#1f1f30]'
-      }`}
+        }`}
     >
       <div className={`flex items-center gap-2 min-w-0 ${listMode ? 'flex-1' : 'flex items-start'}`}>
         <div className="relative shrink-0">
@@ -114,9 +112,8 @@ const CheckTile = memo(({ check, onSelect, listMode }: { check: Check; onSelect:
 
       <div className={`flex items-center shrink-0 ${listMode ? '' : 'justify-end items-end mt-auto'}`}>
         <div
-          className={`font-black italic tracking-tighter tabular-nums ${listMode ? 'text-base' : 'text-lg'} ${
-            isEmpty ? 'text-white/5' : 'text-[#8b5cf6]'
-          }`}
+          className={`font-black italic tracking-tighter tabular-nums ${listMode ? 'text-base' : 'text-lg'} ${isEmpty ? 'text-white/5' : 'text-[#8b5cf6]'
+            }`}
         >
           {isEmpty ? '—' : `${(check.total_amount || 0).toLocaleString('ru-RU')} ₽`}
         </div>
@@ -126,7 +123,15 @@ const CheckTile = memo(({ check, onSelect, listMode }: { check: Check; onSelect:
 });
 
 export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
-  const { openChecks, loadOpenChecks, createCheck, selectCheck, addToCart, saveCartToDb, inventory, checksLoaded, activeCheck } = usePOSStore();
+  const openChecks = usePOSStore((s) => s.openChecks);
+  const loadOpenChecks = usePOSStore((s) => s.loadOpenChecks);
+  const createCheck = usePOSStore((s) => s.createCheck);
+  const selectCheck = usePOSStore((s) => s.selectCheck);
+  const addToCart = usePOSStore((s) => s.addToCart);
+  const saveCartToDb = usePOSStore((s) => s.saveCartToDb);
+  const inventory = usePOSStore((s) => s.inventory);
+  const checksLoaded = usePOSStore((s) => s.checksLoaded);
+  const activeCheck = usePOSStore((s) => s.activeCheck);
   const activeShift = useShiftStore((s) => s.activeShift);
   const [showNewCheck, setShowNewCheck] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -394,11 +399,10 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               ))}
             </div>
           ) : (
-            <div className={`grid gap-3 lg:gap-4 ${
-              activeCheck
+            <div className={`grid gap-3 lg:gap-4 ${activeCheck
                 ? 'lg:grid-cols-1'
                 : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
-            }`}>
+              }`}>
               {openChecks.map((check) => (
                 <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} listMode={!!activeCheck} />
               ))}

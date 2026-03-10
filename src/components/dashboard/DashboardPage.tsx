@@ -56,7 +56,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   const [tab, setTab] = useState<TabId>('finance');
   const [analyticsSubTab, setAnalyticsSubTab] = useState<'products' | 'players'>('products');
   const data = useAnalyticsData();
-  const { preset } = useAnalyticsStore();
+  const preset = useAnalyticsStore((s) => s.preset);
   const authUser = useAuthStore((s) => s.user);
 
   const tabs: { id: TabId; label: string; icon: typeof BarChart3 }[] = [

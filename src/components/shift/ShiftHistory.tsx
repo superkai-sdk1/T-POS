@@ -11,7 +11,7 @@ export function ShiftHistory() {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAnalytics, setSelectedAnalytics] = useState<SA | null>(null);
-  const { getShiftAnalytics } = useShiftStore();
+  const getShiftAnalytics = useShiftStore((s) => s.getShiftAnalytics);
 
   const load = useCallback(async () => {
     const { data } = await supabase

@@ -26,7 +26,7 @@ const tierLabels: Record<string, string> = {
 export const PlayersModule = memo(function PlayersModule({ players, retentionRate, checks }: Props) {
   const [segFilter, setSegFilter] = useState<'all' | 'active' | 'new' | 'sleeping'>('all');
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
-  const { search, setSearch } = useAnalyticsStore();
+  const search, setSearch = useAnalyticsStore((s) => s.search, setSearch);
 
   const segments = useMemo(() => ({
     active: players.filter((p) => p.segment === 'active'),
