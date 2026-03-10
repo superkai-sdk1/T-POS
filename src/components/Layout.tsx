@@ -190,41 +190,43 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   const activeCheck = usePOSStore((s) => s.activeCheck);
   const isOverlayOpen = () => !!document.querySelector('[role="dialog"]');
 
+  const PULL_THRESHOLD = 80;
+  const PULL_MAX = 120;
+
   const handleTouchStart = (e: React.TouchEvent) => {
     if (activeTab !== 'pos' || activeCheck || isOverlayOpen()) return;
     if (!scrollRef.current || scrollRef.current.scrollTop > 5) return;
     touchStartY.current = e.touches[0].clientY;
     isPullingRef.current = true;
-    setPullDistance(0);
-    setPullReady(false);
   };
+
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (activeTab !== 'pos' || activeCheck || isOverlayOpen()) return;
-    if (isRefreshing || !scrollRef.current || scrollRef.current.scrollTop > 5) return;
-    if (!isPullingRef.current) return;
-    const dy = e.touches[0].clientY - touchStartY.current;
-    if (dy <= 0) {
+    if (!isPullingRef.current || isRefreshing) return;
+    if (!scrollRef.current || scrollRef.current.scrollTop > 5) {
+      isPullingRef.current = false;
       setPullDistance(0);
       setPullReady(false);
       return;
     }
-    const clamped = Math.min(dy, 140);
-    setPullDistance(clamped);
-    setPullReady(clamped >= 110);
+    const dy = e.touches[0].clientY - touchStartY.current;
+    if (dy <= 0) { setPullDistance(0); setPullReady(false); return; }
+    const damped = Math.min(dy * 0.5, PULL_MAX);
+    setPullDistance(damped);
+    const ready = damped >= PULL_THRESHOLD;
+    if (ready !== pullReady) {
+      if (ready) hapticFeedback('light');
+      setPullReady(ready);
+    }
   };
 
   const handleTouchEnd = () => {
     if (!isPullingRef.current) return;
     isPullingRef.current = false;
-    if (activeTab !== 'pos' || activeCheck || isOverlayOpen()) {
-      setPullDistance(0);
-      setPullReady(false);
-      return;
-    }
     if (!isRefreshing && pullReady) {
       hapticFeedback('medium');
       setIsRefreshing(true);
-      setTimeout(() => window.location.reload(), 250);
+      setPullDistance(PULL_THRESHOLD);
+      setTimeout(() => window.location.reload(), 400);
       return;
     }
     setPullDistance(0);
@@ -460,26 +462,25 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           className={`flex-1 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
           style={{ WebkitOverflowScrolling: 'touch', paddingBottom: '120px' }}
         >
-          {activeTab === 'pos' && !activeCheck && (
+          {activeTab === 'pos' && !activeCheck && (pullDistance > 0 || isRefreshing) && (
             <div
-              className="pointer-events-none sticky top-0 z-[50] flex justify-center"
+              className="pointer-events-none absolute left-0 right-0 z-[50] flex justify-center"
               style={{
-                height: 0,
-                transform: `translateY(${Math.max(0, Math.min(pullDistance, 90))}px)`,
-                transition: isPullingRef.current ? 'none' : 'transform 180ms ease',
+                top: `${Math.min(pullDistance, PULL_MAX) - 40}px`,
+                opacity: Math.min(pullDistance / 40, 1),
+                transition: isPullingRef.current ? 'none' : 'top 300ms cubic-bezier(.2,1,.3,1), opacity 200ms ease',
               }}
             >
-              <div className="mt-2 px-3 py-2 rounded-2xl border border-white/10 bg-[#0d0d12]/80 backdrop-blur-xl flex items-center gap-2">
+              <div className="px-4 py-2 rounded-full bg-white/[0.08] backdrop-blur-2xl border border-white/10 flex items-center gap-2.5 shadow-lg">
                 <div
-                  className={`w-4 h-4 rounded-full border-2 ${isRefreshing
-                    ? 'border-white/20 border-t-white/70 animate-spin'
-                    : pullReady
-                      ? 'border-violet-400/40 border-t-violet-400'
-                      : 'border-white/20 border-t-white/40'
-                    }`}
+                  className="w-5 h-5 rounded-full border-2 border-white/15 border-t-violet-400 transition-transform"
+                  style={{
+                    transform: isRefreshing ? undefined : `rotate(${pullDistance * 3}deg)`,
+                    animation: isRefreshing ? 'spin 0.6s linear infinite' : undefined,
+                  }}
                 />
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/50">
-                  {isRefreshing ? 'Обновляю…' : pullReady ? 'Отпустите для обновления' : 'Потяните вниз для обновления'}
+                <span className={`text-[10px] font-black uppercase tracking-widest transition-colors ${pullReady || isRefreshing ? 'text-white/70' : 'text-white/30'}`}>
+                  {isRefreshing ? 'Обновление…' : pullReady ? 'Отпустите' : 'Потяните вниз'}
                 </span>
               </div>
             </div>
