@@ -49,6 +49,8 @@ textarea {
 
 html {
   height: 100%;
+  /* iOS Safari/PWA: allow full available height */
+  height: -webkit-fill-available;
   overflow: hidden;
   overscroll-behavior: none;
   font-size: 17px;
@@ -62,8 +64,14 @@ html {
 }
 
 body {
+  min-height: 100vh;
   min-height: 100dvh;
-  height: var(--app-height);
+  /* iOS Safari/PWA: most reliable full-height */
+  min-height: -webkit-fill-available;
+
+  height: 100vh;
+  height: 100dvh;
+  height: -webkit-fill-available;
   max-height: none;
   overflow: hidden;
   overscroll-behavior-y: none;
