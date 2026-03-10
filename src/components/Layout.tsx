@@ -403,9 +403,9 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
         </div>
       </aside>
 
-      {/* ── Main content ── */}
+      {/* ── Main content: flex на мобиле, fixed на десктопе (как sidebar) для полной высоты ── */}
       <div
-        className={`flex-1 flex flex-col min-h-0 overflow-hidden transition-all duration-300 lg:h-full ${isSidebarCollapsed ? 'lg:ml-[88px]' : 'lg:ml-[276px]'}`}
+        className={`flex-1 flex flex-col min-h-0 overflow-hidden transition-all duration-300 lg:fixed lg:inset-y-4 lg:right-4 ${isSidebarCollapsed ? 'lg:left-[88px]' : 'lg:left-[276px]'}`}
       >
         {/* ── Mobile header: POS — статус смены + в кассе; остальные вкладки — заголовок ── */}
         {activeTab === 'pos' ? (
