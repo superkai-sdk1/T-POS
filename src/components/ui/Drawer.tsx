@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, type ReactNode } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
@@ -13,7 +13,6 @@ interface DrawerProps {
 }
 
 const HEIGHT_VH: Record<string, number> = { sm: 65, md: 75, lg: 88, xl: 95 };
-const MOBILE_HEADER_OFFSET = 70;
 
 let _drawerCount = 0;
 
@@ -81,6 +80,12 @@ export function Drawer({
   const { height: vvHeight, offsetTop: vvOffset } = useVisualViewport();
   const isMobile = useIsMobile();
   const keyboardOpen = vvHeight < window.innerHeight - 60;
+
+  const mobileHeaderOffset = useMemo(() => {
+    if (typeof document === 'undefined') return 70;
+    const val = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-top'));
+    return Math.max((isNaN(val) ? 0 : val) + 56, 70);
+  }, []);
 
   useEffect(() => {
     if (open && !closing) {
@@ -155,7 +160,7 @@ export function Drawer({
   const maxPct = HEIGHT_VH[size] ?? 88;
   const maxH = Math.min(
     (maxPct / 100) * vvHeight,
-    vvHeight - (isMobile ? MOBILE_HEADER_OFFSET : 20),
+    vvHeight - (isMobile ? mobileHeaderOffset : 20),
   );
 
   const overlayOpacity = closing ? 0 : dragY > 0 ? Math.max(0, 1 - dragY / 200) : visible ? 1 : 0;

@@ -20,9 +20,10 @@ interface LayoutProps {
   children: ReactNode;
   activeTab: string;
   onTabChange: (tab: string) => void;
+  showCheckView?: boolean;
 }
 
-export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
+export function Layout({ children, activeTab, onTabChange, showCheckView }: LayoutProps) {
   const user = useAuthStore((s) => s.user);
   const isOwner = useAuthStore((s) => s.isOwner);
 
@@ -252,8 +253,9 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
             <button
               onClick={() => {
                 hapticFeedback('medium');
-                if (activeTab !== 'pos') onTabChange('pos');
-                window.dispatchEvent(new CustomEvent('tpos:new-check'));
+                const fire = () => window.dispatchEvent(new CustomEvent('tpos:new-check', { cancelable: true }));
+                if (activeTab !== 'pos') { onTabChange('pos'); setTimeout(fire, 80); }
+                else fire();
               }}
               disabled={!activeShift}
               className={`relative w-full mt-3 rounded-2xl flex items-center transition-all tap disabled:opacity-30 text-white overflow-hidden ${isSidebarCollapsed ? 'h-11 justify-center px-0' : 'h-12 gap-3 px-4'}`}
@@ -457,8 +459,8 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           </main>
         </PullToRefreshContainer>
 
-        {/* ── Floating mobile bottom nav ── */}
-        {typeof document !== 'undefined' && createPortal(
+        {/* ── Floating mobile bottom nav (hidden when viewing a check) ── */}
+        {typeof document !== 'undefined' && !showCheckView && createPortal(
           <div className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-[60]">
             <div className="absolute inset-0 bg-white/[0.06] backdrop-blur-3xl rounded-[2rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
             <nav className="relative p-2.5 flex items-center justify-center">
@@ -481,8 +483,9 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                 <button
                   onClick={() => {
                     hapticFeedback('medium');
-                    if (activeTab !== 'pos') onTabChange('pos');
-                    window.dispatchEvent(new CustomEvent('tpos:new-check'));
+                    const fire = () => window.dispatchEvent(new CustomEvent('tpos:new-check', { cancelable: true }));
+                    if (activeTab !== 'pos') { onTabChange('pos'); setTimeout(fire, 80); }
+                    else fire();
                   }}
                   disabled={!activeShift}
                   className="relative group flex items-center justify-center disabled:opacity-30"

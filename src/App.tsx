@@ -122,7 +122,7 @@ export default function App() {
   }
 
   return (
-    <Layout activeTab={activeTab} onTabChange={handleTabChange}>
+    <Layout activeTab={activeTab} onTabChange={handleTabChange} showCheckView={showCheckView}>
       <TabPanel id="pos" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
         {/* Mobile: swap between list and check view. OpenChecks — главный экран (full-bleed). CheckView — с padding. */}
         <div className="lg:hidden flex-1 flex flex-col min-h-0">
