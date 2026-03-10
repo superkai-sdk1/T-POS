@@ -348,8 +348,8 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   return (
     <div className="flex-1 flex flex-col min-h-0 lg:h-full relative bg-[#0d0d12] text-white">
       <div className="flex-1 flex flex-col min-h-0 lg:h-full overflow-hidden animate-fade-in">
-        {/* Заголовок КАССА и Действия — компактно (на десктопе без паддингов) */}
-        <div className="px-4 sm:px-6 lg:px-0 py-3 lg:py-0 shrink-0">
+        {/* Заголовок КАССА и Действия — компактно */}
+        <div className="px-4 sm:px-6 lg:px-4 py-3 lg:py-2 shrink-0">
           <div className="flex items-center justify-between mb-3 lg:mb-2">
             <h2 className="text-xl lg:text-2xl font-black italic uppercase tracking-tighter text-white">Касса</h2>
             <span className="text-[9px] lg:text-[11px] font-bold text-white/30 uppercase tracking-widest">
@@ -377,8 +377,8 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           </div>
         </div>
 
-        {/* Сетка чеков — скролл (на десктопе без паддингов) */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 lg:px-0 min-h-0 scrollbar-none scroll-area">
+        {/* Сетка чеков — скролл */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 lg:px-4 min-h-0 scrollbar-none scroll-area">
           {!checksLoaded ? (
             <div className={`grid gap-3 lg:gap-4 ${activeCheck ? 'lg:grid-cols-1' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'}`}>
               {[1, 2, 3, 4, 5, 6].map((i) => (

@@ -189,24 +189,18 @@ export default function App() {
         <div
           ref={splitRef}
           className={[
-            'hidden lg:flex flex-1 min-h-0 overflow-hidden lg:h-full',
-            showCheckView && !isMobile ? 'gap-0' : 'gap-4',
+            'hidden lg:flex flex-1 min-h-0 overflow-hidden lg:h-full gap-4',
             isResizing && 'select-none',
           ].filter(Boolean).join(' ')}
         >
           <div
-            className="flex flex-col shrink-0 min-h-0 min-w-[280px] lg:pr-0"
+            className="flex flex-col shrink-0 min-h-0 min-w-[280px] lg:pr-2 lg:gap-3"
             style={{
               width: showCheckView && !isMobile ? `${splitLeftPercent}%` : undefined,
               flex: showCheckView && !isMobile ? undefined : 1,
               overscrollBehaviorY: 'contain',
             }}
           >
-            {showCheckView && !isMobile && (
-              <div className="shrink-0 pb-2 lg:pb-0">
-                <CheckCartBar />
-              </div>
-            )}
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-none scroll-area">
               <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
             </div>
@@ -222,8 +216,13 @@ export default function App() {
               >
                 <div className="w-0.5 h-8 rounded-full bg-[var(--c-border)] group-hover:bg-[var(--c-fg-muted)] transition-colors" />
               </div>
-              <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pl-2 lg:pl-0 scrollbar-none scroll-area min-w-0 lg:h-full">
-                <CheckView onBack={() => setShowCheckView(false)} />
+              <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-hidden min-w-0 lg:h-full lg:pl-2">
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-none scroll-area">
+                  <CheckView onBack={() => setShowCheckView(false)} />
+                </div>
+                <div className="shrink-0 flex justify-center pt-2">
+                  <CheckCartBar />
+                </div>
               </div>
             </>
           )}
