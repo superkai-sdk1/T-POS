@@ -503,7 +503,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
             className={`flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
             style={{
               WebkitOverflowScrolling: 'touch',
-              paddingBottom: showCheckView || !hideNav ? '120px' : 0,
+              paddingBottom: 0,
               overscrollBehaviorY: 'contain',
               touchAction: 'pan-y',
             }}
