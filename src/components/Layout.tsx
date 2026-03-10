@@ -250,7 +250,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
   const hideNav = useHideNav();
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden relative" style={{ backgroundColor: 'var(--c-bg)' }}>
+    <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden relative lg:h-full" style={{ backgroundColor: 'var(--c-bg)' }}>
       {/* ── Desktop floating sidebar (always visible on desktop, hideNav only affects mobile bottom nav) ── */}
       <aside
         className={`hidden lg:flex fixed top-4 left-4 bottom-4 z-40 flex-col transition-all duration-300 ${isSidebarCollapsed ? 'w-[72px]' : 'w-[260px]'
@@ -405,7 +405,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
 
       {/* ── Main content ── */}
       <div
-        className={`flex-1 flex flex-col min-h-0 overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-[88px]' : 'lg:ml-[276px]'}`}
+        className={`flex-1 flex flex-col min-h-0 overflow-hidden transition-all duration-300 lg:h-full ${isSidebarCollapsed ? 'lg:ml-[88px]' : 'lg:ml-[276px]'}`}
       >
         {/* ── Mobile header: POS — статус смены + в кассе; остальные вкладки — заголовок ── */}
         {activeTab === 'pos' ? (
@@ -500,7 +500,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
         >
           <main
             ref={scrollRef}
-            className={`flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
+            className={`flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0 lg:overflow-hidden lg:min-h-full' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
             style={{
               WebkitOverflowScrolling: 'touch',
               paddingBottom: 0,
