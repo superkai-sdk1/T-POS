@@ -22,8 +22,6 @@ import type { InventoryItem, MenuCategory } from '@/types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
-type ViewMode = 'categories' | 'items';
-
 interface EditForm {
   name: string;
   price: string;
@@ -62,8 +60,11 @@ export function MenuEditor() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { categories, loading: catLoading, reload: reloadCategories } = useAllMenuCategories();
-  const [viewMode, setViewMode] = useState<ViewMode>('categories');
-  const [activeCategory, setActiveCategory] = useState<MenuCategory | null>(null);
+
+  // Hierarchical navigation: stack of categories
+  const [path, setPath] = useState<MenuCategory[]>([]);
+  const currentCategory = path.length > 0 ? path[path.length - 1] : null;
+
   const [search, setSearch] = useState('');
 
   const [showEditor, setShowEditor] = useState(false);
@@ -93,14 +94,24 @@ export function MenuEditor() {
     loadItems().then(() => setIsLoading(false));
   }, [loadItems]);
 
-  const topCategories = categories.filter((c) => !c.parent_id);
-  const getChildren = (parentId: string) => categories.filter((c) => c.parent_id === parentId);
+  const getChildren = useCallback(
+    (parentId: string | null) =>
+      parentId
+        ? categories.filter((c) => c.parent_id === parentId)
+        : categories.filter((c) => !c.parent_id),
+    [categories],
+  );
 
-  const filteredItems = items.filter((i) => {
+  const childCategories = getChildren(currentCategory?.id ?? null)
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  const directItems = items.filter((i) => {
     if (search) return i.name.toLowerCase().includes(search.toLowerCase());
-    if (!activeCategory) return true;
-    const childSlugs = getChildren(activeCategory.id).map((c) => c.slug);
-    return i.category === activeCategory.slug || childSlugs.includes(i.category);
+    if (!currentCategory) {
+      const topSlugs = getChildren(null).map((c) => c.slug);
+      return !topSlugs.includes(i.category) || categories.length === 0;
+    }
+    return i.category === currentCategory.slug;
   });
 
   const countForCategory = (cat: MenuCategory): number => {
@@ -108,11 +119,22 @@ export function MenuEditor() {
     return items.filter((i) => i.category === cat.slug || childSlugs.includes(i.category)).length;
   };
 
+  const navigateInto = (cat: MenuCategory) => {
+    setPath((prev) => [...prev, cat]);
+    setSearch('');
+    hapticFeedback('light');
+  };
+
+  const navigateBack = () => {
+    setPath((prev) => prev.slice(0, -1));
+    setSearch('');
+  };
+
   // ============ ITEM EDITOR ============
 
   const openCreate = () => {
     setEditingItem(null);
-    setForm({ ...emptyForm, category: activeCategory?.slug || categories[0]?.slug || '' });
+    setForm({ ...emptyForm, category: currentCategory?.slug || categories[0]?.slug || '' });
     setShowEditor(true);
   };
 
@@ -139,12 +161,12 @@ export function MenuEditor() {
     if (!file) return;
     setIsUploading(true);
     const ext = file.name.split('.').pop() || 'jpg';
-    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const fpath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const { error } = await supabase.storage
       .from('menu-images')
-      .upload(path, file, { contentType: file.type });
+      .upload(fpath, file, { contentType: file.type });
     if (!error) {
-      const url = `${SUPABASE_URL}/storage/v1/object/public/menu-images/${path}`;
+      const url = `${SUPABASE_URL}/storage/v1/object/public/menu-images/${fpath}`;
       updateField('image_url', url);
       hapticNotification('success');
     }
@@ -214,35 +236,11 @@ export function MenuEditor() {
     loadItems();
   };
 
-  const moveItem = async (item: InventoryItem, direction: 'up' | 'down') => {
-    hapticFeedback('light');
-    const categoryItems = items
-      .filter((i) => i.category === item.category)
-      .sort((a, b) => a.sort_order - b.sort_order);
-    const idx = categoryItems.findIndex((i) => i.id === item.id);
-    if (idx < 0) return;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= categoryItems.length) return;
-    const other = categoryItems[swapIdx];
-
-    if (item.sort_order === other.sort_order) {
-      const newOrder = direction === 'up' ? other.sort_order - 1 : other.sort_order + 1;
-      await supabase.from('inventory').update({ sort_order: newOrder }).eq('id', item.id);
-    } else {
-      await Promise.all([
-        supabase.from('inventory').update({ sort_order: other.sort_order }).eq('id', item.id),
-        supabase.from('inventory').update({ sort_order: item.sort_order }).eq('id', other.id),
-      ]);
-    }
-
-    loadItems();
-  };
-
   // ============ CATEGORY EDITOR ============
 
-  const openCreateCategory = (parentId: string | null = null) => {
+  const openCreateCategory = () => {
     setEditingCategory(null);
-    setCatForm({ ...emptyCategoryForm, parent_id: parentId });
+    setCatForm({ ...emptyCategoryForm, parent_id: currentCategory?.id ?? null });
     setShowCatEditor(true);
   };
 
@@ -288,12 +286,15 @@ export function MenuEditor() {
     const childCount = getChildren(deleteCatTarget.id).length;
     const itemCount = items.filter((i) => i.category === deleteCatTarget.slug).length;
     if (childCount > 0) {
-      await supabase.from('menu_categories').update({ parent_id: null }).eq('parent_id', deleteCatTarget.id);
+      await supabase.from('menu_categories').update({ parent_id: deleteCatTarget.parent_id ?? null }).eq('parent_id', deleteCatTarget.id);
     }
     if (itemCount > 0) {
-      const firstCat = categories.find((c) => c.id !== deleteCatTarget.id);
-      if (!firstCat) return;
-      await supabase.from('inventory').update({ category: firstCat.slug }).eq('category', deleteCatTarget.slug);
+      const fallback = currentCategory
+        ? currentCategory.slug
+        : categories.find((c) => c.id !== deleteCatTarget.id)?.slug;
+      if (fallback) {
+        await supabase.from('inventory').update({ category: fallback }).eq('category', deleteCatTarget.slug);
+      }
     }
     await supabase.from('menu_categories').delete().eq('id', deleteCatTarget.id);
     hapticNotification('success');
@@ -306,17 +307,19 @@ export function MenuEditor() {
     return <ListSkeleton rows={5} />;
   }
 
-  const categoriesView = viewMode === 'categories';
-  const activeItems = items.filter((i) => i.is_active).length;
+  const isRoot = path.length === 0;
+  const activeItemsCount = items.filter((i) => i.is_active).length;
+  const hasSubcategories = childCategories.length > 0;
+  const topCategories = categories.filter((c) => !c.parent_id);
 
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* ============ HEADER ============ */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          {!categoriesView && (
+          {!isRoot && (
             <button
-              onClick={() => { setViewMode('categories'); setActiveCategory(null); setSearch(''); }}
+              onClick={navigateBack}
               className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] active:scale-95 transition-all shrink-0"
             >
               <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--c-hint)]" />
@@ -324,33 +327,42 @@ export function MenuEditor() {
           )}
           <div className="min-w-0">
             <h1 className="text-lg sm:text-2xl font-extrabold tracking-tight text-[var(--c-text)] leading-tight truncate">
-              {categoriesView ? 'Меню' : activeCategory?.name || 'Все позиции'}
+              {isRoot ? 'Меню' : currentCategory!.name}
             </h1>
-            <p className="text-[var(--c-muted)] text-[11px] sm:text-sm mt-0.5 font-medium">
-              {categoriesView
-                ? 'Структура заведения'
-                : `${filteredItems.length} позиций`
-              }
-            </p>
+            {isRoot ? (
+              <p className="text-[var(--c-muted)] text-[11px] sm:text-sm mt-0.5 font-medium">
+                Структура заведения
+              </p>
+            ) : (
+              <div className="flex items-center gap-1 text-[var(--c-muted)] text-[11px] sm:text-xs mt-0.5 font-medium truncate">
+                <button onClick={() => setPath([])} className="hover:text-[var(--c-text)] transition-colors">Меню</button>
+                {path.slice(0, -1).map((p, i) => (
+                  <span key={p.id} className="flex items-center gap-1">
+                    <ChevronRight className="w-3 h-3" />
+                    <button onClick={() => setPath(path.slice(0, i + 1))} className="hover:text-[var(--c-text)] transition-colors truncate">{p.name}</button>
+                  </span>
+                ))}
+                <ChevronRight className="w-3 h-3 shrink-0" />
+                <span className="text-[var(--c-text)] truncate">{currentCategory!.name}</span>
+              </div>
+            )}
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {categoriesView && (
-            <button
-              onClick={() => openCreateCategory()}
-              className="h-9 sm:h-11 px-3 sm:px-5 rounded-xl sm:rounded-2xl flex items-center gap-1.5 sm:gap-2 font-semibold text-xs sm:text-sm transition-all active:scale-95 bg-[var(--c-surface)] border border-[var(--c-border)] text-[var(--c-text)] hover:bg-[var(--c-surface-hover)] shrink-0"
-            >
-              <FolderPlus className="w-4 h-4" />
-              <span className="hidden sm:inline">Раздел</span>
-            </button>
-          )}
+          <button
+            onClick={openCreateCategory}
+            className="h-9 sm:h-11 px-3 sm:px-5 rounded-xl sm:rounded-2xl flex items-center gap-1.5 sm:gap-2 font-semibold text-xs sm:text-sm transition-all active:scale-95 bg-[var(--c-surface)] border border-[var(--c-border)] text-[var(--c-text)] hover:bg-[var(--c-surface-hover)] shrink-0"
+          >
+            <FolderPlus className="w-4 h-4" />
+            <span className="hidden sm:inline">Раздел</span>
+          </button>
           <button
             onClick={openCreate}
             className="h-9 sm:h-11 px-3 sm:px-5 rounded-xl sm:rounded-2xl flex items-center gap-1.5 sm:gap-2 font-bold text-xs sm:text-sm transition-all active:scale-95 text-white [background:linear-gradient(135deg,#8b5cf6,#06b6d4)] [box-shadow:0_4px_20px_rgba(139,92,246,0.25)] shrink-0"
           >
             <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="hidden xs:inline">{categoriesView ? 'Позиция' : 'Позиция'}</span>
+            <span className="hidden xs:inline">Позиция</span>
           </button>
         </div>
       </div>
@@ -367,160 +379,130 @@ export function MenuEditor() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="hidden sm:flex gap-3">
-          <div className="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-2xl px-4 py-2 flex flex-col justify-center min-w-[80px]">
-            <span className="text-[var(--c-muted)] text-[10px] font-bold uppercase tracking-widest">Всего</span>
-            <span className="text-lg font-black text-[var(--c-text)]">{items.length}</span>
+        {isRoot && (
+          <div className="hidden sm:flex gap-3">
+            <div className="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-2xl px-4 py-2 flex flex-col justify-center min-w-[80px]">
+              <span className="text-[var(--c-muted)] text-[10px] font-bold uppercase tracking-widest">Всего</span>
+              <span className="text-lg font-black text-[var(--c-text)]">{items.length}</span>
+            </div>
+            <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-2xl px-4 py-2 flex flex-col justify-center min-w-[80px]">
+              <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-widest">Активных</span>
+              <span className="text-lg font-black text-emerald-400">{activeItemsCount}</span>
+            </div>
           </div>
-          <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-2xl px-4 py-2 flex flex-col justify-center min-w-[80px]">
-            <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-widest">Активных</span>
-            <span className="text-lg font-black text-emerald-400">{activeItems}</span>
-          </div>
-        </div>
+        )}
       </div>
 
-      {/* ============ SUBCATEGORY TABS (items view) ============ */}
-      {!categoriesView && activeCategory && getChildren(activeCategory.id).length > 0 && (
-        <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-1 px-1 pb-1">
-          <button
-            onClick={() => {
-              if (activeCategory.parent_id) {
-                const parent = categories.find((c) => c.id === activeCategory.parent_id);
-                if (parent) setActiveCategory(parent);
-              }
-            }}
-            className="px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap bg-[var(--c-accent)]/15 text-[var(--c-accent)] shrink-0 transition-all active:scale-95"
-          >
-            Все
-          </button>
-          {getChildren(activeCategory.id).sort((a, b) => a.sort_order - b.sort_order).map((sub) => {
-            const SubIcon = getIconComponent(sub.icon_name);
-            return (
-              <button
-                key={sub.id}
-                onClick={() => setActiveCategory(sub)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap bg-[var(--c-surface)] text-[var(--c-hint)] active:scale-95 shrink-0 transition-all border border-[var(--c-border)]"
-              >
-                <SubIcon className="w-3.5 h-3.5" />
-                {sub.name}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ============ CONTENT GRID ============ */}
+      {/* ============ CONTENT ============ */}
       {search ? (
-        <div className="grid gap-2.5 sm:gap-3 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-          {filteredItems.map((item) => (
-            <ItemCard
-              key={item.id}
-              item={item}
-              categories={categories}
-              onEdit={openEdit}
-              onToggle={toggleActive}
-            />
+        <div className="grid gap-2.5 sm:gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {directItems.map((item) => (
+            <ItemCard key={item.id} item={item} categories={categories} onEdit={openEdit} onToggle={toggleActive} />
           ))}
-          {filteredItems.length === 0 && (
+          {directItems.length === 0 && (
             <div className="col-span-full text-center py-16">
               <Search className="w-10 h-10 text-[var(--c-muted)] mx-auto mb-3" />
               <p className="text-[var(--c-hint)] font-medium">Ничего не найдено</p>
             </div>
           )}
         </div>
-      ) : categoriesView ? (
-        <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
-          {topCategories.sort((a, b) => a.sort_order - b.sort_order).map((cat) => {
-            const Icon = getIconComponent(cat.icon_name);
-            const count = countForCategory(cat);
-            const children = getChildren(cat.id);
-            const colorCfg = getCategoryColorConfig(cat.color);
-
-            return (
-              <div
-                key={cat.id}
-                className="group relative rounded-[20px] sm:rounded-[28px] p-3.5 sm:p-6 cursor-pointer overflow-hidden transition-all duration-200 border hover:scale-[1.01] active:scale-[0.98]"
-                style={{ borderColor: 'var(--c-border)' }}
-                onClick={() => { setActiveCategory(cat); setViewMode('items'); }}
-              >
-                <div className={`absolute inset-0 ${colorCfg.bg} opacity-60 group-hover:opacity-100 transition-opacity`} />
-
-                <div className="relative z-10">
-                  <div className="flex items-start justify-between mb-3 sm:mb-6">
-                    <div className={`w-10 h-10 sm:w-14 sm:h-14 ${colorCfg.bg} ${colorCfg.text} rounded-xl sm:rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 border ${colorCfg.border}`}>
-                      <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
-                    </div>
-                    <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-all sm:translate-x-2 sm:group-hover:translate-x-0">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); openEditCategory(cat); }}
-                        className="p-1.5 sm:p-2 bg-[var(--c-surface)] text-[var(--c-hint)] hover:text-[var(--c-accent)] rounded-lg sm:rounded-xl transition-colors border border-[var(--c-border)] active:scale-90"
-                      >
-                        <Pencil className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setDeleteCatTarget(cat); }}
-                        className="p-1.5 sm:p-2 bg-[var(--c-surface)] text-[var(--c-hint)] hover:text-[var(--c-danger)] rounded-lg sm:rounded-xl transition-colors border border-[var(--c-border)] active:scale-90"
-                      >
-                        <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-
-                  <h3 className="text-[15px] sm:text-xl font-bold text-[var(--c-text)] mb-1 sm:mb-2 truncate">{cat.name}</h3>
-                  <div className="flex items-center gap-1.5 sm:gap-2 text-[var(--c-muted)] font-medium flex-wrap">
-                    <span className="bg-[var(--c-surface)] px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg text-[11px] sm:text-xs border border-[var(--c-border)]">
-                      {count} шт.
-                    </span>
-                    {children.length > 0 && (
-                      <span className="text-[11px] sm:text-xs">{children.length} подразд.</span>
-                    )}
-                  </div>
-
-                  <div className="absolute bottom-0 right-0 text-[var(--c-muted)] group-hover:text-[var(--c-accent)] transition-all group-hover:translate-x-1 hidden sm:block">
-                    <ChevronRight className="w-6 h-6" />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {topCategories.length === 0 && (
-            <div className="col-span-full text-center py-16">
-              <FolderPlus className="w-10 h-10 text-[var(--c-muted)] mx-auto mb-3" />
-              <p className="text-[var(--c-hint)] font-medium mb-3">Нет разделов</p>
-              <button
-                onClick={() => openCreateCategory()}
-                className="text-sm font-semibold text-[var(--c-accent)]"
-              >
-                Создать первый раздел
-              </button>
-            </div>
-          )}
-        </div>
       ) : (
         <>
-          <div className="grid gap-2.5 sm:gap-3 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {filteredItems.map((item) => (
-              <ItemCard
-                key={item.id}
-                item={item}
-                categories={categories}
-                onEdit={openEdit}
-                onToggle={toggleActive}
-              />
-            ))}
-          </div>
+          {/* Subcategories */}
+          {hasSubcategories && (
+            <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-3">
+              {childCategories.map((cat) => {
+                const Icon = getIconComponent(cat.icon_name);
+                const count = countForCategory(cat);
+                const subChildren = getChildren(cat.id);
+                const colorCfg = getCategoryColorConfig(cat.color);
 
-          {filteredItems.length === 0 && (
+                return (
+                  <div
+                    key={cat.id}
+                    className="group relative rounded-[20px] sm:rounded-[28px] p-3.5 sm:p-6 cursor-pointer overflow-hidden transition-all duration-200 border hover:scale-[1.01] active:scale-[0.98]"
+                    style={{ borderColor: 'var(--c-border)' }}
+                    onClick={() => navigateInto(cat)}
+                  >
+                    <div className={`absolute inset-0 ${colorCfg.bg} opacity-60 group-hover:opacity-100 transition-opacity`} />
+
+                    <div className="relative z-10">
+                      <div className="flex items-start justify-between mb-3 sm:mb-6">
+                        <div className={`w-10 h-10 sm:w-14 sm:h-14 ${colorCfg.bg} ${colorCfg.text} rounded-xl sm:rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 border ${colorCfg.border}`}>
+                          <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
+                        </div>
+                        <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-all sm:translate-x-2 sm:group-hover:translate-x-0">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openEditCategory(cat); }}
+                            className="p-1.5 sm:p-2 bg-[var(--c-surface)] text-[var(--c-hint)] hover:text-[var(--c-accent)] rounded-lg sm:rounded-xl transition-colors border border-[var(--c-border)] active:scale-90"
+                          >
+                            <Pencil className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeleteCatTarget(cat); }}
+                            className="p-1.5 sm:p-2 bg-[var(--c-surface)] text-[var(--c-hint)] hover:text-[var(--c-danger)] rounded-lg sm:rounded-xl transition-colors border border-[var(--c-border)] active:scale-90"
+                          >
+                            <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <h3 className="text-[15px] sm:text-xl font-bold text-[var(--c-text)] mb-1 sm:mb-2 truncate">{cat.name}</h3>
+                      <div className="flex items-center gap-1.5 sm:gap-2 text-[var(--c-muted)] font-medium flex-wrap">
+                        <span className="bg-[var(--c-surface)] px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md sm:rounded-lg text-[11px] sm:text-xs border border-[var(--c-border)]">
+                          {count} шт.
+                        </span>
+                        {subChildren.length > 0 && (
+                          <span className="text-[11px] sm:text-xs">{subChildren.length} подразд.</span>
+                        )}
+                      </div>
+
+                      <div className="absolute bottom-0 right-0 text-[var(--c-muted)] group-hover:text-[var(--c-accent)] transition-all group-hover:translate-x-1 hidden sm:block">
+                        <ChevronRight className="w-6 h-6" />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Items in current category */}
+          {directItems.length > 0 && (
+            <>
+              {hasSubcategories && (
+                <div className="flex items-center gap-2 pt-1">
+                  <div className="h-px flex-1 bg-[var(--c-border)]" />
+                  <span className="text-[11px] sm:text-xs font-semibold text-[var(--c-muted)] uppercase tracking-wider px-2">
+                    Позиции{currentCategory ? ` · ${currentCategory.name}` : ''}
+                  </span>
+                  <div className="h-px flex-1 bg-[var(--c-border)]" />
+                </div>
+              )}
+              <div className="grid gap-2.5 sm:gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {directItems.map((item) => (
+                  <ItemCard key={item.id} item={item} categories={categories} onEdit={openEdit} onToggle={toggleActive} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Empty state */}
+          {!hasSubcategories && directItems.length === 0 && (
             <div className="text-center py-16">
               <Package className="w-10 h-10 text-[var(--c-muted)] mx-auto mb-3" />
-              <p className="text-[var(--c-hint)] font-medium mb-3">Нет позиций в этом разделе</p>
-              <button
-                onClick={openCreate}
-                className="text-sm font-semibold text-[var(--c-accent)]"
-              >
-                Добавить позицию
-              </button>
+              <p className="text-[var(--c-hint)] font-medium mb-3">
+                {isRoot ? 'Нет разделов и позиций' : 'Нет позиций в этом разделе'}
+              </p>
+              <div className="flex items-center justify-center gap-2">
+                <button onClick={openCreateCategory} className="text-sm font-semibold text-[var(--c-accent)]">
+                  + Раздел
+                </button>
+                <span className="text-[var(--c-muted)]">или</span>
+                <button onClick={openCreate} className="text-sm font-semibold text-[var(--c-accent)]">
+                  + Позиция
+                </button>
+              </div>
             </div>
           )}
         </>
@@ -676,6 +658,7 @@ export function MenuEditor() {
         setForm={setCatForm}
         topCategories={topCategories}
         onSave={handleSaveCategory}
+        onDelete={editingCategory ? () => { setShowCatEditor(false); setDeleteCatTarget(editingCategory); } : undefined}
       />
 
       <Drawer open={!!deleteCatTarget} onClose={() => setDeleteCatTarget(null)} title="Удалить раздел?" size="sm">
@@ -689,7 +672,7 @@ export function MenuEditor() {
               </div>
             </div>
             <p className="text-xs text-[var(--c-hint)] text-center">
-              Позиции будут перемещены в другой раздел. Подразделы станут основными.
+              Позиции будут перемещены в родительский раздел. Подразделы станут основными.
             </p>
             <div className="flex gap-2">
               <Button fullWidth variant="secondary" onClick={() => setDeleteCatTarget(null)}>Отмена</Button>
@@ -765,10 +748,7 @@ function ItemCard({
         </div>
       </div>
 
-      <div
-        className="cursor-pointer"
-        onClick={() => onEdit(item)}
-      >
+      <div className="cursor-pointer" onClick={() => onEdit(item)}>
         <h4 className="text-[13px] sm:text-sm font-bold text-[var(--c-text)] group-hover:text-white transition-colors leading-snug line-clamp-2">
           {item.name}
         </h4>
@@ -807,6 +787,7 @@ function CategoryEditorDrawer({
   setForm,
   topCategories,
   onSave,
+  onDelete,
 }: {
   open: boolean;
   onClose: () => void;
@@ -815,6 +796,7 @@ function CategoryEditorDrawer({
   setForm: React.Dispatch<React.SetStateAction<CategoryForm>>;
   topCategories: MenuCategory[];
   onSave: () => void;
+  onDelete?: () => void;
 }) {
   const [showIcons, setShowIcons] = useState(false);
 
@@ -919,6 +901,13 @@ function CategoryEditorDrawer({
           <Check className="w-5 h-5" />
           {editing ? 'Сохранить' : 'Создать'}
         </Button>
+
+        {editing && onDelete && (
+          <Button fullWidth variant="danger" onClick={onDelete}>
+            <Trash2 className="w-4 h-4" />
+            Удалить раздел
+          </Button>
+        )}
       </div>
     </Drawer>
   );
