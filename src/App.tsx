@@ -188,7 +188,7 @@ export default function App() {
         <div
           ref={splitRef}
           className={[
-            'hidden lg:flex h-full min-h-0 overflow-hidden',
+            'hidden lg:flex flex-1 min-h-0 overflow-hidden',
             showCheckView && !isMobile ? 'gap-0' : 'gap-4',
             isResizing && 'select-none',
           ].filter(Boolean).join(' ')}
