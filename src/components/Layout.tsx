@@ -19,16 +19,18 @@ import {
 
 const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
 
-function CheckPaymentPanel() {
+function CheckPaymentPanel({ sidebarCollapsed }: { sidebarCollapsed: boolean }) {
   const cart = usePOSStore((s) => s.cart);
   const getCartTotal = usePOSStore((s) => s.getCartTotal);
   const total = getCartTotal();
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
 
   return (
-    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-[60]">
-      <div className="absolute inset-0 bg-white/[0.06] backdrop-blur-3xl rounded-[2rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
-      <div className="relative p-3 flex items-center justify-between gap-3">
+    <div
+      className={`fixed bottom-5 z-[60] left-0 right-0 flex justify-center px-4 ${sidebarCollapsed ? 'lg:left-[88px]' : 'lg:left-[276px]'} lg:right-4`}
+    >
+      <div className="relative w-full max-w-lg rounded-[2rem] border border-white/10 bg-white/[0.06] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+        <div className="relative p-3 flex items-center justify-between gap-3">
         <div className="flex gap-2">
           <button
             onClick={() => { hapticFeedback('light'); window.dispatchEvent(new CustomEvent('tpos:open-menu')); }}
@@ -57,6 +59,7 @@ function CheckPaymentPanel() {
             <CreditCard className="w-[18px] h-[18px]" /> Оплата
           </button>
         )}
+        </div>
       </div>
     </div>
   );
@@ -524,9 +527,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
         {/* ── Floating mobile bottom nav (hidden on deep screens) / Payment panel (when viewing a check) ── */}
         {typeof document !== 'undefined' && (showCheckView || !hideNav) && createPortal(
           showCheckView ? (
-            <div className="lg:hidden">
-              <CheckPaymentPanel />
-            </div>
+            <CheckPaymentPanel sidebarCollapsed={isSidebarCollapsed} />
           ) : (
           <div className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-[60]">
             <div className="absolute inset-0 bg-white/[0.06] backdrop-blur-3xl rounded-[2rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
