@@ -20,7 +20,8 @@
   --nav-height: 3.5rem;
   /* Mobile bottom bar geometry (content area + safe area) */
   --bottom-bar-content-height: 56px;
-  --bottom-bar-height: calc(var(--bottom-bar-content-height) + var(--safe-bottom-capped));
+  /* Панель навигации строго по нижней границе viewport без дополнительного внешнего safe-area */
+  --bottom-bar-height: var(--bottom-bar-content-height);
   --fab-bottom-offset: calc(var(--bottom-bar-height) + 12px);
   /* PWA/MiniApp: use dvh when supported so address bar doesn't change layout */
   --app-height: 100vh;
