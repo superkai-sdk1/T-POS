@@ -232,7 +232,7 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
   };
 
   return (
-    <div className="h-[100dvh] flex flex-col lg:flex-row overflow-hidden relative">
+    <div className="min-h-[100dvh] h-[var(--app-height)] flex flex-col lg:flex-row overflow-hidden relative">
       {/* ── Desktop sidebar ── */}
       <aside
         className={`hidden lg:flex flex-col shrink-0 fixed top-0 left-0 h-full z-40 transition-all duration-300 ${isSidebarExpanded ? 'w-[240px]' : 'w-[72px] items-center'}`}

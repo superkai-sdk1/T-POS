@@ -18,11 +18,15 @@ const updateSW = registerSW({
 });
 
 function setAppHeight() {
-  document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+  const vv = window.visualViewport;
+  const h = vv?.height ?? window.innerHeight;
+  document.documentElement.style.setProperty('--app-height', `${Math.round(h)}px`);
 }
 setAppHeight();
 window.addEventListener('resize', setAppHeight);
 window.addEventListener('orientationchange', () => setTimeout(setAppHeight, 100));
+window.visualViewport?.addEventListener('resize', setAppHeight);
+window.visualViewport?.addEventListener('scroll', setAppHeight);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

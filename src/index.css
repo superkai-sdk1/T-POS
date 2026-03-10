@@ -62,8 +62,9 @@ html {
 }
 
 body {
+  min-height: 100dvh;
   height: var(--app-height);
-  max-height: var(--app-height);
+  max-height: none;
   overflow: hidden;
   overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
@@ -137,6 +138,7 @@ body::after {
 }
 
 #root {
+  min-height: 100dvh;
   height: 100%;
   overflow: hidden;
   position: relative;
