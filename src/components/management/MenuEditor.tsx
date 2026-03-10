@@ -8,7 +8,7 @@ import {
   Plus, Pencil, Trash2,
   Eye, EyeOff, Search, Upload, X, Check,
   FolderPlus, ChevronRight, ArrowLeft,
-  Package, MoreVertical,
+  Package, MoreVertical, ChevronUp, ChevronDown,
 } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import {
@@ -251,6 +251,29 @@ export function MenuEditor() {
     loadItems();
   };
 
+  const moveItem = async (item: InventoryItem, direction: 'up' | 'down') => {
+    hapticFeedback('light');
+    const categoryItems = items
+      .filter((i) => i.category === item.category)
+      .sort((a, b) => a.sort_order - b.sort_order);
+    const idx = categoryItems.findIndex((i) => i.id === item.id);
+    if (idx < 0) return;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= categoryItems.length) return;
+    const other = categoryItems[swapIdx];
+
+    if (item.sort_order === other.sort_order) {
+      const newOrder = direction === 'up' ? other.sort_order - 1 : other.sort_order + 1;
+      await supabase.from('inventory').update({ sort_order: newOrder }).eq('id', item.id);
+    } else {
+      await Promise.all([
+        supabase.from('inventory').update({ sort_order: other.sort_order }).eq('id', item.id),
+        supabase.from('inventory').update({ sort_order: item.sort_order }).eq('id', other.id),
+      ]);
+    }
+    loadItems();
+  };
+
   // ============ CATEGORY EDITOR ============
 
   const openCreateCategory = () => {
@@ -412,7 +435,16 @@ export function MenuEditor() {
       {search ? (
         <div className="grid gap-2.5 sm:gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {directItems.map((item) => (
-            <ItemCard key={item.id} item={item} categories={categories} onEdit={openEdit} onToggle={toggleActive} />
+            <ItemCard
+              key={item.id}
+              item={item}
+              categories={categories}
+              onEdit={openEdit}
+              onToggle={toggleActive}
+              onMove={moveItem}
+              canMoveUp={false}
+              canMoveDown={false}
+            />
           ))}
           {directItems.length === 0 && (
             <div className="col-span-full text-center py-16">
@@ -495,8 +527,17 @@ export function MenuEditor() {
                 </div>
               )}
               <div className="grid gap-2.5 sm:gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {directItems.map((item) => (
-                  <ItemCard key={item.id} item={item} categories={categories} onEdit={openEdit} onToggle={toggleActive} />
+                {directItems.map((item, idx) => (
+                  <ItemCard
+                    key={item.id}
+                    item={item}
+                    categories={categories}
+                    onEdit={openEdit}
+                    onToggle={toggleActive}
+                    onMove={moveItem}
+                    canMoveUp={!!currentCategory && idx > 0}
+                    canMoveDown={!!currentCategory && idx < directItems.length - 1}
+                  />
                 ))}
               </div>
             </>
@@ -529,124 +570,189 @@ export function MenuEditor() {
         open={showEditor}
         onClose={() => setShowEditor(false)}
         title={editingItem ? 'Редактирование' : 'Новая позиция'}
-        size="md"
+        subtitle="Параметры позиции"
+        size="lg"
       >
-        <div className="space-y-4">
-          <div>
-            <p className="text-xs font-medium text-[var(--c-hint)] mb-2">Изображение</p>
-            {form.image_url ? (
-              <div className="relative w-full aspect-[3/2] rounded-xl overflow-hidden card">
-                <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" />
-                <button
-                  onClick={() => updateField('image_url', '')}
-                  className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/60 flex items-center justify-center active:scale-90 transition-all"
-                >
-                  <X className="w-4 h-4 text-white" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="w-full flex flex-col items-center gap-2 py-6 rounded-xl border-2 border-dashed border-[var(--c-border)] hover:border-[var(--c-border)] text-[var(--c-hint)] transition-all active:scale-[0.98]"
-              >
-                {isUploading ? (
-                  <div className="w-6 h-6 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin" />
+        <div className="flex flex-col -mx-6 sm:-mx-10 -mb-6 sm:-mb-10">
+          <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-4 space-y-8">
+            {/* Изображение */}
+            <div className="space-y-3">
+              <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Изображение</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {form.image_url ? (
+                  <div className="relative aspect-video md:aspect-auto md:h-32 rounded-3xl overflow-hidden border border-slate-800">
+                    <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => updateField('image_url', '')}
+                      className="absolute top-2 right-2 w-10 h-10 rounded-2xl bg-black/60 flex items-center justify-center active:scale-90 transition-all"
+                    >
+                      <X className="w-5 h-5 text-white" />
+                    </button>
+                  </div>
                 ) : (
-                  <Upload className="w-6 h-6" />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="aspect-video md:aspect-auto md:h-32 border-2 border-dashed border-slate-800 hover:border-indigo-500/50 hover:bg-indigo-500/5 rounded-3xl flex flex-col items-center justify-center gap-2 transition-all group"
+                  >
+                    {isUploading ? (
+                      <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <div className="p-3 bg-slate-800/50 rounded-2xl text-slate-400 group-hover:text-indigo-400 transition-colors">
+                        <Upload size={20} />
+                      </div>
+                    )}
+                    <span className="text-sm font-bold text-slate-400 group-hover:text-slate-200">{isUploading ? 'Загрузка...' : 'Загрузить фото'}</span>
+                  </button>
                 )}
-                <span className="text-xs">{isUploading ? 'Загрузка...' : 'Загрузить фото'}</span>
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                <div className="flex flex-col justify-center gap-3">
+                  <span className="text-[10px] font-bold text-slate-600 uppercase md:text-left">или ссылка на изображение</span>
+                  <input
+                    type="text"
+                    placeholder="https://..."
+                    value={form.image_url}
+                    onChange={(e) => updateField('image_url', e.target.value)}
+                    className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all text-slate-200"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Название и Цена */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Название</label>
+                <input
+                  type="text"
+                  value={form.name}
+                  onChange={(e) => updateField('name', e.target.value)}
+                  placeholder="Например: Адреналин"
+                  className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-4 px-5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all text-white font-bold text-lg"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Цена (₽)</label>
+                <input
+                  type="number"
+                  value={form.price}
+                  onChange={(e) => updateField('price', e.target.value)}
+                  placeholder="0"
+                  min={0}
+                  className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-4 px-5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all text-indigo-400 font-black text-xl"
+                />
+              </div>
+            </div>
+
+            {/* Раздел */}
+            <div className="space-y-4">
+              <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Раздел</label>
+              <div className="flex flex-wrap gap-2">
+                {categories.map((cat) => {
+                  const Icon = getIconComponent(cat.icon_name);
+                  const isSelected = form.category === cat.slug;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => updateField('category', cat.slug)}
+                      className={`px-5 py-3 rounded-2xl border transition-all flex items-center gap-3 font-bold text-sm ${
+                        isSelected ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      <Icon size={16} />
+                      {cat.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Мин. остаток и Теги */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Мин. остаток</label>
+                <input
+                  type="number"
+                  value={form.min_threshold}
+                  onChange={(e) => updateField('min_threshold', e.target.value)}
+                  placeholder="0 — не отслеживать"
+                  min={0}
+                  className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-3 px-5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all text-white font-bold"
+                />
+              </div>
+              <div className="space-y-3">
+                <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Теги для поиска</label>
+                <input
+                  type="text"
+                  value={form.search_tags}
+                  onChange={(e) => updateField('search_tags', e.target.value)}
+                  placeholder="кола, газировка, pepsi"
+                  className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-3 px-5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all text-slate-300 text-sm"
+                />
+              </div>
+            </div>
+
+            {/* Переключатели */}
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => updateField('is_top', !form.is_top)}
+                className={`w-full p-5 rounded-3xl flex items-center justify-between transition-all active:scale-[0.99] ${
+                  form.is_top ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-slate-900/30 border border-slate-800'
+                }`}
+              >
+                <div className="flex flex-col text-left">
+                  <span className={`text-sm font-bold ${form.is_top ? 'text-amber-400' : 'text-white'}`}>
+                    {form.is_top ? 'Топ-позиция' : 'Обычная позиция'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-medium">Топ отображается первым в меню POS</span>
+                </div>
+                <div className={`w-14 h-8 rounded-full relative transition-all duration-300 ${form.is_top ? 'bg-amber-500' : 'bg-slate-800'}`}>
+                  <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${form.is_top ? 'left-7' : 'left-1'}`} />
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => updateField('is_active', !form.is_active)}
+                className={`w-full p-5 rounded-3xl flex items-center justify-between transition-all active:scale-[0.99] ${
+                  form.is_active ? 'bg-emerald-500/5 border border-emerald-500/20' : 'bg-slate-900/30 border border-slate-800'
+                }`}
+              >
+                <div className="flex flex-col text-left">
+                  <span className={`text-sm font-bold ${form.is_active ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {form.is_active ? 'Отображается в меню' : 'Скрыт из меню'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    {form.is_active ? 'Видна клиентам и в системе' : 'Не отображается в меню'}
+                  </span>
+                </div>
+                <div className={`w-14 h-8 rounded-full relative transition-all duration-300 ${form.is_active ? 'bg-emerald-500' : 'bg-slate-800'}`}>
+                  <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${form.is_active ? 'left-7' : 'left-1'}`} />
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Футер */}
+          <div className={`p-6 border-t border-slate-800 bg-slate-900/20 shrink-0 ${editingItem ? 'grid grid-cols-1 sm:grid-cols-2 gap-3' : ''}`}>
+            <button
+              onClick={handleSave}
+              disabled={!form.name.trim() || !form.price}
+              className={`h-14 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl flex items-center justify-center gap-2 font-black uppercase tracking-widest shadow-xl shadow-indigo-600/20 active:scale-95 transition-all ${editingItem ? 'sm:order-2' : 'w-full'}`}
+            >
+              <Check size={20} /> Сохранить
+            </button>
+            {editingItem && (
+              <button
+                type="button"
+                onClick={() => { setShowEditor(false); setDeleteTarget(editingItem); }}
+                className="h-14 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl flex items-center justify-center gap-2 font-bold transition-all border border-red-500/20 active:scale-95 sm:order-1"
+              >
+                <Trash2 size={20} /> Удалить позицию
               </button>
             )}
-            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-            {!form.image_url && (
-              <Input
-                label="Или ссылка на изображение"
-                placeholder="https://..."
-                value={form.image_url}
-                onChange={(e) => updateField('image_url', e.target.value)}
-                className="mt-2"
-              />
-            )}
           </div>
-
-          <Input label="Название" placeholder="Название позиции" value={form.name} onChange={(e) => updateField('name', e.target.value)} />
-          <Input label="Цена (₽)" type="number" placeholder="0" value={form.price} onChange={(e) => updateField('price', e.target.value)} min={0} />
-
-          <div>
-            <p className="text-xs font-medium text-[var(--c-hint)] mb-2">Раздел</p>
-            <div className="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto">
-              {categories.map((cat) => {
-                const Icon = getIconComponent(cat.icon_name);
-                const isChild = !!cat.parent_id;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => updateField('category', cat.slug)}
-                    className={`flex items-center gap-1.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-all active:scale-[0.97] ${isChild ? 'ml-3' : ''
-                      } ${form.category === cat.slug
-                        ? 'bg-[var(--c-accent)] text-white'
-                        : 'card text-[var(--c-hint)]'
-                      }`}
-                  >
-                    <Icon className="w-3.5 h-3.5 shrink-0" />
-                    <span className="truncate">{cat.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <Input label="Мин. остаток" type="number" placeholder="0 — не отслеживать" value={form.min_threshold} onChange={(e) => updateField('min_threshold', e.target.value)} min={0} />
-
-          <Input
-            label="Теги для поиска"
-            placeholder="кола, газировка, pepsi"
-            value={form.search_tags}
-            onChange={(e) => updateField('search_tags', e.target.value)}
-          />
-          <p className="text-[10px] text-[var(--c-muted)] -mt-3">Через запятую. Помогают найти позицию по альтернативным названиям.</p>
-
-          <button
-            onClick={() => updateField('is_top', !form.is_top)}
-            className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all active:scale-[0.98] ${form.is_top ? 'bg-amber-500/10 border-amber-500/30' : 'card border-[var(--c-border)]'
-              }`}
-          >
-            <div>
-              <span className="text-[13px] font-medium text-[var(--c-text)]">
-                {form.is_top ? 'Топ-позиция' : 'Обычная позиция'}
-              </span>
-              <p className="text-[10px] text-[var(--c-muted)] mt-0.5">Топ отображается первым в меню POS</p>
-            </div>
-            <div className={`w-10 h-6 rounded-full transition-colors relative ${form.is_top ? 'bg-amber-500' : 'bg-[var(--c-muted)]'}`}>
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${form.is_top ? 'left-5' : 'left-1'}`} />
-            </div>
-          </button>
-
-          <button
-            onClick={() => updateField('is_active', !form.is_active)}
-            className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all active:scale-[0.98] ${form.is_active ? 'bg-[var(--c-success-bg)] border-emerald-500/30' : 'card border-[var(--c-border)]'
-              }`}
-          >
-            <span className="text-[13px] font-medium text-[var(--c-text)]">
-              {form.is_active ? 'Отображается в меню' : 'Скрыт из меню'}
-            </span>
-            <div className={`w-10 h-6 rounded-full transition-colors relative ${form.is_active ? 'bg-emerald-500' : 'bg-[var(--c-muted)]'}`}>
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${form.is_active ? 'left-5' : 'left-1'}`} />
-            </div>
-          </button>
-
-          <Button fullWidth size="lg" onClick={handleSave} disabled={!form.name.trim() || !form.price}>
-            <Check className="w-5 h-5" />
-            {editingItem ? 'Сохранить' : 'Создать'}
-          </Button>
-
-          {editingItem && (
-            <Button fullWidth variant="danger" onClick={() => { setShowEditor(false); setDeleteTarget(editingItem); }}>
-              <Trash2 className="w-4 h-4" />
-              Удалить позицию
-            </Button>
-          )}
         </div>
       </Drawer>
 
@@ -731,16 +837,23 @@ function ItemCard({
   categories,
   onEdit,
   onToggle,
+  onMove,
+  canMoveUp,
+  canMoveDown,
 }: {
   item: InventoryItem;
   categories: MenuCategory[];
   onEdit: (item: InventoryItem) => void;
   onToggle: (item: InventoryItem) => void;
+  onMove: (item: InventoryItem, dir: 'up' | 'down') => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
 }) {
   const cat = categories.find((c) => c.slug === item.category);
   const CatIcon = getIconComponent(cat?.icon_name || 'Package');
   const colorCfg = getCategoryColorConfig(cat?.color);
   const [showMenu, setShowMenu] = useState(false);
+  const canMove = canMoveUp || canMoveDown;
 
   return (
     <div
@@ -754,36 +867,76 @@ function ItemCard({
             <CatIcon className="w-4 h-4 sm:w-5 sm:h-5" />
           )}
         </div>
-        <div className="relative">
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="p-1 sm:p-1.5 hover:bg-[var(--c-surface-hover)] rounded-lg sm:rounded-xl text-[var(--c-muted)] transition-colors active:scale-90"
-          >
-            <MoreVertical className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          </button>
-          {showMenu && (
-            <>
-              <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-              <div className="absolute right-0 top-8 z-20 bg-[var(--c-bg)] border border-[var(--c-border)] rounded-xl shadow-xl p-1 min-w-[140px]">
-                <button
-                  onClick={() => { onEdit(item); setShowMenu(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-[var(--c-text)] hover:bg-[var(--c-surface)] rounded-lg transition-colors"
-                >
-                  <Pencil className="w-3.5 h-3.5 text-[var(--c-hint)]" />
-                  Редактировать
-                </button>
-                <button
-                  onClick={() => { onToggle(item); setShowMenu(false); }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-[var(--c-text)] hover:bg-[var(--c-surface)] rounded-lg transition-colors"
-                >
-                  {item.is_active
-                    ? <><EyeOff className="w-3.5 h-3.5 text-[var(--c-muted)]" /> Скрыть</>
-                    : <><Eye className="w-3.5 h-3.5 text-emerald-400" /> Показать</>
-                  }
-                </button>
-              </div>
-            </>
+        <div className="flex items-center gap-0.5">
+          {canMove && (
+            <div className="flex flex-col gap-0.5 mr-0.5">
+              <button
+                onClick={() => onMove(item, 'up')}
+                disabled={!canMoveUp}
+                className="w-7 h-7 rounded-lg bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-30 active:scale-90 transition-all border border-[var(--c-border)]"
+              >
+                <ChevronUp className="w-3.5 h-3.5 text-[var(--c-hint)]" />
+              </button>
+              <button
+                onClick={() => onMove(item, 'down')}
+                disabled={!canMoveDown}
+                className="w-7 h-7 rounded-lg bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-30 active:scale-90 transition-all border border-[var(--c-border)]"
+              >
+                <ChevronDown className="w-3.5 h-3.5 text-[var(--c-hint)]" />
+              </button>
+            </div>
           )}
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-1 sm:p-1.5 hover:bg-[var(--c-surface-hover)] rounded-lg sm:rounded-xl text-[var(--c-muted)] transition-colors active:scale-90"
+            >
+              <MoreVertical className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </button>
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                <div className="absolute right-0 top-8 z-20 bg-[var(--c-bg)] border border-[var(--c-border)] rounded-xl shadow-xl p-1 min-w-[140px]">
+                  <button
+                    onClick={() => { onEdit(item); setShowMenu(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-[var(--c-text)] hover:bg-[var(--c-surface)] rounded-lg transition-colors"
+                  >
+                    <Pencil className="w-3.5 h-3.5 text-[var(--c-hint)]" />
+                    Редактировать
+                  </button>
+                  {canMove && (
+                    <>
+                      <button
+                        onClick={() => { onMove(item, 'up'); setShowMenu(false); }}
+                        disabled={!canMoveUp}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-[var(--c-text)] hover:bg-[var(--c-surface)] rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5 text-[var(--c-hint)]" />
+                        Поднять
+                      </button>
+                      <button
+                        onClick={() => { onMove(item, 'down'); setShowMenu(false); }}
+                        disabled={!canMoveDown}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-[var(--c-text)] hover:bg-[var(--c-surface)] rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5 text-[var(--c-hint)]" />
+                        Опустить
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => { onToggle(item); setShowMenu(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-[var(--c-text)] hover:bg-[var(--c-surface)] rounded-lg transition-colors"
+                  >
+                    {item.is_active
+                      ? <><EyeOff className="w-3.5 h-3.5 text-[var(--c-muted)]" /> Скрыть</>
+                      : <><Eye className="w-3.5 h-3.5 text-emerald-400" /> Показать</>
+                    }
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
