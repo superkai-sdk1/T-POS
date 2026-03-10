@@ -403,9 +403,9 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
         </div>
       </aside>
 
-      {/* ── Main content: flex на мобиле, fixed на десктопе (как sidebar) для полной высоты ── */}
+      {/* ── Main content: flex на мобиле, fixed на десктопе с явной высотой ── */}
       <div
-        className={`flex-1 flex flex-col min-h-0 overflow-hidden transition-all duration-300 lg:fixed lg:inset-y-4 lg:right-4 ${isSidebarCollapsed ? 'lg:left-[88px]' : 'lg:left-[276px]'}`}
+        className={`flex-1 flex flex-col min-h-0 overflow-hidden transition-all duration-300 lg:fixed lg:inset-y-4 lg:right-4 lg:h-[calc(100dvh-2rem)] ${isSidebarCollapsed ? 'lg:left-[88px]' : 'lg:left-[276px]'}`}
       >
         {/* ── Mobile header: POS — статус смены + в кассе; остальные вкладки — заголовок ── */}
         {activeTab === 'pos' ? (
@@ -500,7 +500,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
         >
           <main
             ref={scrollRef}
-            className={`flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0 lg:overflow-hidden lg:min-h-full' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
+            className={`flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden flex flex-col ${activeTab === 'pos' ? 'p-0 lg:pb-0 lg:overflow-hidden lg:h-full' : 'px-4 py-3 lg:px-5 lg:py-4'}`}
             style={{
               WebkitOverflowScrolling: 'touch',
               paddingBottom: 0,

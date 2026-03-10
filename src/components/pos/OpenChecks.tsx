@@ -346,8 +346,8 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const activeCount = openChecks.length;
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 relative bg-[#0d0d12] text-white">
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden animate-fade-in">
+    <div className="flex-1 flex flex-col min-h-0 lg:h-full relative bg-[#0d0d12] text-white">
+      <div className="flex-1 flex flex-col min-h-0 lg:h-full overflow-hidden animate-fade-in">
         {/* Заголовок КАССА и Действия — компактно (на десктопе без паддингов) */}
         <div className="px-4 sm:px-6 lg:px-0 py-3 lg:py-0 shrink-0">
           <div className="flex items-center justify-between mb-3 lg:mb-2">

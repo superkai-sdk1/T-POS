@@ -189,7 +189,7 @@ export default function App() {
         <div
           ref={splitRef}
           className={[
-            'hidden lg:flex flex-1 min-h-0 overflow-hidden',
+            'hidden lg:flex flex-1 min-h-0 overflow-hidden lg:h-full',
             showCheckView && !isMobile ? 'gap-0' : 'gap-4',
             isResizing && 'select-none',
           ].filter(Boolean).join(' ')}
@@ -222,7 +222,7 @@ export default function App() {
               >
                 <div className="w-0.5 h-8 rounded-full bg-[var(--c-border)] group-hover:bg-[var(--c-fg-muted)] transition-colors" />
               </div>
-              <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pl-2 lg:pl-0 scrollbar-none scroll-area min-w-0">
+              <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pl-2 lg:pl-0 scrollbar-none scroll-area min-w-0 lg:h-full">
                 <CheckView onBack={() => setShowCheckView(false)} />
               </div>
             </>
