@@ -494,7 +494,9 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           <nav
             className="lg:hidden fixed left-0 right-0 bottom-0 z-[60] bg-[#0d0d12]/95 backdrop-blur-2xl border-t border-white/5 px-6 sm:px-12 flex items-end justify-between"
             style={{
-              paddingBottom: '8px',
+              // Fill safe-area with the bar background down to the screen edge,
+              // while keeping the interactive content in the visible 56px area.
+              paddingBottom: 'var(--safe-bottom-capped)',
               paddingTop: '8px',
               height: 'var(--bottom-bar-height)',
             }}
