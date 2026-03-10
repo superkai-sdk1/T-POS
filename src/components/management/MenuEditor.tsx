@@ -8,7 +8,7 @@ import {
   Plus, Pencil, Trash2,
   Eye, EyeOff, Search, Upload, X, Check,
   FolderPlus, ChevronRight, ArrowLeft,
-  Package, MoreVertical, ChevronUp, ChevronDown,
+  Package, MoreVertical, GripVertical,
 } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import {
@@ -84,6 +84,8 @@ export function MenuEditor() {
   const [editingCategory, setEditingCategory] = useState<MenuCategory | null>(null);
   const [catForm, setCatForm] = useState<CategoryForm>(emptyCategoryForm);
   const [deleteCatTarget, setDeleteCatTarget] = useState<MenuCategory | null>(null);
+  const [isReorderMode, setIsReorderMode] = useState(false);
+  const [draggedItem, setDraggedItem] = useState<InventoryItem | null>(null);
 
   const loadItems = useCallback(async () => {
     const { data } = await supabase
@@ -251,27 +253,34 @@ export function MenuEditor() {
     loadItems();
   };
 
-  const moveItem = async (item: InventoryItem, direction: 'up' | 'down') => {
+  const handleSwapItems = async (dragged: InventoryItem, target: InventoryItem) => {
+    if (dragged.id === target.id) return;
     hapticFeedback('light');
-    const categoryItems = items
-      .filter((i) => i.category === item.category)
-      .sort((a, b) => a.sort_order - b.sort_order);
-    const idx = categoryItems.findIndex((i) => i.id === item.id);
-    if (idx < 0) return;
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= categoryItems.length) return;
-    const other = categoryItems[swapIdx];
-
-    if (item.sort_order === other.sort_order) {
-      const newOrder = direction === 'up' ? other.sort_order - 1 : other.sort_order + 1;
-      await supabase.from('inventory').update({ sort_order: newOrder }).eq('id', item.id);
-    } else {
-      await Promise.all([
-        supabase.from('inventory').update({ sort_order: other.sort_order }).eq('id', item.id),
-        supabase.from('inventory').update({ sort_order: item.sort_order }).eq('id', other.id),
-      ]);
-    }
+    await Promise.all([
+      supabase.from('inventory').update({ sort_order: target.sort_order }).eq('id', dragged.id),
+      supabase.from('inventory').update({ sort_order: dragged.sort_order }).eq('id', target.id),
+    ]);
     loadItems();
+  };
+
+  const handleDragStart = (item: InventoryItem) => {
+    setDraggedItem(item);
+    hapticFeedback('light');
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (targetItem: InventoryItem) => {
+    if (!draggedItem || draggedItem.id === targetItem.id || draggedItem.category !== targetItem.category) return;
+    handleSwapItems(draggedItem, targetItem);
+    setDraggedItem(null);
   };
 
   // ============ CATEGORY EDITOR ============
@@ -441,9 +450,12 @@ export function MenuEditor() {
               categories={categories}
               onEdit={openEdit}
               onToggle={toggleActive}
-              onMove={moveItem}
-              canMoveUp={false}
-              canMoveDown={false}
+              isReorderMode={false}
+              isDragging={false}
+              onDragStart={() => {}}
+              onDragEnd={() => {}}
+              onDragOver={() => {}}
+              onDrop={() => {}}
             />
           ))}
           {directItems.length === 0 && (
@@ -526,17 +538,35 @@ export function MenuEditor() {
                   <div className="h-px flex-1 bg-[var(--c-border)]" />
                 </div>
               )}
+              {currentCategory && (
+                <div className="flex items-center justify-end mt-2 mb-1">
+                  <button
+                    onClick={() => { setIsReorderMode((v) => !v); hapticFeedback('light'); }}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 border ${
+                      isReorderMode
+                        ? 'bg-[var(--c-accent)] text-white border-[var(--c-accent)]'
+                        : 'bg-[var(--c-surface)] border-[var(--c-border)] text-[var(--c-hint)] hover:text-[var(--c-text)]'
+                    }`}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    {isReorderMode ? 'Готово' : 'Порядок'}
+                  </button>
+                </div>
+              )}
               <div className="grid gap-2.5 sm:gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {directItems.map((item, idx) => (
+                {directItems.map((item) => (
                   <ItemCard
                     key={item.id}
                     item={item}
                     categories={categories}
                     onEdit={openEdit}
                     onToggle={toggleActive}
-                    onMove={moveItem}
-                    canMoveUp={!!currentCategory && idx > 0}
-                    canMoveDown={!!currentCategory && idx < directItems.length - 1}
+                    isReorderMode={!!currentCategory && isReorderMode}
+                    isDragging={draggedItem?.id === item.id}
+                    onDragStart={() => handleDragStart(item)}
+                    onDragEnd={handleDragEnd}
+                    onDragOver={handleDragOver}
+                    onDrop={() => handleDrop(item)}
                   />
                 ))}
               </div>
@@ -837,27 +867,39 @@ function ItemCard({
   categories,
   onEdit,
   onToggle,
-  onMove,
-  canMoveUp,
-  canMoveDown,
+  isReorderMode,
+  isDragging,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDrop,
 }: {
   item: InventoryItem;
   categories: MenuCategory[];
   onEdit: (item: InventoryItem) => void;
   onToggle: (item: InventoryItem) => void;
-  onMove: (item: InventoryItem, dir: 'up' | 'down') => void;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
+  isReorderMode: boolean;
+  isDragging: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDrop: () => void;
 }) {
   const cat = categories.find((c) => c.slug === item.category);
   const CatIcon = getIconComponent(cat?.icon_name || 'Package');
   const colorCfg = getCategoryColorConfig(cat?.color);
   const [showMenu, setShowMenu] = useState(false);
-  const canMove = canMoveUp || canMoveDown;
 
   return (
     <div
-      className={`group rounded-[16px] sm:rounded-[22px] p-3 sm:p-5 flex flex-col justify-between transition-all duration-200 border border-[var(--c-border)] hover:border-[var(--c-accent)]/30 bg-[var(--c-surface)] ${!item.is_active ? 'opacity-50' : ''}`}
+      draggable={isReorderMode}
+      onDragStart={isReorderMode ? onDragStart : undefined}
+      onDragEnd={isReorderMode ? onDragEnd : undefined}
+      onDragOver={isReorderMode ? onDragOver : undefined}
+      onDrop={isReorderMode ? (e) => { e.preventDefault(); onDrop(); } : undefined}
+      className={`group rounded-[16px] sm:rounded-[22px] p-3 sm:p-5 flex flex-col justify-between transition-all duration-200 border border-[var(--c-border)] hover:border-[var(--c-accent)]/30 bg-[var(--c-surface)] ${!item.is_active ? 'opacity-50' : ''} ${
+        isReorderMode ? 'cursor-grab active:cursor-grabbing' : ''
+      } ${isDragging ? 'opacity-50 scale-95' : ''}`}
     >
       <div className="flex justify-between items-start mb-2.5 sm:mb-4">
         <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center ${colorCfg.bg} ${colorCfg.text} border ${colorCfg.border} group-hover:scale-105 transition-transform overflow-hidden`}>
@@ -868,22 +910,9 @@ function ItemCard({
           )}
         </div>
         <div className="flex items-center gap-0.5">
-          {canMove && (
-            <div className="flex flex-col gap-0.5 mr-0.5">
-              <button
-                onClick={() => onMove(item, 'up')}
-                disabled={!canMoveUp}
-                className="w-7 h-7 rounded-lg bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-30 active:scale-90 transition-all border border-[var(--c-border)]"
-              >
-                <ChevronUp className="w-3.5 h-3.5 text-[var(--c-hint)]" />
-              </button>
-              <button
-                onClick={() => onMove(item, 'down')}
-                disabled={!canMoveDown}
-                className="w-7 h-7 rounded-lg bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-30 active:scale-90 transition-all border border-[var(--c-border)]"
-              >
-                <ChevronDown className="w-3.5 h-3.5 text-[var(--c-hint)]" />
-              </button>
+          {isReorderMode && (
+            <div className="mr-0.5 p-1 rounded-lg text-[var(--c-muted)]">
+              <GripVertical className="w-4 h-4" />
             </div>
           )}
           <div className="relative">
@@ -904,26 +933,6 @@ function ItemCard({
                     <Pencil className="w-3.5 h-3.5 text-[var(--c-hint)]" />
                     Редактировать
                   </button>
-                  {canMove && (
-                    <>
-                      <button
-                        onClick={() => { onMove(item, 'up'); setShowMenu(false); }}
-                        disabled={!canMoveUp}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-[var(--c-text)] hover:bg-[var(--c-surface)] rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        <ChevronUp className="w-3.5 h-3.5 text-[var(--c-hint)]" />
-                        Поднять
-                      </button>
-                      <button
-                        onClick={() => { onMove(item, 'down'); setShowMenu(false); }}
-                        disabled={!canMoveDown}
-                        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-[var(--c-text)] hover:bg-[var(--c-surface)] rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        <ChevronDown className="w-3.5 h-3.5 text-[var(--c-hint)]" />
-                        Опустить
-                      </button>
-                    </>
-                  )}
                   <button
                     onClick={() => { onToggle(item); setShowMenu(false); }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-[var(--c-text)] hover:bg-[var(--c-surface)] rounded-lg transition-colors"
@@ -940,7 +949,10 @@ function ItemCard({
         </div>
       </div>
 
-      <div className="cursor-pointer" onClick={() => onEdit(item)}>
+      <div
+        className={isReorderMode ? '' : 'cursor-pointer'}
+        onClick={isReorderMode ? undefined : () => onEdit(item)}
+      >
         <h4 className="text-[13px] sm:text-sm font-bold text-[var(--c-text)] group-hover:text-white transition-colors leading-snug line-clamp-2">
           {item.name}
         </h4>

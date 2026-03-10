@@ -92,8 +92,8 @@ export function LoginPage() {
     );
   }
 
-  // Полный вход по логину и паролю
-  if (showFullLogin || staffWithPin.length === 0) {
+  // Полный вход по логину и паролю (только по явному выбору пользователя)
+  if (showFullLogin) {
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden"
