@@ -214,6 +214,20 @@ export function CheckView({ onBack }: CheckViewProps) {
   const [availableModifiers, setAvailableModifiers] = useState<Modifier[]>([]);
   const [selectedModifierIds, setSelectedModifierIds] = useState<string[]>([]);
 
+  useEffect(() => {
+    const onOpenPayment = () => setShowPayment(true);
+    const onOpenMenu = () => setShowMenu(true);
+    const onOpenAddPlayer = () => { setShowAddPlayer(true); setPlayerSearch(''); setPlayerResults([]); };
+    window.addEventListener('tpos:open-payment', onOpenPayment);
+    window.addEventListener('tpos:open-menu', onOpenMenu);
+    window.addEventListener('tpos:open-add-player', onOpenAddPlayer);
+    return () => {
+      window.removeEventListener('tpos:open-payment', onOpenPayment);
+      window.removeEventListener('tpos:open-menu', onOpenMenu);
+      window.removeEventListener('tpos:open-add-player', onOpenAddPlayer);
+    };
+  }, []);
+
   const handleBack = useCallback(async () => {
     if (noteTimer.current) clearTimeout(noteTimer.current);
     if (pendingNoteRef.current !== null) {
@@ -690,40 +704,6 @@ export function CheckView({ onBack }: CheckViewProps) {
             </div>
           </div>
         )}
-      </div>
-
-      {/* Floating bottom action bar */}
-      <div className="sticky bottom-0 z-30 -mx-4 px-3 pb-3 pt-2" style={{ transform: 'translateZ(0)' }}>
-        <div className="flex items-center justify-between gap-3 p-3 bg-black/60 backdrop-blur-2xl rounded-[2rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-          <div className="flex gap-2">
-            <button
-              onClick={openMenu}
-              className="w-11 h-11 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 text-white/40 hover:text-white active:scale-90 transition-all"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => { setShowAddPlayer(true); setPlayerSearch(''); setPlayerResults([]); }}
-              className="w-11 h-11 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 text-[#10b981] active:scale-90 transition-all"
-              title="Добавить игрока"
-            >
-              <UserPlus className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="flex items-baseline gap-2">
-            {cartCount > 0 && (
-              <span className="text-2xl font-black italic text-white tabular-nums">{fmtCur(total)}</span>
-            )}
-          </div>
-          {cartCount > 0 && (
-            <button
-              onClick={() => { hapticFeedback('medium'); setShowPayment(true); }}
-              className="flex-1 max-w-[160px] bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-xl shadow-[#8b5cf6]/30 font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all text-white"
-            >
-              <CreditCard className="w-[18px] h-[18px]" /> Оплата
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Menu sheet — portaled to body to avoid parent transform affecting fixed position */}

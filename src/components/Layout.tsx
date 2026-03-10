@@ -13,8 +13,53 @@ import { ShiftAnalytics as ShiftAnalyticsModal } from '@/components/shift/ShiftA
 import {
   Receipt, Package, BarChart3, LogOut, Settings, Calendar,
   PlayCircle, StopCircle, AlertTriangle, X, Plus,
-  PanelLeftClose, PanelLeftOpen, RefreshCw,
+  PanelLeftClose, PanelLeftOpen, RefreshCw, CreditCard, UserPlus,
 } from 'lucide-react';
+
+const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
+
+function CheckPaymentPanel() {
+  const cart = usePOSStore((s) => s.cart);
+  const getCartTotal = usePOSStore((s) => s.getCartTotal);
+  const total = getCartTotal();
+  const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
+
+  return (
+    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-[60]">
+      <div className="absolute inset-0 bg-white/[0.06] backdrop-blur-3xl rounded-[2rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
+      <div className="relative p-3 flex items-center justify-between gap-3">
+        <div className="flex gap-2">
+          <button
+            onClick={() => { hapticFeedback('light'); window.dispatchEvent(new CustomEvent('tpos:open-menu')); }}
+            className="w-11 h-11 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 text-white/40 hover:text-white active:scale-90 transition-all"
+          >
+            <Plus className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => { hapticFeedback('light'); window.dispatchEvent(new CustomEvent('tpos:open-add-player')); }}
+            className="w-11 h-11 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 text-[#10b981] active:scale-90 transition-all"
+            title="Добавить игрока"
+          >
+            <UserPlus className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex items-baseline gap-2">
+          {cartCount > 0 && (
+            <span className="text-2xl font-black italic text-white tabular-nums">{fmtCur(total)}</span>
+          )}
+        </div>
+        {cartCount > 0 && (
+          <button
+            onClick={() => { hapticFeedback('medium'); window.dispatchEvent(new CustomEvent('tpos:open-payment')); }}
+            className="flex-1 max-w-[160px] bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-xl shadow-[#8b5cf6]/30 font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all text-white"
+          >
+            <CreditCard className="w-[18px] h-[18px]" /> Оплата
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface LayoutProps {
   children: ReactNode;
@@ -459,8 +504,11 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
           </main>
         </PullToRefreshContainer>
 
-        {/* ── Floating mobile bottom nav (hidden when viewing a check) ── */}
-        {typeof document !== 'undefined' && !showCheckView && createPortal(
+        {/* ── Floating mobile bottom nav (hidden when viewing a check) / Payment panel (when viewing a check) ── */}
+        {typeof document !== 'undefined' && createPortal(
+          showCheckView ? (
+            <CheckPaymentPanel />
+          ) : (
           <div className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-[60]">
             <div className="absolute inset-0 bg-white/[0.06] backdrop-blur-3xl rounded-[2rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
             <nav className="relative p-2.5 flex items-center justify-center">
@@ -513,7 +561,8 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
                 );
               })}
             </nav>
-          </div>,
+          </div>
+          ),
           document.body
         )}
       </div>
