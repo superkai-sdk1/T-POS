@@ -180,10 +180,16 @@ input[type="number"] {
   touch-action: pan-y;
 }
 
-/* Explicit max-height for scroll areas (flex chain fallback) */
+/* Explicit max-height for scroll areas (flex chain fallback) — только на мобиле */
 .scroll-area {
   -webkit-overflow-scrolling: touch;
   max-height: calc(100dvh - 150px);
+}
+
+@media (min-width: 1024px) {
+  .scroll-area {
+    max-height: none; /* на десктопе не ограничивать — flex заполняет высоту */
+  }
 }
 
 .scrollbar-none::-webkit-scrollbar {
