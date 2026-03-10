@@ -28,12 +28,10 @@ const categoryLabels: Record<string, string> = {
 };
 
 const menuItems: { id: Screen; label: string; desc: string; icon: typeof Package; color: string }[] = [
-  { id: 'menuEditor', label: 'Меню', desc: 'Позиции, картинки, разделы', icon: UtensilsCrossed, color: 'bg-orange-500/10 text-orange-400' },
-  { id: 'inventory', label: 'Склад', desc: 'Остатки и товары', icon: Package, color: 'bg-blue-500/10 text-blue-400' },
+  { id: 'menuEditor', label: 'Меню', desc: 'Позиции, модификаторы, разделы', icon: UtensilsCrossed, color: 'bg-orange-500/10 text-orange-400' },
+  { id: 'inventory', label: 'Склад', desc: 'Остатки, ревизии', icon: Package, color: 'bg-blue-500/10 text-blue-400' },
   { id: 'supplies', label: 'Поставки', desc: 'История и новые поставки', icon: Truck, color: 'bg-[var(--c-success-bg)] text-[var(--c-success)]' },
-  { id: 'revision', label: 'Ревизия', desc: 'История ревизий', icon: ClipboardList, color: 'bg-[var(--c-warning-bg)] text-[var(--c-warning)]' },
   { id: 'clients', label: 'Клиенты', desc: 'Профили, контакты, ДР', icon: UserCircle, color: 'bg-sky-500/10 text-sky-400' },
-  { id: 'modifiers', label: 'Модификаторы', desc: 'Сиропы, добавки, опции', icon: SlidersHorizontal, color: 'bg-indigo-500/10 text-indigo-400' },
   { id: 'discounts', label: 'Скидки', desc: 'Процентные и фиксированные', icon: Percent, color: 'bg-pink-500/10 text-pink-400' },
   { id: 'bonus', label: 'Бонусы', desc: 'Баллы и настройки', icon: Star, color: 'bg-yellow-500/10 text-yellow-400' },
   { id: 'certificates', label: 'Сертификаты', desc: 'Подарочные сертификаты', icon: Ticket, color: 'bg-[var(--c-warning-bg)] text-[var(--c-warning)]' },
@@ -49,11 +47,28 @@ interface ManagementPageProps {
   isActive?: boolean;
 }
 
+type MenuSubTab = 'positions' | 'modifiers';
+type InventorySubTab = 'stock' | 'revision';
+
 export function ManagementPage({ initialScreen, isActive = true }: ManagementPageProps) {
-  const [screen, setScreen] = useState<Screen>((initialScreen as Screen) || 'menu');
+  const resolveInitial = (): { screen: Screen; menuSub?: MenuSubTab; inventorySub?: InventorySubTab } => {
+    if (initialScreen === 'modifiers') return { screen: 'menuEditor', menuSub: 'modifiers' };
+    if (initialScreen === 'revision') return { screen: 'inventory', inventorySub: 'revision' };
+    return { screen: (initialScreen as Screen) || 'menu' };
+  };
+  const resolved = resolveInitial();
+  const [screen, setScreen] = useState<Screen>(resolved.screen);
+  const [menuSubTab, setMenuSubTab] = useState<MenuSubTab>(resolved.menuSub ?? 'positions');
+  const [inventorySubTab, setInventorySubTab] = useState<InventorySubTab>(resolved.inventorySub ?? 'stock');
 
   useEffect(() => {
-    if (initialScreen !== undefined && initialScreen !== screen) {
+    if (initialScreen === 'modifiers') {
+      setScreen('menuEditor');
+      setMenuSubTab('modifiers');
+    } else if (initialScreen === 'revision') {
+      setScreen('inventory');
+      setInventorySubTab('revision');
+    } else if (initialScreen !== undefined && initialScreen !== screen) {
       setScreen(initialScreen as Screen);
     } else if (initialScreen === undefined && screen !== 'menu') {
       setScreen('menu');
@@ -67,7 +82,10 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
     enabled: screen !== 'menu' && isActive,
   });
 
-  const screenLabel = menuItems.find((m) => m.id === screen)?.label || 'Управление';
+  const screenLabel =
+    screen === 'menuEditor' && menuSubTab === 'modifiers' ? 'Модификаторы' :
+    screen === 'inventory' && inventorySubTab === 'revision' ? 'Ревизия' :
+    menuItems.find((m) => m.id === screen)?.label || 'Управление';
 
   const screenMeta = menuItems.find((m) => m.id === screen);
 
@@ -122,15 +140,54 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
         </div>
       </div>
 
-      {screen === 'menuEditor' && <MenuEditor />}
-      {screen === 'inventory' && <InventoryFull />}
+      {screen === 'menuEditor' && (
+        <div className="space-y-4">
+          <div className="flex gap-1 p-1 rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] w-fit">
+            <button
+              onClick={() => setMenuSubTab('positions')}
+              className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${menuSubTab === 'positions' ? 'bg-[var(--c-accent)] text-white shadow-md' : 'text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
+            >
+              Позиции
+            </button>
+            <button
+              onClick={() => setMenuSubTab('modifiers')}
+              className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${menuSubTab === 'modifiers' ? 'bg-[var(--c-accent)] text-white shadow-md' : 'text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              Модификаторы
+            </button>
+          </div>
+          {menuSubTab === 'positions' && <MenuEditor />}
+          {menuSubTab === 'modifiers' && <ModifiersManager />}
+        </div>
+      )}
+      {screen === 'inventory' && (
+        <div className="space-y-4">
+          <div className="flex gap-1 p-1 rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] w-fit">
+            <button
+              onClick={() => setInventorySubTab('stock')}
+              className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${inventorySubTab === 'stock' ? 'bg-[var(--c-accent)] text-white shadow-md' : 'text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
+            >
+              <Package className="w-4 h-4" />
+              Остатки
+            </button>
+            <button
+              onClick={() => setInventorySubTab('revision')}
+              className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${inventorySubTab === 'revision' ? 'bg-[var(--c-accent)] text-white shadow-md' : 'text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
+            >
+              <ClipboardList className="w-4 h-4" />
+              Ревизия
+            </button>
+          </div>
+          {inventorySubTab === 'stock' && <InventoryFull />}
+          {inventorySubTab === 'revision' && <RevisionPage />}
+        </div>
+      )}
       {screen === 'supplies' && <SupplyPage />}
-      {screen === 'revision' && <RevisionPage />}
       {screen === 'clients' && <ClientsManager />}
       {screen === 'bonus' && <BonusManager />}
       {screen === 'cash' && <InkassationPage />}
       {screen === 'discounts' && <DiscountsManager />}
-      {screen === 'modifiers' && <ModifiersManager />}
       {screen === 'certificates' && <CertificatesManager />}
       {screen === 'expenses' && <ExpensesManager />}
       {screen === 'debtors' && <DebtorsManager />}
