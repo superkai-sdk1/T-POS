@@ -110,15 +110,9 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
       aria-modal="true"
       aria-label={title || 'Окно'}
       className="fixed inset-0 z-[100] flex items-end lg:items-center lg:justify-center overflow-hidden"
-      style={{
-        height: containerHeight,
-        paddingTop: 'var(--safe-top)',
-        paddingBottom: 'var(--safe-bottom)',
-        paddingLeft: 'var(--safe-left)',
-        paddingRight: 'var(--safe-right)',
-      }}
+      style={{ height: containerHeight }}
     >
-      {/* Backdrop */}
+      {/* Backdrop (full bleed, covers safe area) */}
       <div
         className={`absolute inset-0 ${closing ? '' : 'animate-fade-in'}`}
         style={{
@@ -130,19 +124,23 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
         }}
         onClick={handleClose}
       />
-      {/* Panel */}
+      {/* Panel (inset by safe area so content is not under notch/home indicator) */}
       <div
         onClick={(e) => e.stopPropagation()}
         className={`relative w-full lg:max-w-lg lg:rounded-2xl rounded-t-3xl overflow-hidden flex flex-col ${closing ? 'animate-slide-down' : 'lg:animate-pop-in animate-slide-up'}`}
         style={{
-          maxHeight: `calc(${ratio * 100}% - var(--safe-top) - var(--safe-bottom))`,
+          maxHeight: `min(${ratio * 100}%, calc(100% - var(--safe-top) - var(--safe-bottom)))`,
+          marginTop: 'var(--safe-top)',
+          marginBottom: 'var(--safe-bottom)',
+          marginLeft: 'var(--safe-left)',
+          marginRight: 'var(--safe-right)',
           transform: dragY > 0 ? `translateY(${dragY}px) translateZ(0)` : 'translateZ(0)',
           transition: dragging ? 'none' : 'transform 0.2s var(--ease-spring)',
           willChange: 'transform',
-          paddingTop: 'max(var(--safe-top), 0.5rem)',
+          paddingTop: 'max(0.5rem, var(--safe-top))',
           paddingBottom: 'var(--safe-bottom)',
-          paddingLeft: 'var(--safe-left)',
-          paddingRight: 'var(--safe-right)',
+          paddingLeft: 'max(1rem, var(--safe-left))',
+          paddingRight: 'max(1rem, var(--safe-right))',
           background: 'linear-gradient(180deg, rgba(20, 24, 40, 0.95) 0%, rgba(10, 14, 26, 0.98) 100%)',
           backdropFilter: 'blur(40px) saturate(1.5)',
           WebkitBackdropFilter: 'blur(40px) saturate(1.5)',
@@ -168,16 +166,18 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
         </div>
 
         {/* ── Title Bar ── */}
-        <div className="flex items-center justify-between px-4 py-3 shrink-0">
-          {title && (
-            <h3 className="text-base font-bold text-[var(--c-text)] truncate min-w-0 flex-1 mr-2">
+        <div className="flex items-center justify-between gap-2 min-h-[2.75rem] px-4 py-3 shrink-0">
+          {title ? (
+            <h3 className="text-base font-bold text-[var(--c-text)] truncate min-w-0 flex-1">
               {title}
             </h3>
+          ) : (
+            <span className="flex-1 min-w-0" aria-hidden />
           )}
           <button
             type="button"
             onClick={handleClose}
-            className="min-w-[2.75rem] min-h-[2.75rem] w-10 h-10 rounded-xl flex items-center justify-center transition-all ml-auto active:scale-90 -mr-1"
+            className="min-w-[2.75rem] min-h-[2.75rem] w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0 active:scale-90"
             style={{
               background: 'rgba(255, 255, 255, 0.06)',
               border: '1px solid rgba(255, 255, 255, 0.06)',
@@ -191,7 +191,7 @@ export function Drawer({ open, onClose, title, children, size = 'lg' }: DrawerPr
         {/* ── Content (smooth scroll, touch pan-y for PWA/MiniApp) ── */}
         <div
           ref={contentRef}
-          className="overflow-y-auto overflow-x-hidden px-4 pb-5 flex-1 min-h-0 overscroll-contain"
+          className="overflow-y-auto overflow-x-hidden px-4 pt-2 pb-5 flex-1 min-h-0 overscroll-contain"
           style={{
             WebkitOverflowScrolling: 'touch',
             touchAction: 'pan-y',
