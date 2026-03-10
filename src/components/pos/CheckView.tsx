@@ -646,6 +646,8 @@ export function CheckView({ onBack }: CheckViewProps) {
         open={showMenu}
         onClose={() => { setShowMenu(false); setMenuCategory(null); setMenuSearch(''); }}
         title="Меню"
+        subtitle="Каталог"
+        titleIcon={<span>M</span>}
       >
         {/* Search bar */}
         <div className="relative mb-3">
