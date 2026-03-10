@@ -16,7 +16,9 @@ import {
   useAllMenuCategories,
   getIconComponent,
   getCategoryColor,
+  getCategoryColorConfig,
   AVAILABLE_ICONS,
+  CATEGORY_COLOR_OPTIONS,
 } from '@/hooks/useMenuCategories';
 import type { InventoryItem, MenuCategory } from '@/types';
 
@@ -46,6 +48,7 @@ interface CategoryForm {
   name: string;
   slug: string;
   icon_name: string;
+  color: string;
   parent_id: string | null;
 }
 
@@ -53,6 +56,7 @@ const emptyCategoryForm: CategoryForm = {
   name: '',
   slug: '',
   icon_name: 'Package',
+  color: 'slate',
   parent_id: null,
 };
 
@@ -238,6 +242,7 @@ export function MenuEditor() {
       name: cat.name,
       slug: cat.slug,
       icon_name: cat.icon_name,
+      color: cat.color || 'slate',
       parent_id: cat.parent_id,
     });
     setShowCatEditor(true);
@@ -251,6 +256,7 @@ export function MenuEditor() {
       name: catForm.name.trim(),
       slug,
       icon_name: catForm.icon_name,
+      color: catForm.color || 'slate',
       parent_id: catForm.parent_id || null,
     };
     if (editingCategory) {
@@ -380,7 +386,7 @@ export function MenuEditor() {
 
                       <button
                         onClick={() => { setActiveCategory(cat); setViewMode('items'); }}
-                        className={`flex-1 flex items-center gap-3 p-3 rounded-xl card-interactive bg-gradient-to-r ${getCategoryColor(idx)}`}
+                        className={`flex-1 flex items-center gap-3 p-3 rounded-xl card-interactive ${getCategoryColorConfig(cat.color).bg} border ${getCategoryColorConfig(cat.color).border}`}
                       >
                         <div className="w-10 h-10 rounded-xl bg-[var(--c-surface-hover)] flex items-center justify-center shrink-0">
                           <Icon className="w-5 h-5 text-[var(--c-text)]" />
@@ -863,6 +869,25 @@ function CategoryEditorDrawer({
           value={form.slug}
           onChange={(e) => setForm((prev) => ({ ...prev, slug: e.target.value }))}
         />
+
+        {/* Color picker */}
+        <div>
+          <p className="text-xs font-medium text-[var(--c-hint)] mb-2">Цвет категории (в меню POS)</p>
+          <div className="flex flex-wrap gap-2">
+            {CATEGORY_COLOR_OPTIONS.map((key) => {
+              const cfg = getCategoryColorConfig(key);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setForm((prev) => ({ ...prev, color: key }))}
+                  className={`w-9 h-9 rounded-xl transition-all active:scale-90 ${cfg.active} ${form.color === key ? 'ring-2 ring-white ring-offset-2 ring-offset-[var(--c-bg)]' : 'opacity-60 hover:opacity-100'}`}
+                  title={key}
+                />
+              );
+            })}
+          </div>
+        </div>
 
         {/* Icon picker */}
         <div>

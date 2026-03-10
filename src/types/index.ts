@@ -47,6 +47,7 @@ export interface MenuCategory {
   slug: string;
   parent_id: string | null;
   icon_name: string;
+  color?: string;
   sort_order: number;
   is_active: boolean;
   created_at: string;

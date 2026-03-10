@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect, useRef, useCallback, memo, startTransition } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
 import { usePOSStore } from '@/store/pos';
 import { PaymentDrawer } from './PaymentDrawer';
 import { Badge } from '@/components/ui/Badge';
@@ -10,10 +9,11 @@ import {
   ShoppingBag,
   MessageSquare, Percent, Trash2, Timer, Search,
   UserPlus, User, Star, GraduationCap, Gamepad2,
+  MoreHorizontal, Sparkles, ChevronRight,
 } from 'lucide-react';
 import { hapticFeedback } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase';
-import { useMenuCategories, getIconComponent } from '@/hooks/useMenuCategories';
+import { useMenuCategories, getIconComponent, getCategoryColorConfig } from '@/hooks/useMenuCategories';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -34,48 +34,87 @@ function tierToTariff(tier: ClientTier | undefined): VisitTariff {
 
 const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
 
-const MenuItem = memo(function MenuItem({
+const DotIndicator = memo(function DotIndicator({ count, colorClass }: { count: number; colorClass: string }) {
+  if (count === 0) return <div className="h-6" />;
+  return (
+    <div className="flex gap-1 h-6 items-center justify-center">
+      {[...Array(Math.min(count, 5))].map((_, i) => (
+        <div
+          key={i}
+          className={`w-1.5 h-1.5 rounded-full shadow-sm ${colorClass} animate-pulse`}
+          style={{ animationDelay: `${i * 100}ms` }}
+        />
+      ))}
+      {count > 5 && <MoreHorizontal className="w-3 h-3 text-white/30" />}
+    </div>
+  );
+});
+
+const MenuSheetItem = memo(function MenuSheetItem({
   item,
   inCartQty,
+  categoryName,
+  colors,
   onAdd,
+  onDecrease,
 }: {
   item: InventoryItem;
   inCartQty: number;
+  categoryName: string;
+  colors: ReturnType<typeof getCategoryColorConfig>;
   onAdd: (item: InventoryItem) => void;
+  onDecrease: (item: InventoryItem) => void;
 }) {
   const isCritical = item.stock_quantity <= item.min_threshold && item.min_threshold > 0;
   return (
-    <button
-      onClick={() => onAdd(item)}
-      className={`relative rounded-xl text-left transition-transform active:scale-[0.96] overflow-hidden ${isCritical ? 'bg-[var(--c-danger-bg)] border border-[var(--c-border)]' : 'card'
-        }`}
+    <div
+      className={`group relative border transition-all duration-500 rounded-[2rem] p-5 flex items-center gap-4 ${
+        inCartQty > 0
+          ? `${colors.bgActive} border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.3)] ring-1 ring-white/10`
+          : isCritical
+            ? 'bg-red-500/20 border-red-500/30'
+            : `${colors.bg} border-white/5 hover:bg-white/[0.08]`
+      }`}
     >
-      {inCartQty > 0 && (
-        <div className="absolute top-1.5 right-1.5 z-10 w-5 h-5 rounded-full bg-[var(--c-accent)] flex items-center justify-center text-[10px] font-bold text-white shadow animate-pop-in">
-          {inCartQty}
+      <div className="flex-1 space-y-2 text-left min-w-0">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full shrink-0 ${colors.active} shadow-[0_0_8px_rgba(255,255,255,0.1)]`} />
+          <span className={`text-[10px] font-black uppercase tracking-[0.2em] italic truncate ${colors.text}`}>
+            {categoryName}
+          </span>
         </div>
-      )}
-      {item.image_url && (
-        <div className="w-full aspect-[4/3] bg-[var(--c-surface)]">
-          <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
-        </div>
-      )}
-      <div className="p-2.5">
-        <p className="font-medium text-[12px] text-[var(--c-text)] leading-tight line-clamp-2">
+        <h3 className="text-lg font-black uppercase italic tracking-tighter leading-none text-white/90 truncate">
           {item.name}
-        </p>
-        <p className="text-sm font-black text-[var(--c-accent)] mt-1 tabular-nums">
-          {fmtCur(item.price)}
-        </p>
-        {item.min_threshold > 0 && (
-          <div className="mt-1">
+        </h3>
+        <div className="flex items-center gap-2">
+          <span className="text-xl font-black text-white italic tracking-tighter tabular-nums">{fmtCur(item.price)}</span>
+          {item.min_threshold > 0 && (
             <Badge variant={isCritical ? 'danger' : 'default'} size="sm">
               Ост: {item.stock_quantity}
             </Badge>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </button>
+      <div className="flex flex-col items-center gap-2 shrink-0">
+        <button
+          onClick={() => onAdd(item)}
+          className={`w-12 h-12 rounded-[1.25rem] flex items-center justify-center transition-all active:scale-90 shadow-lg ${
+            inCartQty > 0 ? colors.active : 'bg-white/10 hover:bg-white/20'
+          }`}
+        >
+          <Plus className="w-5 h-5 text-white" />
+        </button>
+        <DotIndicator count={inCartQty} colorClass={colors.active} />
+        <button
+          onClick={() => onDecrease(item)}
+          className={`w-12 h-12 rounded-[1.25rem] flex items-center justify-center transition-all active:scale-90 border border-white/10 ${
+            inCartQty > 0 ? 'bg-white/10 opacity-100 hover:bg-white/20' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          <Minus className="w-5 h-5 text-white/30" />
+        </button>
+      </div>
+    </div>
   );
 });
 
@@ -344,14 +383,6 @@ export function CheckView({ onBack }: CheckViewProps) {
     return counts;
   }, [inventory]);
 
-  const menuGridRef = useRef<HTMLDivElement>(null);
-  const menuVirtualizer = useVirtualizer({
-    count: Math.ceil(filteredItems.length / 2),
-    getScrollElement: () => menuGridRef.current,
-    estimateSize: () => 140,
-    overscan: 3,
-  });
-
   const searchPlayersForAdd = useCallback((query: string) => {
     setPlayerSearch(query);
     if (playerSearchTimer.current) clearTimeout(playerSearchTimer.current);
@@ -419,6 +450,18 @@ export function CheckView({ onBack }: CheckViewProps) {
       addToCart(item);
     }
   };
+
+  const handleDecrease = useCallback((item: InventoryItem) => {
+    const ci = cart.find((c) => c.item.id === item.id);
+    if (!ci) return;
+    hapticFeedback('light');
+    const modKey = (ci.modifiers || []).map((m) => m.id).sort().join(',');
+    if (ci.quantity <= 1) {
+      removeFromCart(ci.item.id, modKey);
+    } else {
+      updateCartQuantity(ci.item.id, ci.quantity - 1, modKey);
+    }
+  }, [cart, removeFromCart, updateCartQuantity]);
 
   const confirmModifiers = () => {
     if (!modifierItem) return;
@@ -631,78 +674,140 @@ export function CheckView({ onBack }: CheckViewProps) {
         </div>
       </div>
 
-      {/* Menu */}
-      <Drawer
-        open={showMenu}
-        onClose={() => { setShowMenu(false); setMenuCategory(null); setMenuSearch(''); }}
-        title="Меню"
-        subtitle="Каталог"
-        titleIcon={<span>M</span>}
-      >
-        {/* Search bar */}
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--c-muted)]" />
-          <input
-            placeholder="Поиск..."
-            value={menuSearch}
-            onChange={(e) => startTransition(() => setMenuSearch(e.target.value))}
-            className="w-full pl-9 pr-3 py-2 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] text-sm text-[var(--c-text)] placeholder:text-[var(--c-muted)] focus:outline-none focus:border-[var(--c-accent)]/25 transition-colors"
+      {/* Menu sheet */}
+      {showMenu && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/90 backdrop-blur-[12px] transition-opacity duration-300 z-[100]"
+            onClick={() => { setShowMenu(false); setMenuCategory(null); setMenuSearch(''); }}
           />
-        </div>
-
-        {/* Category horizontal scroll */}
-        <div className="flex gap-1.5 overflow-x-auto scrollbar-none mb-3 -mx-1 px-1">
-          <button
-            onClick={() => setMenuCategory(null)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all active:scale-95 shrink-0 ${!menuCategory ? 'bg-[var(--c-accent)]/15 text-[var(--c-accent)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
-              }`}
+          <div
+            className="fixed bottom-0 left-0 right-0 w-full max-w-4xl mx-auto z-[101] transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            style={{ transform: showMenu ? 'translateY(0)' : 'translateY(100%)' }}
           >
-            Все
-          </button>
-          {menuCategories.filter((c) => (categoryCounts[c.slug] || 0) > 0).map((cat) => {
-            const CatIcon = getIconComponent(cat.icon_name);
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setMenuCategory(cat.slug)}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all active:scale-95 shrink-0 ${menuCategory === cat.slug ? 'bg-[var(--c-accent)]/15 text-[var(--c-accent)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
-                  }`}
-              >
-                <CatIcon className="w-3 h-3" />
-                {cat.name}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Items grid */}
-        <div ref={menuGridRef} className="max-h-[55vh] overflow-y-auto">
-          <div style={{ height: `${menuVirtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
-            {menuVirtualizer.getVirtualItems().map((virtualRow) => {
-              const startIdx = virtualRow.index * 2;
-              const rowItems = filteredItems.slice(startIdx, startIdx + 2);
-              return (
-                <div
-                  key={virtualRow.index}
-                  className="grid grid-cols-2 lg:grid-cols-3 gap-2"
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    transform: `translateY(${virtualRow.start}px)`,
-                  }}
+            <div className="bg-[#0d0d12] border-t border-white/5 rounded-t-[3rem] shadow-2xl flex flex-col h-[94dvh] max-h-[94vh] overflow-hidden">
+              <div className="w-full flex justify-center pt-4 pb-1 shrink-0">
+                <div className="w-16 h-1 bg-white/5 rounded-full" />
+              </div>
+              <div className="px-6 sm:px-10 py-3 shrink-0 flex items-center justify-between">
+                <h2 className="text-2xl sm:text-3xl font-black uppercase italic tracking-tighter text-white/90">
+                  ВЫБОР ТОВАРОВ
+                </h2>
+                <button
+                  onClick={() => { setShowMenu(false); setMenuCategory(null); setMenuSearch(''); }}
+                  className="w-12 h-12 bg-white/5 hover:bg-white/10 rounded-2xl flex items-center justify-center transition-all group"
                 >
-                  {rowItems.map((item) => {
-                    const inCartQty = cart.filter((c) => c.item.id === item.id).reduce((s, c) => s + c.quantity, 0);
-                    return <MenuItem key={item.id} item={item} inCartQty={inCartQty} onAdd={handleAdd} />;
+                  <X className="w-6 h-6 text-white/30 group-hover:text-white" />
+                </button>
+              </div>
+              <div className="px-6 sm:px-10 py-2 shrink-0">
+                <div className="relative group bg-white/[0.03] border border-white/5 focus-within:border-white/20 rounded-[1.75rem] flex items-center px-5 transition-all">
+                  <Search className="w-5 h-5 text-white/10 group-focus-within:text-white/40 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="ПОИСК..."
+                    value={menuSearch}
+                    onChange={(e) => startTransition(() => setMenuSearch(e.target.value))}
+                    className="w-full bg-transparent py-4 px-4 text-base text-white outline-none placeholder:text-white/20 font-bold uppercase tracking-widest"
+                  />
+                </div>
+              </div>
+              <div className="px-6 sm:px-10 my-4 shrink-0">
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none">
+                  <button
+                    onClick={() => setMenuCategory(null)}
+                    className={`flex flex-col items-center justify-center gap-2 min-w-[100px] p-4 rounded-[2rem] transition-all duration-300 border shrink-0 ${
+                      !menuCategory
+                        ? 'bg-slate-500 border-transparent shadow-xl shadow-slate-500/20 scale-105 z-10'
+                        : 'bg-white/[0.02] border-white/5 text-white/20 hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <div className={`p-2.5 rounded-xl transition-all ${!menuCategory ? 'bg-white/20 shadow-inner' : 'bg-white/5'}`}>
+                      <ShoppingBag className={`w-6 h-6 ${!menuCategory ? 'text-white' : 'text-slate-400'}`} />
+                    </div>
+                    <span className={`text-[10px] font-black uppercase tracking-[0.15em] ${!menuCategory ? 'text-white' : 'text-white/30'}`}>
+                      Все
+                    </span>
+                  </button>
+                  {menuCategories.filter((c) => (categoryCounts[c.slug] || 0) > 0).map((cat) => {
+                    const CatIcon = getIconComponent(cat.icon_name);
+                    const colors = getCategoryColorConfig(cat.color);
+                    const isActive = menuCategory === cat.slug;
+                    return (
+                      <button
+                        key={cat.id}
+                        onClick={() => setMenuCategory(cat.slug)}
+                        className={`flex flex-col items-center justify-center gap-2 min-w-[100px] p-4 rounded-[2rem] transition-all duration-300 border shrink-0 ${
+                          isActive ? `${colors.active} border-transparent shadow-xl ${colors.glow} scale-105 z-10` : 'bg-white/[0.02] border-white/5 text-white/20 hover:bg-white/[0.04]'
+                        }`}
+                      >
+                        <div className={`p-2.5 rounded-xl transition-all ${isActive ? 'bg-white/20 shadow-inner' : 'bg-white/5'}`}>
+                          <CatIcon className={`w-6 h-6 ${isActive ? 'text-white' : colors.text}`} />
+                        </div>
+                        <span className={`text-[10px] font-black uppercase tracking-[0.15em] ${isActive ? 'text-white' : 'text-white/30'}`}>
+                          {cat.name}
+                        </span>
+                      </button>
+                    );
                   })}
                 </div>
-              );
-            })}
+              </div>
+              <div className="px-6 sm:px-10 pb-48 overflow-y-auto flex-1 min-h-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {filteredItems.map((item) => {
+                    const inCartQty = cart.filter((c) => c.item.id === item.id).reduce((s, c) => s + c.quantity, 0);
+                    const cat = menuCategories.find((c) => c.slug === item.category);
+                    const colors = getCategoryColorConfig(cat?.color);
+                    return (
+                      <MenuSheetItem
+                        key={item.id}
+                        item={item}
+                        inCartQty={inCartQty}
+                        categoryName={cat?.name || item.category}
+                        colors={colors}
+                        onAdd={handleAdd}
+                        onDecrease={handleDecrease}
+                      />
+                    );
+                  })}
+                </div>
+                {filteredItems.length === 0 && (
+                  <div className="text-center py-20 opacity-30 flex flex-col items-center gap-4">
+                    <Sparkles className="w-10 h-10" />
+                    <span className="uppercase tracking-[0.3em] text-[10px] font-black">Ничего не найдено</span>
+                  </div>
+                )}
+              </div>
+              {cartCount > 0 && (
+                <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 pt-16 bg-gradient-to-t from-[#0d0d12] via-[#0d0d12]/95 to-transparent">
+                  <button
+                    onClick={() => { setShowMenu(false); setMenuCategory(null); setMenuSearch(''); }}
+                    className="w-full max-w-2xl mx-auto bg-white text-black py-5 rounded-[2rem] flex items-center justify-between px-8 shadow-2xl active:scale-[0.98] transition-all group overflow-hidden"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 bg-black/5 rounded-[1.25rem] flex items-center justify-center relative">
+                        <ShoppingBag className="w-7 h-7 text-black" />
+                        <div className="absolute -top-0.5 -right-0.5 w-6 h-6 bg-black text-white font-black text-[10px] rounded-full flex items-center justify-center border-[3px] border-white">
+                          {cartCount}
+                        </div>
+                      </div>
+                      <div className="text-left">
+                        <p className="text-[10px] font-black opacity-30 uppercase tracking-[0.3em] leading-none mb-0.5">
+                          ИТОГО В ЧЕК
+                        </p>
+                        <span className="text-2xl font-black italic tracking-tighter leading-none tabular-nums">
+                          {fmtCur(total)}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-7 h-7 group-hover:translate-x-2 transition-transform" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </Drawer>
+        </>
+      )}
 
       {/* Modifiers selection */}
       <Drawer
