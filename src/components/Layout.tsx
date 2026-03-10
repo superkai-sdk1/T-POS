@@ -398,9 +398,9 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
           {children}
         </main>
 
-        {/* ── Mobile bottom nav — как в примере главного экрана ── */}
+        {/* ── Mobile bottom nav — финальный дизайн ── */}
         <nav
-          className="lg:hidden shrink-0 z-[60] h-20 bg-[#0d0d12]/80 backdrop-blur-2xl border-t border-white/5 px-6 sm:px-12 flex items-center justify-between"
+          className="lg:hidden shrink-0 z-[60] h-24 bg-[#0d0d12]/90 backdrop-blur-2xl border-t border-white/5 px-8 sm:px-12 flex items-center justify-between"
           style={{
             paddingBottom: 'max(var(--tg-safe-bottom), env(safe-area-inset-bottom, 0px))',
             transform: 'translateZ(0)',
@@ -413,10 +413,10 @@ export function Layout({ children, activeTab, onTabChange }: LayoutProps) {
                 <button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
-                  className={`flex flex-col items-center justify-center gap-1 transition-all duration-200 flex-1 min-h-[48px] ${isActive ? 'text-violet-400 scale-110' : 'text-white/20 hover:text-white/40'}`}
+                  className={`flex flex-col items-center justify-center gap-1.5 transition-all duration-200 flex-1 min-h-[48px] ${isActive ? 'text-[#8b5cf6] scale-110' : 'text-white/20 hover:text-white/40'}`}
                 >
                   <tab.icon className="w-6 h-6 shrink-0" />
-                  <span className="text-[8.5px] font-black uppercase tracking-widest truncate w-full px-0.5">
+                  <span className="text-[9px] font-black uppercase tracking-widest truncate w-full px-0.5">
                     {tab.label}
                   </span>
                 </button>
