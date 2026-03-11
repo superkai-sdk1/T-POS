@@ -101,6 +101,11 @@ export function useRealtimeSync() {
           emitTableChange('profiles');
         },
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'client_discount_rules' },
+        () => emitTableChange('client_discount_rules'),
+      )
       .subscribe();
 
     channelRef.current = channel;
@@ -168,6 +173,9 @@ export function useRealtimeSync() {
               }
               emitTableChange('shifts');
             }
+          )
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'client_discount_rules' },
+            () => emitTableChange('client_discount_rules'),
           )
           .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' },
             (payload: PgPayload) => {

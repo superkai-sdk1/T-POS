@@ -204,6 +204,7 @@ export interface Discount {
   is_active: boolean;
   min_quantity: number | null;
   item_id: string | null;
+  is_auto?: boolean;
   item?: InventoryItem;
   created_at: string;
 }
@@ -215,8 +216,20 @@ export interface CheckDiscount {
   target: DiscountTarget;
   item_id: string | null;
   discount_amount: number;
+  client_rule_id?: string | null;
   created_at: string;
   discount?: Discount;
+}
+
+export interface ClientDiscountRule {
+  id: string;
+  discount_id: string;
+  profile_id: string;
+  item_id: string;
+  created_at: string;
+  discount?: Discount;
+  profile?: Profile;
+  item?: InventoryItem;
 }
 
 export type SpaceType = 'cabin_small' | 'cabin_big' | 'hall';

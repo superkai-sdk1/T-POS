@@ -55,7 +55,7 @@ const spaceIconMap: Record<string, typeof Home> = {
 const fmtCur = (n: number) =>
   new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
 
-const CheckTile = memo(({ check, onSelect, listMode }: { check: Check; onSelect: (check: Check) => void; listMode?: boolean }) => {
+const CheckTile = memo(({ check, onSelect, listMode, exiting }: { check: Check; onSelect: (check: Check) => void; listMode?: boolean; exiting?: boolean }) => {
   const hasSpace = !!check.space;
   const displayName = hasSpace
     ? check.space?.name ?? ''
@@ -71,13 +71,17 @@ const CheckTile = memo(({ check, onSelect, listMode }: { check: Check; onSelect:
   return (
     <button
       type="button"
-      onClick={() => onSelect(check)}
-      className={`relative flex text-left active:scale-[0.98] transition-all border rounded-[20px] lg:rounded-2xl ${listMode
+      onClick={() => !exiting && onSelect(check)}
+      style={exiting ? { animation: 'check-exit 400ms ease-out forwards' } : undefined}
+      className={`relative flex text-left transition-all border rounded-[20px] lg:rounded-2xl ${listMode
           ? 'flex-row items-center justify-between gap-3 p-3 min-h-0'
           : 'flex-col justify-between p-3 lg:p-4 min-h-[120px] lg:min-h-[150px]'
         } ${isEmpty
           ? 'bg-transparent border-dashed border-white/5 opacity-30'
           : 'bg-[#1b1b26] border-white/5 shadow-xl hover:border-white/15 hover:bg-[#1f1f30]'
+        } ${exiting
+          ? 'pointer-events-none'
+          : 'active:scale-[0.98]'
         }`}
     >
       <div className={`flex items-center gap-2 min-w-0 ${listMode ? 'flex-1' : 'flex items-start'}`}>
@@ -126,6 +130,28 @@ const CheckTile = memo(({ check, onSelect, listMode }: { check: Check; onSelect:
 export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const hideNav = useHideNav();
   const openChecks = usePOSStore((s) => s.openChecks);
+
+  const [exitingCheck, setExitingCheck] = useState<Check | null>(() => {
+    const check = usePOSStore.getState().recentlyDeletedCheck;
+    if (check) usePOSStore.setState({ recentlyDeletedCheck: null });
+    return check;
+  });
+
+  useEffect(() => {
+    if (exitingCheck) {
+      const timer = setTimeout(() => setExitingCheck(null), 450);
+      return () => clearTimeout(timer);
+    }
+  }, [exitingCheck]);
+
+  useEffect(() => {
+    return usePOSStore.subscribe((state, prev) => {
+      if (state.recentlyDeletedCheck && state.recentlyDeletedCheck !== prev.recentlyDeletedCheck) {
+        setExitingCheck(state.recentlyDeletedCheck);
+        usePOSStore.setState({ recentlyDeletedCheck: null });
+      }
+    });
+  }, []);
   const loadOpenChecks = usePOSStore((s) => s.loadOpenChecks);
   const createCheck = usePOSStore((s) => s.createCheck);
   const selectCheck = usePOSStore((s) => s.selectCheck);
@@ -415,9 +441,17 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                 ? 'lg:grid-cols-1'
                 : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
               }`}>
-              {openChecks.map((check) => (
-                <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} listMode={!!activeCheck} />
-              ))}
+              {(() => {
+                const merged = exitingCheck
+                  ? [...openChecks, exitingCheck].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  : openChecks;
+                return merged.map((check) => {
+                  const isExiting = exitingCheck?.id === check.id;
+                  return (
+                    <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} listMode={!!activeCheck} exiting={isExiting} />
+                  );
+                });
+              })()}
             </div>
           )}
         </div>

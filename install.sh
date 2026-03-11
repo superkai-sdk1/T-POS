@@ -520,7 +520,7 @@ if [ "$MODE" = "update" ]; then
     warn "═══════════════════════════════════════════"
     warn " Если это первое обновление до v1.1+ —"
     warn " выполните SQL из supabase/migration.sql"
-    warn " в Supabase SQL Editor (Dashboard → SQL)."
+    warn " (или supabase/migrations/) в Supabase SQL Editor."
     warn " Все команды идемпотентны (IF NOT EXISTS)."
     warn "═══════════════════════════════════════════"
     echo ""

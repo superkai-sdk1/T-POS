@@ -21,6 +21,7 @@ interface POSState {
   openCheckDiscounts: Record<string, CheckDiscount[]>;
   productModifiers: Record<string, Modifier[]>;
   menuCategories: MenuCategory[];
+  recentlyDeletedCheck: Check | null;
   isLoading: boolean;
   checksLoaded: boolean;
   inventoryLoaded: boolean;
@@ -34,11 +35,12 @@ interface POSState {
   selectCheck: (check: Check) => Promise<void>;
   addToCart: (item: InventoryItem, modifiers?: { id: string; name: string; price: number }[]) => void;
   removeFromCart: (itemId: string, modifierKey?: string) => void;
+  updateCartModifiers: (itemId: string, oldModKey: string, newModifiers: { id: string; name: string; price: number }[]) => void;
   updateCartQuantity: (itemId: string, quantity: number, modifierKey?: string) => void;
   clearCart: () => void;
   getCartTotal: () => number;
   getDiscountTotal: () => number;
-  applyDiscount: (discountId: string, discountName: string, discountType: 'percentage' | 'fixed', discountValue: number, target: 'check' | 'item', itemId?: string) => Promise<void>;
+  applyDiscount: (discountId: string, discountName: string, discountType: 'percentage' | 'fixed', discountValue: number, target: 'check' | 'item', itemId?: string, clientRuleId?: string) => Promise<void>;
   removeDiscount: (checkDiscountId: string) => Promise<void>;
   saveCartToDb: () => Promise<boolean>;
   refreshActiveCheck: () => Promise<void>;
@@ -77,6 +79,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
   openCheckDiscounts: {},
   productModifiers: {},
   menuCategories: [],
+  recentlyDeletedCheck: null,
   isLoading: false,
   checksLoaded: false,
   inventoryLoaded: false,
@@ -331,6 +334,24 @@ export const usePOSStore = create<POSState>((set, get) => ({
     });
   },
 
+  updateCartModifiers: (itemId: string, oldModKey: string, newModifiers: { id: string; name: string; price: number }[]) => {
+    const cart = get().cart;
+    const ci = cart.find((c) => {
+      if (!c?.item || c.item.id !== itemId) return false;
+      const cKey = (c.modifiers || []).map((m) => m.id).sort().join(',');
+      return cKey === oldModKey;
+    });
+    if (!ci) return;
+    const newCart = cart.filter((c) => {
+      if (!c?.item || c.item.id !== itemId) return true;
+      const cKey = (c.modifiers || []).map((m) => m.id).sort().join(',');
+      return cKey !== oldModKey;
+    });
+    set({
+      cart: [...newCart, { item: ci.item, quantity: ci.quantity, modifiers: newModifiers.length > 0 ? newModifiers : undefined }],
+    });
+  },
+
   updateCartQuantity: (itemId: string, quantity: number, modifierKey?: string) => {
     if (quantity <= 0) {
       get().removeFromCart(itemId, modifierKey);
@@ -362,7 +383,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     return get().appliedDiscounts.reduce((sum, d) => sum + d.discount_amount, 0);
   },
 
-  applyDiscount: async (discountId, discountName, discountType, discountValue, target, itemId) => {
+  applyDiscount: async (discountId, discountName, discountType, discountValue, target, itemId, clientRuleId) => {
     const { activeCheck, cart } = get();
     if (!activeCheck) return;
 
@@ -375,10 +396,12 @@ export const usePOSStore = create<POSState>((set, get) => ({
       }, 0);
       amount = discountType === 'percentage' ? Math.round(subtotal * discountValue / 100) : discountValue;
     } else if (itemId) {
-      const ci = cart.find((c) => c?.item?.id === itemId);
-      if (ci) {
+      const matchingCis = cart.filter((c) => c?.item?.id === itemId);
+      const itemTotal = matchingCis.reduce((sum, ci) => {
         const modPrice = (ci.modifiers || []).reduce((ms, m) => ms + m.price, 0);
-        const itemTotal = (ci.item.price + modPrice) * ci.quantity;
+        return sum + (ci.item.price + modPrice) * ci.quantity;
+      }, 0);
+      if (itemTotal > 0) {
         amount = discountType === 'percentage' ? Math.round(itemTotal * discountValue / 100) : discountValue;
       }
     }
@@ -404,6 +427,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       target,
       item_id: checkItemId,
       discount_amount: amount,
+      client_rule_id: clientRuleId ?? null,
       discount: { id: discountId, name: discountName, type: discountType, value: discountValue } as Discount,
     } as CheckDiscount;
 
@@ -418,6 +442,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
         target,
         item_id: checkItemId,
         discount_amount: amount,
+        ...(clientRuleId && { client_rule_id: clientRuleId }),
       })
       .select('*, discount:discounts(*)')
       .single();
@@ -706,10 +731,11 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const { activeCheck, cart, checkItems, appliedDiscounts } = get();
     if (!activeCheck) return false;
     const checkId = activeCheck.id;
+    const deletedCheck = { ...activeCheck };
     const prevFp = _lastCartFingerprint;
     _lastCartFingerprint = '';
     _cancellingCheckIds.add(checkId);
-    set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
+    set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [], recentlyDeletedCheck: deletedCheck });
     get().deleteCheckLocal(checkId);
     const { error: discErr } = await supabase.from('check_discounts').delete().eq('check_id', checkId);
     const { error: itemsErr } = await supabase.from('check_items').delete().eq('check_id', checkId);
@@ -717,7 +743,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       console.error('cancelCheck cleanup error:', discErr || itemsErr);
       _cancellingCheckIds.delete(checkId);
       _lastCartFingerprint = prevFp;
-      set({ activeCheck, cart, checkItems, appliedDiscounts });
+      set({ activeCheck, cart, checkItems, appliedDiscounts, recentlyDeletedCheck: null });
       await get().loadOpenChecks();
       return false;
     }
@@ -726,7 +752,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       console.error('cancelCheck error:', error);
       _cancellingCheckIds.delete(checkId);
       _lastCartFingerprint = prevFp;
-      set({ activeCheck, cart, checkItems, appliedDiscounts });
+      set({ activeCheck, cart, checkItems, appliedDiscounts, recentlyDeletedCheck: null });
       await get().loadOpenChecks();
       return false;
     }
@@ -781,7 +807,8 @@ export const usePOSStore = create<POSState>((set, get) => ({
       activeCheck: null,
       cart: [],
       checkItems: [],
-      appliedDiscounts: []
+      appliedDiscounts: [],
+      recentlyDeletedCheck: { ...activeCheck },
     }));
 
     if (payments.length > 0) {

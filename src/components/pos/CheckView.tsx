@@ -10,7 +10,7 @@ import {
   ShoppingBag,
   MessageSquare, Percent, Trash2, Timer, Search,
   UserPlus, User, Star, GraduationCap, Gamepad2,
-  MoreHorizontal, Sparkles,
+  Sparkles, SlidersHorizontal,
 } from 'lucide-react';
 import { hapticFeedback } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase';
@@ -19,7 +19,7 @@ import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useHideNav } from '@/store/layout';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import type { InventoryItem, Discount, Profile, VisitTariff, ClientTier, Modifier } from '@/types';
+import type { InventoryItem, Discount, Profile, VisitTariff, ClientTier, Modifier, ClientDiscountRule } from '@/types';
 
 const VISIT_ITEMS: Record<VisitTariff, { label: string; price: number; dbName: string }> = {
   regular: { label: 'Гость', price: 700, dbName: 'Игровой вечер Гость' },
@@ -36,26 +36,11 @@ function tierToTariff(tier: ClientTier | undefined): VisitTariff {
 
 const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
 
-const DotIndicator = memo(function DotIndicator({ count, colorClass }: { count: number; colorClass: string }) {
-  if (count === 0) return <div className="h-6" />;
-  return (
-    <div className="flex gap-1 h-6 items-center justify-center">
-      {[...Array(Math.min(count, 5))].map((_, i) => (
-        <div
-          key={i}
-          className={`w-1.5 h-1.5 rounded-full shadow-sm ${colorClass} animate-pulse`}
-          style={{ animationDelay: `${i * 100}ms` }}
-        />
-      ))}
-      {count > 5 && <MoreHorizontal className="w-3 h-3 text-white/30" />}
-    </div>
-  );
-});
-
 const MenuSheetItem = memo(function MenuSheetItem({
   item,
   inCartQty,
   categoryName,
+  iconName,
   colors,
   onAdd,
   onDecrease,
@@ -63,55 +48,56 @@ const MenuSheetItem = memo(function MenuSheetItem({
   item: InventoryItem;
   inCartQty: number;
   categoryName: string;
+  iconName?: string;
   colors: ReturnType<typeof getCategoryColorConfig>;
   onAdd: (item: InventoryItem) => void;
   onDecrease: (item: InventoryItem) => void;
 }) {
-  const isCritical = item.stock_quantity <= item.min_threshold && item.min_threshold > 0;
+  const CatIcon = getIconComponent(iconName || '');
   return (
     <div
-      className={`group relative border transition-all duration-500 rounded-xl lg:rounded-2xl p-3 lg:p-4 flex items-center gap-2 lg:gap-3 ${
+      className={`group relative border transition-all duration-500 rounded-xl lg:rounded-2xl p-3 lg:p-4 flex flex-col text-left min-h-[88px] overflow-hidden ${
         inCartQty > 0
           ? `${colors.bgActive} border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.3)] ring-1 ring-white/10`
-          : isCritical
-            ? 'bg-red-500/20 border-red-500/30'
-            : `${colors.bg} border-white/5 hover:bg-white/[0.08]`
+          : `${colors.bg} border-white/5 hover:bg-white/[0.08]`
       }`}
     >
+      <div className="absolute inset-0 pointer-events-none opacity-[0.1] overflow-hidden">
+        <div className="absolute left-1/2 top-1/2 w-[180%] grid gap-[1px]" style={{ gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)', aspectRatio: '1', transform: 'translate(-50%, -50%) rotate(-45deg)' }}>
+          {Array.from({ length: 64 }).map((_, i) => (
+            <CatIcon key={i} className="w-6 h-6 text-white place-self-center" strokeWidth={1.5} />
+          ))}
+        </div>
+      </div>
       <button
         type="button"
         onClick={() => onAdd(item)}
-        className="flex-1 space-y-0.5 lg:space-y-1 text-left min-w-0 active:scale-[0.98] transition-transform"
+        className="relative z-10 flex-1 flex flex-col min-w-0 min-h-0 active:scale-[0.98] transition-transform"
       >
-        <div className="flex items-center gap-1">
-          <div className={`w-1.5 h-1.5 lg:w-1 h-1 rounded-full shrink-0 ${colors.active} shadow-[0_0_6px_rgba(255,255,255,0.1)]`} />
-          <span className={`text-[8px] lg:text-[7px] font-black uppercase tracking-[0.15em] italic truncate ${colors.text}`}>
-            {categoryName}
-          </span>
-        </div>
-        <h3 className="text-[13px] lg:text-sm font-black uppercase italic tracking-tighter leading-none text-white/90 truncate">
-          {item.name}
-        </h3>
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm lg:text-base font-black text-white italic tracking-tighter tabular-nums">{fmtCur(item.price)}</span>
-          {item.min_threshold > 0 && (
-            <Badge variant={isCritical ? 'danger' : 'default'} size="sm">
-              Ост: {item.stock_quantity}
-            </Badge>
+        <div className="flex items-start justify-between gap-2 mb-1">
+          <div className="flex items-center gap-1 min-w-0">
+            <div className={`w-1.5 h-1.5 lg:w-1 h-1 rounded-full shrink-0 ${colors.active} shadow-[0_0_6px_rgba(255,255,255,0.1)]`} />
+            <span className={`text-[8px] lg:text-[7px] font-black uppercase tracking-[0.15em] truncate ${colors.text}`}>
+              {categoryName}
+            </span>
+          </div>
+          {inCartQty > 0 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDecrease(item); }}
+              className="shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/10 border border-white/10 hover:bg-white/20 active:scale-90 transition-all"
+            >
+              <Minus className="w-3.5 h-3.5 text-white/70" />
+              <span className="text-xs font-black text-white tabular-nums">{inCartQty}</span>
+            </button>
           )}
         </div>
+        <h3 className="text-[15px] lg:text-base font-black uppercase tracking-tighter text-white/90 line-clamp-2 leading-snug mb-auto text-left w-full">
+          {item.name}
+        </h3>
+        <div className="flex justify-end mt-1">
+          <span className="text-base lg:text-lg font-black text-white tracking-tighter tabular-nums">{fmtCur(item.price)}</span>
+        </div>
       </button>
-      <div className="flex flex-col items-center gap-1 shrink-0">
-        <DotIndicator count={inCartQty} colorClass={colors.active} />
-        <button
-          onClick={() => onDecrease(item)}
-          className={`w-9 h-9 lg:w-8 lg:h-8 rounded-lg flex items-center justify-center transition-all active:scale-90 border border-white/10 ${
-            inCartQty > 0 ? 'bg-white/10 opacity-100 hover:bg-white/20' : 'opacity-0 pointer-events-none'
-          }`}
-        >
-          <Minus className="w-4 h-4 lg:w-3.5 lg:h-3.5 text-white/30" />
-        </button>
-      </div>
     </div>
   );
 });
@@ -119,34 +105,59 @@ const MenuSheetItem = memo(function MenuSheetItem({
 const TopSheetItem = memo(function TopSheetItem({
   item,
   inCartQty,
+  iconName,
   colors,
   onAdd,
+  onDecrease,
 }: {
   item: InventoryItem;
   inCartQty: number;
+  iconName?: string;
   colors: ReturnType<typeof getCategoryColorConfig>;
   onAdd: (item: InventoryItem) => void;
+  onDecrease: (item: InventoryItem) => void;
 }) {
+  const CatIcon = getIconComponent(iconName || '');
   return (
-    <button
-      type="button"
-      onClick={() => onAdd(item)}
-      className={`relative border transition-all duration-300 rounded-xl p-2 lg:p-2.5 text-left active:scale-[0.96] ${
+    <div
+      className={`relative border transition-all duration-300 rounded-xl p-2 lg:p-2.5 flex flex-col text-left min-h-[72px] overflow-hidden ${
         inCartQty > 0
           ? `${colors.bgActive} border-white/15 ring-1 ring-white/10`
           : `${colors.bg} border-white/5 hover:bg-white/[0.08]`
       }`}
     >
-      <h3 className="text-[11px] lg:text-xs font-black uppercase italic tracking-tighter leading-tight text-white/90 truncate">
-        {item.name}
-      </h3>
-      <span className="text-[11px] lg:text-xs font-black text-white/50 italic tracking-tighter tabular-nums">{fmtCur(item.price)}</span>
-      {inCartQty > 0 && (
-        <div className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${colors.active} flex items-center justify-center`}>
-          <span className="text-[8px] font-black text-white">{inCartQty}</span>
+      <div className="absolute inset-0 pointer-events-none opacity-[0.1] overflow-hidden">
+        <div className="absolute left-1/2 top-1/2 w-[180%] grid gap-[1px]" style={{ gridTemplateColumns: 'repeat(8, 1fr)', gridTemplateRows: 'repeat(8, 1fr)', aspectRatio: '1', transform: 'translate(-50%, -50%) rotate(-45deg)' }}>
+          {Array.from({ length: 64 }).map((_, i) => (
+            <CatIcon key={i} className="w-5 h-5 text-white place-self-center" strokeWidth={1.5} />
+          ))}
         </div>
-      )}
-    </button>
+      </div>
+      <button
+        type="button"
+        onClick={() => onAdd(item)}
+        className="relative z-10 flex-1 flex flex-col min-w-0 min-h-0 text-left active:scale-[0.96]"
+      >
+        <div className="flex items-start justify-between gap-1 mb-0.5">
+          <span className="flex-1 min-w-0" />
+          {inCartQty > 0 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onDecrease(item); }}
+              className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/10 border border-white/10 hover:bg-white/20 active:scale-90 transition-all"
+            >
+              <Minus className="w-3 h-3 text-white/70" />
+              <span className="text-[10px] font-black text-white tabular-nums">{inCartQty}</span>
+            </button>
+          )}
+        </div>
+        <h3 className="text-[13px] lg:text-sm font-black uppercase tracking-tighter leading-tight text-white/90 line-clamp-2 mb-auto text-left w-full">
+          {item.name}
+        </h3>
+        <div className="flex justify-end mt-0.5">
+          <span className="text-[13px] lg:text-sm font-black text-white tabular-nums">{fmtCur(item.price)}</span>
+        </div>
+      </button>
+    </div>
   );
 });
 
@@ -154,10 +165,14 @@ const CartItemRow = memo(function CartItemRow({
   ci,
   onRemove,
   onUpdateQty,
+  onModifiersClick,
+  hasModifiers,
 }: {
   ci: { item: InventoryItem; quantity: number; modifiers?: { id: string; name: string; price: number }[] };
   onRemove: (id: string, modifierKey?: string) => void;
   onUpdateQty: (id: string, qty: number, modifierKey?: string) => void;
+  onModifiersClick?: () => void;
+  hasModifiers?: boolean;
 }) {
   if (!ci?.item) return null;
   const modPrice = (ci.modifiers || []).reduce((s, m) => s + m.price, 0);
@@ -171,10 +186,18 @@ const CartItemRow = memo(function CartItemRow({
       onRemove={() => onRemove(ci.item.id, modKey)}
     >
       <div className="flex items-center justify-between p-4 bg-white/5 backdrop-blur-lg rounded-[1.5rem] border border-white/5 hover:border-white/15 transition-all shadow-lg">
-        <div className="flex-1 min-w-0">
-          <p className="font-bold text-sm tracking-tight text-white truncate">
-            {ci.item.name}
-          </p>
+        <div
+          className={`flex-1 min-w-0 flex items-start gap-2 ${hasModifiers ? 'cursor-pointer' : ''}`}
+          onClick={hasModifiers && onModifiersClick ? () => { hapticFeedback('light'); onModifiersClick(); } : undefined}
+          onTouchStart={hasModifiers && onModifiersClick ? (e) => e.stopPropagation() : undefined}
+          role={hasModifiers && onModifiersClick ? 'button' : undefined}
+          tabIndex={hasModifiers && onModifiersClick ? 0 : undefined}
+          onKeyDown={hasModifiers && onModifiersClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onModifiersClick(); } } : undefined}
+        >
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm tracking-tight text-white truncate">
+              {ci.item.name}
+            </p>
           <p className="text-[10px] text-white/30 font-bold mt-0.5 uppercase tracking-widest">{fmtCur(ci.item.price)}</p>
           {ci.modifiers && ci.modifiers.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
@@ -184,6 +207,10 @@ const CartItemRow = memo(function CartItemRow({
                 </span>
               ))}
             </div>
+          )}
+          </div>
+          {hasModifiers && (
+            <SlidersHorizontal className="w-4 h-4 text-indigo-400/70 shrink-0 mt-0.5" />
           )}
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -221,7 +248,7 @@ interface CheckViewProps {
 }
 
 export function CheckView({ onBack }: CheckViewProps) {
-  const { activeCheck, cart, addToCart, updateCartQuantity, removeFromCart, inventory, leaveCheck, cancelCheck, getCartTotal, getDiscountTotal, updateCheckNote, saveCartToDb, appliedDiscounts, applyDiscount, removeDiscount } = usePOSStore();
+  const { activeCheck, cart, addToCart, updateCartQuantity, updateCartModifiers, removeFromCart, inventory, leaveCheck, cancelCheck, getCartTotal, getDiscountTotal, updateCheckNote, saveCartToDb, appliedDiscounts, applyDiscount, removeDiscount, productModifiers } = usePOSStore();
   const hideNav = useHideNav();
 
   const [showPayment, setShowPayment] = useState(false);
@@ -229,6 +256,7 @@ export function CheckView({ onBack }: CheckViewProps) {
   const [menuDragY, setMenuDragY] = useState(0);
   const menuSwipeStartY = useRef(0);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [isDismissing, setIsDismissing] = useState(false);
   const [showDiscounts, setShowDiscounts] = useState(false);
   const [discountsList, setDiscountsList] = useState<Discount[]>([]);
   const [menuCategory, setMenuCategory] = useState<string | null>(null);
@@ -251,9 +279,9 @@ export function CheckView({ onBack }: CheckViewProps) {
   const pendingNoteRef = useRef<string | null>(null);
 
   const [showModifiers, setShowModifiers] = useState(false);
-  const [modifierItem, setModifierItem] = useState<InventoryItem | null>(null);
-  const [availableModifiers, setAvailableModifiers] = useState<Modifier[]>([]);
-  const [selectedModifierIds, setSelectedModifierIds] = useState<string[]>([]);
+  const [editingCartItem, setEditingCartItem] = useState<{ item: InventoryItem; quantity: number; modifiers?: { id: string; name: string; price: number }[] } | null>(null);
+  const [modifierCounts, setModifierCounts] = useState<Record<string, number>>({});
+  const [clientDiscountRules, setClientDiscountRules] = useState<ClientDiscountRule[]>([]);
 
   useEffect(() => {
     const onOpenPayment = () => setShowPayment(true);
@@ -369,15 +397,60 @@ export function CheckView({ onBack }: CheckViewProps) {
   const autoApplyingRef = useRef(false);
 
   const loadDiscountsList = useCallback(async () => {
-    const { data } = await supabase.from('discounts').select('*').eq('is_active', true).order('name');
-    if (data) {
-      const all = data as Discount[];
+    const [discRes, rulesRes] = await Promise.all([
+      supabase.from('discounts').select('*').eq('is_active', true).order('name'),
+      supabase.from('client_discount_rules').select('*, discount:discounts(*)'),
+    ]);
+    if (discRes.data) {
+      const all = discRes.data as Discount[];
       setDiscountsList(all);
       setQuantityDiscounts(all.filter((d) => d.min_quantity != null && d.min_quantity > 0));
+    }
+    if (rulesRes.data) {
+      setClientDiscountRules(rulesRes.data.map((r) => ({
+        ...r,
+        discount: Array.isArray(r.discount) ? r.discount[0] : r.discount,
+      })) as ClientDiscountRule[]);
     }
   }, []);
 
   useEffect(() => { loadDiscountsList(); }, [loadDiscountsList]);
+
+  // Auto-apply / remove client-specific discounts when cart or check client changes
+  useEffect(() => {
+    if (!activeCheck || clientDiscountRules.length === 0 || autoApplyingRef.current) return;
+    const playerId = activeCheck.player_id;
+    if (!playerId) return;
+
+    const run = async () => {
+      autoApplyingRef.current = true;
+      try {
+        const currentDiscounts = usePOSStore.getState().appliedDiscounts;
+
+        for (const rule of clientDiscountRules) {
+          const discount = rule.discount as Discount | undefined;
+          if (!discount?.is_active) continue;
+
+          const hasItem = cart.some((c) => c?.item?.id === rule.item_id);
+          const alreadyApplied = currentDiscounts.find(
+            (ad) => ad.client_rule_id === rule.id
+          );
+
+          if (hasItem && playerId === rule.profile_id && !alreadyApplied) {
+            await applyDiscount(discount.id, discount.name, discount.type, discount.value, 'item', rule.item_id, rule.id);
+          } else if ((!hasItem || playerId !== rule.profile_id) && alreadyApplied) {
+            await removeDiscount(alreadyApplied.id);
+          }
+        }
+      } finally {
+        autoApplyingRef.current = false;
+      }
+    };
+
+    const timer = setTimeout(run, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart, activeCheck?.player_id, clientDiscountRules, activeCheck?.id]);
 
   // Auto-apply / remove quantity-based discounts when cart changes
   useEffect(() => {
@@ -509,18 +582,7 @@ export function CheckView({ onBack }: CheckViewProps) {
 
   const handleAdd = (item: InventoryItem) => {
     hapticFeedback('light');
-
-    const productModifiersMap = usePOSStore.getState().productModifiers;
-    const mods = productModifiersMap[item.id] || [];
-
-    if (mods.length > 0) {
-      setModifierItem(item);
-      setAvailableModifiers(mods);
-      setSelectedModifierIds([]);
-      setShowModifiers(true);
-    } else {
-      addToCart(item);
-    }
+    addToCart(item);
   };
 
   const handleDecrease = useCallback((item: InventoryItem) => {
@@ -535,27 +597,41 @@ export function CheckView({ onBack }: CheckViewProps) {
     }
   }, [cart, removeFromCart, updateCartQuantity]);
 
-  const confirmModifiers = () => {
-    if (!modifierItem) return;
-    const mods = selectedModifierIds.length > 0
-      ? selectedModifierIds.map((mid) => {
-        const mod = availableModifiers.find((m) => m.id === mid);
-        return { id: mid, name: mod?.name || '?', price: mod?.price || 0 };
-      })
-      : undefined;
-    addToCart(modifierItem, mods);
+  const openModifiersForCartItem = useCallback((ci: { item: InventoryItem; quantity: number; modifiers?: { id: string; name: string; price: number }[] }) => {
+    const mods = productModifiers[ci.item.id] || [];
+    if (mods.length === 0) return;
+    const counts: Record<string, number> = {};
+    (ci.modifiers || []).forEach((m) => { counts[m.id] = (counts[m.id] || 0) + 1; });
+    setEditingCartItem(ci);
+    setModifierCounts(counts);
+    setShowModifiers(true);
+  }, [productModifiers]);
+
+  const applyModifiersFromCart = useCallback(() => {
+    if (!editingCartItem) return;
+    const availableMods = productModifiers[editingCartItem.item.id] || [];
+    const newModifiers: { id: string; name: string; price: number }[] = [];
+    Object.entries(modifierCounts).forEach(([modId, count]) => {
+      const mod = availableMods.find((m) => m.id === modId);
+      if (mod && count > 0) {
+        for (let i = 0; i < count; i++) newModifiers.push({ id: mod.id, name: mod.name, price: mod.price });
+      }
+    });
+    const oldModKey = (editingCartItem.modifiers || []).map((m) => m.id).sort().join(',');
+    updateCartModifiers(editingCartItem.item.id, oldModKey, newModifiers);
     setShowModifiers(false);
-    setModifierItem(null);
-  };
+    setEditingCartItem(null);
+  }, [editingCartItem, modifierCounts, productModifiers, updateCartModifiers]);
 
   const handleCancel = useCallback(async () => {
-    const ok = await cancelCheck();
-    if (ok) {
-      hapticFeedback('medium');
-      setShowCancelConfirm(false);
+    setShowCancelConfirm(false);
+    setIsDismissing(true);
+    hapticFeedback('medium');
+    setTimeout(async () => {
+      await cancelCheck();
       onBack();
       setTimeout(() => leaveCheck(), 0);
-    }
+    }, 350);
   }, [cancelCheck, leaveCheck, onBack]);
 
   const isDraggingHandleRef = useRef(false);
@@ -600,24 +676,38 @@ export function CheckView({ onBack }: CheckViewProps) {
     menuDragYRef.current = 0;
   }, [closeMenu]);
 
-  if (!activeCheck) return null;
+  if (!activeCheck && !isDismissing) return null;
+  if (!activeCheck && isDismissing) {
+    return <div className="flex-1 opacity-0" />;
+  }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 px-1 lg:px-4">
+    <div
+      className={`flex flex-col flex-1 min-h-0 px-1 lg:px-4 transition-all duration-300 ease-[var(--ease-out-expo)] ${isDismissing ? 'opacity-0 scale-95 translate-y-4' : ''}`}
+    >
       {swipeIndicatorStyle && <div style={swipeIndicatorStyle} />}
       {overlayStyle && <div style={overlayStyle} />}
       {/* Glass header */}
       <div className="sticky top-0 z-20 -mx-1 lg:mx-0 px-1 lg:px-4 py-2 lg:py-3 mb-3 lg:mb-4" style={{ transform: 'translateZ(0)' }}>
         <div className="flex items-center justify-between bg-white/5 backdrop-blur-xl p-3 lg:p-4 rounded-[2rem] border border-white/10 shadow-xl">
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2.5 min-w-0">
             <button
               onClick={handleBack}
-              className="p-2.5 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors shrink-0 active:scale-90"
+              className="p-2 bg-white/5 rounded-xl border border-white/10 hover:bg-white/10 transition-colors shrink-0 active:scale-90"
             >
-              <ArrowLeft className="w-5 h-5 text-white" />
+              <ArrowLeft className="w-4.5 h-4.5 text-white" />
             </button>
+            {activeCheck.player?.photo_url ? (
+              <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 border border-white/10">
+                <img src={activeCheck.player.photo_url} alt="" className="w-full h-full object-cover" />
+              </div>
+            ) : activeCheck.player ? (
+              <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
+                <span className="text-xs font-bold text-white/60">{activeCheck.player.nickname?.charAt(0).toUpperCase()}</span>
+              </div>
+            ) : null}
             <div className="min-w-0">
-              <h2 className="text-[15px] font-black italic uppercase leading-none truncate text-white">
+              <h2 className="text-[14px] font-black italic uppercase leading-none truncate text-white">
                 {activeCheck.space
                   ? activeCheck.space.name
                   : (() => {
@@ -628,10 +718,17 @@ export function CheckView({ onBack }: CheckViewProps) {
                   })()
                 }
               </h2>
-              <p className="text-[10px] text-white/40 font-bold uppercase mt-0.5 tracking-widest">
-                {new Date(activeCheck.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                {cartCount > 0 && <> · {cartCount} поз.</>}
-              </p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
+                  {new Date(activeCheck.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                  {cartCount > 0 && <> · {cartCount} поз.</>}
+                </span>
+                {activeCheck.player && activeCheck.player.bonus_points > 0 && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-400/80">
+                    <Star className="w-2.5 h-2.5" />{activeCheck.player.bonus_points}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex gap-1.5 shrink-0">
@@ -705,12 +802,15 @@ export function CheckView({ onBack }: CheckViewProps) {
           <div className="space-y-3 stagger-children">
             {cart.filter((ci) => ci?.item).map((ci, cartIdx) => {
               const cartKey = ci.item.id + ((ci.modifiers || []).map((m) => m.id).sort().join(','));
+              const hasMods = (productModifiers[ci.item.id]?.length ?? 0) > 0;
               return (
                 <CartItemRow
                   key={cartKey || cartIdx}
                   ci={ci}
                   onRemove={removeFromCart}
                   onUpdateQty={updateCartQuantity}
+                  onModifiersClick={hasMods ? () => openModifiersForCartItem(ci) : undefined}
+                  hasModifiers={hasMods}
                 />
               );
             })}
@@ -855,8 +955,10 @@ export function CheckView({ onBack }: CheckViewProps) {
                             key={item.id}
                             item={item}
                             inCartQty={inCartQty}
+                            iconName={cat?.icon_name}
                             colors={colors}
                             onAdd={handleAdd}
+                            onDecrease={handleDecrease}
                           />
                         );
                       })}
@@ -879,6 +981,7 @@ export function CheckView({ onBack }: CheckViewProps) {
                         item={item}
                         inCartQty={inCartQty}
                         categoryName={cat?.name || item.category}
+                        iconName={cat?.icon_name}
                         colors={colors}
                         onAdd={handleAdd}
                         onDecrease={handleDecrease}
@@ -899,55 +1002,58 @@ export function CheckView({ onBack }: CheckViewProps) {
         document.body
       )}
 
-      {/* Modifiers selection */}
+      {/* Modifiers panel — выдвигающаяся панель при нажатии на позицию в чеке */}
       <Drawer
         open={showModifiers}
-        onClose={() => { setShowModifiers(false); setModifierItem(null); }}
-        title={modifierItem ? `Модификаторы: ${modifierItem.name}` : 'Модификаторы'}
+        onClose={() => { setShowModifiers(false); setEditingCartItem(null); }}
+        title={editingCartItem ? `Модификаторы: ${editingCartItem.item.name}` : 'Модификаторы'}
         size="sm"
       >
-        <div className="space-y-3">
-          {availableModifiers.map((mod) => {
-            const isSelected = selectedModifierIds.includes(mod.id);
-            return (
-              <button
-                key={mod.id}
-                onClick={() => {
-                  hapticFeedback('light');
-                  setSelectedModifierIds((prev) =>
-                    isSelected ? prev.filter((id) => id !== mod.id) : [...prev, mod.id]
-                  );
-                }}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all active:scale-[0.97] ${isSelected ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/20' : 'card'
-                  }`}
-              >
-                <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-[var(--c-accent)]' : 'border border-[var(--c-muted)]'
-                  }`}>
-                  {isSelected && <Plus className="w-3 h-3 text-white rotate-45" />}
+        {editingCartItem && (
+          <div className="space-y-3">
+            {(productModifiers[editingCartItem.item.id] || []).map((mod) => {
+              const count = modifierCounts[mod.id] ?? 0;
+              return (
+                <div
+                  key={mod.id}
+                  className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/5"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[13px] text-white">{mod.name}</p>
+                    {mod.price > 0 && (
+                      <p className="text-[11px] text-white/50 mt-0.5">+{fmtCur(mod.price)}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => {
+                        hapticFeedback('light');
+                        setModifierCounts((prev) => ({ ...prev, [mod.id]: Math.max(0, (prev[mod.id] ?? 0) - 1) }));
+                      }}
+                      disabled={count <= 0}
+                      className="w-9 h-9 rounded-lg flex items-center justify-center bg-white/10 border border-white/10 disabled:opacity-30 disabled:pointer-events-none active:scale-90"
+                    >
+                      <Minus className="w-4 h-4 text-white" />
+                    </button>
+                    <span className="w-8 text-center font-black text-sm text-white tabular-nums">{count}</span>
+                    <button
+                      onClick={() => {
+                        hapticFeedback('light');
+                        setModifierCounts((prev) => ({ ...prev, [mod.id]: (prev[mod.id] ?? 0) + 1 }));
+                      }}
+                      className="w-9 h-9 rounded-lg flex items-center justify-center bg-white/10 border border-white/10 active:scale-90"
+                    >
+                      <Plus className="w-4 h-4 text-white" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-[13px] text-[var(--c-text)]">{mod.name}</p>
-                </div>
-                {mod.price > 0 && (
-                  <span className="text-sm font-bold text-[var(--c-accent)] tabular-nums shrink-0">+{fmtCur(mod.price)}</span>
-                )}
-              </button>
-            );
-          })}
-
-          <div className="flex gap-2 pt-2">
-            <Button
-              variant="ghost"
-              onClick={() => { if (modifierItem) addToCart(modifierItem); setShowModifiers(false); setModifierItem(null); }}
-              className="flex-1"
-            >
-              Без добавок
-            </Button>
-            <Button onClick={confirmModifiers} className="flex-1">
-              Добавить{selectedModifierIds.length > 0 ? ` (${selectedModifierIds.length})` : ''}
+              );
+            })}
+            <Button onClick={applyModifiersFromCart} className="w-full mt-4">
+              Применить
             </Button>
           </div>
-        </div>
+        )}
       </Drawer>
 
       <PaymentDrawer
@@ -969,7 +1075,7 @@ export function CheckView({ onBack }: CheckViewProps) {
       >
         <div className="space-y-3">
           {(() => {
-            const manualDiscounts = discountsList.filter((d) => !d.min_quantity);
+            const manualDiscounts = discountsList.filter((d) => !d.min_quantity && !d.is_auto);
             const qtyDiscounts = discountsList.filter((d) => d.min_quantity && d.min_quantity > 0);
 
             return manualDiscounts.length === 0 && qtyDiscounts.length === 0 ? (

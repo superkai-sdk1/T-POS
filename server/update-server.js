@@ -151,7 +151,7 @@ const server = http.createServer((req, res) => {
         try { execSync('systemctl restart tpos-wallet-bot', { timeout: 5000 }); } catch { }
         try { execSync('systemctl restart tpos-admin-bot', { timeout: 5000 }); } catch { }
         try { execSync('systemctl restart tpos-update', { timeout: 5000 }); } catch { }
-        send({ type: 'complete', message: 'Обновление завершено. Если добавлены новые таблицы — выполните SQL из supabase/migration.sql в Supabase Dashboard.' });
+        send({ type: 'complete', message: 'Обновление завершено. Если добавлены новые таблицы — выполните SQL из supabase/migration.sql (или supabase/migrations/) в Supabase Dashboard → SQL Editor.' });
         res.end();
         updateInProgress = false;
         return;

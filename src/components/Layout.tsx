@@ -419,12 +419,12 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
             className="lg:hidden shrink-0 z-40 select-none bg-[#0d0d12] border-b border-white/5"
             style={{
               paddingTop: 'var(--safe-top)',
-              paddingBottom: '12px',
+              paddingBottom: '8px',
               paddingLeft: 'var(--safe-left)',
               paddingRight: 'var(--safe-right)',
             }}
           >
-            <div className="flex items-center justify-between px-4">
+              <div className="flex items-center justify-between px-3">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -451,23 +451,23 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
                     }
                   }}
                   disabled={isRefreshing}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white/40 hover:text-white/70 active:scale-90 transition-all shrink-0 disabled:opacity-50"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white/70 active:scale-90 transition-all shrink-0 disabled:opacity-50"
                   aria-label="Обновить"
                 >
-                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
                 </button>
                 <div className="flex flex-col items-end">
-                  <span className="text-[9px] text-white/40 uppercase tracking-widest">В кассе</span>
-                  <span className="text-xl font-black tracking-tight text-white italic tabular-nums">
+                  <span className="text-[8px] text-white/40 uppercase tracking-widest">В кассе</span>
+                  <span className="text-lg font-black tracking-tight text-white italic tabular-nums">
                     {cashInRegister != null ? `${cashInRegister.toLocaleString('ru-RU')} ₽` : '—'}
                   </span>
                 </div>
                 <button
                   onClick={() => useAuthStore.getState().logout()}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center text-white/40 hover:text-rose-400 active:scale-90 transition-all shrink-0"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-rose-400 active:scale-90 transition-all shrink-0"
                   aria-label="Выйти"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
@@ -477,22 +477,22 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
             className="lg:hidden shrink-0 z-40 select-none relative"
             style={{
               paddingTop: `var(--safe-top)`,
-              height: 'calc(var(--safe-top) + 50px)',
+              height: 'calc(var(--safe-top) + 40px)',
               background: 'rgba(10, 14, 26, 0.85)',
               backdropFilter: 'blur(40px) saturate(1.8)',
               WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
               borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
             }}
           >
-            <div className="absolute inset-0 flex items-center justify-between px-4 pt-[var(--safe-top)]">
-              <h1 className="text-[15px] font-bold text-white">
+            <div className="absolute inset-0 flex items-center justify-between px-3 pt-[var(--safe-top)]">
+              <h1 className="text-[14px] font-bold text-white">
                 {tabs.find(t => t.id === activeTab)?.label ?? ''}
               </h1>
               <button
                 onClick={() => useAuthStore.getState().logout()}
-                className="w-9 h-9 rounded-xl flex items-center justify-center text-[var(--c-hint)] active:scale-90 transition-all"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--c-hint)] active:scale-90 transition-all"
               >
-                <LogOut className="w-4 h-4" />
+                <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
           </header>
@@ -528,25 +528,25 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
               <CheckPaymentPanel sidebarCollapsed={isSidebarCollapsed} />
             </div>
           ) : (
-          <div className="lg:hidden fixed bottom-5 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-[60]">
-            <div className="absolute inset-0 bg-white/[0.06] backdrop-blur-3xl rounded-[2rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
-            <nav className="relative p-2.5 flex items-center justify-center">
+          <div className="lg:hidden fixed bottom-3 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-[60]">
+            <div className="absolute inset-0 bg-white/[0.06] backdrop-blur-3xl rounded-[1.5rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
+            <nav className="relative p-2 flex items-center justify-center">
               {tabs.slice(0, 2).map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     onClick={() => onTabChange(tab.id)}
-                    className={`relative flex-1 py-2 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 tap ${isActive ? 'text-white' : 'text-white/30'}`}
+                    className={`relative flex-1 py-1.5 rounded-xl transition-all flex flex-col items-center justify-center gap-0.5 tap ${isActive ? 'text-white' : 'text-white/30'}`}
                   >
-                    {isActive && <div className="absolute inset-0 bg-white/[0.06] rounded-2xl border border-white/5" />}
-                    <tab.icon className="w-5 h-5 shrink-0 relative z-10" />
-                    <span className="text-[9px] font-black uppercase tracking-tighter relative z-10">{tab.label}</span>
+                    {isActive && <div className="absolute inset-0 bg-white/[0.06] rounded-xl border border-white/5" />}
+                    <tab.icon className="w-4 h-4 shrink-0 relative z-10" />
+                    <span className="text-[8px] font-black uppercase tracking-tighter relative z-10">{tab.label}</span>
                   </button>
                 );
               })}
 
-              <div className="mx-2 shrink-0">
+              <div className="mx-1.5 shrink-0">
                 <button
                   onClick={() => {
                     hapticFeedback('medium');
@@ -558,9 +558,9 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
                   className="relative group flex items-center justify-center disabled:opacity-30"
                 >
                   <div className="absolute inset-0 bg-[#8b5cf6] blur-2xl opacity-40 group-hover:opacity-60 transition-opacity rounded-full" />
-                  <div className="relative w-14 h-14 bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] rounded-full flex items-center justify-center shadow-[0_8px_30px_rgba(139,92,246,0.4)] border-4 border-[#0a0e1a] transition-all active:scale-90">
-                    <Plus className="w-7 h-7 text-white drop-shadow-md" />
-                    <div className="absolute top-1 left-2 w-7 h-3 bg-white/20 rounded-full blur-[2px] -rotate-15" />
+                  <div className="relative w-11 h-11 bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] rounded-full flex items-center justify-center shadow-[0_8px_30px_rgba(139,92,246,0.4)] border-[3px] border-[#0a0e1a] transition-all active:scale-90">
+                    <Plus className="w-5 h-5 text-white drop-shadow-md" />
+                    <div className="absolute top-0.5 left-1.5 w-5 h-2 bg-white/20 rounded-full blur-[2px] -rotate-15" />
                   </div>
                 </button>
               </div>
@@ -571,11 +571,11 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
                   <button
                     key={tab.id}
                     onClick={() => onTabChange(tab.id)}
-                    className={`relative flex-1 py-2 rounded-2xl transition-all flex flex-col items-center justify-center gap-1 tap ${isActive ? 'text-white' : 'text-white/30'}`}
+                    className={`relative flex-1 py-1.5 rounded-xl transition-all flex flex-col items-center justify-center gap-0.5 tap ${isActive ? 'text-white' : 'text-white/30'}`}
                   >
-                    {isActive && <div className="absolute inset-0 bg-white/[0.06] rounded-2xl border border-white/5" />}
-                    <tab.icon className="w-5 h-5 shrink-0 relative z-10" />
-                    <span className="text-[9px] font-black uppercase tracking-tighter relative z-10">{tab.label}</span>
+                    {isActive && <div className="absolute inset-0 bg-white/[0.06] rounded-xl border border-white/5" />}
+                    <tab.icon className="w-4 h-4 shrink-0 relative z-10" />
+                    <span className="text-[8px] font-black uppercase tracking-tighter relative z-10">{tab.label}</span>
                   </button>
                 );
               })}

@@ -838,3 +838,30 @@ alter table profiles add column if not exists deleted_at timestamptz default nul
 update profiles set pin = '0000' where nickname = 'Салим' and pin is null;
 update profiles set pin = '5757' where nickname = 'Тигран' and pin is null;
 update profiles set pin = '0780' where nickname = 'Kai' and pin is null;
+
+-- ==============================
+-- Client discount rules (авто-скидки для клиентов на позиции)
+-- ==============================
+alter table discounts add column if not exists is_auto boolean not null default false;
+create table if not exists client_discount_rules (
+  id uuid primary key default gen_random_uuid(),
+  discount_id uuid not null references discounts(id) on delete cascade,
+  profile_id uuid not null references profiles(id) on delete cascade,
+  item_id uuid not null references inventory(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique(profile_id, item_id)
+);
+create index if not exists idx_client_discount_rules_discount on client_discount_rules(discount_id);
+create index if not exists idx_client_discount_rules_profile on client_discount_rules(profile_id);
+create index if not exists idx_client_discount_rules_item on client_discount_rules(item_id);
+alter table client_discount_rules enable row level security;
+drop policy if exists "client_discount_rules_all" on client_discount_rules;
+create policy "client_discount_rules_all" on client_discount_rules for all using (true) with check (true);
+alter table check_discounts add column if not exists client_rule_id uuid references client_discount_rules(id) on delete set null;
+do $$
+begin
+  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'client_discount_rules') then
+    alter publication supabase_realtime add table client_discount_rules;
+  end if;
+end $$;
+alter table client_discount_rules replica identity full;
