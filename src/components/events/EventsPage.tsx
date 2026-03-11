@@ -298,7 +298,7 @@ export function EventsPage() {
                                         <>
                                             <Button
                                                 size="sm"
-                                                variant="outline"
+                                                variant="ghost"
                                                 fullWidth
                                                 disabled={isSubmitting}
                                                 onClick={() => handleCancelEvent(event)}

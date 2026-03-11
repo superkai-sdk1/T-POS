@@ -84,37 +84,15 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
   const cartTotal = getCartTotal();
   const total = cartTotal + spaceRental + (linkedEvent ? (linkedEvent.fixed_amount || 0) : 0);
 
-  // Загружаем мероприятие, привязанное к текущему чеку
   useEffect(() => {
-    let cancelled = false;
-    const loadEvent = async () => {
-      if (!activeCheck?.id) {
-        if (!cancelled) {
-          setLinkedEvent(null);
-          setEventAmount(0);
-        }
-        return;
-      }
-      const { data, error } = await supabase
-        .from('events')
-        .select('id, fixed_amount')
-        .eq('check_id', activeCheck.id)
-        .maybeSingle();
-      if (cancelled) return;
-      if (error || !data) {
-        setLinkedEvent(null);
-        setEventAmount(0);
-      } else {
-        const ev = data as Pick<Event, 'id' | 'fixed_amount'>;
-        setLinkedEvent(ev as Event);
-        setEventAmount(ev.fixed_amount ?? 0);
-      }
-    };
-    loadEvent();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeCheck?.id]);
+    if (activeCheck?.event) {
+      setLinkedEvent(activeCheck.event);
+      setEventAmount(activeCheck.event.fixed_amount ?? 0);
+    } else {
+      setLinkedEvent(null);
+      setEventAmount(0);
+    }
+  }, [activeCheck]);
 
   useEffect(() => {
     if (open && !closing) {

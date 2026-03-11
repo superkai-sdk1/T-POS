@@ -64,6 +64,9 @@ export function isSavingCart() { return _savingCart; }
 const _cancellingCheckIds = new Set<string>();
 export function isCancellingCheck(checkId: string) { return _cancellingCheckIds.has(checkId); }
 
+const _closingCheckIds = new Set<string>();
+export function isClosingCheck(checkId: string) { return _closingCheckIds.has(checkId); }
+
 let _lastCartFingerprint = '';
 let _savePromise: Promise<void> | null = null;
 
@@ -765,7 +768,6 @@ export const usePOSStore = create<POSState>((set, get) => ({
       return false;
     }
     _cancellingCheckIds.delete(checkId);
-    await get().loadOpenChecks();
     return true;
   },
 
@@ -779,16 +781,16 @@ export const usePOSStore = create<POSState>((set, get) => ({
   closeCheck: async (payments: PaymentPortion[], bonusUsed = 0, spaceRental = 0, certificateUsed = 0, certificateId: string | null = null) => {
     const { activeCheck, cart } = get();
     if (!activeCheck) return false;
+    const checkId = activeCheck.id;
     const user = useAuthStore.getState().user;
 
     const cartTotal = get().getCartTotal();
 
-    // Учитываем сумму мероприятия, если чек привязан к событию
     let eventAmount = 0;
     const { data: ev } = await supabase
       .from('events')
       .select('id, fixed_amount')
-      .eq('check_id', activeCheck.id)
+      .eq('check_id', checkId)
       .maybeSingle();
     if (ev) {
       eventAmount = (ev as { fixed_amount: number | null }).fixed_amount || 0;
@@ -805,6 +807,26 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const isSplit = payments.length > 1;
     const primaryMethod: PaymentMethod = isSplit ? 'split' : payments[0]?.method || 'cash';
 
+    _closingCheckIds.add(checkId);
+
+    set((state) => {
+      const { [checkId]: _carts, ...restCarts } = state.openCheckCarts;
+      const { [checkId]: _items, ...restItems } = state.openCheckItems;
+      const { [checkId]: _discs, ...restDiscs } = state.openCheckDiscounts;
+      void _carts; void _items; void _discs;
+      return {
+        openChecks: state.openChecks.filter(c => c.id !== checkId),
+        openCheckCarts: restCarts,
+        openCheckItems: restItems,
+        openCheckDiscounts: restDiscs,
+        activeCheck: null,
+        cart: [],
+        checkItems: [],
+        appliedDiscounts: [],
+        recentlyDeletedCheck: { ...activeCheck },
+      };
+    });
+
     const { error: closeErr } = await supabase
       .from('checks')
       .update({
@@ -817,25 +839,18 @@ export const usePOSStore = create<POSState>((set, get) => ({
         discount_total: discountTotal,
         closed_at: new Date().toISOString(),
       })
-      .eq('id', activeCheck.id);
+      .eq('id', checkId);
 
     if (closeErr) {
       console.error('closeCheck update error:', closeErr);
+      _closingCheckIds.delete(checkId);
+      await get().loadOpenChecks();
       return false;
     }
 
-    set((state) => ({
-      openChecks: state.openChecks.filter(c => c.id !== activeCheck.id),
-      activeCheck: null,
-      cart: [],
-      checkItems: [],
-      appliedDiscounts: [],
-      recentlyDeletedCheck: { ...activeCheck },
-    }));
-
     if (payments.length > 0) {
       const paymentRows = payments.map((p) => ({
-        check_id: activeCheck.id,
+        check_id: checkId,
         method: p.method,
         amount: p.amount,
       }));
@@ -897,7 +912,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
           type: 'bonus_spend',
           amount: bonusUsed,
           description: `Списание бонусов по чеку`,
-          check_id: activeCheck.id,
+          check_id: checkId,
           player_id: activeCheck.player_id,
           created_by: user?.id,
         });
@@ -915,7 +930,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
           type: 'bonus_accrual',
           amount: bonusAccrual,
           description: `Начисление бонусов (${bonusRate}% от ${total}₽)`,
-          check_id: activeCheck.id,
+          check_id: checkId,
           player_id: activeCheck.player_id,
           created_by: user?.id,
         });
@@ -936,7 +951,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
           type: 'debt_adjustment',
           amount: -depositPayAmount,
           description: `Оплата с депозита по чеку (было ${player.balance}₽, стало ${newBal}₽)`,
-          check_id: activeCheck.id,
+          check_id: checkId,
           player_id: activeCheck.player_id,
           created_by: user?.id,
         });
@@ -952,7 +967,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       type: 'sale',
       amount: finalAmount,
       description: `Закрытие чека (${methodDesc})`,
-      check_id: activeCheck.id,
+      check_id: checkId,
       player_id: activeCheck.player_id || null,
       created_by: user?.id,
     });
@@ -962,7 +977,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
         type: 'sale',
         amount: 0,
         description: `Оплата сертификатом: ${certificateUsed}₽${certificateId ? ` (${certificateId.slice(0, 8)})` : ''}`,
-        check_id: activeCheck.id,
+        check_id: checkId,
         player_id: activeCheck.player_id || null,
         created_by: user?.id,
       });
@@ -986,23 +1001,23 @@ export const usePOSStore = create<POSState>((set, get) => ({
       await supabase
         .from('bookings')
         .update({ status: 'completed' })
-        .eq('check_id', activeCheck.id)
+        .eq('check_id', checkId)
         .eq('status', 'active');
     }
 
     await supabase
       .from('events')
       .update({ status: 'completed' })
-      .eq('check_id', activeCheck.id)
+      .eq('check_id', checkId)
       .neq('status', 'completed');
 
-    await get().loadOpenChecks();
-    await get().loadInventory();
+    _closingCheckIds.delete(checkId);
+    get().loadInventory();
     return true;
   },
 
   refreshCheckById: async (checkId: string) => {
-    if (_cancellingCheckIds.has(checkId)) return;
+    if (_cancellingCheckIds.has(checkId) || _closingCheckIds.has(checkId)) return;
 
     const { data: checkData } = await supabase
       .from('checks')

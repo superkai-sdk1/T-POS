@@ -30,34 +30,14 @@ function CheckPaymentPanel({ sidebarCollapsed }: { sidebarCollapsed: boolean }) 
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
 
   useEffect(() => {
-    let cancelled = false;
-    const loadEvent = async () => {
-      if (!activeCheck?.id) {
-        if (!cancelled) {
-          setHasEvent(false);
-          setEventAmount(0);
-        }
-        return;
-      }
-      const { data, error } = await supabase
-        .from('events')
-        .select('id, fixed_amount')
-        .eq('check_id', activeCheck.id)
-        .maybeSingle();
-      if (cancelled) return;
-      if (error || !data) {
-        setHasEvent(false);
-        setEventAmount(0);
-      } else {
-        setHasEvent(true);
-        setEventAmount((data as { fixed_amount: number | null }).fixed_amount || 0);
-      }
-    };
-    loadEvent();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeCheck?.id]);
+    if (activeCheck?.event) {
+      setHasEvent(true);
+      setEventAmount(activeCheck.event.fixed_amount || 0);
+    } else {
+      setHasEvent(false);
+      setEventAmount(0);
+    }
+  }, [activeCheck]);
 
   return (
     <div
