@@ -6,7 +6,7 @@ import { SwipeableRow } from '@/components/ui/SwipeableRow';
 import { usePOSStore, type PaymentPortion } from '@/store/pos';
 import { supabase } from '@/lib/supabase';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
-import { Banknote, CreditCard, Clock, Star, Split, Plus, Minus, ArrowLeft, Ticket, X } from 'lucide-react';
+import { Banknote, CreditCard, Clock, Star, Split, Plus, Minus, ArrowLeft, Ticket, X, PiggyBank } from 'lucide-react';
 import type { PaymentMethod, Profile, Certificate } from '@/types';
 
 interface PaymentDrawerProps {
@@ -20,10 +20,11 @@ const methodConfig: { method: PaymentMethod; label: string; icon: typeof Banknot
   { method: 'cash', label: 'Наличные', icon: Banknote, color: 'text-[var(--c-success)]', bg: 'bg-[var(--c-success-bg)] border-[var(--c-success-border)]' },
   { method: 'card', label: 'Карта', icon: CreditCard, color: 'text-[var(--c-info)]', bg: 'bg-[var(--c-info-bg)] border-[var(--c-info-border)]' },
   { method: 'bonus', label: 'Бонусы', icon: Star, color: 'text-[var(--c-warning)]', bg: 'bg-[var(--c-warning-bg)] border-[var(--c-warning-border)]' },
+  { method: 'deposit', label: 'Депозит', icon: PiggyBank, color: 'text-[#06b6d4]', bg: 'bg-[#06b6d4]/10 border-[#06b6d4]/20' },
   { method: 'debt', label: 'В долг', icon: Clock, color: 'text-[var(--c-danger)]', bg: 'bg-[var(--c-danger-bg)] border-[var(--c-danger-border)]' },
 ];
 
-type PayScreen = 'main' | 'bonus' | 'split' | 'certificate';
+type PayScreen = 'main' | 'bonus' | 'split' | 'certificate' | 'deposit';
 
 function useVisualViewport() {
   const [height, setHeight] = useState(() => window.visualViewport?.height ?? window.innerHeight);
@@ -76,6 +77,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
   const [certError, setCertError] = useState('');
   const [appliedCert, setAppliedCert] = useState<Certificate | null>(null);
   const [certLoading, setCertLoading] = useState(false);
+  const [depositAmount, setDepositAmount] = useState(0);
 
   const total = getCartTotal() + spaceRental;
 
@@ -123,6 +125,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
       setIsProcessing(false);
       setScreen('main');
       setBonusAmount(0);
+      setDepositAmount(0);
       setSplitPayments([]);
       setSplitAmount('');
       setCertCode('');
@@ -133,6 +136,10 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
 
   const maxBonus = Math.min(playerInfo?.bonus_points || 0, Math.floor(total * 0.5));
   const bonusRemainder = total - bonusAmount;
+
+  const playerDeposit = Math.max(0, playerInfo?.balance || 0);
+  const maxDeposit = Math.min(playerDeposit, total);
+  const depositRemainder = total - depositAmount;
 
   const splitPaid = splitPayments.reduce((s, p) => s + p.amount, 0);
   const splitRemaining = Math.max(0, total - splitPaid);
@@ -149,6 +156,17 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
     presets.push(maxBonus);
     return presets;
   }, [maxBonus]);
+
+  const depositPresets = useMemo(() => {
+    if (maxDeposit <= 0) return [];
+    const presets: number[] = [];
+    const quarter = Math.floor(maxDeposit * 0.25);
+    const half = Math.floor(maxDeposit * 0.5);
+    if (quarter > 0 && quarter !== maxDeposit) presets.push(quarter);
+    if (half > 0 && half !== quarter && half !== maxDeposit) presets.push(half);
+    presets.push(maxDeposit);
+    return presets;
+  }, [maxDeposit]);
 
   const handleSimplePay = async (method: PaymentMethod) => {
     if (isProcessing) return;
@@ -171,10 +189,25 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
     else { hapticNotification('error'); }
   };
 
+  const handleDepositConfirm = async (remainderMethod: PaymentMethod) => {
+    if (depositAmount <= 0 || isProcessing) return;
+    setIsProcessing(true);
+    const payments: PaymentPortion[] = [{ method: 'deposit', amount: depositAmount }];
+    if (depositRemainder > 0) payments.push({ method: remainderMethod, amount: depositRemainder });
+    const ok = await closeCheck(payments, 0, spaceRental);
+    setIsProcessing(false);
+    if (ok) { hapticNotification('success'); onSuccess(); }
+    else { hapticNotification('error'); }
+  };
+
+  const splitDepositUsed = splitPayments.filter((p) => p.method === 'deposit').reduce((s, p) => s + p.amount, 0);
+  const splitDepositAvailable = Math.max(0, playerDeposit - splitDepositUsed);
+
   const addSplitPayment = () => {
     const amt = Number(splitAmount);
     if (!amt || amt <= 0 || amt > splitRemaining) return;
     if (splitMethod === 'bonus' && amt > splitBonusAvailable) return;
+    if (splitMethod === 'deposit' && amt > splitDepositAvailable) return;
     if (splitMethod === 'debt' && !activeCheck?.player_id) return;
     hapticFeedback('light');
     setSplitPayments([...splitPayments, { method: splitMethod, amount: amt }]);
@@ -184,6 +217,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
   const addSplitRemainder = (method: PaymentMethod) => {
     if (splitRemaining <= 0) return;
     if (method === 'bonus' && splitRemaining > splitBonusAvailable) return;
+    if (method === 'deposit' && splitRemaining > splitDepositAvailable) return;
     if (method === 'debt' && !activeCheck?.player_id) return;
     hapticFeedback('light');
     setSplitPayments([...splitPayments, { method, amount: splitRemaining }]);
@@ -263,6 +297,18 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
     setBonusAmount((v) => Math.max(0, Math.min(maxBonus, v + delta * step)));
   };
 
+  const openDepositScreen = () => {
+    hapticFeedback('light');
+    setDepositAmount(maxDeposit);
+    setScreen('deposit');
+  };
+
+  const adjustDeposit = (delta: number) => {
+    hapticFeedback('light');
+    const step = Math.max(10, Math.round(maxDeposit / 20) * 10) || 10;
+    setDepositAmount((v) => Math.max(0, Math.min(maxDeposit, v + delta * step)));
+  };
+
   if (!open && !closing) return null;
 
   const overlayOpacity = closing ? 0 : visible ? 1 : 0;
@@ -323,9 +369,9 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
               </div>
               <div>
                 <h4 className="font-bold text-white">{playerInfo.nickname}</h4>
-                <div className="flex gap-2 mt-1">
-                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-bold border uppercase tracking-tighter ${playerInfo.balance < 0 ? 'bg-[#f43f5e]/10 text-[#f43f5e] border-[#f43f5e]/20' : 'bg-white/5 text-white/40 border-white/5'}`}>
-                    {playerInfo.balance} ₽
+                <div className="flex gap-2 mt-1 flex-wrap">
+                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-bold border uppercase tracking-tighter ${playerInfo.balance < 0 ? 'bg-[#f43f5e]/10 text-[#f43f5e] border-[#f43f5e]/20' : playerInfo.balance > 0 ? 'bg-[#06b6d4]/10 text-[#06b6d4] border-[#06b6d4]/20' : 'bg-white/5 text-white/40 border-white/5'}`}>
+                    {playerInfo.balance > 0 ? `Депозит: ${playerInfo.balance}₽` : `${playerInfo.balance}₽`}
                   </span>
                   {playerInfo.bonus_points > 0 && (
                     <span className="px-2 py-0.5 bg-[#10b981]/10 rounded-lg text-[9px] font-bold text-[#10b981] border border-[#10b981]/20 uppercase flex items-center gap-1">
@@ -346,40 +392,76 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
 
           {screen === 'main' && (
             <>
-              <div className={`grid gap-3 ${activeCheck?.player_id && maxBonus > 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                <button
-                  onClick={() => handleSimplePay('cash')}
-                  disabled={isProcessing}
-                  className="flex flex-col items-center gap-3 p-5 bg-[#10b981]/5 border border-[#10b981]/20 rounded-[2rem] hover:bg-[#10b981]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30"
-                >
-                  <div className="p-3 bg-[#10b981]/10 rounded-2xl text-[#10b981] group-hover:scale-110 transition-transform">
-                    <Banknote size={24} />
+              {(() => {
+                const hasBonus = activeCheck?.player_id && maxBonus > 0;
+                const hasDeposit = activeCheck?.player_id && playerDeposit > 0;
+                const extraCols = (hasBonus ? 1 : 0) + (hasDeposit ? 1 : 0);
+                const cols = 2 + Math.min(extraCols, 1);
+                return (
+                  <div className={`grid gap-3 ${cols === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                    <button
+                      onClick={() => handleSimplePay('cash')}
+                      disabled={isProcessing}
+                      className="flex flex-col items-center gap-3 p-5 bg-[#10b981]/5 border border-[#10b981]/20 rounded-[2rem] hover:bg-[#10b981]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30"
+                    >
+                      <div className="p-3 bg-[#10b981]/10 rounded-2xl text-[#10b981] group-hover:scale-110 transition-transform">
+                        <Banknote size={24} />
+                      </div>
+                      <span className="text-[10px] font-black uppercase text-[#10b981] tracking-widest">Наличные</span>
+                    </button>
+                    <button
+                      onClick={() => handleSimplePay('card')}
+                      disabled={isProcessing}
+                      className="flex flex-col items-center gap-3 p-5 bg-[#3b82f6]/5 border border-[#3b82f6]/20 rounded-[2rem] hover:bg-[#3b82f6]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30"
+                    >
+                      <div className="p-3 bg-[#3b82f6]/10 rounded-2xl text-[#3b82f6] group-hover:scale-110 transition-transform">
+                        <CreditCard size={24} />
+                      </div>
+                      <span className="text-[10px] font-black uppercase text-[#3b82f6] tracking-widest">Карта</span>
+                    </button>
+                    {hasDeposit && (
+                      <button
+                        onClick={openDepositScreen}
+                        disabled={isProcessing}
+                        className="flex flex-col items-center gap-3 p-5 bg-[#06b6d4]/5 border border-[#06b6d4]/20 rounded-[2rem] hover:bg-[#06b6d4]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30"
+                      >
+                        <div className="p-3 bg-[#06b6d4]/10 rounded-2xl text-[#06b6d4] group-hover:scale-110 transition-transform">
+                          <PiggyBank size={24} />
+                        </div>
+                        <span className="text-[10px] font-black uppercase text-[#06b6d4] tracking-widest">Депозит</span>
+                        <span className="text-[9px] text-white/30 -mt-2">{fmtCur(playerDeposit)}</span>
+                      </button>
+                    )}
+                    {hasBonus && !hasDeposit && (
+                      <button
+                        onClick={openBonusScreen}
+                        disabled={isProcessing}
+                        className="flex flex-col items-center gap-3 p-5 bg-[#f59e0b]/5 border border-[#f59e0b]/20 rounded-[2rem] hover:bg-[#f59e0b]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30"
+                      >
+                        <div className="p-3 bg-[#f59e0b]/10 rounded-2xl text-[#f59e0b] group-hover:scale-110 transition-transform">
+                          <Star size={24} />
+                        </div>
+                        <span className="text-[10px] font-black uppercase text-[#f59e0b] tracking-widest">Бонусы</span>
+                      </button>
+                    )}
                   </div>
-                  <span className="text-[10px] font-black uppercase text-[#10b981] tracking-widest">Наличные</span>
-                </button>
+                );
+              })()}
+
+              {/* Bonus & Deposit row (when both available but only one fit in grid) */}
+              {activeCheck?.player_id && playerDeposit > 0 && maxBonus > 0 && (
                 <button
-                  onClick={() => handleSimplePay('card')}
+                  onClick={openBonusScreen}
                   disabled={isProcessing}
-                  className="flex flex-col items-center gap-3 p-5 bg-[#3b82f6]/5 border border-[#3b82f6]/20 rounded-[2rem] hover:bg-[#3b82f6]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30"
+                  className="w-full flex items-center justify-between p-4 bg-[#f59e0b]/5 border border-[#f59e0b]/10 rounded-2xl group hover:bg-[#f59e0b]/10 transition-all active:scale-[0.97] disabled:opacity-30"
                 >
-                  <div className="p-3 bg-[#3b82f6]/10 rounded-2xl text-[#3b82f6] group-hover:scale-110 transition-transform">
-                    <CreditCard size={24} />
+                  <div className="flex items-center gap-3 text-[#f59e0b]">
+                    <Star size={20} />
+                    <span className="font-bold uppercase text-[11px] tracking-widest">Оплатить бонусами</span>
                   </div>
-                  <span className="text-[10px] font-black uppercase text-[#3b82f6] tracking-widest">Карта</span>
+                  <span className="text-[10px] font-bold text-white/30 tracking-widest uppercase">{fmtCur(playerInfo?.bonus_points || 0)} доступно</span>
                 </button>
-                {activeCheck?.player_id && maxBonus > 0 && (
-                  <button
-                    onClick={openBonusScreen}
-                    disabled={isProcessing}
-                    className="flex flex-col items-center gap-3 p-5 bg-[#f59e0b]/5 border border-[#f59e0b]/20 rounded-[2rem] hover:bg-[#f59e0b]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30"
-                  >
-                    <div className="p-3 bg-[#f59e0b]/10 rounded-2xl text-[#f59e0b] group-hover:scale-110 transition-transform">
-                      <Star size={24} />
-                    </div>
-                    <span className="text-[10px] font-black uppercase text-[#f59e0b] tracking-widest">Бонусы</span>
-                  </button>
-                )}
-              </div>
+              )}
 
               {activeCheck?.player_id && (
                 <button
@@ -508,6 +590,108 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                     {bonusRemainder > 0 && <span className="text-[10px] text-white/30 tabular-nums">{fmtCur(bonusRemainder)}</span>}
                   </button>
                 </div>
+              )}
+            </>
+          )}
+
+          {screen === 'deposit' && (
+            <>
+              <button
+                onClick={() => { setScreen('main'); setDepositAmount(0); }}
+                className="flex items-center gap-1.5 text-[12px] font-medium text-white/40 hover:text-white/60 transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                Назад к способам
+              </button>
+
+              <div className="p-5 rounded-[2rem] bg-[#06b6d4]/5 border border-[#06b6d4]/20 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-white/40 uppercase tracking-widest">Списать с депозита</span>
+                  <span className="text-[11px] text-white/30">Доступно: {fmtCur(playerDeposit)}</span>
+                </div>
+
+                <div className="flex items-center justify-center gap-3">
+                  <button
+                    onClick={() => adjustDeposit(-1)}
+                    disabled={depositAmount <= 0}
+                    className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20"
+                  >
+                    <Minus className="w-4 h-4 text-[#06b6d4]" />
+                  </button>
+                  <div className="text-center min-w-[100px]">
+                    <input
+                      type="number"
+                      value={depositAmount}
+                      onChange={(e) => setDepositAmount(Math.max(0, Math.min(maxDeposit, Number(e.target.value) || 0)))}
+                      className="w-full text-center text-3xl font-black italic text-[#06b6d4] bg-transparent outline-none tabular-nums"
+                      min={0}
+                      max={maxDeposit}
+                    />
+                    <p className="text-[10px] text-white/25 -mt-0.5">макс. {fmtCur(maxDeposit)}</p>
+                  </div>
+                  <button
+                    onClick={() => adjustDeposit(1)}
+                    disabled={depositAmount >= maxDeposit}
+                    className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20"
+                  >
+                    <Plus className="w-4 h-4 text-[#06b6d4]" />
+                  </button>
+                </div>
+
+                <div className="flex gap-1.5 justify-center">
+                  {depositPresets.map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => { hapticFeedback('light'); setDepositAmount(p); }}
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all active:scale-95 ${
+                        depositAmount === p
+                          ? 'bg-[#06b6d4]/15 text-[#06b6d4] border border-[#06b6d4]/30'
+                          : 'bg-white/5 text-white/30 border border-white/5'
+                      }`}
+                    >
+                      {fmtCur(p)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {depositAmount > 0 && depositRemainder > 0 && (
+                <div className="text-center">
+                  <p className="text-[11px] text-white/40">Остаток к оплате: <span className="font-bold text-white">{fmtCur(depositRemainder)}</span></p>
+                </div>
+              )}
+
+              {depositAmount > 0 && (
+                depositRemainder <= 0 ? (
+                  <button
+                    onClick={() => handleDepositConfirm('cash')}
+                    disabled={isProcessing}
+                    className="w-full py-3.5 rounded-2xl text-[13px] font-black uppercase tracking-widest text-white active:scale-[0.97] transition-transform disabled:opacity-30 bg-gradient-to-br from-[#06b6d4] to-[#0891b2] shadow-xl shadow-[#06b6d4]/30"
+                  >
+                    {isProcessing ? 'Обработка...' : 'Оплатить с депозита'}
+                  </button>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => handleDepositConfirm('cash')}
+                      disabled={isProcessing}
+                      className="flex flex-col items-center gap-2 p-4 bg-[#10b981]/5 border border-[#10b981]/20 rounded-[2rem] active:scale-[0.96] transition-all disabled:opacity-30"
+                    >
+                      <Banknote className="w-5 h-5 text-[#10b981]" />
+                      <span className="text-[10px] font-black uppercase text-[#10b981] tracking-widest">Остаток нал.</span>
+                      <span className="text-[10px] text-white/30 tabular-nums">{fmtCur(depositRemainder)}</span>
+                    </button>
+                    <button
+                      onClick={() => handleDepositConfirm('card')}
+                      disabled={isProcessing}
+                      className="flex flex-col items-center gap-2 p-4 bg-[#3b82f6]/5 border border-[#3b82f6]/20 rounded-[2rem] active:scale-[0.96] transition-all disabled:opacity-30"
+                    >
+                      <CreditCard className="w-5 h-5 text-[#3b82f6]" />
+                      <span className="text-[10px] font-black uppercase text-[#3b82f6] tracking-widest">Остаток карт.</span>
+                      <span className="text-[10px] text-white/30 tabular-nums">{fmtCur(depositRemainder)}</span>
+                    </button>
+                  </div>
+                )
               )}
             </>
           )}
@@ -641,7 +825,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                       <div
                         key={idx}
                         className={`h-full transition-all duration-300 first:rounded-l-full last:rounded-r-full ${
-                          sp.method === 'cash' ? 'bg-[#10b981]' : sp.method === 'card' ? 'bg-[#3b82f6]' : sp.method === 'bonus' ? 'bg-[#f59e0b]' : 'bg-[#f43f5e]'
+                          sp.method === 'cash' ? 'bg-[#10b981]' : sp.method === 'card' ? 'bg-[#3b82f6]' : sp.method === 'bonus' ? 'bg-[#f59e0b]' : sp.method === 'deposit' ? 'bg-[#06b6d4]' : 'bg-[#f43f5e]'
                         }`}
                         style={{ width: `${pct}%` }}
                       />
@@ -674,6 +858,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                       .filter((mc) => {
                         if (mc.method === 'debt' && !activeCheck?.player_id) return false;
                         if (mc.method === 'bonus' && (!activeCheck?.player_id || splitBonusAvailable <= 0)) return false;
+                        if (mc.method === 'deposit' && (!activeCheck?.player_id || playerDeposit <= 0)) return false;
                         return true;
                       })
                       .map((mc) => (
@@ -689,6 +874,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                         <mc.icon className="w-3 h-3" />
                         {mc.label}
                         {mc.method === 'bonus' && <span className="text-[9px] opacity-60">до {fmtCur(splitBonusAvailable)}</span>}
+                        {mc.method === 'deposit' && <span className="text-[9px] opacity-60">до {fmtCur(splitDepositAvailable)}</span>}
                       </button>
                     ))}
                   </div>
@@ -697,11 +883,11 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                     <Input
                       type="number"
                       compact
-                      placeholder={`Макс ${fmtCur(splitMethod === 'bonus' ? Math.min(splitRemaining, splitBonusAvailable) : splitRemaining)}`}
+                      placeholder={`Макс ${fmtCur(splitMethod === 'bonus' ? Math.min(splitRemaining, splitBonusAvailable) : splitMethod === 'deposit' ? Math.min(splitRemaining, splitDepositAvailable) : splitRemaining)}`}
                       value={splitAmount}
                       onChange={(e) => setSplitAmount(e.target.value)}
                       min={0}
-                      max={splitMethod === 'bonus' ? Math.min(splitRemaining, splitBonusAvailable) : splitRemaining}
+                      max={splitMethod === 'bonus' ? Math.min(splitRemaining, splitBonusAvailable) : splitMethod === 'deposit' ? Math.min(splitRemaining, splitDepositAvailable) : splitRemaining}
                       className="flex-1"
                     />
                     <Button size="sm" onClick={addSplitPayment} disabled={!splitAmount || Number(splitAmount) <= 0}>
@@ -714,6 +900,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                       .filter((mc) => {
                         if (mc.method === 'debt' && !activeCheck?.player_id) return false;
                         if (mc.method === 'bonus' && (!activeCheck?.player_id || splitBonusAvailable < splitRemaining)) return false;
+                        if (mc.method === 'deposit' && (!activeCheck?.player_id || playerDeposit < splitRemaining)) return false;
                         return true;
                       })
                       .map((mc) => (

@@ -157,7 +157,7 @@ export function useAnalyticsData() {
   const prevRevenue = useMemo(() => prevChecks.reduce((s, c) => s + (c.total_amount || 0), 0), [prevChecks]);
 
   const paymentBreakdown = useMemo(() => {
-    const b = { cash: 0, card: 0, debt: 0, bonus: 0 };
+    const b = { cash: 0, card: 0, debt: 0, bonus: 0, deposit: 0 };
     for (const c of checks) {
       const amt = c.total_amount || 0;
       if (c.payment_method === 'split' || c.payment_method === 'bonus') {

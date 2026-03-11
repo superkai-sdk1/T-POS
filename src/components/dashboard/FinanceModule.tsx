@@ -16,7 +16,7 @@ interface Props {
   cogs: number;
   periodExpenses: number;
   supplyCostInPeriod: number;
-  paymentBreakdown: { cash: number; card: number; debt: number; bonus: number };
+  paymentBreakdown: { cash: number; card: number; debt: number; bonus: number; deposit: number };
   debtors: Profile[];
   totalDebt: number;
   checkCount: number;
@@ -47,7 +47,7 @@ export const FinanceModule = memo(function FinanceModule(props: Props) {
 
   const [detail, setDetail] = useState<DetailView>(null);
   const revDelta = delta(revenue, prevRevenue);
-  const totalPayments = paymentBreakdown.cash + paymentBreakdown.card + paymentBreakdown.debt + paymentBreakdown.bonus;
+  const totalPayments = paymentBreakdown.cash + paymentBreakdown.card + paymentBreakdown.debt + paymentBreakdown.bonus + paymentBreakdown.deposit;
 
   if (detail) {
     return (
@@ -158,6 +158,7 @@ export const FinanceModule = memo(function FinanceModule(props: Props) {
             { label: 'Карта', value: paymentBreakdown.card, color: 'bg-sky-500' },
             { label: 'В долг', value: paymentBreakdown.debt, color: 'bg-red-500' },
             { label: 'Бонусы', value: paymentBreakdown.bonus, color: 'bg-amber-500' },
+            { label: 'Депозит', value: paymentBreakdown.deposit, color: 'bg-cyan-500' },
           ] as const).filter((pm) => pm.value > 0).map((pm) => {
             const pct = totalPayments > 0 ? (pm.value / totalPayments) * 100 : 0;
             return (
@@ -287,6 +288,7 @@ function DetailScreen(props: Props & { detail: DetailView; onBack: () => void })
           {paymentBreakdown.card > 0 && statRow('Карта', paymentBreakdown.card, 'text-[var(--c-info)]')}
           {paymentBreakdown.debt > 0 && statRow('В долг', paymentBreakdown.debt, 'text-[var(--c-danger)]')}
           {paymentBreakdown.bonus > 0 && statRow('Бонусы', paymentBreakdown.bonus, 'text-[var(--c-warning)]')}
+          {paymentBreakdown.deposit > 0 && statRow('Депозит', paymentBreakdown.deposit, 'text-cyan-400')}
         </div>
       </div>
     );

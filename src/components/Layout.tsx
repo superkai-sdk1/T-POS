@@ -137,7 +137,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
   }, [activeShift]);
 
   const pmLabel = (m: string) => {
-    const map: Record<string, string> = { cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы', split: 'Разделённая' };
+    const map: Record<string, string> = { cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы', deposit: 'Депозит', split: 'Разделённая' };
     return map[m] || m;
   };
 

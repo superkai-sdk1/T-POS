@@ -3,7 +3,7 @@ export type ClientTier = 'regular' | 'resident' | 'student';
 export type VisitTariff = 'regular' | 'resident' | 'student' | 'single_game';
 export type ItemCategory = string;
 export type CheckStatus = 'open' | 'closed';
-export type PaymentMethod = 'cash' | 'card' | 'debt' | 'bonus' | 'split';
+export type PaymentMethod = 'cash' | 'card' | 'debt' | 'bonus' | 'split' | 'deposit';
 export type TransactionType = 'supply' | 'write_off' | 'sale' | 'revision' | 'bonus_accrual' | 'bonus_spend' | 'cash_operation' | 'debt_adjustment' | 'refund';
 
 export interface Profile {

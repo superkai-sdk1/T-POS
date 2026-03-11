@@ -16,6 +16,7 @@ const PM_OPTIONS: { id: PaymentMethod; label: string }[] = [
   { id: 'card', label: 'Карта' },
   { id: 'debt', label: 'Долг' },
   { id: 'bonus', label: 'Бонусы' },
+  { id: 'deposit', label: 'Депозит' },
 ];
 
 interface Props {

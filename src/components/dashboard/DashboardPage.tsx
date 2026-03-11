@@ -20,7 +20,7 @@ type TabId = 'finance' | 'checks' | 'products' | 'players' | 'ai';
 const REPORT_DAY_HOUR = 10;
 
 const pmLabels: Record<string, string> = {
-  cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы', split: 'Разделённая',
+  cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы', deposit: 'Депозит', split: 'Разделённая',
 };
 
 interface DashboardPageProps {

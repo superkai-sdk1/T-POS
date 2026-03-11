@@ -791,6 +791,9 @@ export const usePOSStore = create<POSState>((set, get) => ({
       const debtAmount = payments
         .filter((p) => p.method === 'debt')
         .reduce((s, p) => s + p.amount, 0);
+      const depositPayAmount = payments
+        .filter((p) => p.method === 'deposit')
+        .reduce((s, p) => s + p.amount, 0);
 
       const { data: settingsRows } = await supabase.from('app_settings').select('*');
       const cfg: Record<string, string> = {};
@@ -812,8 +815,15 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
       if (player) {
         const updates: Record<string, number> = {};
+        let newBalance = player.balance;
         if (debtAmount > 0) {
-          updates.balance = player.balance - debtAmount;
+          newBalance -= debtAmount;
+        }
+        if (depositPayAmount > 0) {
+          newBalance -= depositPayAmount;
+        }
+        if (newBalance !== player.balance) {
+          updates.balance = newBalance;
         }
         const newPoints = Math.max(0, player.bonus_points - bonusUsed) + bonusAccrual;
         if (bonusUsed > 0 || bonusAccrual > 0) {
@@ -864,11 +874,24 @@ export const usePOSStore = create<POSState>((set, get) => ({
           });
         }
       }
+
+      if (depositPayAmount > 0 && player) {
+        const newBal = (player.balance - debtAmount) - depositPayAmount;
+        await supabase.from('transactions').insert({
+          type: 'debt_adjustment',
+          amount: -depositPayAmount,
+          description: `Оплата с депозита по чеку (было ${player.balance}₽, стало ${newBal}₽)`,
+          check_id: activeCheck.id,
+          player_id: activeCheck.player_id,
+          created_by: user?.id,
+        });
+      }
     }
 
+    const methodLabels: Record<string, string> = { cash: 'наличные', card: 'карта', debt: 'долг', bonus: 'бонусы', deposit: 'депозит', split: 'разд. оплата' };
     const methodDesc = certificateUsed > 0
-      ? (payments.length > 0 ? `сертификат + ${isSplit ? 'разд. оплата' : primaryMethod}` : 'сертификат')
-      : (isSplit ? 'разд. оплата' : primaryMethod);
+      ? (payments.length > 0 ? `сертификат + ${isSplit ? 'разд. оплата' : (methodLabels[primaryMethod] || primaryMethod)}` : 'сертификат')
+      : (isSplit ? 'разд. оплата' : (methodLabels[primaryMethod] || primaryMethod));
 
     await supabase.from('transactions').insert({
       type: 'sale',
