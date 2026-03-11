@@ -59,6 +59,9 @@ interface POSState {
 let _savingCart = false;
 export function isSavingCart() { return _savingCart; }
 
+const _cancellingCheckIds = new Set<string>();
+export function isCancellingCheck(checkId: string) { return _cancellingCheckIds.has(checkId); }
+
 let _lastCartFingerprint = '';
 let _savePromise: Promise<void> | null = null;
 
@@ -699,23 +702,29 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const checkId = activeCheck.id;
     const prevFp = _lastCartFingerprint;
     _lastCartFingerprint = '';
+    _cancellingCheckIds.add(checkId);
     set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
+    get().deleteCheckLocal(checkId);
     const { error: discErr } = await supabase.from('check_discounts').delete().eq('check_id', checkId);
     const { error: itemsErr } = await supabase.from('check_items').delete().eq('check_id', checkId);
     if (discErr || itemsErr) {
       console.error('cancelCheck cleanup error:', discErr || itemsErr);
+      _cancellingCheckIds.delete(checkId);
       _lastCartFingerprint = prevFp;
       set({ activeCheck, cart, checkItems, appliedDiscounts });
+      await get().loadOpenChecks();
       return false;
     }
     const { error } = await supabase.from('checks').delete().eq('id', checkId);
     if (error) {
       console.error('cancelCheck error:', error);
+      _cancellingCheckIds.delete(checkId);
       _lastCartFingerprint = prevFp;
       set({ activeCheck, cart, checkItems, appliedDiscounts });
+      await get().loadOpenChecks();
       return false;
     }
-    get().deleteCheckLocal(checkId);
+    _cancellingCheckIds.delete(checkId);
     await get().loadOpenChecks();
     return true;
   },
@@ -898,11 +907,15 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   refreshCheckById: async (checkId: string) => {
+    if (_cancellingCheckIds.has(checkId)) return;
+
     const { data: checkData } = await supabase
       .from('checks')
       .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*)')
       .eq('id', checkId)
       .single();
+
+    if (_cancellingCheckIds.has(checkId)) return;
 
     if (!checkData || checkData.status === 'closed') {
       get().deleteCheckLocal(checkId);

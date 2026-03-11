@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { usePOSStore, isSavingCart } from '@/store/pos';
+import { usePOSStore, isSavingCart, isCancellingCheck } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
 import { useAuthStore } from '@/store/auth';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
@@ -36,7 +36,7 @@ export function useRealtimeSync() {
           if (isSavingCart()) return;
           const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
           const checkId = rec?.check_id;
-          if (checkId) usePOSStore.getState().refreshCheckById(checkId);
+          if (checkId && !isCancellingCheck(checkId)) usePOSStore.getState().refreshCheckById(checkId);
           emitTableChange('check_items');
         },
       )
@@ -46,7 +46,7 @@ export function useRealtimeSync() {
         (payload: PgPayload) => {
           const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
           const checkId = rec?.check_id;
-          if (checkId) usePOSStore.getState().refreshCheckById(checkId);
+          if (checkId && !isCancellingCheck(checkId)) usePOSStore.getState().refreshCheckById(checkId);
           emitTableChange('check_discounts');
         },
       )
@@ -131,7 +131,7 @@ export function useRealtimeSync() {
               if (isSavingCart()) return;
               const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
               const checkId = rec?.check_id;
-              if (checkId) usePOSStore.getState().refreshCheckById(checkId);
+              if (checkId && !isCancellingCheck(checkId)) usePOSStore.getState().refreshCheckById(checkId);
               emitTableChange('check_items');
             }
           )
@@ -139,7 +139,7 @@ export function useRealtimeSync() {
             (payload: PgPayload) => {
               const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
               const checkId = rec?.check_id;
-              if (checkId) usePOSStore.getState().refreshCheckById(checkId);
+              if (checkId && !isCancellingCheck(checkId)) usePOSStore.getState().refreshCheckById(checkId);
               emitTableChange('check_discounts');
             }
           )

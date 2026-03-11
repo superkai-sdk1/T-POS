@@ -36,6 +36,8 @@ export function RefundsManager() {
   const [itemSelections, setItemSelections] = useState<Record<string, number>>({});
   const [refundNote, setRefundNote] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [detailRefund, setDetailRefund] = useState<Refund | null>(null);
   const [detailItems, setDetailItems] = useState<{ name: string; quantity: number; price: number }[]>([]);
   const [bonusRate, setBonusRate] = useState(10);
@@ -159,20 +161,32 @@ export function RefundsManager() {
 
   const hasSelectedItems = Object.values(itemSelections).some((q) => q > 0);
 
+  const getAdjustedRefundTotal = () => {
+    if (!selectedCheck) return 0;
+    const itemsSubtotal = selectedCheck.checkItems.reduce((sum, ci) => sum + ci.quantity * ci.price_at_time, 0);
+    if (itemsSubtotal === 0) return 0;
+    const discountOnCheck = selectedCheck.discount_total || 0;
+    const ratio = refundTotal / itemsSubtotal;
+    return Math.round(refundTotal - discountOnCheck * ratio);
+  };
+
   const processRefund = async () => {
     if (!selectedCheck || !user || processing) return;
     if (!hasSelectedItems) return;
     setProcessing(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
     hapticFeedback('heavy');
 
     try {
       const check = selectedCheck;
-      const isFullRefund = refundType === 'full' || refundTotal >= check.total_amount;
+      const adjustedTotal = getAdjustedRefundTotal();
+      const isFullRefund = refundType === 'full' || adjustedTotal >= check.total_amount;
       const actualType = isFullRefund ? 'full' : 'partial';
 
       const bonusUsedOnCheck = check.bonus_used || 0;
       const checkTotalBeforeBonus = check.total_amount + bonusUsedOnCheck;
-      const refundPct = checkTotalBeforeBonus > 0 ? refundTotal / checkTotalBeforeBonus : 0;
+      const refundPct = checkTotalBeforeBonus > 0 ? adjustedTotal / checkTotalBeforeBonus : 0;
 
       const { data: settingsRows } = await supabase.from('app_settings').select('*');
       const cfg: Record<string, string> = {};
@@ -195,7 +209,7 @@ export function RefundsManager() {
           check_id: check.id,
           shift_id: activeShift?.id || null,
           refund_type: actualType,
-          total_amount: refundTotal,
+          total_amount: adjustedTotal,
           bonus_deducted: bonusToDeduct,
           bonus_returned: bonusToReturn,
           note: refundNote || null,
@@ -204,7 +218,12 @@ export function RefundsManager() {
         .select()
         .single();
 
-      if (refundError || !refundRow) throw new Error('Failed to create refund');
+      if (refundError || !refundRow) {
+        console.error('Refund insert error:', refundError);
+        setErrorMsg(`Ошибка создания возврата: ${refundError?.message || 'unknown'}`);
+        hapticNotification('error');
+        return;
+      }
 
       const refundItemRows = check.checkItems
         .filter((ci) => (itemSelections[ci.id] || 0) > 0)
@@ -216,7 +235,8 @@ export function RefundsManager() {
         }));
 
       if (refundItemRows.length > 0) {
-        await supabase.from('refund_items').insert(refundItemRows);
+        const { error: riErr } = await supabase.from('refund_items').insert(refundItemRows);
+        if (riErr) console.error('Refund items insert error:', riErr);
       }
 
       const qtyByItemId = new Map<string, number>();
@@ -282,14 +302,15 @@ export function RefundsManager() {
 
       await supabase.from('transactions').insert({
         type: 'refund',
-        amount: -refundTotal,
-        description: `Возврат по чеку (${actualType === 'full' ? 'полный' : 'частичный'}): ${refundTotal}₽`,
+        amount: -adjustedTotal,
+        description: `Возврат по чеку (${actualType === 'full' ? 'полный' : 'частичный'}): ${adjustedTotal}₽`,
         check_id: check.id,
         player_id: check.player_id || null,
         created_by: user.id,
       });
 
       hapticNotification('success');
+      setSuccessMsg(`Возврат на ${fmtCur(adjustedTotal)} выполнен`);
       setScreen('list');
       setSelectedCheck(null);
       await loadRefunds();
@@ -298,6 +319,7 @@ export function RefundsManager() {
       loadOpenChecks();
     } catch (err) {
       console.error('Refund error:', err);
+      setErrorMsg(`Ошибка возврата: ${err instanceof Error ? err.message : 'Неизвестная ошибка'}`);
       hapticNotification('error');
     } finally {
       setProcessing(false);
@@ -499,18 +521,31 @@ export function RefundsManager() {
           compact
         />
 
+        {errorMsg && (
+          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] font-medium">
+            {errorMsg}
+          </div>
+        )}
+
         <div className="p-3 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-danger-border)] space-y-1">
           <div className="flex justify-between text-[12px]">
             <span className="text-[var(--c-hint)]">Сумма возврата</span>
-            <span className="font-bold text-[var(--c-danger)] tabular-nums">{fmtCur(refundTotal)}</span>
+            <span className="font-bold text-[var(--c-danger)] tabular-nums">{fmtCur(getAdjustedRefundTotal())}</span>
           </div>
+          {(selectedCheck.discount_total || 0) > 0 && (
+            <div className="flex justify-between text-[11px]">
+              <span className="text-[var(--c-muted)]">Скидка учтена</span>
+              <span className="text-[var(--c-muted)] tabular-nums">−{fmtCur(refundTotal - getAdjustedRefundTotal())}</span>
+            </div>
+          )}
           {selectedCheck.player_id && (
             <>
               {(() => {
+                const adjusted = getAdjustedRefundTotal();
                 const bUsed = selectedCheck.bonus_used || 0;
                 const totalBeforeBonus = selectedCheck.total_amount + bUsed;
-                const pct = totalBeforeBonus > 0 ? refundTotal / totalBeforeBonus : 0;
-                const isFullPct = refundTotal >= selectedCheck.total_amount;
+                const pct = totalBeforeBonus > 0 ? adjusted / totalBeforeBonus : 0;
+                const isFullPct = adjusted >= selectedCheck.total_amount;
                 const originalAccrual = Math.floor(totalBeforeBonus * bonusRate / 100);
                 const bonusDeduct = isFullPct ? originalAccrual : Math.floor(originalAccrual * pct);
                 const bonusReturn = isFullPct ? bUsed : Math.floor(bUsed * pct);
@@ -543,7 +578,7 @@ export function RefundsManager() {
           disabled={!hasSelectedItems || processing}
         >
           <RotateCcw className="w-4 h-4" />
-          {refundType === 'full' ? 'Полный возврат' : 'Частичный возврат'} — {fmtCur(refundTotal)}
+          {refundType === 'full' ? 'Полный возврат' : 'Частичный возврат'} — {fmtCur(getAdjustedRefundTotal())}
         </Button>
       </div>
     );
@@ -551,10 +586,20 @@ export function RefundsManager() {
 
   return (
     <div className="space-y-3">
+      {successMsg && (
+        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[12px] font-medium flex items-center gap-2">
+          <CheckIcon className="w-4 h-4 shrink-0" /> {successMsg}
+        </div>
+      )}
+      {errorMsg && (
+        <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-[12px] font-medium flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0" /> {errorMsg}
+        </div>
+      )}
       <div className="flex items-center gap-2">
         <Button
           size="sm"
-          onClick={() => { loadClosedChecks(); setScreen('selectCheck'); }}
+          onClick={() => { setErrorMsg(null); setSuccessMsg(null); loadClosedChecks(); setScreen('selectCheck'); }}
           disabled={!activeShift}
         >
           <RotateCcw className="w-3.5 h-3.5" /> Новый возврат
