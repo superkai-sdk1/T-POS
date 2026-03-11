@@ -4,6 +4,7 @@ import { registerSW } from 'virtual:pwa-register'
 import './index.css'
 import App from './App'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
+import { ConfigGuard } from './components/ConfigGuard'
 
 // Block system back/forward swipe gestures in PWA (iOS Safari, Android Chrome)
 const EDGE_ZONE_PX = 20;
@@ -45,9 +46,11 @@ window.addEventListener('focusout', (e) => {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
+    <ConfigGuard>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </ConfigGuard>
   </StrictMode>,
 )
 
