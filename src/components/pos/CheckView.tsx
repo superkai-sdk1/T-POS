@@ -676,9 +676,8 @@ export function CheckView({ onBack }: CheckViewProps) {
     menuDragYRef.current = 0;
   }, [closeMenu]);
 
-  if (!activeCheck && !isDismissing) return null;
-  if (!activeCheck && isDismissing) {
-    return <div className="flex-1 opacity-0" />;
+  if (!activeCheck) {
+    return isDismissing ? <div className="flex-1 opacity-0" /> : null;
   }
 
   return (
