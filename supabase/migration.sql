@@ -1,6 +1,6 @@
 -- ============================================
--- T-POS: Titan Mafia Club - Database Schema
--- Real data imported from QuickResto backup
+-- T-POS: Titan Mafia Club — Full Database Schema
+-- Single consolidated migration file
 -- ============================================
 
 create extension if not exists "pgcrypto";
@@ -9,10 +9,13 @@ create extension if not exists "pgcrypto";
 -- ENUM types
 -- ==================
 create type user_role as enum ('owner', 'staff', 'client');
-create type item_category as enum ('drinks', 'food', 'bar', 'hookah', 'services');
 create type check_status as enum ('open', 'closed');
-create type payment_method as enum ('cash', 'card', 'debt', 'bonus', 'split');
+create type payment_method as enum ('cash', 'card', 'debt', 'bonus', 'split', 'deposit');
 create type transaction_type as enum ('supply', 'write_off', 'sale', 'revision', 'bonus_accrual', 'bonus_spend', 'cash_operation', 'debt_adjustment', 'refund');
+create type discount_type as enum ('percentage', 'fixed');
+create type discount_target as enum ('check', 'item');
+create type space_type as enum ('cabin_small', 'cabin_big', 'hall');
+create type booking_status as enum ('booked', 'active', 'completed', 'cancelled');
 
 -- ==================
 -- profiles
@@ -33,6 +36,7 @@ create table profiles (
   photo_url text,
   birthday date,
   search_tags text[] not null default '{}',
+  deleted_at timestamptz default null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -46,13 +50,15 @@ create index idx_profiles_nickname on profiles(nickname);
 create table inventory (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  category item_category not null,
+  category text not null,
   price numeric not null default 0,
   stock_quantity numeric not null default 0,
   min_threshold numeric not null default 0,
   is_active boolean not null default true,
+  is_top boolean not null default false,
   image_url text,
   sort_order integer not null default 0,
+  search_tags text[] not null default '{}',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -76,17 +82,50 @@ create index idx_shifts_status on shifts(status);
 create index idx_shifts_opened_at on shifts(opened_at);
 
 -- ==================
--- checks (player tabs/orders)
+-- certificates
+-- ==================
+create table certificates (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  nominal numeric not null,
+  balance numeric not null,
+  is_used boolean not null default false,
+  used_by uuid references profiles(id),
+  used_at timestamptz,
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now()
+);
+
+create index idx_certificates_code on certificates(code);
+
+-- ==================
+-- spaces
+-- ==================
+create table spaces (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  type space_type not null,
+  hourly_rate numeric,
+  is_active boolean not null default true
+);
+
+-- ==================
+-- checks
 -- ==================
 create table checks (
   id uuid primary key default gen_random_uuid(),
   player_id uuid references profiles(id) on delete restrict,
   staff_id uuid references profiles(id),
   shift_id uuid references shifts(id),
+  space_id uuid references spaces(id),
   status check_status not null default 'open',
   total_amount numeric not null default 0,
   payment_method payment_method,
   bonus_used numeric not null default 0,
+  discount_total numeric not null default 0,
+  certificate_used numeric not null default 0,
+  certificate_id uuid references certificates(id),
+  guest_names text default null,
   note text,
   created_at timestamptz not null default now(),
   closed_at timestamptz
@@ -110,6 +149,16 @@ create table check_items (
 create index idx_check_items_check on check_items(check_id);
 
 -- ==================
+-- check_payments (split payments)
+-- ==================
+create table check_payments (
+  id uuid primary key default gen_random_uuid(),
+  check_id uuid not null references checks(id) on delete cascade,
+  method payment_method not null,
+  amount numeric not null default 0
+);
+
+-- ==================
 -- transactions (audit log)
 -- ==================
 create table transactions (
@@ -128,7 +177,7 @@ create index idx_transactions_type on transactions(type);
 create index idx_transactions_created_at on transactions(created_at);
 
 -- ==================
--- supplies (delivery receipts)
+-- supplies
 -- ==================
 create table supplies (
   id uuid primary key default gen_random_uuid(),
@@ -155,8 +204,252 @@ create table supply_items (
 create index idx_supply_items_supply on supply_items(supply_id);
 
 -- ==================
--- updated_at trigger
+-- discounts
 -- ==================
+create table discounts (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  type discount_type not null,
+  value numeric not null,
+  is_active boolean not null default true,
+  is_auto boolean not null default false,
+  min_quantity integer default null,
+  item_id uuid references inventory(id) on delete set null default null,
+  created_at timestamptz not null default now()
+);
+
+create table check_discounts (
+  id uuid primary key default gen_random_uuid(),
+  check_id uuid not null references checks(id) on delete cascade,
+  discount_id uuid references discounts(id),
+  target discount_target not null default 'check',
+  item_id uuid references check_items(id) on delete cascade,
+  client_rule_id uuid,
+  discount_amount numeric not null default 0,
+  created_at timestamptz not null default now()
+);
+
+-- ==================
+-- client_discount_rules
+-- ==================
+create table client_discount_rules (
+  id uuid primary key default gen_random_uuid(),
+  discount_id uuid not null references discounts(id) on delete cascade,
+  profile_id uuid not null references profiles(id) on delete cascade,
+  item_id uuid not null references inventory(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique(profile_id, item_id)
+);
+
+create index idx_client_discount_rules_discount on client_discount_rules(discount_id);
+create index idx_client_discount_rules_profile on client_discount_rules(profile_id);
+create index idx_client_discount_rules_item on client_discount_rules(item_id);
+
+alter table check_discounts
+  add constraint check_discounts_client_rule_id_fkey
+  foreign key (client_rule_id) references client_discount_rules(id) on delete set null;
+
+-- ==================
+-- bookings
+-- ==================
+create table bookings (
+  id uuid primary key default gen_random_uuid(),
+  space_id uuid not null references spaces(id),
+  client_id uuid references profiles(id),
+  check_id uuid references checks(id),
+  start_time timestamptz not null,
+  end_time timestamptz not null,
+  rental_amount numeric not null default 0,
+  note text,
+  status booking_status not null default 'booked',
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now()
+);
+
+-- ==================
+-- events
+-- ==================
+create table events (
+  id uuid primary key default gen_random_uuid(),
+  type text not null check (type in ('titan', 'exit')),
+  location text,
+  date date not null default current_date,
+  start_time time not null,
+  end_time time,
+  payment_type text not null default 'fixed' check (payment_type in ('fixed', 'hourly')),
+  fixed_amount numeric(10, 2),
+  status text not null default 'planned' check (status in ('planned', 'active', 'completed', 'cancelled')),
+  comment text,
+  reminders jsonb default '[]'::jsonb,
+  check_id uuid references checks(id) on delete set null,
+  created_by uuid references profiles(id) on delete set null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- ==================
+-- menu_categories
+-- ==================
+create table menu_categories (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  slug text not null unique,
+  parent_id uuid references menu_categories(id) on delete set null,
+  icon_name text not null default 'Package',
+  color text default 'slate',
+  sort_order integer not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- ==================
+-- modifiers
+-- ==================
+create table modifiers (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  price numeric not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table product_modifiers (
+  id uuid primary key default gen_random_uuid(),
+  product_id uuid not null references inventory(id) on delete cascade,
+  modifier_id uuid not null references modifiers(id) on delete cascade,
+  unique(product_id, modifier_id)
+);
+
+create table check_item_modifiers (
+  id uuid primary key default gen_random_uuid(),
+  check_item_id uuid not null references check_items(id) on delete cascade,
+  modifier_id uuid not null references modifiers(id) on delete restrict,
+  price_at_time numeric not null default 0
+);
+
+-- ==================
+-- revisions
+-- ==================
+create table revisions (
+  id uuid primary key default gen_random_uuid(),
+  note text,
+  total_diff numeric not null default 0,
+  items_count integer not null default 0,
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now()
+);
+
+create index idx_revisions_created_at on revisions(created_at);
+
+create table revision_items (
+  id uuid primary key default gen_random_uuid(),
+  revision_id uuid not null references revisions(id) on delete cascade,
+  item_id uuid not null references inventory(id) on delete restrict,
+  expected_qty numeric not null default 0,
+  actual_qty numeric not null default 0,
+  diff numeric not null default 0
+);
+
+create index idx_revision_items_revision on revision_items(revision_id);
+
+-- ==================
+-- app_settings
+-- ==================
+create table app_settings (
+  key text primary key,
+  value text not null,
+  updated_at timestamptz not null default now()
+);
+
+-- ==================
+-- cash_operations
+-- ==================
+create table cash_operations (
+  id uuid primary key default gen_random_uuid(),
+  shift_id uuid references shifts(id) on delete set null,
+  type text not null check (type in ('inkassation', 'deposit', 'shift_open', 'shift_close')),
+  amount numeric not null default 0,
+  note text,
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now()
+);
+
+create index idx_cash_operations_shift on cash_operations(shift_id);
+create index idx_cash_operations_created_at on cash_operations(created_at);
+
+-- ==================
+-- bonus_history
+-- ==================
+create table bonus_history (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references profiles(id) on delete cascade,
+  amount numeric not null,
+  balance_after numeric not null default 0,
+  reason text not null,
+  created_at timestamptz not null default now()
+);
+
+create index idx_bonus_history_profile on bonus_history(profile_id);
+create index idx_bonus_history_created_at on bonus_history(created_at);
+
+-- ==================
+-- refunds
+-- ==================
+create table refunds (
+  id uuid primary key default gen_random_uuid(),
+  check_id uuid not null references checks(id) on delete restrict,
+  shift_id uuid references shifts(id),
+  refund_type text not null check (refund_type in ('full', 'partial')),
+  total_amount numeric not null default 0,
+  bonus_deducted numeric not null default 0,
+  bonus_returned numeric not null default 0,
+  note text,
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now()
+);
+
+create table refund_items (
+  id uuid primary key default gen_random_uuid(),
+  refund_id uuid not null references refunds(id) on delete cascade,
+  item_id uuid not null references inventory(id),
+  quantity numeric not null default 1,
+  price_at_time numeric not null default 0
+);
+
+-- ==================
+-- tg_link_requests
+-- ==================
+create table tg_link_requests (
+  id uuid primary key default gen_random_uuid(),
+  tg_id text not null,
+  tg_username text,
+  tg_first_name text,
+  profile_id uuid not null references profiles(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  created_at timestamptz not null default now()
+);
+
+create index idx_tg_link_requests_status on tg_link_requests(status);
+
+-- ==================
+-- expenses
+-- ==================
+create table expenses (
+  id uuid primary key default gen_random_uuid(),
+  category text not null check (category in ('rent', 'utilities', 'salary', 'other')),
+  amount numeric not null,
+  description text,
+  expense_date date not null default current_date,
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now()
+);
+
+create index idx_expenses_date on expenses(expense_date);
+create index idx_expenses_category on expenses(category);
+
+-- ==============================
+-- Functions
+-- ==============================
 create or replace function update_updated_at()
 returns trigger as $$
 begin
@@ -165,6 +458,23 @@ begin
 end;
 $$ language plpgsql;
 
+create or replace function decrement_stock(p_item_id uuid, p_qty numeric)
+returns void as $$
+begin
+  update inventory set stock_quantity = greatest(0, stock_quantity - p_qty) where id = p_item_id;
+end;
+$$ language plpgsql;
+
+create or replace function increment_stock(p_item_id uuid, p_qty numeric)
+returns void as $$
+begin
+  update inventory set stock_quantity = stock_quantity + p_qty where id = p_item_id;
+end;
+$$ language plpgsql;
+
+-- ==============================
+-- Triggers
+-- ==============================
 create trigger trg_profiles_updated_at
   before update on profiles
   for each row execute function update_updated_at();
@@ -173,15 +483,42 @@ create trigger trg_inventory_updated_at
   before update on inventory
   for each row execute function update_updated_at();
 
--- ==================
--- RLS Policies
--- ==================
+create trigger trg_events_updated_at
+  before update on events
+  for each row execute function update_updated_at();
 
+-- ==============================
+-- RLS Policies
+-- ==============================
 alter table profiles enable row level security;
 alter table inventory enable row level security;
 alter table checks enable row level security;
 alter table check_items enable row level security;
+alter table check_payments enable row level security;
 alter table transactions enable row level security;
+alter table shifts enable row level security;
+alter table supplies enable row level security;
+alter table supply_items enable row level security;
+alter table discounts enable row level security;
+alter table check_discounts enable row level security;
+alter table client_discount_rules enable row level security;
+alter table spaces enable row level security;
+alter table bookings enable row level security;
+alter table events enable row level security;
+alter table menu_categories enable row level security;
+alter table modifiers enable row level security;
+alter table product_modifiers enable row level security;
+alter table check_item_modifiers enable row level security;
+alter table revisions enable row level security;
+alter table revision_items enable row level security;
+alter table app_settings enable row level security;
+alter table cash_operations enable row level security;
+alter table bonus_history enable row level security;
+alter table certificates enable row level security;
+alter table refunds enable row level security;
+alter table refund_items enable row level security;
+alter table tg_link_requests enable row level security;
+alter table expenses enable row level security;
 
 create policy "profiles_select" on profiles for select to anon, authenticated using (true);
 create policy "profiles_insert" on profiles for insert to anon, authenticated with check (true);
@@ -190,49 +527,142 @@ create policy "profiles_update" on profiles for update to anon, authenticated us
 create policy "inventory_select" on inventory for select to anon, authenticated using (true);
 create policy "inventory_insert" on inventory for insert to anon, authenticated with check (true);
 create policy "inventory_update" on inventory for update to anon, authenticated using (true);
+create policy "inventory_delete" on inventory for delete to anon, authenticated using (true);
 
 create policy "checks_select" on checks for select to anon, authenticated using (true);
 create policy "checks_insert" on checks for insert to anon, authenticated with check (true);
 create policy "checks_update" on checks for update to anon, authenticated using (true);
 create policy "checks_delete" on checks for delete to anon, authenticated using (true);
 
-create policy "check_items_select" on check_items for select to anon, authenticated using (true);
-create policy "check_items_insert" on check_items for insert to anon, authenticated with check (true);
-create policy "check_items_update" on check_items for update to anon, authenticated using (true);
-create policy "check_items_delete" on check_items for delete to anon, authenticated using (true);
-
+create policy "check_items_all" on check_items for all to anon, authenticated using (true) with check (true);
+create policy "check_payments_all" on check_payments for all to anon, authenticated using (true) with check (true);
 create policy "transactions_select" on transactions for select to anon, authenticated using (true);
 create policy "transactions_insert" on transactions for insert to anon, authenticated with check (true);
 
-alter table shifts enable row level security;
-create policy "shifts_select" on shifts for select to anon, authenticated using (true);
-create policy "shifts_insert" on shifts for insert to anon, authenticated with check (true);
-create policy "shifts_update" on shifts for update to anon, authenticated using (true);
-create policy "shifts_delete" on shifts for delete to anon, authenticated using (true);
+create policy "shifts_all" on shifts for all to anon, authenticated using (true) with check (true);
+create policy "supplies_all" on supplies for all to anon, authenticated using (true) with check (true);
+create policy "supply_items_all" on supply_items for all to anon, authenticated using (true) with check (true);
+create policy "discounts_all" on discounts for all to anon, authenticated using (true) with check (true);
+create policy "check_discounts_all" on check_discounts for all to anon, authenticated using (true) with check (true);
+create policy "client_discount_rules_all" on client_discount_rules for all using (true) with check (true);
+create policy "spaces_all" on spaces for all to anon, authenticated using (true) with check (true);
+create policy "bookings_all" on bookings for all to anon, authenticated using (true) with check (true);
+create policy "events_all" on events for all to anon, authenticated using (true) with check (true);
+create policy "menu_categories_all" on menu_categories for all to anon, authenticated using (true) with check (true);
+create policy "modifiers_all" on modifiers for all to anon, authenticated using (true) with check (true);
+create policy "product_modifiers_all" on product_modifiers for all to anon, authenticated using (true) with check (true);
+create policy "check_item_modifiers_all" on check_item_modifiers for all to anon, authenticated using (true) with check (true);
+create policy "revisions_all" on revisions for all to anon, authenticated using (true) with check (true);
+create policy "revision_items_all" on revision_items for all to anon, authenticated using (true) with check (true);
+create policy "settings_select" on app_settings for select to anon, authenticated using (true);
+create policy "settings_insert" on app_settings for insert to anon, authenticated with check (true);
+create policy "settings_update" on app_settings for update to anon, authenticated using (true);
+create policy "cash_ops_select" on cash_operations for select to anon, authenticated using (true);
+create policy "cash_ops_insert" on cash_operations for insert to anon, authenticated with check (true);
+create policy "cash_ops_delete" on cash_operations for delete to anon, authenticated using (true);
+create policy "bonus_history_all" on bonus_history for all to anon, authenticated using (true) with check (true);
+create policy "certificates_all" on certificates for all to anon, authenticated using (true) with check (true);
+create policy "refunds_all" on refunds for all to anon, authenticated using (true) with check (true);
+create policy "refund_items_all" on refund_items for all to anon, authenticated using (true) with check (true);
+create policy "tg_link_requests_all" on tg_link_requests for all to anon, authenticated using (true) with check (true);
+create policy "expenses_all" on expenses for all to anon, authenticated using (true) with check (true);
 
-alter table supplies enable row level security;
-alter table supply_items enable row level security;
+-- ==============================
+-- Realtime
+-- ==============================
+alter publication supabase_realtime add table
+  checks, check_items, check_discounts, inventory, shifts,
+  cash_operations, bookings, profiles, events, discounts,
+  supplies, revisions, refunds, menu_categories, modifiers,
+  tg_link_requests, client_discount_rules, expenses;
 
-create policy "supplies_select" on supplies for select to anon, authenticated using (true);
-create policy "supplies_insert" on supplies for insert to anon, authenticated with check (true);
-create policy "supplies_update" on supplies for update to anon, authenticated using (true);
-create policy "supplies_delete" on supplies for delete to anon, authenticated using (true);
+alter table checks replica identity full;
+alter table check_items replica identity full;
+alter table check_discounts replica identity full;
+alter table inventory replica identity full;
+alter table shifts replica identity full;
+alter table cash_operations replica identity full;
+alter table bookings replica identity full;
+alter table profiles replica identity full;
+alter table events replica identity full;
+alter table discounts replica identity full;
+alter table supplies replica identity full;
+alter table revisions replica identity full;
+alter table refunds replica identity full;
+alter table menu_categories replica identity full;
+alter table modifiers replica identity full;
+alter table tg_link_requests replica identity full;
+alter table client_discount_rules replica identity full;
+alter table expenses replica identity full;
 
-create policy "supply_items_select" on supply_items for select to anon, authenticated using (true);
-create policy "supply_items_insert" on supply_items for insert to anon, authenticated with check (true);
-create policy "supply_items_update" on supply_items for update to anon, authenticated using (true);
-create policy "supply_items_delete" on supply_items for delete to anon, authenticated using (true);
+-- ==============================
+-- Storage buckets
+-- ==============================
+insert into storage.buckets (id, name, public)
+values ('menu-images', 'menu-images', true)
+on conflict (id) do nothing;
+
+insert into storage.buckets (id, name, public)
+values ('client-photos', 'client-photos', true)
+on conflict (id) do update set public = true;
+
+do $$ begin
+  create policy "client_photos_insert" on storage.objects for insert to authenticated with check (bucket_id = 'client-photos');
+exception when duplicate_object then null;
+end $$;
+do $$ begin
+  create policy "client_photos_insert_anon" on storage.objects for insert to anon with check (bucket_id = 'client-photos');
+exception when duplicate_object then null;
+end $$;
+do $$ begin
+  create policy "client_photos_select" on storage.objects for select to public using (bucket_id = 'client-photos');
+exception when duplicate_object then null;
+end $$;
+do $$ begin
+  create policy "client_photos_update" on storage.objects for update to anon using (bucket_id = 'client-photos');
+exception when duplicate_object then null;
+end $$;
+do $$ begin
+  create policy "client_photos_delete" on storage.objects for delete to authenticated using (bucket_id = 'client-photos');
+exception when duplicate_object then null;
+end $$;
+do $$ begin
+  create policy "client_photos_delete_anon" on storage.objects for delete to anon using (bucket_id = 'client-photos');
+exception when duplicate_object then null;
+end $$;
 
 -- =============================================
--- SEED DATA: Owner account (password: titan2024)
+-- SEED DATA
 -- =============================================
+
+-- App settings
+insert into app_settings (key, value) values
+  ('bonus_accrual_rate', '10'),
+  ('bonus_min_purchase', '0'),
+  ('bonus_enabled', 'true'),
+  ('bonus_accrual_on_debt', 'false')
+on conflict (key) do nothing;
+
+-- Menu categories
+insert into menu_categories (name, slug, sort_order, icon_name, color) values
+  ('Услуги', 'services', 10, 'Timer', 'indigo'),
+  ('Напитки', 'drinks', 20, 'GlassWater', 'blue'),
+  ('Еда', 'food', 30, 'UtensilsCrossed', 'orange'),
+  ('Снеки', 'bar', 40, 'Cookie', 'amber'),
+  ('Кальяны', 'hookah', 50, 'Wind', 'violet');
+
+-- Spaces
+insert into spaces (name, type, hourly_rate) values
+  ('Маленькая кабинка', 'cabin_small', 250),
+  ('Большая кабинка', 'cabin_big', 500),
+  ('Зал', 'hall', null);
+
+-- Owner accounts
 insert into profiles (nickname, is_resident, role, password_hash, tg_id, pin) values
   ('Титан', true, 'owner', 'titan2024', '556525624', null),
   ('Kai', true, 'owner', 'titan2024', '1005574994', '0780');
 
--- =============================================
--- SEED DATA: Players from QuickResto backup
--- =============================================
+-- Players
 insert into profiles (nickname, is_resident, role) values
   ('Менталист', false, 'client'),
   ('Ханна', false, 'client'),
@@ -361,13 +791,8 @@ insert into profiles (nickname, is_resident, role) values
   ('ZONDR', false, 'client'),
   ('Смурфик', false, 'client');
 
--- =============================================
--- SEED DATA: Inventory from QuickResto backup
--- =============================================
-
--- Напитки (drinks): холодные, горячие, пиво, кофемашинка
+-- Inventory: drinks
 insert into inventory (name, category, price, stock_quantity, min_threshold) values
-  -- Холодные напитки
   ('Палпи', 'drinks', 120, 0, 3),
   ('Чай холодный', 'drinks', 100, 3, 3),
   ('Вода Бабугент', 'drinks', 100, 24, 5),
@@ -387,14 +812,12 @@ insert into inventory (name, category, price, stock_quantity, min_threshold) val
   ('Адреналин Мини', 'drinks', 120, 10, 3),
   ('Коктейли', 'drinks', 350, 0, 0),
   ('Шоты', 'drinks', 150, 0, 0),
-  -- Пиво
   ('Жигули', 'drinks', 150, 0, 3),
   ('Ловенбрау светлое', 'drinks', 150, 0, 3),
   ('Бад', 'drinks', 200, 0, 3),
   ('Ловенбрау 0%', 'drinks', 150, 8, 3),
   ('Ловенбрау Темное', 'drinks', 200, 1, 3),
   ('Хугарден', 'drinks', 200, 4, 3),
-  -- Горячие напитки
   ('Чай', 'drinks', 50, 240, 10),
   ('Кофе', 'drinks', 50, 0, 0),
   ('Эспрессо', 'drinks', 120, 0, 0),
@@ -407,7 +830,7 @@ insert into inventory (name, category, price, stock_quantity, min_threshold) val
   ('Какао', 'drinks', 270, 35, 5),
   ('Воронка V60', 'drinks', 260, 0, 0);
 
--- Еда (food)
+-- Inventory: food
 insert into inventory (name, category, price, stock_quantity, min_threshold) values
   ('Заказ еды', 'food', 1, 99999, 0),
   ('Саид с Курицей', 'food', 250, 0, 3),
@@ -424,7 +847,7 @@ insert into inventory (name, category, price, stock_quantity, min_threshold) val
   ('Стрипсы', 'food', 290, 21, 3),
   ('Сэндвич Веганский', 'food', 250, 13, 3);
 
--- Бар / Снеки
+-- Inventory: bar/snacks
 insert into inventory (name, category, price, stock_quantity, min_threshold) values
   ('Чипсы', 'bar', 150, 21, 5),
   ('Шоколадки', 'bar', 150, 40, 5),
@@ -435,13 +858,13 @@ insert into inventory (name, category, price, stock_quantity, min_threshold) val
   ('Арахис', 'bar', 200, 3, 3),
   ('Ореховый микс', 'bar', 250, 0, 3);
 
--- Кальяны (hookah)
+-- Inventory: hookah
 insert into inventory (name, category, price, stock_quantity, min_threshold) values
   ('Кальян Hard', 'hookah', 1000, 0, 0),
   ('Кальян Soft', 'hookah', 700, 0, 0),
   ('Кальян без табака', 'hookah', 500, 0, 0);
 
--- Услуги / Вечера (services)
+-- Inventory: services
 insert into inventory (name, category, price, stock_quantity, min_threshold) values
   ('Игровой вечер Резидент', 'services', 500, 0, 0),
   ('Игровой вечер Студент', 'services', 300, 0, 0),
@@ -451,417 +874,7 @@ insert into inventory (name, category, price, stock_quantity, min_threshold) val
   ('Ивент', 'services', 1000, 0, 0),
   ('ШТРАФ', 'services', 100, 0, 0);
 
--- ==============================
--- Revisions tracking
--- ==============================
-create table if not exists revisions (
-  id uuid primary key default gen_random_uuid(),
-  note text,
-  total_diff numeric not null default 0,
-  items_count integer not null default 0,
-  created_by uuid references profiles(id),
-  created_at timestamptz not null default now()
-);
-create index if not exists idx_revisions_created_at on revisions(created_at);
-alter table revisions enable row level security;
-create policy "revisions_select" on revisions for select to anon, authenticated using (true);
-create policy "revisions_insert" on revisions for insert to anon, authenticated with check (true);
-create policy "revisions_update" on revisions for update to anon, authenticated using (true);
-create policy "revisions_delete" on revisions for delete to anon, authenticated using (true);
-
-create table if not exists revision_items (
-  id uuid primary key default gen_random_uuid(),
-  revision_id uuid not null references revisions(id) on delete cascade,
-  item_id uuid not null references inventory(id) on delete restrict,
-  expected_qty numeric not null default 0,
-  actual_qty numeric not null default 0,
-  diff numeric not null default 0
-);
-create index if not exists idx_revision_items_revision on revision_items(revision_id);
-alter table revision_items enable row level security;
-create policy "revision_items_select" on revision_items for select to anon, authenticated using (true);
-create policy "revision_items_insert" on revision_items for insert to anon, authenticated with check (true);
-
--- ==============================
--- App settings (bonus config, etc.)
--- ==============================
-create table if not exists app_settings (
-  key text primary key,
-  value text not null,
-  updated_at timestamptz not null default now()
-);
-alter table app_settings enable row level security;
-create policy "settings_select" on app_settings for select to anon, authenticated using (true);
-create policy "settings_insert" on app_settings for insert to anon, authenticated with check (true);
-create policy "settings_update" on app_settings for update to anon, authenticated using (true);
-
-insert into app_settings (key, value) values
-  ('bonus_accrual_rate', '10'),
-  ('bonus_min_purchase', '0'),
-  ('bonus_enabled', 'true'),
-  ('bonus_accrual_on_debt', 'false')
-on conflict (key) do nothing;
-
--- ==============================
--- Cash operations (inkassation, deposit)
--- ==============================
-create table if not exists cash_operations (
-  id uuid primary key default gen_random_uuid(),
-  shift_id uuid references shifts(id) on delete set null,
-  type text not null check (type in ('inkassation', 'deposit')),
-  amount numeric not null default 0,
-  note text,
-  created_by uuid references profiles(id),
-  created_at timestamptz not null default now()
-);
-create index if not exists idx_cash_operations_shift on cash_operations(shift_id);
-create index if not exists idx_cash_operations_created_at on cash_operations(created_at);
-alter table cash_operations enable row level security;
-create policy "cash_ops_select" on cash_operations for select to anon, authenticated using (true);
-create policy "cash_ops_insert" on cash_operations for insert to anon, authenticated with check (true);
-create policy "cash_ops_delete" on cash_operations for delete to anon, authenticated using (true);
-
--- ==============================
--- Storage: menu images bucket
--- ==============================
-insert into storage.buckets (id, name, public)
-values ('menu-images', 'menu-images', true)
-on conflict (id) do nothing;
-
-insert into storage.buckets (id, name, public)
-values ('client-photos', 'client-photos', true)
-on conflict (id) do nothing;
-
--- ==============================
--- Discounts
--- ==============================
-create type discount_type as enum ('percentage', 'fixed');
-create type discount_target as enum ('check', 'item');
-
-create table discounts (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  type discount_type not null,
-  value numeric not null,
-  is_active boolean not null default true,
-  min_quantity integer default null,
-  item_id uuid references inventory(id) on delete set null default null,
-  created_at timestamptz not null default now()
-);
-
-create table check_discounts (
-  id uuid primary key default gen_random_uuid(),
-  check_id uuid not null references checks(id) on delete cascade,
-  discount_id uuid references discounts(id),
-  target discount_target not null default 'check',
-  item_id uuid references check_items(id) on delete cascade,
-  discount_amount numeric not null default 0,
-  created_at timestamptz not null default now()
-);
-
-alter table checks add column discount_total numeric not null default 0;
-
-alter table discounts enable row level security;
-alter table check_discounts enable row level security;
-create policy "discounts_all" on discounts for all to anon, authenticated using (true) with check (true);
-create policy "check_discounts_all" on check_discounts for all to anon, authenticated using (true) with check (true);
-
--- ==============================
--- Spaces & Bookings
--- ==============================
-create type space_type as enum ('cabin_small', 'cabin_big', 'hall');
-create type booking_status as enum ('booked', 'active', 'completed', 'cancelled');
-
-create table spaces (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  type space_type not null,
-  hourly_rate numeric,
-  is_active boolean not null default true
-);
-
-alter table checks add column space_id uuid references spaces(id);
-alter table checks add column guest_names text default null;
-alter table checks add column certificate_used numeric not null default 0;
-alter table checks add column certificate_id uuid references certificates(id);
-
-create table bookings (
-  id uuid primary key default gen_random_uuid(),
-  space_id uuid not null references spaces(id),
-  client_id uuid references profiles(id),
-  check_id uuid references checks(id),
-  start_time timestamptz not null,
-  end_time timestamptz not null,
-  rental_amount numeric not null default 0,
-  note text,
-  status booking_status not null default 'booked',
-  created_by uuid references profiles(id),
-  created_at timestamptz not null default now()
-);
-
-insert into spaces (name, type, hourly_rate) values
-  ('Маленькая кабинка', 'cabin_small', 250),
-  ('Большая кабинка', 'cabin_big', 500),
-  ('Зал', 'hall', null);
-
-alter table spaces enable row level security;
-alter table bookings enable row level security;
-create policy "spaces_all" on spaces for all to anon, authenticated using (true) with check (true);
-create policy "bookings_all" on bookings for all to anon, authenticated using (true) with check (true);
-
--- ==============================
--- Events (titan & offsite)
--- ==============================
-create table events (
-  id uuid primary key default gen_random_uuid(),
-  type text not null check (type in ('titan', 'exit')),
-  location text,
-  date date not null default current_date,
-  start_time time not null,
-  end_time time,
-  payment_type text not null default 'fixed' check (payment_type in ('fixed', 'hourly')),
-  fixed_amount numeric(10, 2),
-  status text not null default 'planned' check (status in ('planned', 'active', 'completed')),
-  comment text,
-  reminders jsonb default '[]'::jsonb,
-  check_id uuid references checks(id) on delete set null,
-  created_by uuid references profiles(id) on delete set null,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-alter table events enable row level security;
-create policy "events_all" on events for all to anon, authenticated using (true) with check (true);
-
--- ==============================
--- Split Payments
--- ==============================
-create table check_payments (
-  id uuid primary key default gen_random_uuid(),
-  check_id uuid not null references checks(id) on delete cascade,
-  method payment_method not null,
-  amount numeric not null default 0
-);
-
-alter table check_payments enable row level security;
-create policy "check_payments_all" on check_payments for all to anon, authenticated using (true) with check (true);
-
--- ==============================
--- Menu Categories (dynamic)
--- ==============================
-create table menu_categories (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  slug text not null unique,
-  parent_id uuid references menu_categories(id) on delete set null,
-  icon_name text not null default 'Package',
-  sort_order integer not null default 0,
-  is_active boolean not null default true,
-  created_at timestamptz not null default now()
-);
-
-alter table menu_categories enable row level security;
-create policy "menu_categories_all" on menu_categories for all to anon, authenticated using (true) with check (true);
-
-insert into menu_categories (name, slug, sort_order, icon_name) values
-  ('Услуги', 'services', 10, 'Ticket'),
-  ('Напитки', 'drinks', 20, 'Coffee'),
-  ('Еда', 'food', 30, 'UtensilsCrossed'),
-  ('Снеки', 'bar', 40, 'Cookie'),
-  ('Кальяны', 'hookah', 50, 'Wind');
-
--- ==============================
--- Telegram Link Requests (client wallet)
--- ==============================
-create table if not exists tg_link_requests (
-  id uuid primary key default gen_random_uuid(),
-  tg_id text not null,
-  tg_username text,
-  tg_first_name text,
-  profile_id uuid not null references profiles(id) on delete cascade,
-  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
-  created_at timestamptz not null default now()
-);
-
-create index if not exists idx_tg_link_requests_status on tg_link_requests(status);
-alter table tg_link_requests enable row level security;
-create policy "tg_link_requests_all" on tg_link_requests for all to anon, authenticated using (true) with check (true);
-
-alter publication supabase_realtime add table tg_link_requests;
-alter table tg_link_requests replica identity full;
-
--- ==============================
--- Refunds
--- ==============================
-create table if not exists refunds (
-  id uuid primary key default gen_random_uuid(),
-  check_id uuid not null references checks(id) on delete restrict,
-  shift_id uuid references shifts(id),
-  refund_type text not null check (refund_type in ('full', 'partial')),
-  total_amount numeric not null default 0,
-  bonus_deducted numeric not null default 0,
-  bonus_returned numeric not null default 0,
-  note text,
-  created_by uuid references profiles(id),
-  created_at timestamptz not null default now()
-);
-
-create table if not exists refund_items (
-  id uuid primary key default gen_random_uuid(),
-  refund_id uuid not null references refunds(id) on delete cascade,
-  item_id uuid not null references inventory(id),
-  quantity numeric not null default 1,
-  price_at_time numeric not null default 0
-);
-
-alter table refunds enable row level security;
-create policy "refunds_all" on refunds for all to anon, authenticated using (true) with check (true);
-alter table refund_items enable row level security;
-create policy "refund_items_all" on refund_items for all to anon, authenticated using (true) with check (true);
-
--- ==============================
--- Realtime
--- ==============================
-alter publication supabase_realtime add table checks, check_items, check_discounts, inventory, shifts, cash_operations, bookings, profiles, events, discounts, supplies, revisions, refunds, menu_categories;
-alter table checks replica identity full;
-alter table check_items replica identity full;
-alter table check_discounts replica identity full;
-alter table inventory replica identity full;
-alter table shifts replica identity full;
-alter table cash_operations replica identity full;
-alter table bookings replica identity full;
-alter table profiles replica identity full;
-alter table events replica identity full;
-alter table discounts replica identity full;
-alter table supplies replica identity full;
-alter table revisions replica identity full;
-alter table refunds replica identity full;
-alter table menu_categories replica identity full;
-
--- ==============================
--- Modifiers (add-ons for menu items)
--- ==============================
-create table if not exists modifiers (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  price numeric not null default 0,
-  is_active boolean not null default true,
-  created_at timestamptz not null default now()
-);
-
-create table if not exists product_modifiers (
-  id uuid primary key default gen_random_uuid(),
-  product_id uuid not null references inventory(id) on delete cascade,
-  modifier_id uuid not null references modifiers(id) on delete cascade,
-  unique(product_id, modifier_id)
-);
-
-create table if not exists check_item_modifiers (
-  id uuid primary key default gen_random_uuid(),
-  check_item_id uuid not null references check_items(id) on delete cascade,
-  modifier_id uuid not null references modifiers(id) on delete restrict,
-  price_at_time numeric not null default 0
-);
-
-alter table modifiers enable row level security;
-alter table product_modifiers enable row level security;
-alter table check_item_modifiers enable row level security;
-create policy "modifiers_all" on modifiers for all to anon, authenticated using (true) with check (true);
-create policy "product_modifiers_all" on product_modifiers for all to anon, authenticated using (true) with check (true);
-create policy "check_item_modifiers_all" on check_item_modifiers for all to anon, authenticated using (true) with check (true);
-
-alter publication supabase_realtime add table modifiers;
-alter table modifiers replica identity full;
-
--- ==============================
--- Bonus history (audit log for bonus changes)
--- ==============================
-create table if not exists bonus_history (
-  id uuid primary key default gen_random_uuid(),
-  profile_id uuid not null references profiles(id) on delete cascade,
-  amount numeric not null,
-  balance_after numeric not null default 0,
-  reason text not null,
-  created_at timestamptz not null default now()
-);
-create index if not exists idx_bonus_history_profile on bonus_history(profile_id);
-create index if not exists idx_bonus_history_created_at on bonus_history(created_at);
-alter table bonus_history enable row level security;
-create policy "bonus_history_all" on bonus_history for all to anon, authenticated using (true) with check (true);
-
--- ==============================
--- Gift certificates
--- ==============================
-create table if not exists certificates (
-  id uuid primary key default gen_random_uuid(),
-  code text not null unique,
-  nominal numeric not null,
-  balance numeric not null,
-  is_used boolean not null default false,
-  used_by uuid references profiles(id),
-  used_at timestamptz,
-  created_by uuid references profiles(id),
-  created_at timestamptz not null default now()
-);
-create index if not exists idx_certificates_code on certificates(code);
-alter table certificates enable row level security;
-create policy "certificates_all" on certificates for all to anon, authenticated using (true) with check (true);
-
--- ==============================
--- Operating Expenses (rent, utilities, salaries)
--- ==============================
-create table if not exists expenses (
-  id uuid primary key default gen_random_uuid(),
-  category text not null check (category in ('rent', 'utilities', 'salary', 'other')),
-  amount numeric not null,
-  description text,
-  expense_date date not null default current_date,
-  created_by uuid references profiles(id),
-  created_at timestamptz not null default now()
-);
-create index if not exists idx_expenses_date on expenses(expense_date);
-create index if not exists idx_expenses_category on expenses(category);
-alter table expenses enable row level security;
-create policy "expenses_all" on expenses for all to anon, authenticated using (true) with check (true);
-
-alter publication supabase_realtime add table expenses;
-alter table expenses replica identity full;
-
--- ==============================
--- Soft delete for profiles
--- ==============================
-alter table profiles add column if not exists deleted_at timestamptz default null;
-
--- ==============================
--- Default PINs for staff
--- ==============================
+-- Staff PINs
 update profiles set pin = '0000' where nickname = 'Салим' and pin is null;
 update profiles set pin = '5757' where nickname = 'Тигран' and pin is null;
 update profiles set pin = '0780' where nickname = 'Kai' and pin is null;
-
--- ==============================
--- Client discount rules (авто-скидки для клиентов на позиции)
--- ==============================
-alter table discounts add column if not exists is_auto boolean not null default false;
-create table if not exists client_discount_rules (
-  id uuid primary key default gen_random_uuid(),
-  discount_id uuid not null references discounts(id) on delete cascade,
-  profile_id uuid not null references profiles(id) on delete cascade,
-  item_id uuid not null references inventory(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  unique(profile_id, item_id)
-);
-create index if not exists idx_client_discount_rules_discount on client_discount_rules(discount_id);
-create index if not exists idx_client_discount_rules_profile on client_discount_rules(profile_id);
-create index if not exists idx_client_discount_rules_item on client_discount_rules(item_id);
-alter table client_discount_rules enable row level security;
-drop policy if exists "client_discount_rules_all" on client_discount_rules;
-create policy "client_discount_rules_all" on client_discount_rules for all using (true) with check (true);
-alter table check_discounts add column if not exists client_rule_id uuid references client_discount_rules(id) on delete set null;
-do $$
-begin
-  if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and tablename = 'client_discount_rules') then
-    alter publication supabase_realtime add table client_discount_rules;
-  end if;
-end $$;
-alter table client_discount_rules replica identity full;

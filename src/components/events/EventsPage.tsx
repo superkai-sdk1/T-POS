@@ -416,10 +416,15 @@ export function EventsPage() {
 
                         {formData.payment_type === 'fixed' && (
                             <Input
-                                type="number"
+                                type="text"
+                                inputMode="numeric"
                                 label="Сумма (₽)"
-                                value={formData.fixed_amount || 0}
-                                onChange={(e) => setFormData({ ...formData, fixed_amount: Number(e.target.value) })}
+                                placeholder="0"
+                                value={formData.fixed_amount ? String(formData.fixed_amount) : ''}
+                                onChange={(e) => {
+                                    const raw = e.target.value.replace(/[^0-9]/g, '');
+                                    setFormData({ ...formData, fixed_amount: raw === '' ? 0 : Number(raw) });
+                                }}
                                 compact
                             />
                         )}

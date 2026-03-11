@@ -338,6 +338,7 @@ export function CheckView({ onBack }: CheckViewProps) {
   const [showNote, setShowNote] = useState(false);
   const [linkedEvent, setLinkedEvent] = useState<Event | null>(null);
   const [eventAmount, setEventAmount] = useState<number | null>(null);
+  const [eventAmountStr, setEventAmountStr] = useState('');
   const [isUpdatingEvent, setIsUpdatingEvent] = useState(false);
 
   // Add player flow
@@ -391,17 +392,18 @@ export function CheckView({ onBack }: CheckViewProps) {
     setNote(activeCheck?.note || '');
   }, [activeCheck?.id, activeCheck?.note]);
 
-  // Синхронизируем мероприятие из активного чека (загружается вместе с чеком)
   useEffect(() => {
-    if (activeCheck && (activeCheck as any).event) {
-      const ev = (activeCheck as any).event as Event;
-      setLinkedEvent(ev);
-      setEventAmount(ev.fixed_amount ?? 0);
+    if (activeCheck?.event) {
+      setLinkedEvent(activeCheck.event);
+      const amt = activeCheck.event.fixed_amount ?? 0;
+      setEventAmount(amt);
+      setEventAmountStr(String(amt));
     } else {
       setLinkedEvent(null);
       setEventAmount(null);
+      setEventAmountStr('');
     }
-  }, [activeCheck]);
+  }, [activeCheck?.id]);
   const avatarHue = useMemo(
     () => getAvatarHue(activeCheck?.player_id || activeCheck?.id || ''),
     [activeCheck?.player_id, activeCheck?.id],
@@ -929,26 +931,27 @@ export function CheckView({ onBack }: CheckViewProps) {
                 </label>
                 <div className="flex items-center gap-1.5">
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     className="w-full px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-sm text-white placeholder:text-white/30 outline-none"
-                    value={eventAmount ?? 0}
+                    placeholder="0"
+                    value={eventAmountStr}
                     onChange={(e) => {
-                      const v = Number(e.target.value);
-                      if (Number.isNaN(v)) {
-                        setEventAmount(0);
-                      } else {
-                        setEventAmount(v);
-                      }
+                      const raw = e.target.value.replace(/[^0-9]/g, '');
+                      setEventAmountStr(raw);
+                      setEventAmount(raw === '' ? 0 : Number(raw));
                     }}
                     onBlur={async () => {
-                      if (!linkedEvent || eventAmount == null) return;
+                      if (!linkedEvent) return;
+                      const finalAmount = eventAmount ?? 0;
+                      setEventAmountStr(String(finalAmount));
                       setIsUpdatingEvent(true);
                       try {
                         await supabase
                           .from('events')
-                          .update({ fixed_amount: eventAmount })
+                          .update({ fixed_amount: finalAmount })
                           .eq('id', linkedEvent.id);
-                        setLinkedEvent({ ...linkedEvent, fixed_amount: eventAmount });
+                        setLinkedEvent({ ...linkedEvent, fixed_amount: finalAmount });
                       } finally {
                         setIsUpdatingEvent(false);
                       }
