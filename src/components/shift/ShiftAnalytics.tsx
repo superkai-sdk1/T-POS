@@ -187,7 +187,7 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                           {pmLabels[c.payment_method] || c.payment_method}
                         </span>
                       )}
-                      <span className="font-black text-[13px] text-[var(--c-accent)] tabular-nums">{fmtCur(c.total_amount + (c.bonus_used || 0))}</span>
+                      <span className="font-black text-[13px] text-[var(--c-accent)] tabular-nums">{fmtCur(c.total_amount + (c.bonus_used || 0) + (c.certificate_used || 0))}</span>
                     </div>
                   </div>
                   {c.items.length > 0 && (
@@ -204,6 +204,12 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                     <div className="flex justify-between text-[11px] pt-1 border-t border-[var(--c-border)]">
                       <span className="text-[var(--c-hint)]">Бонусы</span>
                       <span className="font-bold text-[var(--c-warning)] tabular-nums">-{fmtCur(c.bonus_used)}</span>
+                    </div>
+                  )}
+                  {(c.certificate_used || 0) > 0 && (
+                    <div className="flex justify-between text-[11px] pt-1 border-t border-[var(--c-border)]">
+                      <span className="text-[var(--c-hint)]">Сертификат</span>
+                      <span className="font-bold text-[#8b5cf6] tabular-nums">-{fmtCur(c.certificate_used)}</span>
                     </div>
                   )}
                 </div>

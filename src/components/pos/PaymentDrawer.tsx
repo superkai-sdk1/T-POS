@@ -222,9 +222,9 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
     const certAmount = Math.min(certBalance, total);
     const remainder = total - certAmount;
 
-    const payments: PaymentPortion[] = [{ method: 'cash' as PaymentMethod, amount: certAmount }];
+    const payments: PaymentPortion[] = [];
     if (remainder > 0) payments.push({ method: remainderMethod, amount: remainder });
-    const ok = await closeCheck(payments, 0, spaceRental);
+    const ok = await closeCheck(payments, 0, spaceRental, certAmount, appliedCert.id);
     if (ok) {
       const { error: updErr } = await supabase
         .from('certificates')
@@ -232,6 +232,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
           balance: certBalance - certAmount,
           is_used: certBalance - certAmount <= 0,
           used_by: activeCheck.player_id || null,
+          used_at: new Date().toISOString(),
         })
         .eq('id', appliedCert.id);
       if (updErr) {
@@ -561,22 +562,31 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                     </div>
                     {(() => {
                       const certBal = appliedCert.balance ?? appliedCert.nominal;
+                      const certDeduction = Math.min(certBal, total);
                       const covers = certBal >= total;
-                      const remainder = total - Math.min(certBal, total);
+                      const remainder = total - certDeduction;
                       return (
                         <>
+                          <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                            <span className="text-[11px] text-white/30">Списание с сертификата</span>
+                            <span className="text-[13px] font-bold text-[#f43f5e]">−{fmtCur(certDeduction)}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] text-white/30 font-bold">К оплате</span>
+                            <span className="text-[15px] font-black text-white tabular-nums">{fmtCur(remainder)}</span>
+                          </div>
                           {covers ? (
                             <button
                               onClick={() => handleCertPay('cash')}
                               disabled={isProcessing}
                               className="w-full py-3.5 rounded-2xl text-[13px] font-black uppercase tracking-widest text-white active:scale-[0.97] transition-transform disabled:opacity-30 bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] shadow-xl shadow-[#8b5cf6]/30"
                             >
-                              Оплатить {fmtCur(total)}
+                              Закрыть по сертификату
                             </button>
                           ) : (
                             <div className="space-y-3 pt-1">
                               <p className="text-[11px] text-center text-white/30">
-                                Списать {fmtCur(certBal)}, остаток {fmtCur(remainder)}:
+                                Способ оплаты остатка {fmtCur(remainder)}:
                               </p>
                               <div className="grid grid-cols-2 gap-3">
                                 <button

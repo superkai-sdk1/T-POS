@@ -42,7 +42,7 @@ interface POSState {
   removeDiscount: (checkDiscountId: string) => Promise<void>;
   saveCartToDb: () => Promise<boolean>;
   refreshActiveCheck: () => Promise<void>;
-  closeCheck: (payments: PaymentPortion[], bonusUsed?: number, spaceRental?: number) => Promise<boolean>;
+  closeCheck: (payments: PaymentPortion[], bonusUsed?: number, spaceRental?: number, certificateUsed?: number, certificateId?: string | null) => Promise<boolean>;
   cancelCheck: () => Promise<boolean>;
   leaveCheck: () => Promise<void>;
   refreshCheckById: (checkId: string) => Promise<void>;
@@ -736,7 +736,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     get().loadOpenChecks(); // Fire and forget background reload
   },
 
-  closeCheck: async (payments: PaymentPortion[], bonusUsed = 0, spaceRental = 0) => {
+  closeCheck: async (payments: PaymentPortion[], bonusUsed = 0, spaceRental = 0, certificateUsed = 0, certificateId: string | null = null) => {
     const { activeCheck, cart } = get();
     if (!activeCheck) return false;
     const user = useAuthStore.getState().user;
@@ -746,7 +746,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const saved = await get().saveCartToDb();
     if (!saved) return false;
 
-    const finalAmount = bonusUsed > 0 ? Math.max(0, total - bonusUsed) : total;
+    const finalAmount = Math.max(0, total - bonusUsed - certificateUsed);
 
     const isSplit = payments.length > 1;
     const primaryMethod: PaymentMethod = isSplit ? 'split' : payments[0]?.method || 'cash';
@@ -756,8 +756,10 @@ export const usePOSStore = create<POSState>((set, get) => ({
       .update({
         status: 'closed',
         total_amount: finalAmount,
-        payment_method: primaryMethod,
+        payment_method: payments.length > 0 ? primaryMethod : 'cash',
         bonus_used: bonusUsed,
+        certificate_used: certificateUsed,
+        certificate_id: certificateId,
         discount_total: discountTotal,
         closed_at: new Date().toISOString(),
       })
@@ -864,9 +866,9 @@ export const usePOSStore = create<POSState>((set, get) => ({
       }
     }
 
-    const methodDesc = isSplit
-      ? 'разд. оплата'
-      : primaryMethod;
+    const methodDesc = certificateUsed > 0
+      ? (payments.length > 0 ? `сертификат + ${isSplit ? 'разд. оплата' : primaryMethod}` : 'сертификат')
+      : (isSplit ? 'разд. оплата' : primaryMethod);
 
     await supabase.from('transactions').insert({
       type: 'sale',
@@ -876,6 +878,17 @@ export const usePOSStore = create<POSState>((set, get) => ({
       player_id: activeCheck.player_id || null,
       created_by: user?.id,
     });
+
+    if (certificateUsed > 0) {
+      await supabase.from('transactions').insert({
+        type: 'sale',
+        amount: 0,
+        description: `Оплата сертификатом: ${certificateUsed}₽${certificateId ? ` (${certificateId.slice(0, 8)})` : ''}`,
+        check_id: activeCheck.id,
+        player_id: activeCheck.player_id || null,
+        created_by: user?.id,
+      });
+    }
 
     const qtyByItemId = new Map<string, number>();
     for (const c of cart.filter((x) => x?.item)) {

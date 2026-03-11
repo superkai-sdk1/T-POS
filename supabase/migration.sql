@@ -582,6 +582,8 @@ create table spaces (
 
 alter table checks add column space_id uuid references spaces(id);
 alter table checks add column guest_names text default null;
+alter table checks add column certificate_used numeric not null default 0;
+alter table checks add column certificate_id uuid references certificates(id);
 
 create table bookings (
   id uuid primary key default gen_random_uuid(),

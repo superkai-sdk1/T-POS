@@ -65,6 +65,8 @@ export interface Check {
   payment_method: PaymentMethod | null;
   bonus_used: number;
   discount_total: number;
+  certificate_used: number;
+  certificate_id: string | null;
   space_id: string | null;
   guest_names: string | null;
   note: string | null;
@@ -120,6 +122,7 @@ export interface ShiftCheckDetail {
   total_amount: number;
   payment_method: PaymentMethod | null;
   bonus_used: number;
+  certificate_used: number;
   closed_at: string | null;
   items: { name: string; quantity: number; price: number }[];
 }

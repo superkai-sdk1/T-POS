@@ -134,6 +134,13 @@ ALTER TABLE expenses REPLICA IDENTITY FULL;
 
 -- Search tags for client profiles
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS search_tags text[] NOT NULL DEFAULT '{}';
+
+-- Certificate tracking on checks
+ALTER TABLE checks ADD COLUMN IF NOT EXISTS certificate_used numeric NOT NULL DEFAULT 0;
+DO $$ BEGIN
+  ALTER TABLE checks ADD COLUMN certificate_id uuid REFERENCES certificates(id);
+EXCEPTION WHEN duplicate_column THEN NULL;
+END $$;
 `;
 
 async function main() {
