@@ -133,7 +133,7 @@ const server = http.createServer((req, res) => {
     };
 
     const steps = [
-      { label: 'Очистка неотслеживаемых файлов', cmd: 'git', args: ['clean', '-fd'] },
+      { label: 'Очистка неотслеживаемых файлов', cmd: 'git', args: ['clean', '-fd', '-e', '.env', '-e', '.env.local'] },
       { label: 'Загрузка обновлений с сервера', cmd: 'git', args: ['fetch', 'origin'] },
       { label: 'Сброс до актуальной версии', cmd: 'git', args: ['reset', '--hard', 'origin/main'] },
       { label: 'Установка зависимостей', cmd: 'npm', args: ['ci', '--include=dev', '--loglevel=error'] },

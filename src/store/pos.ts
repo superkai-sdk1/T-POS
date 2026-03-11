@@ -206,11 +206,12 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
       const mods = modMap[ci.id];
       const modTotal = (mods || []).reduce((s, m) => s + m.price, 0);
-      const rowTotal = (ci.item.price + modTotal) * ci.quantity;
+      const unitPrice = ci.price_at_time || (ci.item.price + modTotal);
+      const rowTotal = unitPrice * ci.quantity;
       totalsMap.set(ci.check_id, (totalsMap.get(ci.check_id) || 0) + rowTotal);
 
       newCartsMap[ci.check_id].push({
-        item: ci.item,
+        item: { ...ci.item, price: unitPrice - modTotal },
         quantity: ci.quantity,
         modifiers: mods,
       });
@@ -508,11 +509,16 @@ export const usePOSStore = create<POSState>((set, get) => ({
       }
     }
 
-    const newCart: CartItem[] = loadedItems.filter((ci) => ci.item).map((ci) => ({
-      item: ci.item as InventoryItem,
-      quantity: ci.quantity,
-      modifiers: modMap[ci.id] || undefined,
-    }));
+    const newCart: CartItem[] = loadedItems.filter((ci) => ci.item).map((ci) => {
+      const mods = modMap[ci.id] || undefined;
+      const modTotal = (mods || []).reduce((s, m) => s + m.price, 0);
+      const effectivePrice = ci.price_at_time ? ci.price_at_time - modTotal : (ci.item as InventoryItem).price;
+      return {
+        item: { ...(ci.item as InventoryItem), price: effectivePrice },
+        quantity: ci.quantity,
+        modifiers: mods,
+      };
+    });
 
     const mkFp = (c: CartItem[]) => c.filter((ci) => ci?.item).map((ci) => {
       const mids = (ci.modifiers || []).map((m) => m.id).sort().join('+');
@@ -917,11 +923,15 @@ export const usePOSStore = create<POSState>((set, get) => ({
     for (const c of cart.filter((x) => x?.item)) {
       qtyByItemId.set(c.item.id, (qtyByItemId.get(c.item.id) || 0) + c.quantity);
     }
-    await Promise.all(
+    const stockResults = await Promise.all(
       [...qtyByItemId.entries()].map(([itemId, soldQty]) =>
         supabase.rpc('decrement_stock', { p_item_id: itemId, p_qty: soldQty })
       ),
     );
+    const stockErrors = stockResults.filter((r) => r.error);
+    if (stockErrors.length > 0) {
+      console.error('decrement_stock errors:', stockErrors.map((r) => r.error));
+    }
 
     if (activeCheck.space_id) {
       await supabase
@@ -993,11 +1003,16 @@ export const usePOSStore = create<POSState>((set, get) => ({
       });
     }
 
-    const cart: CartItem[] = items.map(ci => ({
-      item: ci.item!,
-      quantity: ci.quantity,
-      modifiers: modMap[ci.id],
-    }));
+    const cart: CartItem[] = items.map(ci => {
+      const mods = modMap[ci.id];
+      const modTotal = (mods || []).reduce((s, m) => s + m.price, 0);
+      const effectivePrice = ci.price_at_time ? ci.price_at_time - modTotal : ci.item!.price;
+      return {
+        item: { ...ci.item!, price: effectivePrice },
+        quantity: ci.quantity,
+        modifiers: mods,
+      };
+    });
 
     set(state => {
       const newChecks = state.openChecks.map(c => c.id === checkId ? check : c);

@@ -52,6 +52,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- 3b. increment_stock function (atomic)
+CREATE OR REPLACE FUNCTION increment_stock(p_item_id uuid, p_qty numeric)
+RETURNS void AS $$
+BEGIN
+  UPDATE inventory SET stock_quantity = stock_quantity + p_qty WHERE id = p_item_id;
+END;
+$$ LANGUAGE plpgsql;
+
 -- 4. Enum fixes
 ALTER TYPE payment_method ADD VALUE IF NOT EXISTS 'split';
 ALTER TYPE payment_method ADD VALUE IF NOT EXISTS 'deposit';

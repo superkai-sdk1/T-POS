@@ -181,17 +181,7 @@ export function SupplyPage() {
     for (const d of draftItems) {
       const qty = Number(d.quantity);
       if (qty > 0) {
-        const { data: fresh } = await supabase
-          .from('inventory')
-          .select('stock_quantity')
-          .eq('id', d.item.id)
-          .single();
-        if (fresh) {
-          await supabase
-            .from('inventory')
-            .update({ stock_quantity: fresh.stock_quantity + qty })
-            .eq('id', d.item.id);
-        }
+        await supabase.rpc('increment_stock', { p_item_id: d.item.id, p_qty: qty });
       }
     }
 
@@ -291,10 +281,11 @@ export function SupplyPage() {
   const handleSaveEdit = async () => {
     if (!selectedSupply || isSaving) return;
     setIsSaving(true);
+
     for (const si of detailItems) {
-      const { data: fresh } = await supabase.from('inventory').select('stock_quantity').eq('id', si.item_id).single();
-      if (fresh) await supabase.from('inventory').update({ stock_quantity: Math.max(0, fresh.stock_quantity - si.quantity) }).eq('id', si.item_id);
+      await supabase.rpc('decrement_stock', { p_item_id: si.item_id, p_qty: si.quantity });
     }
+
     await supabase.from('supply_items').delete().eq('supply_id', selectedSupply.id);
     const newTotal = editItems.reduce((s, d) => s + (Number(d.totalCost) || 0), 0);
     const rows = editItems.map((d) => ({
@@ -303,13 +294,23 @@ export function SupplyPage() {
     }));
     if (rows.length > 0) await supabase.from('supply_items').insert(rows);
     await supabase.from('supplies').update({ total_cost: newTotal }).eq('id', selectedSupply.id);
+
     for (const d of editItems) {
       const qty = Number(d.quantity);
       if (qty > 0) {
-        const { data: fresh } = await supabase.from('inventory').select('stock_quantity').eq('id', d.item.id).single();
-        if (fresh) await supabase.from('inventory').update({ stock_quantity: fresh.stock_quantity + qty }).eq('id', d.item.id);
+        await supabase.rpc('increment_stock', { p_item_id: d.item.id, p_qty: qty });
       }
     }
+
+    const oldItemsSummary = detailItems.map(si => `${si.item?.name}: -${si.quantity}`).join(', ');
+    const newItemsSummary = editItems.map(d => `${d.item.name}: +${d.quantity}`).join(', ');
+    await supabase.from('transactions').insert({
+      type: 'supply',
+      amount: newTotal,
+      description: `Редактирование поставки #${selectedSupply.id.slice(0, 8)}: убрали [${oldItemsSummary}], добавили [${newItemsSummary}]`,
+      created_by: user?.id,
+    });
+
     hapticNotification('success');
     setIsSaving(false);
     setShowDetail(false);
@@ -320,12 +321,23 @@ export function SupplyPage() {
   const handleDelete = async () => {
     if (!selectedSupply || isSaving) return;
     setIsSaving(true);
+
+    const itemsSummary = detailItems.map(si => `${si.item?.name}: -${si.quantity}`).join(', ');
+
     const { error: delErr } = await supabase.from('supplies').delete().eq('id', selectedSupply.id);
     if (delErr) { setIsSaving(false); return; }
+
     for (const si of detailItems) {
-      const { data: fresh } = await supabase.from('inventory').select('stock_quantity').eq('id', si.item_id).single();
-      if (fresh) await supabase.from('inventory').update({ stock_quantity: Math.max(0, fresh.stock_quantity - si.quantity) }).eq('id', si.item_id);
+      await supabase.rpc('decrement_stock', { p_item_id: si.item_id, p_qty: si.quantity });
     }
+
+    await supabase.from('transactions').insert({
+      type: 'supply',
+      amount: -(selectedSupply.total_cost),
+      description: `Удаление поставки #${selectedSupply.id.slice(0, 8)}: [${itemsSummary}]`,
+      created_by: user?.id,
+    });
+
     hapticNotification('warning');
     setIsSaving(false);
     setShowDetail(false);

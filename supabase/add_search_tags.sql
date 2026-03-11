@@ -1,6 +1,7 @@
 -- ============================================
--- ВСТАВЬ ЭТОТ SQL В:  Supabase Dashboard → SQL Editor → Run
--- Безопасно запускать повторно (все IF NOT EXISTS / IF EXISTS)
+-- Одноразовый скрипт: заполнение search_tags для профилей (транслитерация)
+-- Схема (storage policies) — в migrations/20260311160000_full_schema.sql
+-- Supabase Dashboard → SQL Editor → Run
 -- ============================================
 
 -- 1. Добавить колонку search_tags

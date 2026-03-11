@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, memo, startTransition } from 'react';
+import { useEffect, useState, useRef, useCallback, memo, useMemo, startTransition } from 'react';
 import { usePOSStore } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
 import { Button } from '@/components/ui/Button';
@@ -16,11 +16,11 @@ interface OpenChecksProps {
   onSelectCheck: () => void;
 }
 
-const VISIT_ITEMS: Record<VisitTariff, { name: string; label: string; price: number; dbName: string }> = {
-  regular: { name: 'Гость', label: 'Гость', price: 700, dbName: 'Игровой вечер Гость' },
-  resident: { name: 'Резидент', label: 'Резидент', price: 500, dbName: 'Игровой вечер Резидент' },
-  student: { name: 'Студент', label: 'Студент', price: 300, dbName: 'Игровой вечер Студент' },
-  single_game: { name: 'Одна игра', label: 'Одна игра', price: 150, dbName: 'Игровой вечер Одна игра' },
+const VISIT_ITEMS_STATIC: Record<VisitTariff, { name: string; label: string; fallbackPrice: number; dbName: string }> = {
+  regular: { name: 'Гость', label: 'Гость', fallbackPrice: 700, dbName: 'Игровой вечер Гость' },
+  resident: { name: 'Резидент', label: 'Резидент', fallbackPrice: 500, dbName: 'Игровой вечер Резидент' },
+  student: { name: 'Студент', label: 'Студент', fallbackPrice: 300, dbName: 'Игровой вечер Студент' },
+  single_game: { name: 'Одна игра', label: 'Одна игра', fallbackPrice: 150, dbName: 'Игровой вечер Одна игра' },
 };
 
 function tierToTariff(tier: ClientTier): VisitTariff {
@@ -130,6 +130,16 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const addToCart = usePOSStore((s) => s.addToCart);
   const saveCartToDb = usePOSStore((s) => s.saveCartToDb);
   const inventory = usePOSStore((s) => s.inventory);
+
+  const VISIT_ITEMS = useMemo(() => {
+    const result: Record<VisitTariff, { name: string; label: string; price: number; dbName: string }> = {} as any;
+    for (const [key, info] of Object.entries(VISIT_ITEMS_STATIC) as [VisitTariff, typeof VISIT_ITEMS_STATIC['regular']][]) {
+      const invItem = inventory.find((i) => i.name === info.dbName);
+      result[key] = { name: info.name, label: info.label, dbName: info.dbName, price: invItem?.price ?? info.fallbackPrice };
+    }
+    return result;
+  }, [inventory]);
+
   const checksLoaded = usePOSStore((s) => s.checksLoaded);
   const activeCheck = usePOSStore((s) => s.activeCheck);
   const activeShift = useShiftStore((s) => s.activeShift);
