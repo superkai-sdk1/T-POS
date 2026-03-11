@@ -8,7 +8,7 @@ import { Drawer } from '@/components/ui/Drawer';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import {
   Banknote, Plus, ArrowDownToLine, ArrowUpFromLine,
-  Trash2, PlayCircle, StopCircle, Wallet,
+  Trash2, PlayCircle, StopCircle, Wallet, RotateCcw,
 } from 'lucide-react';
 import { hapticNotification } from '@/lib/telegram';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
@@ -16,7 +16,7 @@ import type { CashOperation, Shift } from '@/types';
 
 interface LedgerEntry {
   id: string;
-  type: 'shift_open' | 'shift_close' | 'inkassation' | 'deposit';
+  type: 'shift_open' | 'shift_close' | 'inkassation' | 'deposit' | 'refund';
   amount: number;
   balanceAfter: number;
   date: string;
@@ -24,9 +24,19 @@ interface LedgerEntry {
   creator?: string;
 }
 
+interface RefundWithCheck {
+  id: string;
+  total_amount: number;
+  created_at: string;
+  created_by: string | null;
+  check_id: string;
+  check: { shift_id: string | null; payment_method: string | null; total_amount: number } | null;
+}
+
 export function InkassationPage() {
   const [operations, setOperations] = useState<CashOperation[]>([]);
   const [shifts, setShifts] = useState<Shift[]>([]);
+  const [refunds, setRefunds] = useState<RefundWithCheck[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [opType, setOpType] = useState<'inkassation' | 'deposit'>('inkassation');
@@ -66,12 +76,44 @@ export function InkassationPage() {
     }
   }, []);
 
-  const cashTables = useMemo(() => ['cash_operations', 'shifts'], []);
-  useOnTableChange(cashTables, () => { loadOperations(); loadShifts(); });
+  const [refundCheckPayments, setRefundCheckPayments] = useState<Record<string, { method: string; amount: number }[]>>({});
+
+  const loadRefunds = useCallback(async () => {
+    const { data } = await supabase
+      .from('refunds')
+      .select('id, total_amount, created_at, created_by, check_id, check:checks!refunds_check_id_fkey(shift_id, payment_method, total_amount)')
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (data) {
+      const mapped = data.map((r) => ({
+        ...r,
+        check: Array.isArray(r.check) ? r.check[0] : r.check,
+      })) as RefundWithCheck[];
+      setRefunds(mapped);
+      const splitCheckIds = mapped.filter((r) => r.check?.payment_method === 'split').map((r) => r.check_id);
+      if (splitCheckIds.length > 0) {
+        const { data: payments } = await supabase
+          .from('check_payments')
+          .select('check_id, method, amount')
+          .in('check_id', splitCheckIds);
+        const map: Record<string, { method: string; amount: number }[]> = {};
+        for (const p of payments || []) {
+          if (!map[p.check_id]) map[p.check_id] = [];
+          map[p.check_id].push({ method: p.method, amount: p.amount });
+        }
+        setRefundCheckPayments(map);
+      } else {
+        setRefundCheckPayments({});
+      }
+    }
+  }, []);
+
+  const cashTables = useMemo(() => ['cash_operations', 'shifts', 'refunds'], []);
+  useOnTableChange(cashTables, () => { loadOperations(); loadShifts(); loadRefunds(); });
 
   useEffect(() => {
-    Promise.all([loadOperations(), loadShifts()]).then(() => setIsLoading(false));
-  }, [loadOperations, loadShifts]);
+    Promise.all([loadOperations(), loadShifts(), loadRefunds()]).then(() => setIsLoading(false));
+  }, [loadOperations, loadShifts, loadRefunds]);
 
   const handleCreate = async () => {
     const val = Math.abs(Number(amount));
@@ -117,6 +159,7 @@ export function InkassationPage() {
 
   const ledger = useMemo((): LedgerEntry[] => {
     const entries: { date: string; sortKey: number; entry: Omit<LedgerEntry, 'balanceAfter'> }[] = [];
+    const shiftMap = new Map(shifts.map((s) => [s.id, s]));
 
     for (const s of shifts) {
       entries.push({
@@ -145,6 +188,36 @@ export function InkassationPage() {
       }
     }
 
+    for (const r of refunds) {
+      const check = r.check;
+      const shift = check?.shift_id ? shiftMap.get(check.shift_id) : null;
+      if (!shift || !check || !shift.closed_at) continue;
+      if (new Date(r.created_at) <= new Date(shift.closed_at)) continue;
+
+      let cashAmount = 0;
+      if (check.payment_method === 'cash') {
+        cashAmount = r.total_amount || 0;
+      } else if (check.payment_method === 'split') {
+        const parts = refundCheckPayments[r.check_id] || [];
+        const cashPart = parts.filter((p) => p.method === 'cash').reduce((s, p) => s + p.amount, 0);
+        const origTotal = check.total_amount || 1;
+        cashAmount = Math.round((cashPart / origTotal) * (r.total_amount || 0));
+      }
+      if (cashAmount <= 0) continue;
+
+      entries.push({
+        date: r.created_at,
+        sortKey: new Date(r.created_at).getTime(),
+        entry: {
+          id: `ref-${r.id}`,
+          type: 'refund',
+          amount: cashAmount,
+          date: r.created_at,
+          note: 'Возврат наличными',
+        },
+      });
+    }
+
     for (const op of operations) {
       entries.push({
         date: op.created_at,
@@ -169,7 +242,7 @@ export function InkassationPage() {
         balance = e.entry.amount;
       } else if (e.entry.type === 'shift_close') {
         balance = e.entry.amount;
-      } else if (e.entry.type === 'inkassation') {
+      } else if (e.entry.type === 'inkassation' || e.entry.type === 'refund') {
         balance -= e.entry.amount;
       } else if (e.entry.type === 'deposit') {
         balance += e.entry.amount;
@@ -179,7 +252,7 @@ export function InkassationPage() {
 
     result.reverse();
     return result;
-  }, [operations, shifts]);
+  }, [operations, shifts, refunds, refundCheckPayments]);
 
   const [liveCashBalance, setLiveCashBalance] = useState<number | null>(null);
 
@@ -204,13 +277,31 @@ export function InkassationPage() {
         if (chk && chk.payment_method !== 'cash') cashFromSales += p.amount || 0;
       }
     }
+    let cashRefunded = 0;
+    const { data: refundData } = await supabase
+      .from('refunds')
+      .select('total_amount, check_id')
+      .eq('shift_id', activeShift.id);
+    for (const r of refundData || []) {
+      const origCheck = shiftChecks?.find((c) => c.id === r.check_id);
+      if (origCheck?.payment_method === 'cash') {
+        cashRefunded += r.total_amount || 0;
+      } else if (origCheck?.payment_method === 'split') {
+        const splitPayments = checkIds.length > 0 ? (await supabase
+          .from('check_payments').select('method, amount')
+          .eq('check_id', r.check_id).eq('method', 'cash')).data : [];
+        const cashPart = (splitPayments || []).reduce((s, p) => s + (p.amount || 0), 0);
+        const origTotal = origCheck.total_amount || 1;
+        cashRefunded += Math.round((cashPart / origTotal) * (r.total_amount || 0));
+      }
+    }
     const { data: cashOps } = await supabase
       .from('cash_operations').select('type, amount').eq('shift_id', activeShift.id);
     let opsBalance = 0;
     for (const op of cashOps || []) {
       opsBalance += op.type === 'deposit' ? op.amount : -op.amount;
     }
-    setLiveCashBalance(activeShift.cash_start + cashFromSales + opsBalance);
+    setLiveCashBalance(activeShift.cash_start + cashFromSales + opsBalance - cashRefunded);
   }, [activeShift]);
 
   useEffect(() => { loadLiveCash(); }, [loadLiveCash]);
@@ -238,6 +329,7 @@ export function InkassationPage() {
     shift_close: { label: 'Закрытие смены', icon: StopCircle, color: 'text-[var(--c-accent)]', bg: 'bg-[rgba(var(--c-accent-rgb),0.1)]', sign: '' },
     inkassation: { label: 'Инкассация', icon: ArrowUpFromLine, color: 'text-[var(--c-danger)]', bg: 'bg-[var(--c-danger-bg)]', sign: '−' },
     deposit: { label: 'Внесение', icon: ArrowDownToLine, color: 'text-[var(--c-success)]', bg: 'bg-[var(--c-success-bg)]', sign: '+' },
+    refund: { label: 'Возврат', icon: RotateCcw, color: 'text-[var(--c-warning)]', bg: 'bg-[var(--c-warning-bg)]', sign: '−' },
   };
 
   return (
@@ -281,7 +373,7 @@ export function InkassationPage() {
           {ledger.map((entry) => {
             const cfg = typeConfig[entry.type];
             const Icon = cfg.icon;
-            const isOp = entry.type === 'inkassation' || entry.type === 'deposit';
+            const isOp = entry.type === 'inkassation' || entry.type === 'deposit' || entry.type === 'refund';
             return (
               <div
                 key={entry.id}

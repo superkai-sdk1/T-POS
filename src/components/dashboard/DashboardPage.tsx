@@ -263,6 +263,17 @@ function ChecksTab({ allChecks }: {
       totalRevenue += c.total_amount;
     }
 
+    const checkIdsList = dayChecks.map((c) => c.id);
+    if (checkIdsList.length > 0) {
+      const { data: refundsData } = await supabase
+        .from('refunds')
+        .select('total_amount, check_id')
+        .in('check_id', checkIdsList);
+      for (const r of refundsData || []) {
+        totalRevenue -= r.total_amount || 0;
+      }
+    }
+
     const totalChecks = dayChecks.length;
     const avgCheck = totalChecks > 0 ? Math.round(totalRevenue / totalChecks) : 0;
     setDayAnalytics({ checks: dayChecks, totalRevenue, totalChecks, avgCheck });

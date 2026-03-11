@@ -51,6 +51,7 @@ export function useAnalyticsData() {
 
   const [allChecks, setAllChecks] = useState<ClosedCheck[]>([]);
   const [allCheckItems, setAllCheckItems] = useState<CheckItemStat[]>([]);
+  const [allRefunds, setAllRefunds] = useState<{ check_id: string; total_amount: number; created_at: string }[]>([]);
   const [debtors, setDebtors] = useState<Profile[]>([]);
   const [supplies, setSupplies] = useState<Supply[]>([]);
   const [cashOps, setCashOps] = useState<CashOperation[]>([]);
@@ -63,7 +64,7 @@ export function useAnalyticsData() {
 
   const loadAll = useCallback(async () => {
     setIsLoading(true);
-    const [checksRes, itemsRes, debtorsRes, suppliesRes, cashRes, costsRes, expensesRes, playersRes, adminsRes] = await Promise.all([
+    const [checksRes, itemsRes, debtorsRes, suppliesRes, cashRes, costsRes, expensesRes, playersRes, adminsRes, refundsRes] = await Promise.all([
       supabase.from('checks').select('id, total_amount, payment_method, closed_at, player_id, staff_id, player:profiles!checks_player_id_fkey(nickname)').eq('status', 'closed').order('closed_at', { ascending: false }),
       supabase.from('check_items').select('item_id, check_id, quantity, price_at_time, item:inventory(name, category, price)'),
       supabase.from('profiles').select('*').lt('balance', 0).order('balance', { ascending: true }),
@@ -73,6 +74,7 @@ export function useAnalyticsData() {
       supabase.from('expenses').select('amount, expense_date').order('expense_date', { ascending: false }),
       supabase.from('profiles').select('*').eq('role', 'client').is('deleted_at', null),
       supabase.from('profiles').select('id, nickname').in('role', ['owner', 'staff']).is('deleted_at', null),
+      supabase.from('refunds').select('check_id, total_amount, created_at').order('created_at', { ascending: false }),
     ]);
 
     if (checksRes.data) {
@@ -107,6 +109,7 @@ export function useAnalyticsData() {
     if (expensesRes.data) setOpExpenses(expensesRes.data);
     if (playersRes.data) setAllPlayers(playersRes.data as Profile[]);
     if (adminsRes.data) setAdmins(adminsRes.data as Pick<Profile, 'id' | 'nickname'>[]);
+    if (refundsRes.data) setAllRefunds(refundsRes.data as { check_id: string; total_amount: number; created_at: string }[]);
 
     if (costsRes.data && costsRes.data.length > 0) {
       const agg: Record<string, { totalCost: number; totalQty: number }> = {};
@@ -150,31 +153,50 @@ export function useAnalyticsData() {
   const checkIds = useMemo(() => new Set(checks.map((c) => c.id)), [checks]);
   const prevCheckIds = useMemo(() => new Set(prevChecks.map((c) => c.id)), [prevChecks]);
 
+  const refunds = useMemo(() => allRefunds.filter((r) => checkIds.has(r.check_id)), [allRefunds, checkIds]);
+  const prevRefunds = useMemo(() => allRefunds.filter((r) => prevCheckIds.has(r.check_id)), [allRefunds, prevCheckIds]);
+  const totalRefunded = useMemo(() => refunds.reduce((s, r) => s + (r.total_amount || 0), 0), [refunds]);
+  const prevTotalRefunded = useMemo(() => prevRefunds.reduce((s, r) => s + (r.total_amount || 0), 0), [prevRefunds]);
+
   const checkItems = useMemo(() => allCheckItems.filter((ci) => checkIds.has(ci.check_id)), [allCheckItems, checkIds]);
   const prevCheckItems = useMemo(() => allCheckItems.filter((ci) => prevCheckIds.has(ci.check_id)), [allCheckItems, prevCheckIds]);
 
-  const revenue = useMemo(() => checks.reduce((s, c) => s + (c.total_amount || 0), 0), [checks]);
-  const prevRevenue = useMemo(() => prevChecks.reduce((s, c) => s + (c.total_amount || 0), 0), [prevChecks]);
+  const revenue = useMemo(() => checks.reduce((s, c) => s + (c.total_amount || 0), 0) - totalRefunded, [checks, totalRefunded]);
+  const prevRevenue = useMemo(() => prevChecks.reduce((s, c) => s + (c.total_amount || 0), 0) - prevTotalRefunded, [prevChecks, prevTotalRefunded]);
+
+  const refundsByCheckId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of refunds) {
+      map.set(r.check_id, (map.get(r.check_id) || 0) + (r.total_amount || 0));
+    }
+    return map;
+  }, [refunds]);
 
   const paymentBreakdown = useMemo(() => {
     const b = { cash: 0, card: 0, debt: 0, bonus: 0, deposit: 0 };
     for (const c of checks) {
       const amt = c.total_amount || 0;
+      const refAmt = refundsByCheckId.get(c.id) || 0;
+      const effectiveAmt = amt - refAmt;
       if (c.payment_method === 'split' || c.payment_method === 'bonus') {
         const parts = checkPaymentsMap[c.id] || [];
         if (parts.length > 0) {
+          const partsTotal = parts.reduce((s, p) => s + p.amount, 0);
           for (const p of parts) {
-            if (p.method in b) b[p.method as keyof typeof b] += p.amount;
+            if (p.method in b) {
+              const ratio = partsTotal > 0 ? p.amount / partsTotal : 0;
+              b[p.method as keyof typeof b] += p.amount - Math.round(refAmt * ratio);
+            }
           }
         } else if (c.payment_method !== 'bonus') {
-          b.cash += amt;
+          b.cash += effectiveAmt;
         }
       } else if (c.payment_method && c.payment_method in b) {
-        b[c.payment_method as keyof typeof b] += amt;
+        b[c.payment_method as keyof typeof b] += effectiveAmt;
       }
     }
     return b;
-  }, [checks, checkPaymentsMap]);
+  }, [checks, checkPaymentsMap, refundsByCheckId]);
 
   const cogs = useMemo(() => {
     let total = 0;

@@ -208,7 +208,7 @@ export function RefundsManager() {
         .from('refunds')
         .insert({
           check_id: check.id,
-          shift_id: activeShift?.id || null,
+          shift_id: activeShift?.id ?? check.shift_id ?? null,
           refund_type: actualType,
           total_amount: adjustedTotal,
           bonus_deducted: bonusToDeduct,

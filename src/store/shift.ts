@@ -217,7 +217,12 @@ export const useShiftStore = create<ShiftState>()(
             paymentMethod: c.payment_method as string | null,
           };
         });
-        const totalRevenue = checks.reduce((s, c) => s + c.totalAmount, 0);
+        const { data: shiftRefunds } = await supabase
+          .from('refunds')
+          .select('total_amount')
+          .eq('shift_id', activeShift.id);
+        const totalRefunded = (shiftRefunds || []).reduce((s, r) => s + (r.total_amount || 0), 0);
+        const totalRevenue = checks.reduce((s, c) => s + c.totalAmount, 0) - totalRefunded;
 
         sendToOwners(buildShiftCloseReport({
           staffClose: user?.nickname || '?',
@@ -327,6 +332,25 @@ export const useShiftStore = create<ShiftState>()(
           }
         }
 
+        const { data: refundsData } = await supabase
+          .from('refunds')
+          .select('total_amount, check_id')
+          .eq('shift_id', shiftId);
+
+        let totalRefunded = 0;
+        for (const r of refundsData || []) {
+          totalRefunded += r.total_amount || 0;
+          const origCheck = (checksData || []).find((c) => c.id === r.check_id);
+          if (origCheck) {
+            const pm = origCheck.payment_method || 'unknown';
+            if (paymentBreakdown[pm]) {
+              paymentBreakdown[pm].amount -= r.total_amount || 0;
+            }
+          }
+        }
+
+        totalRevenue -= totalRefunded;
+
         const totalChecks = checks.length;
         const avgCheck = totalChecks > 0 ? Math.round(totalRevenue / totalChecks) : 0;
 
@@ -334,6 +358,7 @@ export const useShiftStore = create<ShiftState>()(
           shift,
           checks,
           totalRevenue,
+          totalRefunded,
           totalChecks,
           avgCheck,
           paymentBreakdown,
