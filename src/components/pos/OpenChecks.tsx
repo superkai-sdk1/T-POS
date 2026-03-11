@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase';
 import type { Profile, Space, VisitTariff, ClientTier, Check } from '@/types';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { RefundsManager } from '@/components/management/RefundsManager';
+import { useHideNav } from '@/store/layout';
 
 interface OpenChecksProps {
   onSelectCheck: () => void;
@@ -123,6 +124,7 @@ const CheckTile = memo(({ check, onSelect, listMode }: { check: Check; onSelect:
 });
 
 export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
+  const hideNav = useHideNav();
   const openChecks = usePOSStore((s) => s.openChecks);
   const loadOpenChecks = usePOSStore((s) => s.loadOpenChecks);
   const createCheck = usePOSStore((s) => s.createCheck);
@@ -387,8 +389,8 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           </div>
         </div>
 
-        {/* Сетка чеков — скролл */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 lg:px-4 min-h-0 scrollbar-none scroll-area">
+        {/* Сетка чеков — скролл (pb-24 под нав на мобиле; убираем когда нав скрыт) */}
+        <div className={`flex-1 overflow-y-auto overflow-x-hidden px-4 sm:px-6 lg:px-4 min-h-0 scrollbar-none scroll-area ${hideNav ? 'pb-0' : 'pb-24 lg:pb-0'}`}>
           {!checksLoaded ? (
             <div className={`grid gap-3 lg:gap-4 ${activeCheck ? 'lg:grid-cols-1' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'}`}>
               {[1, 2, 3, 4, 5, 6].map((i) => (

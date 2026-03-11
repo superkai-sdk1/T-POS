@@ -20,7 +20,7 @@ import { CertificatesManager } from './CertificatesManager';
 import { ExpensesManager } from './ExpensesManager';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { hapticFeedback } from '@/lib/telegram';
-import { useLayoutStore } from '@/store/layout';
+import { useLayoutStore, useHideNav } from '@/store/layout';
 
 type Screen = 'menu' | 'inventory' | 'supplies' | 'revision' | 'debtors' | 'staff' | 'bonus' | 'cash' | 'menuEditor' | 'clients' | 'discounts' | 'refunds' | 'modifiers' | 'certificates' | 'expenses' | 'about';
 
@@ -250,8 +250,9 @@ function InventoryFull({ onNavigateToSupplies }: { onNavigateToSupplies?: () => 
     ? items.filter((i) => i.name.toLowerCase().includes(searchQuery.toLowerCase()))
     : items;
 
+  const hideNav = useHideNav();
   return (
-    <div className="space-y-6 relative pb-24">
+    <div className={`space-y-6 relative ${hideNav ? 'pb-0' : 'pb-24'} lg:pb-0`}>
       {/* Критический остаток */}
       {criticalItems.length > 0 && (
         <div className="relative overflow-hidden bg-rose-500/5 border border-rose-500/20 rounded-[32px] p-6 lg:p-8">

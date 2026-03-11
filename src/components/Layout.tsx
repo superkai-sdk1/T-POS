@@ -518,15 +518,6 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
           </main>
         </PullToRefreshContainer>
 
-        {/* ── Когда навигация скрыта: маскируем область внизу, чтобы не было видимого фона ── */}
-        {typeof document !== 'undefined' && hideNav && !showCheckView && createPortal(
-          <div
-            className="lg:hidden fixed bottom-0 left-0 right-0 h-24 z-[55] pointer-events-none"
-            style={{ background: 'var(--c-bg)' }}
-          />,
-          document.body
-        )}
-
         {/* ── Floating mobile bottom nav (hidden on deep screens) / Payment panel (when viewing a check) ── */}
         {typeof document !== 'undefined' && (showCheckView || !hideNav) && createPortal(
           showCheckView ? (

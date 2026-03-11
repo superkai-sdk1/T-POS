@@ -16,6 +16,7 @@ import { hapticFeedback } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase';
 import { useMenuCategories, getIconComponent, getCategoryColorConfig } from '@/hooks/useMenuCategories';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
+import { useHideNav } from '@/store/layout';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import type { InventoryItem, Discount, Profile, VisitTariff, ClientTier, Modifier } from '@/types';
@@ -216,6 +217,7 @@ interface CheckViewProps {
 
 export function CheckView({ onBack }: CheckViewProps) {
   const { activeCheck, cart, addToCart, updateCartQuantity, removeFromCart, inventory, leaveCheck, cancelCheck, getCartTotal, getDiscountTotal, updateCheckNote, saveCartToDb, appliedDiscounts, applyDiscount, removeDiscount } = usePOSStore();
+  const hideNav = useHideNav();
 
   const [showPayment, setShowPayment] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -677,8 +679,8 @@ export function CheckView({ onBack }: CheckViewProps) {
         </div>
       )}
 
-      {/* Cart (pb-24 под плавающую нав на мобиле) */}
-      <div className="flex-1 pb-24 lg:pb-0 min-h-0 space-y-3 lg:space-y-4">
+      {/* Cart (pb-24 под плавающую нав на мобиле; убираем когда нав скрыт) */}
+      <div className={`flex-1 min-h-0 space-y-3 lg:space-y-4 ${hideNav ? 'pb-0' : 'pb-24 lg:pb-0'}`}>
         {cart.length === 0 ? (
           <div className="text-center py-16 animate-fade-in">
             <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3">
