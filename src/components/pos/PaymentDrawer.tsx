@@ -7,7 +7,7 @@ import { usePOSStore, type PaymentPortion } from '@/store/pos';
 import { supabase } from '@/lib/supabase';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { Banknote, CreditCard, Clock, Star, Split, Plus, Minus, ArrowLeft, Ticket, X, PiggyBank } from 'lucide-react';
-import type { PaymentMethod, Profile, Certificate } from '@/types';
+import type { PaymentMethod, Profile, Certificate, Event } from '@/types';
 
 interface PaymentDrawerProps {
   open: boolean;
@@ -78,8 +78,43 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
   const [appliedCert, setAppliedCert] = useState<Certificate | null>(null);
   const [certLoading, setCertLoading] = useState(false);
   const [depositAmount, setDepositAmount] = useState(0);
+  const [linkedEvent, setLinkedEvent] = useState<Event | null>(null);
+  const [eventAmount, setEventAmount] = useState(0);
 
-  const total = getCartTotal() + spaceRental;
+  const cartTotal = getCartTotal();
+  const total = cartTotal + spaceRental + (linkedEvent ? (linkedEvent.fixed_amount || 0) : 0);
+
+  // Загружаем мероприятие, привязанное к текущему чеку
+  useEffect(() => {
+    let cancelled = false;
+    const loadEvent = async () => {
+      if (!activeCheck?.id) {
+        if (!cancelled) {
+          setLinkedEvent(null);
+          setEventAmount(0);
+        }
+        return;
+      }
+      const { data, error } = await supabase
+        .from('events')
+        .select('id, fixed_amount')
+        .eq('check_id', activeCheck.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error || !data) {
+        setLinkedEvent(null);
+        setEventAmount(0);
+      } else {
+        const ev = data as Pick<Event, 'id' | 'fixed_amount'>;
+        setLinkedEvent(ev as Event);
+        setEventAmount(ev.fixed_amount ?? 0);
+      }
+    };
+    loadEvent();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCheck?.id]);
 
   useEffect(() => {
     if (open && !closing) {

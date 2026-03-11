@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { usePOSStore } from '@/store/pos';
+import { supabase } from '@/lib/supabase';
 import { CreditCard, Plus, UserPlus } from 'lucide-react';
 import { hapticFeedback } from '@/lib/telegram';
 
@@ -9,8 +11,42 @@ const fmtCur = (n: number) =>
 export function CheckCartBar() {
   const cart = usePOSStore((s) => s.cart);
   const getCartTotal = usePOSStore((s) => s.getCartTotal);
-  const total = getCartTotal();
+  const activeCheck = usePOSStore((s) => s.activeCheck);
+  const [hasEvent, setHasEvent] = useState(false);
+  const [eventAmount, setEventAmount] = useState(0);
+
+  const total = getCartTotal() + (hasEvent ? eventAmount : 0);
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadEvent = async () => {
+      if (!activeCheck?.id) {
+        if (!cancelled) {
+          setHasEvent(false);
+          setEventAmount(0);
+        }
+        return;
+      }
+      const { data, error } = await supabase
+        .from('events')
+        .select('id, fixed_amount')
+        .eq('check_id', activeCheck.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error || !data) {
+        setHasEvent(false);
+        setEventAmount(0);
+      } else {
+        setHasEvent(true);
+        setEventAmount((data as { fixed_amount: number | null }).fixed_amount || 0);
+      }
+    };
+    loadEvent();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCheck?.id]);
 
   return (
     <div className="shrink-0 p-3 rounded-2xl border border-white/10 bg-white/[0.06] backdrop-blur-xl flex items-center justify-between gap-3 w-full max-w-md mx-auto">
@@ -36,11 +72,11 @@ export function CheckCartBar() {
         </button>
       </div>
       <div className="flex items-baseline gap-2">
-        {cartCount > 0 && (
+        {(cartCount > 0 || (hasEvent && eventAmount > 0)) && (
           <span className="text-xl font-black italic text-white tabular-nums">{fmtCur(total)}</span>
         )}
       </div>
-      {cartCount > 0 && (
+      {(cartCount > 0 || (hasEvent && eventAmount > 0)) && (
         <button
           onClick={() => {
             hapticFeedback('medium');

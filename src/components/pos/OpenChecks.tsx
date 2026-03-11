@@ -24,6 +24,78 @@ const VISIT_ITEMS_STATIC: Record<VisitTariff, { name: string; label: string; fal
   single_game: { name: 'Одна игра', label: 'Одна игра', fallbackPrice: 150, dbName: 'Игровой вечер Одна игра' },
 };
 
+const ANON_CLIENT_NAMES = [
+  'Тихий Волк',
+  'Весёлый Кот',
+  'Синий Лис',
+  'Смелый Медведь',
+  'Рыжий Заяц',
+  'Добрый Ёж',
+  'Ловкий Пёс',
+  'Грозный Орёл',
+  'Свежий Барс',
+  'Молчаливый Ворон',
+  'Упрямый Бык',
+  'Ночной Тигр',
+  'Зоркий Ястреб',
+  'Радостный Енот',
+  'Спокойный Панда',
+  'Хитрый Лис',
+  'Тёплый Пёс',
+  'Лесной Кот',
+  'Быстрый Барсук',
+  'Мудрый Слон',
+  'Дикий Волк',
+  'Тихий Ёж',
+  'Летний Конь',
+  'Храбрый Лев',
+  'Северный Волк',
+  'Звонкий Жаворонок',
+  'Весенний Медведь',
+  'Снежный Кот',
+  'Ласковый Тюлень',
+  'Городской Сокол',
+  'Солнечный Лис',
+  'Вечерний Волк',
+  'Улыбчивый Пёс',
+  'Радужный Кот',
+  'Громкий Попугай',
+  'Лесной Олень',
+  'Морской Краб',
+  'Хитрый Волчонок',
+  'Смелый Барс',
+  'Весёлый Тигр',
+  'Спящий Лис',
+  'Тихий Медвежонок',
+  'Гордый Конь',
+  'Маленький Енот',
+  'Добрый Котёнок',
+  'Ловкий Ястреб',
+  'Зоркий Пёс',
+  'Ясный Волк',
+  'Летучий Кот',
+  'Бесстрашный Лев',
+];
+
+function getAnonymousClientName(seed: string): string {
+  if (!seed) return ANON_CLIENT_NAMES[0];
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  const idx = hash % ANON_CLIENT_NAMES.length;
+  return ANON_CLIENT_NAMES[idx];
+}
+
+function getAvatarHue(seed: string): number {
+  if (!seed) return 0;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return hash % 360;
+}
+
 function tierToTariff(tier: ClientTier): VisitTariff {
   if (tier === 'resident') return 'resident';
   if (tier === 'student') return 'student';
@@ -55,25 +127,32 @@ const spaceIconMap: Record<string, typeof Home> = {
 const fmtCur = (n: number) =>
   new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
 
-const CheckTile = memo(({ check, onSelect, listMode, exiting }: { check: Check; onSelect: (check: Check) => void; listMode?: boolean; exiting?: boolean }) => {
+const CheckTile = memo(({ check, onSelect, listMode, exiting, isEvent }: { check: Check; onSelect: (check: Check) => void; listMode?: boolean; exiting?: boolean; isEvent?: boolean }) => {
   const hasSpace = !!check.space;
-  const displayName = hasSpace
-    ? check.space?.name ?? ''
-    : (() => {
-      const names: string[] = [];
-      if (check.player?.nickname) names.push(check.player.nickname);
-      if (check.guest_names) names.push(...check.guest_names.split(', ').filter(Boolean));
-      return names.length > 0 ? names.join(', ') : 'БЕЗ КЛИЕНТА';
-    })();
-  const isEmpty = !check.player && !check.space && check.total_amount === 0;
+  const displayName = check.note?.startsWith('Заказ в ')
+    ? check.note
+    : hasSpace
+      ? check.space?.name ?? ''
+      : (() => {
+        const names: string[] = [];
+        if (check.player?.nickname) names.push(check.player.nickname);
+        if (check.guest_names) names.push(...check.guest_names.split(', ').filter(Boolean));
+      return names.length > 0 ? names.join(', ') : getAnonymousClientName(check.id);
+      })();
+  const isEventCheck = !!check.note?.startsWith('Заказ в ');
+  const isEmpty = !check.player && !check.space && check.total_amount === 0 && !isEventCheck;
   const avatarUrl = check.player?.photo_url ?? null;
+  const avatarHue = useMemo(
+    () => getAvatarHue(check.player?.id || check.id),
+    [check.player?.id, check.id],
+  );
 
   return (
     <button
       type="button"
       onClick={() => !exiting && onSelect(check)}
       style={exiting ? { animation: 'check-exit 400ms ease-out forwards' } : undefined}
-      className={`relative flex text-left transition-all border rounded-[20px] lg:rounded-2xl ${listMode
+      className={`relative flex text-left transition-all border rounded-[20px] lg:rounded-2xl ${!listMode && isEvent ? 'col-span-2' : ''} ${listMode
           ? 'flex-row items-center justify-between gap-3 p-3 min-h-0'
           : 'flex-col justify-between p-3 lg:p-4 min-h-[120px] lg:min-h-[150px]'
         } ${isEmpty
@@ -95,7 +174,12 @@ const CheckTile = memo(({ check, onSelect, listMode, exiting }: { check: Check; 
             ) : avatarUrl ? (
               <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
-              <User className={`${listMode ? 'w-4 h-4' : 'w-5 h-5'} ${isEmpty ? 'text-white/5' : 'text-white/20'}`} />
+              <img
+                src="/icons/client.svg"
+                alt=""
+                className="w-full h-full object-cover"
+                style={{ filter: `hue-rotate(${avatarHue}deg) saturate(0.7) brightness(1.25)` }}
+              />
             )}
           </div>
           {!isEmpty && (
@@ -108,9 +192,16 @@ const CheckTile = memo(({ check, onSelect, listMode, exiting }: { check: Check; 
           <h3 className={`font-black tracking-tight uppercase leading-tight text-white/90 ${listMode ? 'text-[13px] line-clamp-1' : 'text-[11px] line-clamp-2'}`}>
             {displayName}
           </h3>
-          <div className="flex items-center gap-0.5 text-[7px] font-bold text-white/20 uppercase tracking-widest mt-0.5">
-            <Clock className="w-2 h-2 shrink-0" />
-            <ElapsedTime since={check.created_at} />
+          <div className="flex items-center gap-1 mt-0.5">
+            <span className="flex items-center gap-0.5 text-[7px] font-bold text-white/20 uppercase tracking-widest">
+              <Clock className="w-2 h-2 shrink-0" />
+              <ElapsedTime since={check.created_at} />
+            </span>
+            {isEventCheck && (
+              <span className="inline-flex items-center rounded-full bg-indigo-500/10 px-2 py-0.5 text-[8px] font-semibold uppercase tracking-[0.12em] text-indigo-200">
+                Мероприятие
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -445,12 +536,39 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                 const merged = exitingCheck
                   ? [...openChecks, exitingCheck].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                   : openChecks;
-                return merged.map((check) => {
-                  const isExiting = exitingCheck?.id === check.id;
-                  return (
-                    <CheckTile key={check.id} check={check} onSelect={handleSelectCheck} listMode={!!activeCheck} exiting={isExiting} />
-                  );
-                });
+
+                const eventChecks = merged.filter((c) => c.note?.startsWith('Заказ в '));
+                const regularChecks = merged.filter((c) => !c.note?.startsWith('Заказ в '));
+
+                return (
+                  <>
+                    {eventChecks.map((check) => {
+                      const isExiting = exitingCheck?.id === check.id;
+                      return (
+                        <CheckTile
+                          key={check.id}
+                          check={check}
+                          onSelect={handleSelectCheck}
+                          listMode={!!activeCheck}
+                          exiting={isExiting}
+                          isEvent
+                        />
+                      );
+                    })}
+                    {regularChecks.map((check) => {
+                      const isExiting = exitingCheck?.id === check.id;
+                      return (
+                        <CheckTile
+                          key={check.id}
+                          check={check}
+                          onSelect={handleSelectCheck}
+                          listMode={!!activeCheck}
+                          exiting={isExiting}
+                        />
+                      );
+                    })}
+                  </>
+                );
               })()}
             </div>
           )}

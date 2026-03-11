@@ -37,6 +37,78 @@ const fmtDate = (d: string) =>
     minute: '2-digit',
   });
 
+const ANON_CLIENT_NAMES = [
+  'Тихий Волк',
+  'Весёлый Кот',
+  'Синий Лис',
+  'Смелый Медведь',
+  'Рыжий Заяц',
+  'Добрый Ёж',
+  'Ловкий Пёс',
+  'Грозный Орёл',
+  'Свежий Барс',
+  'Молчаливый Ворон',
+  'Упрямый Бык',
+  'Ночной Тигр',
+  'Зоркий Ястреб',
+  'Радостный Енот',
+  'Спокойный Панда',
+  'Хитрый Лис',
+  'Тёплый Пёс',
+  'Лесной Кот',
+  'Быстрый Барсук',
+  'Мудрый Слон',
+  'Дикий Волк',
+  'Тихий Ёж',
+  'Летний Конь',
+  'Храбрый Лев',
+  'Северный Волк',
+  'Звонкий Жаворонок',
+  'Весенний Медведь',
+  'Снежный Кот',
+  'Ласковый Тюлень',
+  'Городской Сокол',
+  'Солнечный Лис',
+  'Вечерний Волк',
+  'Улыбчивый Пёс',
+  'Радужный Кот',
+  'Громкий Попугай',
+  'Лесной Олень',
+  'Морской Краб',
+  'Хитрый Волчонок',
+  'Смелый Барс',
+  'Весёлый Тигр',
+  'Спящий Лис',
+  'Тихий Медвежонок',
+  'Гордый Конь',
+  'Маленький Енот',
+  'Добрый Котёнок',
+  'Ловкий Ястреб',
+  'Зоркий Пёс',
+  'Ясный Волк',
+  'Летучий Кот',
+  'Бесстрашный Лев',
+];
+
+function getAnonymousClientName(seed: string): string {
+  if (!seed) return ANON_CLIENT_NAMES[0];
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  const idx = hash % ANON_CLIENT_NAMES.length;
+  return ANON_CLIENT_NAMES[idx];
+}
+
+function getAvatarHue(seed: string): number {
+  if (!seed) return 0;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return hash % 360;
+}
+
 interface CheckDetail {
   check: Check;
   items: (CheckItem & { item?: { name: string; category?: string } })[];
@@ -148,11 +220,12 @@ export function ShiftClosedChecks() {
           if (check.player?.nickname) names.push(check.player.nickname);
           if (check.guest_names)
             names.push(...check.guest_names.split(', ').filter(Boolean));
-          return names.length > 0 ? names.join(', ') : 'Без клиента';
+          return names.length > 0 ? names.join(', ') : getAnonymousClientName(check.id);
         })();
     const Icon = hasSpace
       ? spaceIconMap[check.space!.type] || DoorOpen
-      : User;
+      : null;
+    const avatarHue = getAvatarHue(check.player_id || check.id);
 
     const pm = paymentMethodLabels[check.payment_method || ''];
 
@@ -173,8 +246,17 @@ export function ShiftClosedChecks() {
         {/* Header */}
         <div className="p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] space-y-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[var(--c-accent)]/15 flex items-center justify-center shrink-0">
-              <Icon className="w-5 h-5 text-[var(--c-accent)]" />
+            <div className="w-10 h-10 rounded-xl bg-[var(--c-accent)]/15 flex items-center justify-center shrink-0 overflow-hidden">
+              {hasSpace && Icon ? (
+                <Icon className="w-5 h-5 text-[var(--c-accent)]" />
+              ) : (
+                <img
+                  src="/icons/client.svg"
+                  alt=""
+                  className="w-full h-full object-cover"
+                  style={{ filter: `hue-rotate(${avatarHue}deg) saturate(0.7) brightness(1.25)` }}
+                />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-bold text-sm text-[var(--c-text)] truncate">
@@ -341,11 +423,12 @@ export function ShiftClosedChecks() {
               if (check.player?.nickname) names.push(check.player.nickname);
               if (check.guest_names)
                 names.push(...check.guest_names.split(', ').filter(Boolean));
-              return names.length > 0 ? names.join(', ') : 'Без клиента';
+              return names.length > 0 ? names.join(', ') : getAnonymousClientName(check.id);
             })();
         const Icon = hasSpace
           ? spaceIconMap[check.space!.type] || DoorOpen
-          : User;
+          : null;
+        const avatarHue = getAvatarHue(check.player_id || check.id);
 
         return (
           <button
@@ -355,8 +438,17 @@ export function ShiftClosedChecks() {
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="w-10 h-10 rounded-xl bg-[var(--c-accent)]/15 flex items-center justify-center shrink-0">
-                  <Icon className="w-5 h-5 text-[var(--c-accent)]" />
+                <div className="w-10 h-10 rounded-xl bg-[var(--c-accent)]/15 flex items-center justify-center shrink-0 overflow-hidden">
+                  {hasSpace && Icon ? (
+                    <Icon className="w-5 h-5 text-[var(--c-accent)]" />
+                  ) : (
+                    <img
+                      src="/icons/client.svg"
+                      alt=""
+                      className="w-full h-full object-cover"
+                      style={{ filter: `hue-rotate(${avatarHue}deg) saturate(0.7) brightness(1.25)` }}
+                    />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-sm text-[var(--c-text)] truncate">

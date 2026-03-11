@@ -22,8 +22,42 @@ const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDi
 function CheckPaymentPanel({ sidebarCollapsed }: { sidebarCollapsed: boolean }) {
   const cart = usePOSStore((s) => s.cart);
   const getCartTotal = usePOSStore((s) => s.getCartTotal);
-  const total = getCartTotal();
+  const activeCheck = usePOSStore((s) => s.activeCheck);
+  const [hasEvent, setHasEvent] = useState(false);
+  const [eventAmount, setEventAmount] = useState(0);
+
+  const total = getCartTotal() + (hasEvent ? eventAmount : 0);
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadEvent = async () => {
+      if (!activeCheck?.id) {
+        if (!cancelled) {
+          setHasEvent(false);
+          setEventAmount(0);
+        }
+        return;
+      }
+      const { data, error } = await supabase
+        .from('events')
+        .select('id, fixed_amount')
+        .eq('check_id', activeCheck.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error || !data) {
+        setHasEvent(false);
+        setEventAmount(0);
+      } else {
+        setHasEvent(true);
+        setEventAmount((data as { fixed_amount: number | null }).fixed_amount || 0);
+      }
+    };
+    loadEvent();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCheck?.id]);
 
   return (
     <div
@@ -50,11 +84,11 @@ function CheckPaymentPanel({ sidebarCollapsed }: { sidebarCollapsed: boolean }) 
           </button>
         </div>
         <div className="flex items-baseline gap-2">
-          {cartCount > 0 && (
-            <span className="text-2xl font-black italic text-white tabular-nums">{fmtCur(total)}</span>
-          )}
+        {(cartCount > 0 || (hasEvent && eventAmount > 0)) && (
+          <span className="text-2xl font-black italic text-white tabular-nums">{fmtCur(total)}</span>
+        )}
         </div>
-        {cartCount > 0 && (
+        {(cartCount > 0 || (hasEvent && eventAmount > 0)) && (
           <button
             onClick={() => { hapticFeedback('medium'); window.dispatchEvent(new CustomEvent('tpos:open-payment')); }}
             className="flex-1 max-w-[160px] bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-xl shadow-[#8b5cf6]/30 font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all text-white"

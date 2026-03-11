@@ -74,6 +74,7 @@ export interface Check {
   closed_at: string | null;
   player?: Profile;
   space?: Space;
+  event?: Event;
 }
 
 export interface CheckItem {
@@ -245,7 +246,7 @@ export interface Space {
 
 export type EventType = 'titan' | 'exit';
 export type PaymentType = 'fixed' | 'hourly';
-export type EventStatus = 'planned' | 'active' | 'completed';
+export type EventStatus = 'planned' | 'active' | 'completed' | 'cancelled';
 
 export interface Event {
   id: string;

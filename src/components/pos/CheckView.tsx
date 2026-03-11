@@ -19,7 +19,7 @@ import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useHideNav } from '@/store/layout';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import type { InventoryItem, Discount, Profile, VisitTariff, ClientTier, Modifier, ClientDiscountRule } from '@/types';
+import type { InventoryItem, Discount, Profile, VisitTariff, ClientTier, Modifier, ClientDiscountRule, Event } from '@/types';
 
 const VISIT_ITEMS: Record<VisitTariff, { label: string; price: number; dbName: string }> = {
   regular: { label: 'Гость', price: 700, dbName: 'Игровой вечер Гость' },
@@ -27,6 +27,78 @@ const VISIT_ITEMS: Record<VisitTariff, { label: string; price: number; dbName: s
   student: { label: 'Студент', price: 300, dbName: 'Игровой вечер Студент' },
   single_game: { label: 'Одна игра', price: 150, dbName: 'Игровой вечер Одна игра' },
 };
+
+const ANON_CLIENT_NAMES = [
+  'Тихий Волк',
+  'Весёлый Кот',
+  'Синий Лис',
+  'Смелый Медведь',
+  'Рыжий Заяц',
+  'Добрый Ёж',
+  'Ловкий Пёс',
+  'Грозный Орёл',
+  'Свежий Барс',
+  'Молчаливый Ворон',
+  'Упрямый Бык',
+  'Ночной Тигр',
+  'Зоркий Ястреб',
+  'Радостный Енот',
+  'Спокойный Панда',
+  'Хитрый Лис',
+  'Тёплый Пёс',
+  'Лесной Кот',
+  'Быстрый Барсук',
+  'Мудрый Слон',
+  'Дикий Волк',
+  'Тихий Ёж',
+  'Летний Конь',
+  'Храбрый Лев',
+  'Северный Волк',
+  'Звонкий Жаворонок',
+  'Весенний Медведь',
+  'Снежный Кот',
+  'Ласковый Тюлень',
+  'Городской Сокол',
+  'Солнечный Лис',
+  'Вечерний Волк',
+  'Улыбчивый Пёс',
+  'Радужный Кот',
+  'Громкий Попугай',
+  'Лесной Олень',
+  'Морской Краб',
+  'Хитрый Волчонок',
+  'Смелый Барс',
+  'Весёлый Тигр',
+  'Спящий Лис',
+  'Тихий Медвежонок',
+  'Гордый Конь',
+  'Маленький Енот',
+  'Добрый Котёнок',
+  'Ловкий Ястреб',
+  'Зоркий Пёс',
+  'Ясный Волк',
+  'Летучий Кот',
+  'Бесстрашный Лев',
+];
+
+function getAnonymousClientName(seed: string): string {
+  if (!seed) return ANON_CLIENT_NAMES[0];
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  const idx = hash % ANON_CLIENT_NAMES.length;
+  return ANON_CLIENT_NAMES[idx];
+}
+
+function getAvatarHue(seed: string): number {
+  if (!seed) return 0;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return hash % 360;
+}
 
 function tierToTariff(tier: ClientTier | undefined): VisitTariff {
   if (tier === 'resident') return 'resident';
@@ -264,6 +336,9 @@ export function CheckView({ onBack }: CheckViewProps) {
   const { categories: menuCategories } = useMenuCategories();
   const [note, setNote] = useState(activeCheck?.note || '');
   const [showNote, setShowNote] = useState(false);
+  const [linkedEvent, setLinkedEvent] = useState<Event | null>(null);
+  const [eventAmount, setEventAmount] = useState<number | null>(null);
+  const [isUpdatingEvent, setIsUpdatingEvent] = useState(false);
 
   // Add player flow
   const [showAddPlayer, setShowAddPlayer] = useState(false);
@@ -315,6 +390,22 @@ export function CheckView({ onBack }: CheckViewProps) {
   useEffect(() => {
     setNote(activeCheck?.note || '');
   }, [activeCheck?.id, activeCheck?.note]);
+
+  // Синхронизируем мероприятие из активного чека (загружается вместе с чеком)
+  useEffect(() => {
+    if (activeCheck && (activeCheck as any).event) {
+      const ev = (activeCheck as any).event as Event;
+      setLinkedEvent(ev);
+      setEventAmount(ev.fixed_amount ?? 0);
+    } else {
+      setLinkedEvent(null);
+      setEventAmount(null);
+    }
+  }, [activeCheck]);
+  const avatarHue = useMemo(
+    () => getAvatarHue(activeCheck?.player_id || activeCheck?.id || ''),
+    [activeCheck?.player_id, activeCheck?.id],
+  );
 
   // Close view when activeCheck disappears (e.g. cancelled or deleted remotely)
   useEffect(() => {
@@ -700,26 +791,43 @@ export function CheckView({ onBack }: CheckViewProps) {
               <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 border border-white/10">
                 <img src={activeCheck.player.photo_url} alt="" className="w-full h-full object-cover" />
               </div>
-            ) : activeCheck.player ? (
-              <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
-                <span className="text-xs font-bold text-white/60">{activeCheck.player.nickname?.charAt(0).toUpperCase()}</span>
+            ) : (
+              <div className="w-9 h-9 rounded-xl overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
+                <img
+                  src="/icons/client.svg"
+                  alt=""
+                  className="w-full h-full object-cover"
+                  style={{ filter: `hue-rotate(${avatarHue}deg) saturate(0.7) brightness(1.25)` }}
+                />
               </div>
-            ) : null}
+            )}
             <div className="min-w-0">
               <h2 className="text-[14px] font-black italic uppercase leading-none truncate text-white">
-                {activeCheck.space
-                  ? activeCheck.space.name
-                  : (() => {
-                    const names: string[] = [];
-                    if (activeCheck.player?.nickname) names.push(activeCheck.player.nickname);
-                    if (activeCheck.guest_names) names.push(...activeCheck.guest_names.split(', '));
-                    return names.length > 0 ? names.join(', ') : 'Без клиента';
-                  })()
+                {linkedEvent
+                  ? (linkedEvent.type === 'titan'
+                    ? 'Мероприятие · Титан'
+                    : `Мероприятие · ${linkedEvent.location || 'Выездное'}`)
+                  : activeCheck.space
+                    ? activeCheck.space.name
+                    : (() => {
+                      const names: string[] = [];
+                      if (activeCheck.player?.nickname) names.push(activeCheck.player.nickname);
+                      if (activeCheck.guest_names) names.push(...activeCheck.guest_names.split(', '));
+                      return names.length > 0
+                        ? names.join(', ')
+                        : getAnonymousClientName(activeCheck.id);
+                    })()
                 }
               </h2>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
-                  {new Date(activeCheck.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                  {linkedEvent
+                    ? `${new Date(linkedEvent.date).toLocaleDateString('ru-RU', {
+                      day: '2-digit',
+                      month: '2-digit',
+                    })} · ${linkedEvent.start_time?.slice(0, 5)}`
+                    : new Date(activeCheck.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+                  }
                   {cartCount > 0 && <> · {cartCount} поз.</>}
                 </span>
                 {activeCheck.player && activeCheck.player.bonus_points > 0 && (
@@ -782,6 +890,84 @@ export function CheckView({ onBack }: CheckViewProps) {
 
       {/* Cart (pb-24 под плавающую нав на мобиле; убираем когда нав скрыт) */}
       <div className={`flex-1 min-h-0 space-y-3 lg:space-y-4 ${hideNav ? 'pb-0' : 'pb-24 lg:pb-0'}`}>
+        {/* Блок информации о мероприятии, если чек привязан к событию */}
+        {linkedEvent && (
+          <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-col">
+                <span className="text-[11px] text-white/40 font-semibold uppercase tracking-widest">
+                  Мероприятие
+                </span>
+                <span className="text-[13px] font-bold text-white">
+                  {linkedEvent.type === 'titan'
+                    ? 'Титан'
+                    : (linkedEvent.location || 'Выездное мероприятие')}
+                </span>
+              </div>
+              <Badge variant="accent" size="sm">
+                {linkedEvent.status === 'completed' ? 'Завершено' : 'В процессе'}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-white/50">
+              <span>
+                {new Date(linkedEvent.date).toLocaleDateString('ru-RU', {
+                  day: 'numeric',
+                  month: 'short',
+                })}{' '}
+                · {linkedEvent.start_time?.slice(0, 5)}
+              </span>
+              <span>
+                {linkedEvent.payment_type === 'hourly'
+                  ? 'Почасовая оплата'
+                  : 'Фиксированная оплата'}
+              </span>
+            </div>
+            <div className="flex items-end justify-between gap-2 mt-1">
+              <div className="flex-1">
+                <label className="block text-[10px] text-white/40 font-semibold uppercase tracking-widest mb-1">
+                  Сумма за мероприятие
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    className="w-full px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-sm text-white placeholder:text-white/30 outline-none"
+                    value={eventAmount ?? 0}
+                    onChange={(e) => {
+                      const v = Number(e.target.value);
+                      if (Number.isNaN(v)) {
+                        setEventAmount(0);
+                      } else {
+                        setEventAmount(v);
+                      }
+                    }}
+                    onBlur={async () => {
+                      if (!linkedEvent || eventAmount == null) return;
+                      setIsUpdatingEvent(true);
+                      try {
+                        await supabase
+                          .from('events')
+                          .update({ fixed_amount: eventAmount })
+                          .eq('id', linkedEvent.id);
+                        setLinkedEvent({ ...linkedEvent, fixed_amount: eventAmount });
+                      } finally {
+                        setIsUpdatingEvent(false);
+                      }
+                    }}
+                  />
+                  <span className="text-sm font-semibold text-white/60">₽</span>
+                </div>
+              </div>
+            </div>
+            {linkedEvent.comment && (
+              <p className="mt-1 text-[11px] text-white/60 line-clamp-2">
+                {linkedEvent.comment}
+              </p>
+            )}
+            {isUpdatingEvent && (
+              <p className="text-[10px] text-white/40 mt-1">Сохраняем данные мероприятия…</p>
+            )}
+          </div>
+        )}
         {cart.length === 0 ? (
           <div className="text-center py-16 animate-fade-in">
             <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3">

@@ -28,12 +28,14 @@ const statusLabel: Record<EventStatus, string> = {
     planned: 'Запланировано',
     active: 'В процессе',
     completed: 'Завершено',
+    cancelled: 'Отменено',
 };
 
 const statusVariant: Record<EventStatus, 'default' | 'success' | 'accent'> = {
     planned: 'default',
     active: 'success',
     completed: 'accent',
+    cancelled: 'default',
 };
 
 function formatDate(d: string) {
@@ -52,8 +54,6 @@ export function EventsPage() {
     const [events, setEvents] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAdd, setShowAdd] = useState(false);
-    const [showComplete, setShowComplete] = useState<Event | null>(null);
-    const [selectedHours, setSelectedHours] = useState<number>(2);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [formData, setFormData] = useState<Partial<Event>>({
@@ -86,8 +86,18 @@ export function EventsPage() {
 
     const filteredEvents = useMemo(() => {
         const today = new Date().toISOString().split('T')[0];
-        if (activeTab === 'upcoming') return events.filter(e => e.status !== 'completed' && e.date >= today);
-        return events.filter(e => e.status === 'completed' || e.date < today);
+        if (activeTab === 'upcoming') {
+            return events.filter(e =>
+                e.status !== 'completed' &&
+                e.status !== 'cancelled' &&
+                e.date >= today,
+            );
+        }
+        return events.filter(e =>
+            e.status === 'completed' ||
+            e.status === 'cancelled' ||
+            e.date < today,
+        );
     }, [events, activeTab]);
 
     const handleCreateEvent = async () => {
@@ -108,44 +118,64 @@ export function EventsPage() {
     };
 
     const handleStatusChange = async (event: Event, newStatus: EventStatus) => {
-        if (newStatus === 'completed') {
-            setShowComplete(event);
-            setSelectedHours(2);
+        // Старт мероприятия: создаём открытый чек и привязываем его к событию
+        if (newStatus === 'active' && !event.check_id) {
+            setIsSubmitting(true);
+            try {
+                const check = await usePOSStore.getState().createCheck(null);
+                if (check) {
+                    const { error } = await supabase.from('events').update({
+                        status: 'active',
+                        check_id: check.id,
+                    }).eq('id', event.id);
+
+                    if (!error) {
+                        await supabase.from('checks').update({
+                            note: `Заказ в ${event.type === 'titan' ? 'Титане' : (event.location || 'Выездном мероприятии')}`,
+                        }).eq('id', check.id);
+
+                        hapticFeedback('medium');
+                        usePOSStore.getState().loadOpenChecks();
+                        loadEvents();
+                    } else {
+                        hapticNotification('error');
+                    }
+                } else {
+                    hapticNotification('error');
+                }
+            } catch (e) {
+                console.error('handleStatusChange active error:', e);
+                hapticNotification('error');
+            }
+            setIsSubmitting(false);
             return;
         }
+
+        // Для остальных статусов просто обновляем статус
         const { error } = await supabase.from('events').update({ status: newStatus }).eq('id', event.id);
         if (!error) { hapticFeedback('medium'); loadEvents(); }
     };
 
-    const handleCompleteEvent = async () => {
-        if (!showComplete || isSubmitting) return;
+    const handleCancelEvent = async (event: Event) => {
+        if (isSubmitting) return;
         setIsSubmitting(true);
         try {
-            const amount = showComplete.payment_type === 'hourly'
-                ? HOURLY_RATES[selectedHours]
-                : (showComplete.fixed_amount || 0);
-
-            const check = await usePOSStore.getState().createCheck(null);
-            if (check) {
-                await supabase.from('checks').update({
-                    status: 'closed', total_amount: amount, payment_method: 'cash',
-                    note: `Мероприятие: ${showComplete.type === 'titan' ? 'Титан' : showComplete.location}`,
-                    closed_at: new Date().toISOString(),
-                }).eq('id', check.id);
-
-                await supabase.from('events').update({
-                    status: 'completed', check_id: check.id, fixed_amount: amount,
-                }).eq('id', showComplete.id);
-
-                hapticNotification('success');
-                setShowComplete(null);
-                loadEvents();
-                usePOSStore.getState().loadOpenChecks();
+            const { error } = await supabase
+                .from('events')
+                .update({ status: 'cancelled' })
+                .eq('id', event.id);
+            if (!error) {
+                hapticFeedback('medium');
+                await loadEvents();
+            } else {
+                hapticNotification('error');
             }
         } catch (e) {
-            console.error('handleCompleteEvent error:', e);
+            console.error('handleCancelEvent error:', e);
+            hapticNotification('error');
+        } finally {
+            setIsSubmitting(false);
         }
-        setIsSubmitting(false);
     };
 
     return (
@@ -212,7 +242,7 @@ export function EventsPage() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[14px] font-bold text-[var(--c-text)] truncate">
-                                            {event.type === 'titan' ? 'Титан Парк' : (event.location || 'Выездное')}
+                                            {event.type === 'titan' ? 'Титан' : (event.location || 'Выездное')}
                                         </p>
                                         <div className="flex items-center gap-3 mt-0.5">
                                             <span className="flex items-center gap-1 text-[11px] text-[var(--c-hint)]">
@@ -247,7 +277,7 @@ export function EventsPage() {
                             </div>
 
                             {/* Card actions */}
-                            {event.status !== 'completed' && (
+                            {(event.status === 'planned' || event.status === 'active') && (
                                 <div
                                     className="flex gap-2 px-3.5 py-2.5"
                                     style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}
@@ -258,20 +288,32 @@ export function EventsPage() {
                                             variant="secondary"
                                             size="sm"
                                             fullWidth
+                                            disabled={isSubmitting}
                                         >
                                             <Play className="w-3.5 h-3.5" />
                                             Начать
                                         </Button>
                                     )}
                                     {event.status === 'active' && (
-                                        <Button
-                                            onClick={() => handleStatusChange(event, 'completed')}
-                                            size="sm"
-                                            fullWidth
-                                        >
-                                            <CheckCircle2 className="w-3.5 h-3.5" />
-                                            Завершить
-                                        </Button>
+                                        <>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                fullWidth
+                                                disabled={isSubmitting}
+                                                onClick={() => handleCancelEvent(event)}
+                                            >
+                                                Отменить
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                fullWidth
+                                                disabled
+                                            >
+                                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                                Завершить в кассе
+                                            </Button>
+                                        </>
                                     )}
                                 </div>
                             )}
@@ -400,101 +442,6 @@ export function EventsPage() {
                 </div>
             </Drawer>
 
-            {/* ============ COMPLETION DRAWER ============ */}
-            <Drawer
-                open={!!showComplete}
-                onClose={() => setShowComplete(null)}
-                title="Завершение"
-                size="lg"
-            >
-                {showComplete && (
-                    <div className="flex flex-col h-full">
-                        {/* Event info */}
-                        <div
-                            className="shrink-0 flex items-center gap-3 p-3 rounded-xl mb-4"
-                            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
-                        >
-                            <div
-                                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                                style={{
-                                    background: showComplete.type === 'titan'
-                                        ? 'rgba(52,211,153,0.12)' : 'rgba(99,102,241,0.12)',
-                                }}
-                            >
-                                {showComplete.type === 'titan'
-                                    ? <Sparkles className="w-5 h-5 text-emerald-400" />
-                                    : <MapPin className="w-5 h-5 text-indigo-400" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-[14px] font-bold text-[var(--c-text)] truncate">
-                                    {showComplete.type === 'titan' ? 'Титан Парк' : showComplete.location}
-                                </p>
-                                <p className="text-[11px] text-[var(--c-hint)]">
-                                    {formatDate(showComplete.date)} · {showComplete.start_time?.slice(0, 5)}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto space-y-3">
-                            {showComplete.payment_type === 'hourly' ? (
-                                <>
-                                    <p className="text-[12px] text-[var(--c-hint)] font-medium">Время проведения:</p>
-                                    <div className="space-y-2">
-                                        {[1, 2, 3, 4, 5].map(hours => {
-                                            const active = selectedHours === hours;
-                                            return (
-                                                <button
-                                                    key={hours}
-                                                    onClick={() => { setSelectedHours(hours); hapticFeedback('light'); }}
-                                                    className="w-full flex items-center justify-between p-3.5 rounded-xl transition-all active:scale-[0.98] min-h-[52px]"
-                                                    style={{
-                                                        background: active ? 'rgba(139,92,246,0.1)' : 'rgba(255,255,255,0.04)',
-                                                        border: active ? '1px solid rgba(139,92,246,0.25)' : '1px solid rgba(255,255,255,0.08)',
-                                                        boxShadow: active ? '0 0 16px rgba(139,92,246,0.08)' : undefined,
-                                                    }}
-                                                >
-                                                    <div className="flex items-center gap-3">
-                                                        <Timer className={`w-4.5 h-4.5 ${active ? 'text-[var(--c-accent-light)]' : 'text-[var(--c-hint)]'}`} />
-                                                        <span className={`text-[14px] font-bold ${active ? 'text-[var(--c-accent-light)]' : 'text-[var(--c-text)]'}`}>
-                                                            {hours} {pluralHours(hours)}
-                                                        </span>
-                                                    </div>
-                                                    <span className={`text-[16px] font-black tabular-nums ${active ? 'text-[var(--c-accent-light)]' : 'text-[var(--c-hint)]'}`}>
-                                                        {HOURLY_RATES[hours].toLocaleString('ru-RU')}₽
-                                                    </span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </>
-                            ) : (
-                                <div
-                                    className="p-5 rounded-xl text-center"
-                                    style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.12)' }}
-                                >
-                                    <p className="text-[12px] text-[var(--c-hint)] mb-1">К оплате</p>
-                                    <p className="text-3xl font-black text-[var(--c-accent-light)] tabular-nums">
-                                        {(showComplete.fixed_amount || 0).toLocaleString('ru-RU')}₽
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="shrink-0 pt-3 space-y-2">
-                            <Button fullWidth size="lg" onClick={handleCompleteEvent} loading={isSubmitting}>
-                                <CreditCard className="w-4 h-4" />
-                                Принять оплату · {(showComplete.payment_type === 'hourly'
-                                    ? HOURLY_RATES[selectedHours]
-                                    : (showComplete.fixed_amount || 0)
-                                ).toLocaleString('ru-RU')}₽
-                            </Button>
-                            <p className="text-[10px] text-center text-[var(--c-muted)]">
-                                Будет создан закрытый чек для отчётности
-                            </p>
-                        </div>
-                    </div>
-                )}
-            </Drawer>
         </div>
     );
 }

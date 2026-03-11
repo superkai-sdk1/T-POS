@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { CartItem, Check, CheckItem, CheckDiscount, InventoryItem, PaymentMethod, Modifier, MenuCategory, Discount } from '@/types';
+import type { CartItem, Check, CheckItem, CheckDiscount, InventoryItem, PaymentMethod, Modifier, MenuCategory, Discount, Event } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from './auth';
 import { useShiftStore } from './shift';
@@ -130,7 +130,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
   loadOpenChecks: async () => {
     const { data } = await supabase
       .from('checks')
-      .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*)')
+      .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*), event:events!events_check_id_fkey(*)')
       .eq('status', 'open')
       .order('created_at', { ascending: false });
     if (!data) return;
@@ -139,6 +139,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       ...c,
       player: Array.isArray(c.player) ? c.player[0] : c.player,
       space: Array.isArray(c.space) ? c.space[0] : c.space,
+      event: Array.isArray((c as any).event) ? (c as any).event[0] : (c as any).event,
     })) as Check[];
 
     if (checks.length === 0) {
@@ -472,7 +473,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
     const { data: checkData } = await supabase
       .from('checks')
-      .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*)')
+      .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*), event:events!events_check_id_fkey(*)')
       .eq('id', activeCheck.id)
       .single();
 
@@ -490,6 +491,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       ...checkData,
       player: Array.isArray(checkData.player) ? checkData.player[0] : checkData.player,
       space: Array.isArray(checkData.space) ? checkData.space[0] : checkData.space,
+      event: Array.isArray((checkData as any).event) ? (checkData as any).event[0] : (checkData as any).event,
     } as Check;
 
     const { data: items } = await supabase
@@ -737,6 +739,12 @@ export const usePOSStore = create<POSState>((set, get) => ({
     _cancellingCheckIds.add(checkId);
     set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [], recentlyDeletedCheck: deletedCheck });
     get().deleteCheckLocal(checkId);
+    // Помечаем связанное мероприятие как отменённое, чтобы оно попало в историю
+    await supabase
+      .from('events')
+      .update({ status: 'cancelled' })
+      .eq('check_id', checkId)
+      .neq('status', 'completed');
     const { error: discErr } = await supabase.from('check_discounts').delete().eq('check_id', checkId);
     const { error: itemsErr } = await supabase.from('check_items').delete().eq('check_id', checkId);
     if (discErr || itemsErr) {
@@ -772,7 +780,21 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const { activeCheck, cart } = get();
     if (!activeCheck) return false;
     const user = useAuthStore.getState().user;
-    const total = get().getCartTotal() + spaceRental;
+
+    const cartTotal = get().getCartTotal();
+
+    // Учитываем сумму мероприятия, если чек привязан к событию
+    let eventAmount = 0;
+    const { data: ev } = await supabase
+      .from('events')
+      .select('id, fixed_amount')
+      .eq('check_id', activeCheck.id)
+      .maybeSingle();
+    if (ev) {
+      eventAmount = (ev as { fixed_amount: number | null }).fixed_amount || 0;
+    }
+
+    const total = cartTotal + spaceRental + eventAmount;
     const discountTotal = get().getDiscountTotal();
 
     const saved = await get().saveCartToDb();
@@ -984,7 +1006,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
     const { data: checkData } = await supabase
       .from('checks')
-      .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*)')
+      .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*), event:events!events_check_id_fkey(*)')
       .eq('id', checkId)
       .single();
 
@@ -1004,6 +1026,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       ...checkData,
       player: Array.isArray(checkData.player) ? checkData.player[0] : checkData.player,
       space: Array.isArray(checkData.space) ? checkData.space[0] : checkData.space,
+      event: Array.isArray((checkData as any).event) ? (checkData as any).event[0] : (checkData as any).event,
     } as Check;
 
     const items = (itemsData || []).map(ci => ({
