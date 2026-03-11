@@ -137,6 +137,7 @@ const server = http.createServer((req, res) => {
       { label: 'Загрузка обновлений с сервера', cmd: 'git', args: ['fetch', 'origin'] },
       { label: 'Сброс до актуальной версии', cmd: 'git', args: ['reset', '--hard', 'origin/main'] },
       { label: 'Установка зависимостей', cmd: 'npm', args: ['ci', '--include=dev', '--loglevel=error'] },
+      { label: 'Проверка ключей и токенов', cmd: 'bash', args: ['scripts/check-env.sh'] },
       { label: 'Сборка проекта', cmd: 'npm', args: ['run', 'build'] },
       { label: 'Сборка Wallet', cmd: 'npm', args: ['run', 'build:wallet'] },
     ];
