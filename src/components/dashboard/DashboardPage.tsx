@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { ListSkeleton } from '@/components/ui/Skeleton';
+import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { AnalyticsFilter } from './AnalyticsFilter';
 import { FinanceModule } from './FinanceModule';
 import { ProductsModule } from './ProductsModule';
@@ -116,21 +117,11 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   return (
     <div className="space-y-4">
       {/* Tab switcher — 3 large tabs */}
-      <div className="flex gap-1.5 p-1 rounded-xl bg-[var(--c-surface)]">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${tab === t.id
-              ? 'bg-[var(--c-accent)] text-white shadow-md'
-              : 'text-[var(--c-hint)]'
-              }`}
-          >
-            <t.icon className="w-4 h-4 shrink-0" />
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <TabSwitcher
+        tabs={tabs.map((t) => ({ id: t.id, label: t.label, icon: <t.icon className="w-4 h-4 shrink-0" /> }))}
+        activeId={tab}
+        onChange={(id) => setTab(id as TabId)}
+      />
 
       {/* Global filter — shown for non-AI tabs */}
       {tab !== 'ai' && (
@@ -174,20 +165,14 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       {tab === 'products' && (
         <>
           {/* Sub-toggle: products / players */}
-          <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--c-surface)]">
-            <button
-              onClick={() => setAnalyticsSubTab('products')}
-              className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-semibold transition-all ${analyticsSubTab === 'products' ? 'bg-[var(--c-bg)] text-[var(--c-text)] shadow-sm' : 'text-[var(--c-hint)]'}`}
-            >
-              <ShoppingBag className="w-3 h-3" /> Товары
-            </button>
-            <button
-              onClick={() => setAnalyticsSubTab('players')}
-              className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-xs font-semibold transition-all ${analyticsSubTab === 'players' ? 'bg-[var(--c-bg)] text-[var(--c-text)] shadow-sm' : 'text-[var(--c-hint)]'}`}
-            >
-              <Users className="w-3 h-3" /> Игроки
-            </button>
-          </div>
+          <TabSwitcher
+            tabs={[
+              { id: 'products', label: 'Товары', icon: <ShoppingBag className="w-3.5 h-3.5" /> },
+              { id: 'players', label: 'Игроки', icon: <Users className="w-3.5 h-3.5" /> },
+            ]}
+            activeId={analyticsSubTab}
+            onChange={(id) => setAnalyticsSubTab(id as 'products' | 'players')}
+          />
           {analyticsSubTab === 'products' ? (
             <ProductsModule
               products={data.productStats}

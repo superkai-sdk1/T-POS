@@ -178,7 +178,7 @@ export default function App() {
         {/* Mobile: swap between list and check view. CheckView only when isMobile to avoid duplicate menus. */}
         <div className="lg:hidden flex-1 flex flex-col min-h-0">
           {showCheckView && isMobile ? (
-            <div className="flex-1 flex flex-col min-h-0 px-4 py-3">
+            <div className="flex-1 flex flex-col min-h-0 px-2 py-2">
               <CheckView onBack={() => setShowCheckView(false)} />
             </div>
           ) : isMobile ? (

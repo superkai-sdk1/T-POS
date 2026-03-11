@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
+import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import {
   AlertTriangle, TrendingDown, TrendingUp, User, Wallet,
   Plus, Search, ArrowUpCircle, ArrowDownCircle, Clock, PiggyBank,
@@ -250,26 +251,15 @@ export function DebtorsManager() {
   return (
     <div className="space-y-4">
       {/* Tab bar */}
-      <div className="flex gap-1 p-1 card rounded-xl">
-        <button
-          onClick={() => setTab('debtors')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-            isDebtorTab ? 'bg-[var(--c-danger)] text-white shadow' : 'text-[var(--c-hint)]'
-          }`}
-        >
-          <AlertTriangle className="w-3.5 h-3.5" />
-          Должники ({debtors.length})
-        </button>
-        <button
-          onClick={() => setTab('deposits')}
-          className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-            !isDebtorTab ? 'bg-cyan-600 text-white shadow' : 'text-[var(--c-hint)]'
-          }`}
-        >
-          <PiggyBank className="w-3.5 h-3.5" />
-          Депозиты ({depositors.length})
-        </button>
-      </div>
+      <TabSwitcher
+        tabs={[
+          { id: 'debtors', label: `Должники (${debtors.length})`, icon: <AlertTriangle className="w-4 h-4" /> },
+          { id: 'deposits', label: `Депозиты (${depositors.length})`, icon: <PiggyBank className="w-4 h-4" /> },
+        ]}
+        activeId={tab}
+        onChange={(id) => setTab(id as 'debtors' | 'deposits')}
+        variant={isDebtorTab ? 'danger' : 'cyan'}
+      />
 
       {/* Summary */}
       {isDebtorTab ? (

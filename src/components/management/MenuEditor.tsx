@@ -60,7 +60,12 @@ const emptyCategoryForm: CategoryForm = {
   parent_id: null,
 };
 
-export function MenuEditor() {
+interface MenuEditorProps {
+  onBackToManagement?: () => void;
+  tabSwitcher?: React.ReactNode;
+}
+
+export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps) {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { categories, loading: catLoading, reload: reloadCategories } = useAllMenuCategories();
@@ -364,7 +369,14 @@ export function MenuEditor() {
       {/* ============ HEADER ============ */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          {!isRoot && (
+          {isRoot && onBackToManagement ? (
+            <button
+              onClick={onBackToManagement}
+              className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] active:scale-95 transition-all shrink-0"
+            >
+              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--c-hint)]" />
+            </button>
+          ) : !isRoot && (
             <button
               onClick={navigateBack}
               className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] active:scale-95 transition-all shrink-0"
@@ -382,6 +394,12 @@ export function MenuEditor() {
               </p>
             ) : (
               <div className="flex items-center gap-1 text-[var(--c-muted)] text-[11px] sm:text-xs mt-0.5 font-medium truncate">
+                {onBackToManagement && (
+                  <>
+                    <button onClick={onBackToManagement} className="hover:text-[var(--c-text)] transition-colors">Управление</button>
+                    <ChevronRight className="w-3 h-3 shrink-0" />
+                  </>
+                )}
                 <button onClick={() => setPath([])} className="hover:text-[var(--c-text)] transition-colors">Меню</button>
                 {path.slice(0, -1).map((p, i) => (
                   <span key={p.id} className="flex items-center gap-1">
@@ -413,6 +431,8 @@ export function MenuEditor() {
           </button>
         </div>
       </div>
+
+      {tabSwitcher}
 
       {/* ============ SEARCH + STATS ============ */}
       <div className="flex gap-2 sm:gap-3">

@@ -1,4 +1,5 @@
-import { memo, useState, useMemo } from 'react';
+import { memo, useState, useMemo, useEffect } from 'react';
+import { useLayoutStore } from '@/store/layout';
 import { ArrowLeft, ShoppingBag, Crown, ChevronRight, Search, BarChart3 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import type { ProductStat } from '@/hooks/useAnalyticsData';
@@ -26,6 +27,14 @@ const categoryLabels: Record<string, string> = {
 export const ProductsModule = memo(function ProductsModule({ products, allCheckItems, checks }: Props) {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [abcFilter, setAbcFilter] = useState<'all' | 'A' | 'B' | 'C'>('all');
+  const addHideReason = useLayoutStore((s) => s.addHideReason);
+  const removeHideReason = useLayoutStore((s) => s.removeHideReason);
+  useEffect(() => {
+    if (selectedProduct) {
+      addHideReason('dashboard-product-drilldown');
+      return () => removeHideReason('dashboard-product-drilldown');
+    }
+  }, [selectedProduct, addHideReason, removeHideReason]);
   const search = useAnalyticsStore((s) => s.search);
   const setSearch = useAnalyticsStore((s) => s.setSearch);
 

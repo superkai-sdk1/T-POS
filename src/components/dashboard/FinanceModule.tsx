@@ -1,4 +1,5 @@
-import { memo, useState } from 'react';
+import { memo, useState, useEffect } from 'react';
+import { useLayoutStore } from '@/store/layout';
 import {
   ArrowUpRight, ArrowDownRight, Wallet, PieChart, AlertCircle,
   TrendingUp, ChevronRight, ArrowLeft, Receipt,
@@ -46,6 +47,14 @@ export const FinanceModule = memo(function FinanceModule(props: Props) {
     debtors, totalDebt, checkCount, prevCheckCount, avgCheck, delta, onNavigate } = props;
 
   const [detail, setDetail] = useState<DetailView>(null);
+  const addHideReason = useLayoutStore((s) => s.addHideReason);
+  const removeHideReason = useLayoutStore((s) => s.removeHideReason);
+  useEffect(() => {
+    if (detail) {
+      addHideReason('dashboard-detail');
+      return () => removeHideReason('dashboard-detail');
+    }
+  }, [detail, addHideReason, removeHideReason]);
   const revDelta = delta(revenue, prevRevenue);
   const totalPayments = paymentBreakdown.cash + paymentBreakdown.card + paymentBreakdown.debt + paymentBreakdown.bonus + paymentBreakdown.deposit;
 

@@ -20,7 +20,8 @@ import { CertificatesManager } from './CertificatesManager';
 import { ExpensesManager } from './ExpensesManager';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { hapticFeedback } from '@/lib/telegram';
-import { useLayoutStore, useHideNav } from '@/store/layout';
+import { useLayoutStore, useHideNav, useHasHideReason } from '@/store/layout';
+import { TabSwitcher } from '@/components/ui/TabSwitcher';
 
 type Screen = 'menu' | 'inventory' | 'supplies' | 'revision' | 'debtors' | 'staff' | 'bonus' | 'cash' | 'menuEditor' | 'clients' | 'discounts' | 'refunds' | 'modifiers' | 'certificates' | 'expenses' | 'about';
 
@@ -99,9 +100,13 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
 
   const screenMeta = menuItems.find((m) => m.id === screen);
 
+  const hideNav = useHideNav();
+  const supplyCreating = useHasHideReason('supply-creating');
+  const showManagementHeader = !(screen === 'menuEditor' && menuSubTab === 'positions') && !(screen === 'supplies' && supplyCreating);
+
   if (screen === 'menu') {
     return (
-      <div className="space-y-4 sm:space-y-6">
+      <div className={`space-y-4 sm:space-y-6 ${hideNav ? 'pb-0' : 'pb-24 lg:pb-0'}`}>
         <div>
           <h1 className="text-lg sm:text-2xl font-extrabold tracking-tight text-[var(--c-text)] leading-tight">Управление</h1>
           <p className="text-[var(--c-muted)] text-[11px] sm:text-sm mt-0.5 font-medium">Панель администратора</p>
@@ -135,74 +140,76 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
     <div className="space-y-4 sm:space-y-6">
       {swipeIndicatorStyle && <div style={swipeIndicatorStyle} />}
       {overlayStyle && <div style={overlayStyle} />}
-      <div className="flex items-center justify-between gap-2.5 sm:gap-3">
-        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <button
-            onClick={() => setScreen('menu')}
-            className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] flex items-center justify-center active:scale-95 transition-all shrink-0"
-          >
-            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--c-hint)]" />
-          </button>
-          <div className="min-w-0">
-            <h1 className="text-lg sm:text-2xl font-extrabold tracking-tight text-[var(--c-text)] leading-tight truncate">{screenLabel}</h1>
-            {screenMeta && (
-              <p className="text-[var(--c-muted)] text-[11px] sm:text-sm mt-0.5 font-medium truncate">{screenMeta.desc}</p>
-            )}
+      {showManagementHeader && (
+        <div className="flex items-center justify-between gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <button
+              onClick={() => setScreen('menu')}
+              className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] flex items-center justify-center active:scale-95 transition-all shrink-0"
+            >
+              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--c-hint)]" />
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-2xl font-extrabold tracking-tight text-[var(--c-text)] leading-tight truncate">{screenLabel}</h1>
+              {screenMeta && (
+                <p className="text-[var(--c-muted)] text-[11px] sm:text-sm mt-0.5 font-medium truncate">{screenMeta.desc}</p>
+              )}
+            </div>
           </div>
+          {screen === 'inventory' && (
+            <button
+              onClick={() => { hapticFeedback('light'); setInventorySubTab('revision'); }}
+              className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] flex items-center justify-center active:scale-95 transition-all shrink-0 text-[var(--c-hint)] hover:text-[var(--c-text)]"
+            >
+              <History className="w-4 h-4 sm:w-5 sm:h-5" />
+            </button>
+          )}
         </div>
-        {screen === 'inventory' && (
-          <button
-            onClick={() => { hapticFeedback('light'); setInventorySubTab('revision'); }}
-            className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] flex items-center justify-center active:scale-95 transition-all shrink-0 text-[var(--c-hint)] hover:text-[var(--c-text)]"
-          >
-            <History className="w-4 h-4 sm:w-5 sm:h-5" />
-          </button>
-        )}
-      </div>
+      )}
 
       {screen === 'menuEditor' && (
         <div className="space-y-4">
-          <div className="flex gap-1 p-1 rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] w-fit">
-            <button
-              onClick={() => setMenuSubTab('positions')}
-              className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all ${menuSubTab === 'positions' ? 'bg-[var(--c-accent)] text-white shadow-md' : 'text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
-            >
-              Позиции
-            </button>
-            <button
-              onClick={() => setMenuSubTab('modifiers')}
-              className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-1.5 ${menuSubTab === 'modifiers' ? 'bg-[var(--c-accent)] text-white shadow-md' : 'text-[var(--c-muted)] hover:text-[var(--c-text)]'}`}
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              Модификаторы
-            </button>
-          </div>
-          {menuSubTab === 'positions' && <MenuEditor />}
-          {menuSubTab === 'modifiers' && <ModifiersManager />}
+          {menuSubTab === 'positions' && (
+            <MenuEditor
+              onBackToManagement={() => startTransition(() => setScreen('menu'))}
+              tabSwitcher={
+                <TabSwitcher
+                  tabs={[
+                    { id: 'positions', label: 'Позиции', icon: <UtensilsCrossed className="w-4 h-4" /> },
+                    { id: 'modifiers', label: 'Модификаторы', icon: <SlidersHorizontal className="w-4 h-4" /> },
+                  ]}
+                  activeId={menuSubTab}
+                  onChange={(id) => setMenuSubTab(id as 'positions' | 'modifiers')}
+                />
+              }
+            />
+          )}
+          {menuSubTab === 'modifiers' && (
+            <>
+              <TabSwitcher
+                tabs={[
+                  { id: 'positions', label: 'Позиции', icon: <UtensilsCrossed className="w-4 h-4" /> },
+                  { id: 'modifiers', label: 'Модификаторы', icon: <SlidersHorizontal className="w-4 h-4" /> },
+                ]}
+                activeId={menuSubTab}
+                onChange={(id) => setMenuSubTab(id as 'positions' | 'modifiers')}
+              />
+              <ModifiersManager />
+            </>
+          )}
         </div>
       )}
       {screen === 'inventory' && (
         <div className="space-y-6">
-          <div className="flex gap-1.5 p-1.5 rounded-[24px] bg-slate-900/50 border border-slate-800 max-w-md">
-            <button
-              onClick={() => setInventorySubTab('stock')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-[18px] font-bold text-sm transition-all ${
-                inventorySubTab === 'stock' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              <Package size={18} />
-              Остатки
-            </button>
-            <button
-              onClick={() => setInventorySubTab('revision')}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-[18px] font-bold text-sm transition-all ${
-                inventorySubTab === 'revision' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              <ClipboardList size={18} />
-              Ревизия
-            </button>
-          </div>
+          <TabSwitcher
+            tabs={[
+              { id: 'stock', label: 'Остатки', icon: <Package size={16} /> },
+              { id: 'revision', label: 'Ревизия', icon: <ClipboardList size={16} /> },
+            ]}
+            activeId={inventorySubTab}
+            onChange={(id) => setInventorySubTab(id as 'stock' | 'revision')}
+            variant="indigo"
+          />
           {inventorySubTab === 'stock' && (
             <InventoryFull
               onNavigateToSupplies={() => startTransition(() => setScreen('supplies'))}
@@ -252,27 +259,27 @@ function InventoryFull({ onNavigateToSupplies }: { onNavigateToSupplies?: () => 
 
   const hideNav = useHideNav();
   return (
-    <div className={`space-y-6 relative ${hideNav ? 'pb-0' : 'pb-24'} lg:pb-0`}>
+    <div className={`space-y-4 sm:space-y-5 relative ${hideNav ? 'pb-0' : 'pb-24'} lg:pb-0`}>
       {/* Критический остаток */}
       {criticalItems.length > 0 && (
-        <div className="relative overflow-hidden bg-rose-500/5 border border-rose-500/20 rounded-[32px] p-6 lg:p-8">
-          <div className="absolute top-0 right-0 p-8 text-rose-500/10 pointer-events-none">
-            <AlertTriangle size={80} />
+        <div className="relative overflow-hidden bg-rose-500/5 border border-rose-500/20 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5">
+          <div className="absolute top-0 right-0 p-4 sm:p-6 text-rose-500/10 pointer-events-none">
+            <AlertTriangle className="w-10 h-10 sm:w-14 sm:h-14 lg:w-16 lg:h-16 text-rose-500/10" />
           </div>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-rose-500/20 text-rose-500 rounded-xl">
-              <TrendingDown className="w-5 h-5" />
+          <div className="flex items-center gap-2 mb-2 sm:mb-3">
+            <div className="p-1.5 sm:p-2 bg-rose-500/20 text-rose-500 rounded-lg">
+              <TrendingDown className="w-4 h-4 sm:w-5 h-5" />
             </div>
-            <h2 className="text-rose-400 font-black uppercase tracking-wider text-sm">Критический остаток</h2>
+            <h2 className="text-rose-400 font-black uppercase tracking-wider text-xs sm:text-sm">Критический остаток</h2>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {criticalItems.map((item) => (
               <div
                 key={item.id}
-                className="px-4 py-2 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-2 transition-all hover:bg-rose-500/20"
+                className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-rose-500/10 border border-rose-500/20 rounded-lg sm:rounded-xl flex items-center gap-1.5 transition-all hover:bg-rose-500/20"
               >
-                <span className="text-white font-bold text-sm">{item.name}</span>
-                <span className="text-rose-400 font-black text-xs bg-rose-950/40 px-2 py-0.5 rounded-md">
+                <span className="text-white font-bold text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">{item.name}</span>
+                <span className="text-rose-400 font-black text-[10px] sm:text-xs bg-rose-950/40 px-1.5 py-0.5 rounded shrink-0">
                   {item.stock_quantity}/{item.min_threshold}
                 </span>
               </div>
@@ -282,73 +289,73 @@ function InventoryFull({ onNavigateToSupplies }: { onNavigateToSupplies?: () => 
       )}
 
       {/* Поиск и фильтры */}
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
+          <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4 sm:w-5 sm:h-5" />
           <input
             type="text"
-            placeholder="Поиск товара по названию..."
+            placeholder="Поиск товара..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900/40 border border-slate-800 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-600 text-[var(--c-text)]"
+            className="w-full bg-slate-900/40 border border-slate-800 rounded-xl sm:rounded-2xl py-2.5 sm:py-3 pl-9 sm:pl-12 pr-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-600 text-[var(--c-text)]"
           />
         </div>
-        <button className="h-12 w-12 sm:w-auto sm:px-5 bg-slate-900/40 border border-slate-800 rounded-2xl flex items-center justify-center gap-2 text-slate-400 hover:bg-slate-800 transition-all">
-          <Filter size={20} />
-          <span className="hidden sm:inline font-bold text-sm">Фильтры</span>
+        <button className="h-10 sm:h-10 w-10 sm:w-auto sm:px-4 bg-slate-900/40 border border-slate-800 rounded-xl sm:rounded-2xl flex items-center justify-center gap-2 text-slate-400 hover:bg-slate-800 transition-all shrink-0">
+          <Filter className="w-4 h-4 sm:w-5 h-5" />
+          <span className="hidden sm:inline font-bold text-xs">Фильтры</span>
         </button>
       </div>
 
       {/* Список товаров */}
       {filteredItems.length === 0 ? (
-        <div className="text-center py-16">
-          <Package className="w-10 h-10 text-slate-500 mx-auto mb-3" />
-          <p className="text-slate-500 font-medium">
+        <div className="text-center py-10 sm:py-12">
+          <Package className="w-8 h-8 sm:w-10 h-10 text-slate-500 mx-auto mb-2" />
+          <p className="text-slate-500 font-medium text-sm">
             {searchQuery ? 'Ничего не найдено' : 'Нет товаров на складе'}
           </p>
         </div>
       ) : (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
         {filteredItems.map((item) => {
           const isLow = item.min_threshold > 0 && item.stock_quantity <= item.min_threshold;
           return (
             <div
               key={item.id}
-              className={`group relative bg-slate-900/30 border ${isLow ? 'border-rose-500/30' : 'border-slate-800'} rounded-3xl p-5 hover:bg-slate-800/40 transition-all flex items-center justify-between shadow-lg`}
+              className={`group relative bg-slate-900/30 border ${isLow ? 'border-rose-500/30' : 'border-slate-800'} rounded-xl sm:rounded-2xl p-3 sm:p-4 hover:bg-slate-800/40 transition-all flex items-center justify-between shadow-lg`}
             >
-              <div className="flex items-center gap-4">
-                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner ${
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-inner shrink-0 ${
                   isLow ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800/80 text-slate-500'
                 }`}>
-                  <Box className="w-6 h-6" />
+                  <Box className="w-5 h-5 sm:w-6 h-6" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-[var(--c-text)] group-hover:text-indigo-400 transition-colors">{item.name}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-800/50 px-2 py-0.5 rounded-md">
+                <div className="min-w-0">
+                  <h3 className="text-sm sm:text-base font-bold text-[var(--c-text)] group-hover:text-indigo-400 transition-colors truncate">{item.name}</h3>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-800/50 px-1.5 py-0.5 rounded">
                       {categoryLabels[item.category] || item.category}
                     </span>
-                    <span className="text-xs font-bold text-indigo-400/80">{item.price} ₽</span>
+                    <span className="text-[10px] sm:text-xs font-bold text-indigo-400/80">{item.price} ₽</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col items-end">
-                <div className="flex items-baseline gap-1">
-                  <span className={`text-3xl font-black ${isLow ? 'text-rose-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'text-[var(--c-text)]'}`}>
+              <div className="flex flex-col items-end shrink-0">
+                <div className="flex items-baseline gap-0.5">
+                  <span className={`text-xl sm:text-2xl font-black ${isLow ? 'text-rose-500' : 'text-[var(--c-text)]'}`}>
                     {item.stock_quantity}
                   </span>
-                  <span className="text-slate-500 text-xs font-bold uppercase">шт</span>
+                  <span className="text-slate-500 text-[10px] font-bold uppercase">шт</span>
                 </div>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">Мин:</span>
-                  <span className="text-[10px] text-slate-400 font-black bg-slate-800 px-1.5 py-0.5 rounded">{item.min_threshold}</span>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <span className="text-[9px] text-slate-500 font-bold uppercase">Мин:</span>
+                  <span className="text-[9px] text-slate-400 font-black bg-slate-800 px-1 py-0.5 rounded">{item.min_threshold}</span>
                 </div>
               </div>
 
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button className="p-1.5 text-slate-600 hover:text-white">
-                  <MoreVertical size={18} />
+              <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button className="p-1 text-slate-600 hover:text-white">
+                  <MoreVertical className="w-4 h-4 sm:w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -359,12 +366,12 @@ function InventoryFull({ onNavigateToSupplies }: { onNavigateToSupplies?: () => 
 
       {/* FAB — Поставка */}
       {onNavigateToSupplies && (
-        <div className="fixed bottom-10 right-10 z-20">
+        <div className="fixed bottom-6 right-4 sm:bottom-8 sm:right-6 lg:bottom-10 lg:right-10 z-20">
           <button
             onClick={() => { hapticFeedback(); onNavigateToSupplies(); }}
-            className="w-16 h-16 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-2xl shadow-indigo-600/40 hover:scale-110 active:scale-95 transition-all border-4 border-[var(--c-bg)]"
+            className="w-12 h-12 sm:w-14 sm:h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl shadow-indigo-600/40 hover:scale-105 active:scale-95 transition-all border-2 sm:border-4 border-[var(--c-bg)]"
           >
-            <ArrowDownToLine size={28} />
+            <ArrowDownToLine className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
       )}

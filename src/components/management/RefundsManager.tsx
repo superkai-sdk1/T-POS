@@ -6,6 +6,7 @@ import { usePOSStore } from '@/store/pos';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/ui/Drawer';
+import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { Input } from '@/components/ui/Input';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import {
@@ -434,28 +435,15 @@ export function RefundsManager() {
           </div>
         </div>
 
-        <div className="flex gap-1.5">
-          <button
-            onClick={() => toggleRefundType('full')}
-            className={`flex-1 p-2.5 rounded-xl text-center text-[12px] font-bold transition-all ${
-              refundType === 'full'
-                ? 'bg-[var(--c-danger-bg)] border border-[var(--c-danger-border)] text-[var(--c-danger)]'
-                : 'card text-[var(--c-hint)]'
-            }`}
-          >
-            Полный возврат
-          </button>
-          <button
-            onClick={() => toggleRefundType('partial')}
-            className={`flex-1 p-2.5 rounded-xl text-center text-[12px] font-bold transition-all ${
-              refundType === 'partial'
-                ? 'bg-[var(--c-warning-bg)] border border-[var(--c-warning-border)] text-[var(--c-warning)]'
-                : 'card text-[var(--c-hint)]'
-            }`}
-          >
-            Частичный возврат
-          </button>
-        </div>
+        <TabSwitcher
+          tabs={[
+            { id: 'full', label: 'Полный возврат' },
+            { id: 'partial', label: 'Частичный возврат' },
+          ]}
+          activeId={refundType}
+          onChange={(id) => toggleRefundType(id as 'full' | 'partial')}
+          variant={refundType === 'full' ? 'danger' : 'warning'}
+        />
 
         <div className="space-y-1">
           <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">

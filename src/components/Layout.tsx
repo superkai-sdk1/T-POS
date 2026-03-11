@@ -472,7 +472,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
               </div>
             </div>
           </header>
-        ) : (
+        ) : !hideNav ? (
           <header
             className="lg:hidden shrink-0 z-40 select-none relative"
             style={{
@@ -496,6 +496,9 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
               </button>
             </div>
           </header>
+        ) : (
+          /* Deep screen: header hidden, add safe-top spacer so content doesn't go under notch */
+          <div className="lg:hidden shrink-0" style={{ height: 'var(--safe-top)', minHeight: 'var(--safe-top)' }} aria-hidden />
         )}
 
         <PullToRefreshContainer

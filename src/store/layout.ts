@@ -21,3 +21,4 @@ export const useLayoutStore = create<LayoutState>((set) => ({
 }));
 
 export const useHideNav = () => useLayoutStore((s) => s.hideReasons.size > 0);
+export const useHasHideReason = (id: string) => useLayoutStore((s) => s.hideReasons.has(id));

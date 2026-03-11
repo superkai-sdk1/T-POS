@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useLayoutStore } from '@/store/layout';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/Button';
@@ -49,6 +50,14 @@ export function SupplyPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const user = useAuthStore((s) => s.user);
+  const addHideReason = useLayoutStore((s) => s.addHideReason);
+  const removeHideReason = useLayoutStore((s) => s.removeHideReason);
+  useEffect(() => {
+    if (isCreating) {
+      addHideReason('supply-creating');
+      return () => removeHideReason('supply-creating');
+    }
+  }, [isCreating, addHideReason, removeHideReason]);
 
   const loadSupplies = useCallback(async () => {
     const { data } = await supabase

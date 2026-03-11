@@ -1,4 +1,5 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState, useEffect } from 'react';
+import { useLayoutStore } from '@/store/layout';
 import { ArrowLeft, Users, Crown, Search, Activity, UserPlus, Moon, ChevronRight, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import type { PlayerStat } from '@/hooks/useAnalyticsData';
@@ -26,6 +27,14 @@ const tierLabels: Record<string, string> = {
 export const PlayersModule = memo(function PlayersModule({ players, retentionRate, checks }: Props) {
   const [segFilter, setSegFilter] = useState<'all' | 'active' | 'new' | 'sleeping'>('all');
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const addHideReason = useLayoutStore((s) => s.addHideReason);
+  const removeHideReason = useLayoutStore((s) => s.removeHideReason);
+  useEffect(() => {
+    if (selectedPlayer) {
+      addHideReason('dashboard-player-drilldown');
+      return () => removeHideReason('dashboard-player-drilldown');
+    }
+  }, [selectedPlayer, addHideReason, removeHideReason]);
   const search = useAnalyticsStore((s) => s.search);
   const setSearch = useAnalyticsStore((s) => s.setSearch);
 

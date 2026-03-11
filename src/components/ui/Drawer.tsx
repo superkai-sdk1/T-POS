@@ -12,7 +12,7 @@ interface DrawerProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
-const HEIGHT_VH: Record<string, number> = { sm: 65, md: 75, lg: 88, xl: 95 };
+const HEIGHT_VH: Record<string, number> = { sm: 78, md: 88, lg: 94, xl: 98 };
 
 let _drawerCount = 0;
 
@@ -208,50 +208,50 @@ export function Drawer({
             onTouchEnd={handleTouchEnd}
           >
             <div
-              className="w-full flex justify-center pt-4 sm:pt-6 pb-2"
-              style={{ minHeight: '2.5rem' }}
+              className="w-full flex justify-center pt-2 sm:pt-3 pb-1"
+              style={{ minHeight: '2rem' }}
             >
-              <div className="w-16 sm:w-20 h-1.5 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full" />
+              <div className="w-12 sm:w-16 h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full" />
             </div>
 
-            <div className="px-6 sm:px-10 py-3 sm:py-4 flex items-center justify-between gap-3">
+            <div className="px-6 sm:px-10 py-2 sm:py-3 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
               {titleIcon != null ? (
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/20 shrink-0 text-white font-black text-lg sm:text-xl">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/20 shrink-0 text-white font-black text-base sm:text-lg">
                   {titleIcon}
                 </div>
               ) : null}
               <div className="min-w-0 flex-1">
                 {title ? (
                   <>
-                    <h2 className="text-xl sm:text-2xl font-black tracking-tight leading-none uppercase italic text-white truncate">
+                    <h2 className="text-lg sm:text-xl font-black tracking-tight leading-none uppercase italic text-white truncate">
                       {title}
                     </h2>
                     {subtitle ? (
-                      <p className="text-white/40 text-[10px] sm:text-sm mt-0.5 uppercase tracking-tighter truncate">
+                      <p className="text-white/40 text-[10px] sm:text-xs mt-0.5 uppercase tracking-tighter truncate">
                         {subtitle}
                       </p>
                     ) : null}
                   </>
                 ) : (
-                  <span className="block min-h-[1.5rem]" aria-hidden />
+                  <span className="block min-h-[1.25rem]" aria-hidden />
                 )}
               </div>
             </div>
             <button
               type="button"
               onClick={handleClose}
-              className="p-3 sm:p-4 bg-white/5 hover:bg-rose-500/20 rounded-xl sm:rounded-2xl transition-all shrink-0 min-w-[2.75rem] min-h-[2.75rem] flex items-center justify-center group"
+              className="p-2.5 sm:p-3 bg-white/5 hover:bg-rose-500/20 rounded-xl sm:rounded-2xl transition-all shrink-0 min-w-[2.25rem] min-h-[2.25rem] flex items-center justify-center group"
               aria-label="Закрыть"
             >
-              <X className="w-5 h-5 sm:w-6 h-6 text-white/40 group-hover:text-rose-400 transition-colors" />
+              <X className="w-4 h-4 sm:w-5 h-5 text-white/40 group-hover:text-rose-400 transition-colors" />
             </button>
             </div>
           </div>
 
           <div
             ref={contentRef}
-            className="px-6 sm:px-10 pb-6 sm:pb-10 overflow-y-auto overflow-x-hidden flex-1 min-h-0 overscroll-contain"
+            className="px-6 sm:px-10 pb-4 sm:pb-6 overflow-y-auto overflow-x-hidden flex-1 min-h-0 overscroll-contain"
             style={{
               WebkitOverflowScrolling: 'touch',
               touchAction: 'pan-y',

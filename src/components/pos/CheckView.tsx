@@ -186,8 +186,13 @@ const CartItemRow = memo(function CartItemRow({
             </div>
           )}
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="flex items-center bg-black/40 rounded-2xl border border-white/5 p-0.5">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {/* Mobile: compact quantity badge */}
+          {ci.quantity > 1 && (
+            <span className="lg:hidden text-xs font-black text-white/50">x{ci.quantity}</span>
+          )}
+          {/* Desktop: full +/- controls */}
+          <div className="hidden lg:flex items-center bg-black/40 rounded-2xl border border-white/5 p-0.5">
             <button
               onClick={() => { hapticFeedback('light'); onUpdateQty(ci.item.id, ci.quantity - 1, modKey); }}
               className="p-2 hover:text-[#8b5cf6] transition-colors"
@@ -202,7 +207,7 @@ const CartItemRow = memo(function CartItemRow({
               <Plus className="w-3.5 h-3.5" />
             </button>
           </div>
-          <span className="w-16 text-right font-black italic text-lg text-white/90 tabular-nums">
+          <span className="text-right font-black italic text-base lg:text-lg text-white/90 tabular-nums">
             {fmtCur(unitPrice * ci.quantity)}
           </span>
         </div>
@@ -598,11 +603,11 @@ export function CheckView({ onBack }: CheckViewProps) {
   if (!activeCheck) return null;
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 px-4 lg:px-4">
+    <div className="flex flex-col flex-1 min-h-0 px-1 lg:px-4">
       {swipeIndicatorStyle && <div style={swipeIndicatorStyle} />}
       {overlayStyle && <div style={overlayStyle} />}
       {/* Glass header */}
-      <div className="sticky top-0 z-20 -mx-4 lg:mx-0 px-3 lg:px-4 py-2 lg:py-3 mb-3 lg:mb-4" style={{ transform: 'translateZ(0)' }}>
+      <div className="sticky top-0 z-20 -mx-1 lg:mx-0 px-1 lg:px-4 py-2 lg:py-3 mb-3 lg:mb-4" style={{ transform: 'translateZ(0)' }}>
         <div className="flex items-center justify-between bg-white/5 backdrop-blur-xl p-3 lg:p-4 rounded-[2rem] border border-white/10 shadow-xl">
           <div className="flex items-center gap-3 min-w-0">
             <button
@@ -763,41 +768,41 @@ export function CheckView({ onBack }: CheckViewProps) {
               transition: menuDragY > 0 ? 'none' : 'transform 0.5s cubic-bezier(0.16,1,0.3,1)',
             }}
           >
-            <div className="bg-[#0d0d12] border-t border-white/5 rounded-t-[2rem] lg:rounded-t-[1.5rem] shadow-2xl flex flex-col h-[85dvh] sm:h-[88dvh] lg:h-[80dvh] max-h-[90vh] overflow-hidden">
+            <div className="bg-[#0d0d12] border-t border-white/5 rounded-t-[2rem] lg:rounded-t-[1.5rem] shadow-2xl flex flex-col h-[92dvh] sm:h-[95dvh] lg:h-[90dvh] max-h-[98vh] overflow-hidden">
               <div
                 className="shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
                 onTouchStart={handleMenuSwipeStart}
                 onTouchMove={handleMenuSwipeMove}
                 onTouchEnd={handleMenuSwipeEnd}
               >
-                <div className="w-full flex justify-center pt-3 lg:pt-2 pb-0.5">
-                  <div className="w-12 h-0.5 lg:w-10 bg-white/5 rounded-full" />
+                <div className="w-full flex justify-center pt-2 pb-0.5">
+                  <div className="w-10 h-0.5 lg:w-8 bg-white/5 rounded-full" />
                 </div>
-                <div className="px-4 sm:px-6 lg:px-6 py-2 lg:py-2 flex items-center justify-between">
-                  <h2 className="text-lg sm:text-xl lg:text-2xl font-black uppercase italic tracking-tighter text-white/90">
+                <div className="px-4 sm:px-6 lg:px-6 py-1.5 lg:py-1.5 flex items-center justify-between">
+                  <h2 className="text-base sm:text-lg lg:text-xl font-black uppercase italic tracking-tighter text-white/90">
                     МЕНЮ
                   </h2>
                   <button
                     onClick={closeMenu}
-                    className="w-9 h-9 lg:w-10 lg:h-10 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center transition-all group"
+                    className="w-8 h-8 lg:w-9 lg:h-9 bg-white/5 hover:bg-white/10 rounded-xl flex items-center justify-center transition-all group"
                   >
-                    <X className="w-4 h-4 lg:w-5 lg:h-5 text-white/30 group-hover:text-white" />
+                    <X className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-white/30 group-hover:text-white" />
                   </button>
                 </div>
               </div>
-              <div className="px-4 sm:px-6 lg:px-6 py-1.5 shrink-0">
-                <div className="relative group bg-white/[0.03] border border-white/5 focus-within:border-white/20 rounded-xl lg:rounded-2xl flex items-center px-4 transition-all">
-                  <Search className="w-4 h-4 text-white/10 group-focus-within:text-white/40 shrink-0" />
+              <div className="px-4 sm:px-6 lg:px-6 py-1 shrink-0">
+                <div className="relative group bg-white/[0.03] border border-white/5 focus-within:border-white/20 rounded-xl lg:rounded-2xl flex items-center px-3 transition-all">
+                  <Search className="w-3.5 h-3.5 text-white/10 group-focus-within:text-white/40 shrink-0" />
                   <input
                     type="text"
                     placeholder="ПОИСК..."
                     value={menuSearch}
                     onChange={(e) => startTransition(() => setMenuSearch(e.target.value))}
-                    className="w-full bg-transparent py-3 lg:py-2.5 px-3 text-sm text-white outline-none placeholder:text-white/20 font-bold uppercase tracking-widest"
+                    className="w-full bg-transparent py-2.5 lg:py-2 px-2 text-sm text-white outline-none placeholder:text-white/20 font-bold uppercase tracking-widest"
                   />
                 </div>
               </div>
-              <div className="px-4 sm:px-6 lg:px-6 my-2 lg:my-3 shrink-0">
+              <div className="px-4 sm:px-6 lg:px-6 my-1.5 lg:my-2 shrink-0">
                 <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                   <button
                     onClick={() => setMenuCategory(null)}
@@ -837,7 +842,7 @@ export function CheckView({ onBack }: CheckViewProps) {
                   })}
                 </div>
               </div>
-              <div className="px-4 sm:px-6 lg:px-6 pb-6 overflow-y-auto flex-1 min-h-0">
+              <div className="px-4 sm:px-6 lg:px-6 pb-24 lg:pb-6 overflow-y-auto flex-1 min-h-0">
                 {topItems.length > 0 && !menuSearch && (
                   <>
                     <div className="grid grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-1.5 lg:gap-2 mb-3">

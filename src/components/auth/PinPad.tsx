@@ -78,10 +78,10 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
 
   return (
     <div
-      className="h-full flex flex-col items-center justify-center p-4 relative overflow-hidden"
+      className="min-h-dvh min-h-[100dvh] flex flex-col items-center justify-center p-3 sm:p-4 relative overflow-y-auto"
       style={{
-        paddingTop: 'var(--safe-top)',
-        paddingBottom: 'var(--safe-bottom)',
+        paddingTop: 'calc(var(--safe-top) + 0.5rem)',
+        paddingBottom: 'calc(var(--safe-bottom) + 0.5rem)',
         backgroundColor: 'var(--c-bg)',
         background: 'linear-gradient(135deg, #0a0e1a 0%, #0f172a 40%, #1a1040 100%)',
       }}
@@ -89,11 +89,11 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
       {/* ── Animated Background Orbs ── */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden>
         <div
-          className="absolute top-[5%] left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full animate-orb-float"
+          className="absolute top-[5%] left-1/2 -translate-x-1/2 w-[200px] sm:w-[300px] h-[200px] sm:h-[300px] rounded-full animate-orb-float"
           style={{ background: 'radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%)', filter: 'blur(40px)' }}
         />
         <div
-          className="absolute bottom-[10%] left-[20%] w-[200px] h-[200px] rounded-full animate-orb-float"
+          className="absolute bottom-[10%] left-[20%] w-[120px] sm:w-[200px] h-[120px] sm:h-[200px] rounded-full animate-orb-float"
           style={{ background: 'radial-gradient(circle, rgba(6, 182, 212, 0.06) 0%, transparent 70%)', filter: 'blur(30px)', animationDelay: '-3s' }}
         />
       </div>
@@ -102,34 +102,34 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
       {onBack && (
         <button
           onClick={onBack}
-          className="absolute p-2.5 rounded-xl transition-all duration-200 z-10 active:scale-90"
+          className="absolute p-2 sm:p-2.5 rounded-lg sm:rounded-xl transition-all duration-200 z-10 active:scale-90"
           style={{
-            top: 'calc(var(--safe-top) + 1rem)',
-            left: '1rem',
+            top: 'calc(var(--safe-top) + 0.5rem)',
+            left: '0.75rem',
             background: 'rgba(255, 255, 255, 0.05)',
             border: '1px solid rgba(255, 255, 255, 0.06)',
           }}
         >
-          <ArrowLeft className="w-5 h-5 text-[var(--c-hint)]" />
+          <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--c-hint)]" />
         </button>
       )}
 
-      <div className="flex flex-col items-center w-full max-w-xs animate-fade-in relative z-10">
+      <div className="flex flex-col items-center w-full max-w-[280px] sm:max-w-xs animate-fade-in relative z-10">
         {/* ── Logo ── */}
         <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
+          className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-4"
           style={{
             background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.1))',
             boxShadow: '0 0 24px rgba(139, 92, 246, 0.12)',
             border: '1px solid rgba(139, 92, 246, 0.15)',
           }}
         >
-          <img src="/icons/tpos.svg" alt="T-POS" className="w-10 h-auto" />
+          <img src="/icons/tpos.svg" alt="T-POS" className="w-7 h-auto sm:w-8 lg:w-10" />
         </div>
 
         {/* ── Glass Card ── */}
         <div
-          className="p-6 w-full flex flex-col items-center gap-5 rounded-3xl"
+          className="p-4 sm:p-5 lg:p-6 w-full flex flex-col items-center gap-3 sm:gap-4 rounded-xl sm:rounded-2xl lg:rounded-3xl"
           style={{
             background: 'rgba(255, 255, 255, 0.04)',
             backdropFilter: 'blur(30px) saturate(1.4)',
@@ -140,20 +140,20 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
         >
           {/* ── Title ── */}
           <div className="text-center">
-            <h1 className="text-xl font-bold text-[var(--c-text)]">
+            <h1 className="text-base sm:text-lg lg:text-xl font-bold text-[var(--c-text)]">
               {displayTitle}
             </h1>
             {displaySubtitle && (
-              <p className="text-[11px] text-[var(--c-hint)] mt-1">{displaySubtitle}</p>
+              <p className="text-[10px] sm:text-[11px] text-[var(--c-hint)] mt-0.5 sm:mt-1">{displaySubtitle}</p>
             )}
           </div>
 
           {/* ── PIN Dots with Glow ── */}
-          <div className={`flex gap-4 ${shake ? 'animate-shake' : ''}`}>
+          <div className={`flex gap-2 sm:gap-3 lg:gap-4 ${shake ? 'animate-shake' : ''}`}>
             {[0, 1, 2, 3].map((i) => (
               <div
                 key={i}
-                className={`w-4 h-4 rounded-full transition-all duration-200 ${pin.length > i ? 'scale-110' : ''
+                className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full transition-all duration-200 ${pin.length > i ? 'scale-110' : ''
                   }`}
                 style={pin.length > i ? {
                   background: 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
@@ -169,7 +169,7 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
           {/* ── Error ── */}
           {displayError && (
             <p
-              className="text-[13px] text-[var(--c-danger)] rounded-xl px-3 py-1.5 text-center animate-fade-in w-full"
+              className="text-[11px] sm:text-[13px] text-[var(--c-danger)] rounded-lg sm:rounded-xl px-2 sm:px-3 py-1 sm:py-1.5 text-center animate-fade-in w-full"
               style={{ background: 'rgba(251,113,133,0.08)', border: '1px solid rgba(251,113,133,0.15)' }}
             >
               {displayError}
@@ -177,23 +177,23 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
           )}
 
           {/* ── Keypad ── */}
-          <div className="grid grid-cols-3 gap-3 w-full">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full">
             {keys.map((key, i) => {
               if (key === '') return <div key={i} />;
               if (key === 'del') {
                 return (
-                  <button
-                    key={i}
-                    onClick={handleDelete}
-                    disabled={pin.length === 0 || isLoading}
-                    className="aspect-square rounded-2xl flex items-center justify-center transition-all duration-200 active:scale-90 disabled:opacity-30"
-                    style={{
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      border: '1px solid rgba(255, 255, 255, 0.06)',
-                    }}
-                  >
-                    <Delete className="w-5 h-5 text-[var(--c-hint)]" />
-                  </button>
+              <button
+                key={i}
+                onClick={handleDelete}
+                disabled={pin.length === 0 || isLoading}
+                className="aspect-square rounded-xl sm:rounded-2xl flex items-center justify-center transition-all duration-200 active:scale-90 disabled:opacity-30"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                }}
+              >
+                <Delete className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--c-hint)]" />
+              </button>
                 );
               }
               return (
@@ -201,7 +201,7 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
                   key={i}
                   onClick={() => handleDigit(key)}
                   disabled={isLoading}
-                  className="aspect-square rounded-2xl text-xl font-semibold text-[var(--c-text)] transition-all duration-200 active:scale-90 disabled:opacity-50"
+                  className="aspect-square rounded-xl sm:rounded-2xl text-lg sm:text-xl font-semibold text-[var(--c-text)] transition-all duration-200 active:scale-90 disabled:opacity-50"
                   style={{
                     background: 'rgba(255, 255, 255, 0.05)',
                     border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -217,9 +217,9 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
 
           {/* ── Loading Spinner ── */}
           {isLoading && (
-            <div className="flex items-center gap-2 text-[var(--c-hint)]">
-              <div className="w-4 h-4 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin" />
-              <span className="text-[13px]">Проверка...</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[var(--c-hint)]">
+              <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin" />
+              <span className="text-[11px] sm:text-[13px]">Проверка...</span>
             </div>
           )}
         </div>

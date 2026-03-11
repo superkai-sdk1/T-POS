@@ -2,12 +2,14 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { usePOSStore } from '@/store/pos';
+import { useHideNav } from '@/store/layout';
 import {
     Calendar, Clock, Plus, Play,
     CheckCircle2, Timer, CreditCard,
-    MessageSquare, MapPin, Sparkles,
+    MessageSquare, MapPin, Sparkles, History,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
+import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
@@ -45,6 +47,7 @@ function pluralHours(n: number) {
 }
 
 export function EventsPage() {
+    const hideNav = useHideNav();
     const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
     const [events, setEvents] = useState<Event[]>([]);
     const [loading, setLoading] = useState(true);
@@ -157,31 +160,19 @@ export function EventsPage() {
             </div>
 
             {/* Tabs */}
-            <div className="shrink-0 flex gap-1.5 mb-4">
-                {(['upcoming', 'history'] as const).map(tab => (
-                    <button
-                        key={tab}
-                        onClick={() => { hapticFeedback('light'); setActiveTab(tab); }}
-                        className={`px-4 py-2 rounded-xl text-[13px] font-semibold transition-all active:scale-95 min-h-[40px] ${
-                            activeTab === tab
-                                ? 'text-white'
-                                : 'text-[var(--c-hint)]'
-                        }`}
-                        style={activeTab === tab ? {
-                            background: 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(6,182,212,0.1))',
-                            border: '1px solid rgba(139,92,246,0.2)',
-                        } : {
-                            background: 'rgba(255,255,255,0.04)',
-                            border: '1px solid rgba(255,255,255,0.06)',
-                        }}
-                    >
-                        {tab === 'upcoming' ? 'Предстоящие' : 'История'}
-                    </button>
-                ))}
+            <div className="shrink-0 mb-4">
+                <TabSwitcher
+                    tabs={[
+                        { id: 'upcoming', label: 'Предстоящие', icon: <Calendar className="w-4 h-4" /> },
+                        { id: 'history', label: 'История', icon: <History className="w-4 h-4" /> },
+                    ]}
+                    activeId={activeTab}
+                    onChange={(id) => { hapticFeedback('light'); setActiveTab(id as 'upcoming' | 'history'); }}
+                />
             </div>
 
             {/* Event list */}
-            <div className="flex-1 overflow-y-auto min-h-0 pb-4 space-y-3 scroll-area">
+            <div className={`flex-1 overflow-y-auto min-h-0 space-y-3 scroll-area ${hideNav ? 'pb-4' : 'pb-24 lg:pb-4'}`}>
                 {loading ? (
                     <div className="flex justify-center py-12">
                         <div className="w-7 h-7 border-2 border-[var(--c-accent)] border-t-transparent rounded-full animate-spin" />
