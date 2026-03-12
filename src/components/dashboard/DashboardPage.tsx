@@ -180,6 +180,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               products={data.productStats}
               allCheckItems={data.allCheckItems as Parameters<typeof ProductsModule>[0]['allCheckItems']}
               checks={data.checks as Parameters<typeof ProductsModule>[0]['checks']}
+              refundQtyByCheckItem={data.refundQtyByCheckItem}
             />
           ) : (
             <PlayersModule

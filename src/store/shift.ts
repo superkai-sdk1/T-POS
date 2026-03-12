@@ -336,7 +336,7 @@ export const useShiftStore = create<ShiftState>()(
 
         const { data: refundsData } = await supabase
           .from('refunds')
-          .select('total_amount, check_id')
+          .select('id, total_amount, check_id')
           .eq('shift_id', shiftId);
 
         const refundsByCheckId = new Map<string, number>();
@@ -353,6 +353,56 @@ export const useShiftStore = create<ShiftState>()(
           }
         }
 
+        const refundIds = (refundsData || []).map((r) => r.id);
+        const refundQtyByCheckItem = new Map<string, number>();
+        if (refundIds.length > 0) {
+          const { data: refundItemsData } = await supabase
+            .from('refund_items')
+            .select('item_id, quantity, refund:refunds!refund_items_refund_id_fkey(check_id)')
+            .in('refund_id', refundIds);
+          for (const ri of refundItemsData || []) {
+            const refund = Array.isArray(ri.refund) ? ri.refund[0] : ri.refund;
+            if (!refund?.check_id) continue;
+            const key = `${refund.check_id}:${ri.item_id}`;
+            refundQtyByCheckItem.set(key, (refundQtyByCheckItem.get(key) || 0) + (ri.quantity || 0));
+          }
+        }
+
+        for (const [itemKey, item] of itemMap) {
+          for (const c of checksData || []) {
+            const items = itemsByCheckId.get(c.id) || [];
+            for (const ci of items) {
+              const ciItemId = (ci as { item_id?: string }).item_id;
+              if (ciItemId !== itemKey) continue;
+              const refQty = refundQtyByCheckItem.get(`${c.id}:${ciItemId}`) || 0;
+              if (refQty > 0) {
+                const price = (ci as { price_at_time?: number }).price_at_time ?? (ci as { price?: number }).price ?? 0;
+                item.quantity -= refQty;
+                item.revenue -= refQty * price;
+              }
+            }
+          }
+        }
+
+        for (const [nickname, pe] of playerMap) {
+          for (const c of checksData || []) {
+            const player = Array.isArray(c.player) ? c.player[0] : c.player;
+            if (player?.nickname !== nickname) continue;
+            const refAmt = refundsByCheckId.get(c.id) || 0;
+            if (refAmt > 0) {
+              pe.total -= refAmt;
+              if (pe.total < 0) pe.total = 0;
+              if ((c.total_amount || 0) - refAmt <= 0) {
+                pe.checks--;
+                if (pe.checks < 0) pe.checks = 0;
+              }
+            }
+          }
+        }
+
+        const itemsSoldFiltered = Array.from(itemMap.values()).filter((i) => i.quantity > 0);
+        const playerBreakdownFiltered = Array.from(playerMap.values()).filter((p) => p.total > 0);
+
         totalRevenue -= totalRefunded;
 
         const totalChecks = checks.length;
@@ -366,8 +416,8 @@ export const useShiftStore = create<ShiftState>()(
           totalChecks,
           avgCheck,
           paymentBreakdown,
-          itemsSold: Array.from(itemMap.values()).sort((a, b) => b.revenue - a.revenue),
-          playerBreakdown: Array.from(playerMap.values()).sort((a, b) => b.total - a.total),
+          itemsSold: itemsSoldFiltered.sort((a, b) => b.revenue - a.revenue),
+          playerBreakdown: playerBreakdownFiltered.sort((a, b) => b.total - a.total),
           refundsByCheckId,
         };
       },

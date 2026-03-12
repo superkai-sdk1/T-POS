@@ -9,6 +9,7 @@ interface Props {
   products: ProductStat[];
   allCheckItems: { item_id: string; check_id: string; quantity: number; price_at_time: number; item: { name: string; category: string } | null }[];
   checks: { id: string; player_id: string; closed_at: string; player: { nickname: string } | null }[];
+  refundQtyByCheckItem?: Map<string, number>;
 }
 
 const fmt = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n);
@@ -24,7 +25,7 @@ const categoryLabels: Record<string, string> = {
   drinks: 'Напитки', food: 'Еда', bar: 'Снеки', hookah: 'Кальяны', services: 'Услуги',
 };
 
-export const ProductsModule = memo(function ProductsModule({ products, allCheckItems, checks }: Props) {
+export const ProductsModule = memo(function ProductsModule({ products, allCheckItems, checks, refundQtyByCheckItem }: Props) {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [abcFilter, setAbcFilter] = useState<'all' | 'A' | 'B' | 'C'>('all');
   const addHideReason = useLayoutStore((s) => s.addHideReason);
@@ -55,7 +56,7 @@ export const ProductsModule = memo(function ProductsModule({ products, allCheckI
   const product = selectedProduct ? products.find((p) => p.id === selectedProduct) : null;
 
   if (product) {
-    return <ProductDrilldown product={product} allCheckItems={allCheckItems} checks={checks} onBack={() => setSelectedProduct(null)} />;
+    return <ProductDrilldown product={product} allCheckItems={allCheckItems} checks={checks} refundQtyByCheckItem={refundQtyByCheckItem} onBack={() => setSelectedProduct(null)} />;
   }
 
   return (
@@ -146,10 +147,11 @@ export const ProductsModule = memo(function ProductsModule({ products, allCheckI
   );
 });
 
-function ProductDrilldown({ product, allCheckItems, checks, onBack }: {
+function ProductDrilldown({ product, allCheckItems, checks, refundQtyByCheckItem, onBack }: {
   product: ProductStat;
   allCheckItems: Props['allCheckItems'];
   checks: Props['checks'];
+  refundQtyByCheckItem?: Map<string, number>;
   onBack: () => void;
 }) {
   const salesByDay = useMemo(() => {
@@ -160,15 +162,18 @@ function ProductDrilldown({ product, allCheckItems, checks, onBack }: {
     const checkDateMap = new Map(checks.map((c) => [c.id, new Date(c.closed_at)]));
     for (const ci of allCheckItems) {
       if (ci.item_id !== product.id) continue;
+      const refundQty = refundQtyByCheckItem?.get(`${ci.check_id}:${ci.item_id}`) || 0;
+      const netQty = ci.quantity - refundQty;
+      if (netQty <= 0) continue;
       const date = checkDateMap.get(ci.check_id);
       if (!date) continue;
       const day = date.getDay();
-      dayMap[day].qty += ci.quantity;
-      dayMap[day].revenue += ci.quantity * ci.price_at_time;
+      dayMap[day].qty += netQty;
+      dayMap[day].revenue += netQty * ci.price_at_time;
     }
 
     return dayNames.map((name, i) => ({ name, ...dayMap[i] }));
-  }, [product.id, allCheckItems, checks]);
+  }, [product.id, allCheckItems, checks, refundQtyByCheckItem]);
 
   const buyers = useMemo(() => {
     const buyerChecks: Record<string, { nickname: string; qty: number; total: number }> = {};
@@ -176,15 +181,18 @@ function ProductDrilldown({ product, allCheckItems, checks, onBack }: {
 
     for (const ci of allCheckItems) {
       if (ci.item_id !== product.id) continue;
+      const refundQty = refundQtyByCheckItem?.get(`${ci.check_id}:${ci.item_id}`) || 0;
+      const netQty = ci.quantity - refundQty;
+      if (netQty <= 0) continue;
       const p = checkPlayerMap.get(ci.check_id);
       if (!p || !p.id) continue;
       if (!buyerChecks[p.id]) buyerChecks[p.id] = { nickname: p.nick, qty: 0, total: 0 };
-      buyerChecks[p.id].qty += ci.quantity;
-      buyerChecks[p.id].total += ci.quantity * ci.price_at_time;
+      buyerChecks[p.id].qty += netQty;
+      buyerChecks[p.id].total += netQty * ci.price_at_time;
     }
 
     return Object.values(buyerChecks).sort((a, b) => b.total - a.total).slice(0, 10);
-  }, [product.id, allCheckItems, checks]);
+  }, [product.id, allCheckItems, checks, refundQtyByCheckItem]);
 
   const maxDayQty = Math.max(...salesByDay.map((d) => d.qty), 1);
 

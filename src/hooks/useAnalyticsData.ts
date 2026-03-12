@@ -189,6 +189,14 @@ export function useAnalyticsData() {
     return map;
   }, [refunds]);
 
+  const prevRefundsByCheckId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of prevRefunds) {
+      map.set(r.check_id, (map.get(r.check_id) || 0) + (r.total_amount || 0));
+    }
+    return map;
+  }, [prevRefunds]);
+
   const paymentBreakdown = useMemo(() => {
     const b = { cash: 0, card: 0, debt: 0, bonus: 0, deposit: 0 };
     for (const c of checks) {
@@ -270,12 +278,25 @@ export function useAnalyticsData() {
     return Math.round(((current - previous) / Math.abs(previous)) * 100);
   }, []);
 
+  const refundQtyByCheckItem = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const ri of refundItemsInPeriod) {
+      const key = `${ri.check_id}:${ri.item_id}`;
+      m.set(key, (m.get(key) || 0) + ri.quantity);
+    }
+    return m;
+  }, [refundItemsInPeriod]);
+
   const productStats = useMemo((): ProductStat[] => {
     const map: Record<string, ProductStat> = {};
     const checkPlayerMap = new Map(checks.map((c) => [c.id, c.player_id]));
 
     for (const ci of checkItems) {
       if (!ci.item) continue;
+      const refundQty = refundQtyByCheckItem.get(`${ci.check_id}:${ci.item_id}`) || 0;
+      const netQty = ci.quantity - refundQty;
+      if (netQty <= 0) continue;
+
       if (!map[ci.item_id]) {
         map[ci.item_id] = {
           id: ci.item_id, name: ci.item.name, category: ci.item.category,
@@ -283,9 +304,10 @@ export function useAnalyticsData() {
         };
       }
       const s = map[ci.item_id];
-      s.qty += ci.quantity;
-      s.revenue += ci.quantity * ci.price_at_time;
-      s.cost += ci.quantity * (itemCostMap[ci.item_id] || 0);
+      const unitPrice = ci.price_at_time;
+      s.qty += netQty;
+      s.revenue += netQty * unitPrice;
+      s.cost += netQty * (itemCostMap[ci.item_id] || 0);
       const pid = checkPlayerMap.get(ci.check_id);
       if (pid) s.buyers.add(pid);
     }
@@ -307,7 +329,7 @@ export function useAnalyticsData() {
       return products.filter((p) => p.name.toLowerCase().includes(q));
     }
     return products;
-  }, [checkItems, checks, itemCostMap, search]);
+  }, [checkItems, checks, itemCostMap, search, refundQtyByCheckItem]);
 
   const playerStats = useMemo((): PlayerStat[] => {
     const map: Record<string, PlayerStat> = {};
@@ -315,6 +337,10 @@ export function useAnalyticsData() {
 
     for (const c of checks) {
       if (!c.player_id) continue;
+      const refundAmt = refundsByCheckId.get(c.id) || 0;
+      const effectiveTotal = (c.total_amount || 0) - refundAmt;
+      if (effectiveTotal <= 0) continue;
+
       const nick = c.player?.nickname || 'Гость';
       if (!map[c.player_id]) {
         const profile = allPlayers.find((p) => p.id === c.player_id);
@@ -325,7 +351,7 @@ export function useAnalyticsData() {
         };
       }
       const s = map[c.player_id];
-      s.total += c.total_amount || 0;
+      s.total += effectiveTotal;
       s.count++;
       const d = new Date(c.closed_at);
       if (d > s.lastVisit) s.lastVisit = d;
@@ -347,16 +373,26 @@ export function useAnalyticsData() {
       return players.filter((p) => p.nickname.toLowerCase().includes(q));
     }
     return players;
-  }, [checks, allPlayers, search]);
+  }, [checks, allPlayers, search, refundsByCheckId]);
 
   const retentionRate = useMemo(() => {
-    const prevPlayerIds = new Set(prevChecks.map((c) => c.player_id).filter(Boolean));
-    const currentPlayerIds = new Set(checks.map((c) => c.player_id).filter(Boolean));
+    const prevPlayerIds = new Set(
+      prevChecks
+        .filter((c) => (c.total_amount || 0) - (prevRefundsByCheckId.get(c.id) || 0) > 0)
+        .map((c) => c.player_id)
+        .filter(Boolean),
+    );
+    const currentPlayerIds = new Set(
+      checks
+        .filter((c) => (c.total_amount || 0) - (refundsByCheckId.get(c.id) || 0) > 0)
+        .map((c) => c.player_id)
+        .filter(Boolean),
+    );
     if (prevPlayerIds.size === 0) return 0;
     let returned = 0;
     for (const id of prevPlayerIds) { if (currentPlayerIds.has(id)) returned++; }
     return Math.round((returned / prevPlayerIds.size) * 100);
-  }, [checks, prevChecks]);
+  }, [checks, prevChecks, refundsByCheckId, prevRefundsByCheckId]);
 
   const totalDebt = useMemo(() => debtors.reduce((s, d) => s + Math.abs(d.balance), 0), [debtors]);
 
@@ -385,6 +421,7 @@ export function useAnalyticsData() {
     debtors, totalDebt, supplies, cashOps, opExpenses, supplyCostInPeriod, salaryPaidInPeriod,
     admins, allPlayers, allChecks, allCheckItems, itemCostMap,
     refundsByCheckId,
+    refundQtyByCheckItem,
     reload: loadAll,
   };
 }
