@@ -1,14 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { getTelegramWebApp, initTelegramApp } from '@/lib/telegram';
-import QRCode from 'qrcode';
 import { ClientAvatar } from '@/components/ui/ClientAvatar';
-
-const tierStatusLabel: Record<string, string> = {
-  resident: 'Platinum',
-  student: 'Student',
-  regular: 'Guest',
-};
 
 const supabaseUrl = import.meta.env.PROD
   ? `${window.location.origin}/sb`
@@ -433,8 +426,6 @@ export function WalletApp() {
 }
 
 function WalletCard({ profile }: { profile: Profile }) {
-  const [qrUrl, setQrUrl] = useState<string>('');
-  const [showQR, setShowQR] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const shimmerRef = useRef<HTMLDivElement>(null);
@@ -444,14 +435,6 @@ function WalletCard({ profile }: { profile: Profile }) {
   const lastInteractionRef = useRef(Date.now());
   const sensorRef = useRef(false);
   const RESET_DELAY = 5000;
-
-  useEffect(() => {
-    QRCode.toDataURL(profile.id, {
-      width: 200,
-      margin: 1,
-      color: { dark: '#ffffff', light: '#00000000' },
-    }).then(setQrUrl).catch(() => {});
-  }, [profile.id]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -607,7 +590,7 @@ function WalletCard({ profile }: { profile: Profile }) {
                   border: '1px solid rgba(255, 255, 255, 0.2)',
                 }}
               >
-                {tierStatusLabel[profile.client_tier] || 'Guest'}
+                {tierLabel[profile.client_tier] || 'Гость'}
               </div>
             </div>
 
@@ -626,35 +609,10 @@ function WalletCard({ profile }: { profile: Profile }) {
                 <div className="text-[9px] uppercase tracking-widest opacity-30 mb-1">Holder</div>
                 <div className="text-sm font-bold uppercase tracking-widest text-white/90">{profile.nickname}</div>
               </div>
-              {qrUrl && (
-                <button
-                  onClick={() => setShowQR(!showQR)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 active:scale-90 transition-transform"
-                >
-                  <img src={qrUrl} alt="QR" className="w-12 h-12 opacity-30 hover:opacity-50 transition-opacity" />
-                </button>
-              )}
             </div>
           </div>
         </div>
       </div>
-
-      {showQR && qrUrl && (
-        <div
-          className="animate-fade-in-up rounded-[28px] p-6 text-center"
-          style={{
-            background: 'rgba(34, 21, 98, 0.4)',
-            border: '1px solid rgba(125, 84, 237, 0.1)',
-            backdropFilter: 'blur(15px)',
-          }}
-        >
-          <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-3">Ваш QR-код</p>
-          <div className="inline-block p-4 rounded-xl bg-white">
-            <img src={qrUrl} alt="QR Code" className="w-48 h-48" style={{ filter: 'invert(1)' }} />
-          </div>
-          <p className="text-[10px] text-white/20 mt-3">Покажите кассиру для идентификации</p>
-        </div>
-      )}
     </>
   );
 }
