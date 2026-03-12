@@ -163,26 +163,57 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
     return segs;
   }, [data.playerStats]);
 
-  const aiContext = useMemo(() => ({
-    revenue: data.revenue,
-    prevRevenue: data.prevRevenue,
-    revenueDelta,
-    netProfit: data.netProfit,
-    marginPct: data.marginPct,
-    totalExpenses: data.totalExpenses,
-    cogs: data.cogs,
-    periodExpenses: data.periodExpenses,
-    checkCount: data.checks.length,
-    avgCheck,
-    totalDebt: data.totalDebt,
-    debtorsCount: data.debtors.length,
-    retentionRate: data.retentionRate,
-    playerSegments,
-    topProducts: data.productStats.slice(0, 10).map((p) => ({ name: p.name, revenue: p.revenue, qty: p.qty, abcGroup: p.abcGroup })),
-    topPlayers: data.playerStats.slice(0, 10).map((p) => ({ nickname: p.nickname, total: p.total, count: p.count, segment: p.segment })),
-    paymentBreakdown: data.paymentBreakdown,
-    period: preset,
-  }), [data, avgCheck, preset, revenueDelta, playerSegments]);
+  const aiContext = useMemo(() => {
+    if (reportMode === 'shift' && shiftAnalytics) {
+      const pb = shiftAnalytics.paymentBreakdown || {};
+      const paymentBreakdown = {
+        cash: pb.cash?.amount ?? 0,
+        card: pb.card?.amount ?? 0,
+        debt: pb.debt?.amount ?? 0,
+        bonus: pb.bonus?.amount ?? 0,
+      };
+      return {
+        revenue: shiftAnalytics.totalRevenue,
+        prevRevenue: 0,
+        revenueDelta: 0,
+        netProfit: shiftAnalytics.totalRevenue,
+        marginPct: 100,
+        totalExpenses: 0,
+        cogs: 0,
+        periodExpenses: 0,
+        checkCount: shiftAnalytics.totalChecks,
+        avgCheck: shiftAnalytics.avgCheck,
+        totalDebt: data.totalDebt,
+        debtorsCount: data.debtors.length,
+        retentionRate: 0,
+        playerSegments: { new: 0, active: shiftAnalytics.playerBreakdown?.length ?? 0, sleeping: 0 },
+        topProducts: (shiftAnalytics.itemsSold || []).slice(0, 10).map((p) => ({ name: p.name, revenue: p.revenue, qty: p.quantity, abcGroup: 'A' as const })),
+        topPlayers: (shiftAnalytics.playerBreakdown || []).slice(0, 10).map((p) => ({ nickname: p.nickname, total: p.total, count: p.checks, segment: 'active' })),
+        paymentBreakdown,
+        period: 'shift',
+      };
+    }
+    return {
+      revenue: data.revenue,
+      prevRevenue: data.prevRevenue,
+      revenueDelta,
+      netProfit: data.netProfit,
+      marginPct: data.marginPct,
+      totalExpenses: data.totalExpenses,
+      cogs: data.cogs,
+      periodExpenses: data.periodExpenses,
+      checkCount: data.checks.length,
+      avgCheck,
+      totalDebt: data.totalDebt,
+      debtorsCount: data.debtors.length,
+      retentionRate: data.retentionRate,
+      playerSegments,
+      topProducts: data.productStats.slice(0, 10).map((p) => ({ name: p.name, revenue: p.revenue, qty: p.qty, abcGroup: p.abcGroup })),
+      topPlayers: data.playerStats.slice(0, 10).map((p) => ({ nickname: p.nickname, total: p.total, count: p.count, segment: p.segment })),
+      paymentBreakdown: data.paymentBreakdown,
+      period: preset,
+    };
+  }, [reportMode, shiftAnalytics, data, avgCheck, preset, revenueDelta, playerSegments]);
 
   const isLoading = data.isLoading || (reportMode === 'shift' && shiftLoading);
 

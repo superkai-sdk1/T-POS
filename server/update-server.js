@@ -218,22 +218,38 @@ const server = http.createServer((req, res) => {
           const [
             profiles, checks, checkItems, inventory,
             expenses, supplies, cashOps, shifts, events,
+            refunds, salaryPayments, supplyItems,
           ] = await Promise.all([
-            sbFetch('profiles', 'select=id,nickname,role,balance,bonus_points,client_tier,is_resident,created_at,deleted_at&order=created_at.desc&limit=200'),
-            sbFetch('checks', 'select=id,player_id,total_amount,payment_method,bonus_used,closed_at&status=eq.closed&order=closed_at.desc&limit=200'),
-            sbFetch('check_items', 'select=check_id,item_id,quantity,price_at_time&limit=1000'),
+            sbFetch('profiles', 'select=id,nickname,role,balance,bonus_points,client_tier,is_resident,created_at,deleted_at&order=created_at.desc&limit=500'),
+            sbFetch('checks', 'select=id,player_id,total_amount,payment_method,bonus_used,closed_at,staff_id&status=eq.closed&order=closed_at.desc&limit=500'),
+            sbFetch('check_items', 'select=check_id,item_id,quantity,price_at_time&limit=3000'),
             sbFetch('inventory', 'select=id,name,category,price,stock_quantity,is_active&order=name'),
-            sbFetch('expenses', 'select=category,amount,expense_date&order=expense_date.desc&limit=100'),
-            sbFetch('supplies', 'select=total_cost,created_at&order=created_at.desc&limit=50'),
-            sbFetch('cash_operations', 'select=type,amount,created_at&order=created_at.desc&limit=50'),
-            sbFetch('shifts', 'select=status,cash_start,cash_end,opened_at,closed_at&order=opened_at.desc&limit=10'),
+            sbFetch('expenses', 'select=category,amount,expense_date&order=expense_date.desc&limit=200'),
+            sbFetch('supplies', 'select=total_cost,created_at&order=created_at.desc&limit=100'),
+            sbFetch('cash_operations', 'select=type,amount,created_at&order=created_at.desc&limit=100'),
+            sbFetch('shifts', 'select=status,cash_start,cash_end,opened_at,closed_at&order=opened_at.desc&limit=20'),
             sbFetch('events', `status=neq.completed&date=gte.${new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0]}&order=date.asc&limit=20`),
+            sbFetch('refunds', 'select=check_id,total_amount,created_at&order=created_at.desc&limit=100'),
+            sbFetch('salary_payments', 'select=amount,created_at,payment_method,profile_id&order=created_at.desc&limit=50'),
+            sbFetch('supply_items', 'select=item_id,cost_per_unit,quantity&limit=500'),
           ]);
 
           // Pre-aggregate data to keep context compact
           const staff = profiles.filter((p) => p.role === 'owner' || p.role === 'staff');
           const clients = profiles.filter((p) => p.role === 'client' && !p.deleted_at);
           const debtors = clients.filter((p) => p.balance < 0);
+
+          // Себестоимость из поставок
+          const supplyCostAgg = {};
+          for (const si of supplyItems) {
+            if (!supplyCostAgg[si.item_id]) supplyCostAgg[si.item_id] = { cost: 0, qty: 0 };
+            supplyCostAgg[si.item_id].cost += (si.cost_per_unit || 0) * (si.quantity || 0);
+            supplyCostAgg[si.item_id].qty += si.quantity || 0;
+          }
+          const itemCosts = {};
+          for (const [id, v] of Object.entries(supplyCostAgg)) {
+            itemCosts[id] = v.qty > 0 ? Math.round(v.cost / v.qty) : 0;
+          }
 
           // Aggregate product sales from check items
           const productSales = {};
@@ -244,16 +260,27 @@ const server = http.createServer((req, res) => {
           }
           const productStats = inventory.map((item) => {
             const sales = productSales[item.id] || { qty: 0, revenue: 0 };
-            return { name: item.name, category: item.category, price: item.price, stock: item.stock_quantity, sold: sales.qty, revenue: sales.revenue };
-          }).filter((p) => p.sold > 0).sort((a, b) => b.revenue - a.revenue).slice(0, 20);
+            const cost = itemCosts[item.id];
+            return { name: item.name, category: item.category, price: item.price, cost, stock: item.stock_quantity, sold: sales.qty, revenue: sales.revenue };
+          }).filter((p) => p.sold > 0).sort((a, b) => b.revenue - a.revenue).slice(0, 30);
+
+          // Refunds
+          const refundByCheck = {};
+          let totalRefunded = 0;
+          for (const r of refunds) {
+            refundByCheck[r.check_id] = (refundByCheck[r.check_id] || 0) + (r.total_amount || 0);
+            totalRefunded += r.total_amount || 0;
+          }
 
           // Aggregate payment methods
           const payments = { cash: 0, card: 0, debt: 0, bonus: 0 };
           let totalRevenue = 0;
           for (const c of checks) {
-            totalRevenue += c.total_amount || 0;
+            const refAmt = refundByCheck[c.id] || 0;
+            const effectiveAmt = (c.total_amount || 0) - refAmt;
+            totalRevenue += effectiveAmt;
             if (c.payment_method && payments.hasOwnProperty(c.payment_method)) {
-              payments[c.payment_method] += c.total_amount || 0;
+              payments[c.payment_method] += effectiveAmt;
             }
           }
 
@@ -274,18 +301,22 @@ const server = http.createServer((req, res) => {
             .sort((a, b) => b.spent - a.spent)
             .slice(0, 20);
 
-          dbContext = `\n\n=== ДАННЫЕ T-POS ===
+          const salaryTotal = salaryPayments.reduce((s, p) => s + (p.amount || 0), 0);
+
+          dbContext = `\n\n=== ДАННЫЕ T-POS (актуальные из БД) ===
 ПЕРСОНАЛ: ${JSON.stringify(staff.map((p) => ({ nickname: p.nickname, role: p.role })))}
 КЛИЕНТОВ: ${clients.length}, должников: ${debtors.length}
 ТОП-20 КЛИЕНТОВ: ${JSON.stringify(topClients)}
 ДОЛЖНИКИ: ${JSON.stringify(debtors.map((p) => ({ nickname: p.nickname, debt: p.balance })))}
-ВЫРУЧКА: ${totalRevenue}₽ за ${checks.length} чеков, ср.чек: ${checks.length > 0 ? Math.round(totalRevenue / checks.length) : 0}₽
+ВЫРУЧКА: ${totalRevenue}₽ за ${checks.length} чеков (возвраты: ${totalRefunded}₽), ср.чек: ${checks.length > 0 ? Math.round(totalRevenue / checks.length) : 0}₽
 ОПЛАТА: ${JSON.stringify(payments)}
 ТОП-20 ТОВАРОВ: ${JSON.stringify(productStats)}
 РАСХОДЫ ПО КАТЕГОРИЯМ: ${JSON.stringify(expByCategory)}
 ПОСТАВКИ: ${supplies.length} шт, сумма: ${supplies.reduce((s, x) => s + (x.total_cost || 0), 0)}₽
-КАССА: ${JSON.stringify(cashOps.slice(0, 10).map((o) => ({ type: o.type, amount: o.amount })))}
-ПОСЛЕДНИЕ СМЕНЫ: ${JSON.stringify(shifts.slice(0, 5).map((s) => ({ status: s.status, cash_start: s.cash_start, cash_end: s.cash_end, opened: s.opened_at, closed: s.closed_at })))}
+ВОЗВРАТЫ: ${refunds.length} шт, сумма: ${totalRefunded}₽
+ЗАРПЛАТЫ (последние): ${salaryPayments.length} выплат, сумма: ${salaryTotal}₽
+КАССА: ${JSON.stringify(cashOps.slice(0, 15).map((o) => ({ type: o.type, amount: o.amount })))}
+ПОСЛЕДНИЕ СМЕНЫ: ${JSON.stringify(shifts.slice(0, 10).map((s) => ({ status: s.status, cash_start: s.cash_start, cash_end: s.cash_end, opened: s.opened_at, closed: s.closed_at })))}
 МЕНЮ (все ${inventory.length} позиций): ${JSON.stringify(inventory.map((i) => ({ name: i.name, cat: i.category, price: i.price, stock: i.stock_quantity, active: i.is_active })))}
 МЕРОПРИЯТИЯ (последние 10): ${JSON.stringify(events.slice(0, 10).map((e) => ({ type: e.type, location: e.location, date: e.date, status: e.status })))}
 (ВНИМАНИЕ: Даты в списке могут быть старыми. ИСПОЛЬЗУЙ ТЕКУЩИЙ ГОД ИЗ СЕКЦИИ "СЕЙЧАС" ДЛЯ НОВЫХ ЗАПИСЕЙ!)

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, memo } from 'react';
+import { useState, useCallback, useRef, memo, useEffect } from 'react';
 import {
   Sparkles, Send, Loader2, Bot, User,
   TrendingUp, TrendingDown, DollarSign, Users, AlertTriangle, Lightbulb,
@@ -45,6 +45,17 @@ interface ChatMessage {
 }
 
 const AI_API = '/api/ai';
+const CACHE_KEY = 'tpos-ai-report-cache';
+
+function hashContext(ctx: AnalyticsContext): string {
+  const str = JSON.stringify(ctx);
+  let h = 0;
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h) + str.charCodeAt(i);
+    h |= 0;
+  }
+  return h.toString(36);
+}
 
 async function callAI(messages: { role: string; content: string }[], context: AnalyticsContext): Promise<string> {
   try {
@@ -235,12 +246,44 @@ interface Props {
 export const AiReport = memo(function AiReport({ context, userName }: Props) {
   const [sections, setSections] = useState<ReportSection[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // При смене контекста — показать кэш если есть, иначе очистить
+  useEffect(() => {
+    const h = hashContext(context);
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { dataHash, sections: cachedSections } = JSON.parse(cached);
+        if (dataHash === h && Array.isArray(cachedSections) && cachedSections.length > 0) {
+          setSections(cachedSections);
+          return;
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    setSections([]);
+  }, [context]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const generateReport = useCallback(async () => {
+    const dataHash = hashContext(context);
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { dataHash: cachedHash, sections: cachedSections } = JSON.parse(cached);
+        if (cachedHash === dataHash && Array.isArray(cachedSections) && cachedSections.length > 0) {
+          setSections(cachedSections);
+          return;
+        }
+      }
+    } catch {
+      /* ignore cache parse errors */
+    }
+
     setLoading(true);
     setSections([]);
 
@@ -250,6 +293,11 @@ export const AiReport = memo(function AiReport({ context, userName }: Props) {
     const text = await callAI([systemMsg, userMsg], context);
     const parsed = parseAIResponse(text);
     setSections(parsed);
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ dataHash, sections: parsed, timestamp: Date.now() }));
+    } catch {
+      /* ignore storage errors */
+    }
     setLoading(false);
   }, [context, userName]);
 
