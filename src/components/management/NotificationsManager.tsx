@@ -50,6 +50,9 @@ export function NotificationsManager() {
   const [clientBonusSpend, setClientBonusSpend] = useState(true);
   const [showClientSection, setShowClientSection] = useState(false);
   const [recentNotifications, setRecentNotifications] = useState<Notification[]>([]);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>(() =>
+    typeof Notification !== 'undefined' ? Notification.permission : 'denied',
+  );
 
   const load = useCallback(async () => {
     const { data } = await supabase.from('app_settings').select('key, value').in('key', [
@@ -84,6 +87,12 @@ export function NotificationsManager() {
   useEffect(() => { loadNotifications(); }, [loadNotifications]);
   useOnTableChange(['notifications'], loadNotifications);
 
+  const requestNotifPermission = useCallback(async () => {
+    if (typeof Notification === 'undefined') return;
+    const perm = await Notification.requestPermission();
+    setNotifPermission(perm);
+  }, []);
+
   const save = async () => {
     setSaving(true);
     try {
@@ -94,6 +103,10 @@ export function NotificationsManager() {
         { key: 'notification_client_bonus_accrual', value: String(clientBonusAccrual), updated_at: new Date().toISOString() },
         { key: 'notification_client_bonus_spend', value: String(clientBonusSpend), updated_at: new Date().toISOString() },
       ], { onConflict: 'key' });
+      if ((channel === 'pwa' || channel === 'both') && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+        const perm = await Notification.requestPermission();
+        setNotifPermission(perm);
+      }
       hapticNotification('success');
     } finally {
       setSaving(false);
@@ -216,8 +229,25 @@ export function NotificationsManager() {
       </button>
 
       {(channel === 'pwa' || channel === 'both') && (
-        <div className="p-4 rounded-xl card">
-          <h3 className="text-sm font-semibold text-[var(--c-text)] flex items-center gap-2 mb-3">
+        <div className="p-4 rounded-xl card space-y-3">
+          {typeof Notification !== 'undefined' && notifPermission !== 'granted' && (
+            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+              <p className="text-xs text-[var(--c-text)] mb-2">
+                {notifPermission === 'denied'
+                  ? 'Уведомления заблокированы в браузере. Разрешите их в настройках сайта.'
+                  : 'Разрешите уведомления, чтобы получать их в PWA.'}
+              </p>
+              {notifPermission !== 'denied' && (
+                <button
+                  onClick={requestNotifPermission}
+                  className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-medium"
+                >
+                  Разрешить уведомления
+                </button>
+              )}
+            </div>
+          )}
+          <h3 className="text-sm font-semibold text-[var(--c-text)] flex items-center gap-2">
             <Inbox className="w-4 h-4" />
             Последние уведомления (PWA)
           </h3>

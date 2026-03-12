@@ -110,6 +110,23 @@ export function useRealtimeSync() {
         { event: '*', schema: 'public', table: 'client_discount_rules' },
         () => emitTableChange('client_discount_rules'),
       )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        (payload: PgPayload) => {
+          const row = payload.new as Record<string, unknown> | undefined;
+          if (row && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            const title = String(row.title || 'T-POS');
+            const body = row.body != null ? String(row.body) : '';
+            try {
+              new Notification(title, { body, tag: `tpos-${row.id}` });
+            } catch {
+              // ignore
+            }
+          }
+          emitTableChange('notifications');
+        },
+      )
       .subscribe();
 
     channelRef.current = channel;
@@ -201,6 +218,21 @@ export function useRealtimeSync() {
               }
               emitTableChange('profiles');
             }
+          )
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' },
+            (payload: PgPayload) => {
+              const row = payload.new as Record<string, unknown> | undefined;
+              if (row && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                const title = String(row.title || 'T-POS');
+                const body = row.body != null ? String(row.body) : '';
+                try {
+                  new Notification(title, { body, tag: `tpos-${row.id}` });
+                } catch {
+                  // ignore
+                }
+              }
+              emitTableChange('notifications');
+            },
           )
           .subscribe();
         channelRef.current = freshChannel;
