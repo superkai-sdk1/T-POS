@@ -1,6 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Bell, MessageSquare, ChevronRight, Inbox, Send, Smartphone } from 'lucide-react';
+import {
+  Bell,
+  MessageSquare,
+  ChevronRight,
+  Inbox,
+  Send,
+  Smartphone,
+  AlertTriangle,
+  CreditCard,
+  Banknote,
+  Gift,
+  RotateCcw,
+  Package,
+  ClipboardList,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { hapticNotification } from '@/lib/telegram';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
@@ -59,6 +73,62 @@ function migrateLegacy(raw: Record<string, unknown>, legacyChannel?: string): Re
   }
   return result;
 }
+
+const TYPE_META: Record<
+  AdminNotificationType,
+  { color: string; iconBg: string; icon: JSX.Element }
+> = {
+  shift_open: {
+    color: 'text-emerald-400',
+    iconBg: 'bg-emerald-500/20',
+    icon: <Bell className="w-4 h-4" />,
+  },
+  shift_close: {
+    color: 'text-rose-400',
+    iconBg: 'bg-rose-500/20',
+    icon: <Bell className="w-4 h-4" />,
+  },
+  payment_cash: {
+    color: 'text-emerald-300',
+    iconBg: 'bg-emerald-500/15',
+    icon: <Banknote className="w-4 h-4" />,
+  },
+  payment_card: {
+    color: 'text-sky-300',
+    iconBg: 'bg-sky-500/20',
+    icon: <CreditCard className="w-4 h-4" />,
+  },
+  payment_deposit: {
+    color: 'text-indigo-300',
+    iconBg: 'bg-indigo-500/20',
+    icon: <Inbox className="w-4 h-4" />,
+  },
+  payment_debt: {
+    color: 'text-amber-300',
+    iconBg: 'bg-amber-500/20',
+    icon: <AlertTriangle className="w-4 h-4" />,
+  },
+  birthday: {
+    color: 'text-pink-300',
+    iconBg: 'bg-pink-500/20',
+    icon: <Gift className="w-4 h-4" />,
+  },
+  refund: {
+    color: 'text-rose-300',
+    iconBg: 'bg-rose-500/20',
+    icon: <RotateCcw className="w-4 h-4" />,
+  },
+  supply: {
+    color: 'text-blue-300',
+    iconBg: 'bg-blue-500/20',
+    icon: <Package className="w-4 h-4" />,
+  },
+  revision: {
+    color: 'text-violet-300',
+    iconBg: 'bg-violet-500/20',
+    icon: <ClipboardList className="w-4 h-4" />,
+  },
+};
 
 export function NotificationsManager() {
   const [telegramChatIds, setTelegramChatIds] = useState('');
@@ -148,102 +218,219 @@ export function NotificationsManager() {
   const usesTelegram = Object.values(types).some((t) => t.enabled && (t.channel === 'telegram' || t.channel === 'both'));
   const usesPwa = Object.values(types).some((t) => t.enabled && (t.channel === 'pwa' || t.channel === 'both'));
 
+  const makeChannelFlags = (channel: NotificationChannel): { tg: boolean; pwa: boolean } => {
+    if (channel === 'telegram') return { tg: true, pwa: false };
+    if (channel === 'pwa') return { tg: false, pwa: true };
+    return { tg: true, pwa: true };
+  };
+
+  const flagsToChannel = (tg: boolean, pwa: boolean): NotificationChannel => {
+    if (tg && pwa) return 'both';
+    if (tg) return 'telegram';
+    if (pwa) return 'pwa';
+    return 'telegram';
+  };
+
+  const toggleChannelFlag = (key: AdminNotificationType, which: 'tg' | 'pwa') => {
+    setTypes((prev) => {
+      const current = prev[key] ?? DEFAULT_TYPES[key];
+      const { tg, pwa } = makeChannelFlags(current.channel);
+      const nextTg = which === 'tg' ? !tg : tg;
+      const nextPwa = which === 'pwa' ? !pwa : pwa;
+      const nextChannel = flagsToChannel(nextTg, nextPwa);
+      return {
+        ...prev,
+        [key]: { ...current, channel: nextChannel },
+      };
+    });
+  };
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-bold text-[var(--c-text)] flex items-center gap-2">
-          <Bell className="w-5 h-5 text-[var(--c-accent)]" />
-          Уведомления
-        </h2>
-        <p className="text-xs text-[var(--c-hint)] mt-1">
-          Выберите уведомления и канал доставки (Telegram или PWA) для каждого типа
-        </p>
-      </div>
+    <div className="space-y-5 pb-10">
+      {/* PWA permission banner */}
+      {usesPwa && typeof Notification !== 'undefined' && notifPermission !== 'granted' && (
+        <div className="rounded-3xl bg-amber-500/10 border border-amber-500/25 px-4 py-4 sm:px-5 sm:py-5 shadow-lg shadow-amber-500/5 space-y-3">
+          <div className="flex gap-3">
+            <div className="text-amber-400 shrink-0 mt-0.5">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-bold text-amber-100">Требуется разрешение</h4>
+              <p className="text-[11px] sm:text-xs text-amber-100/70 leading-relaxed">
+                Чтобы получать мгновенные PWA‑уведомления о сменах и оплатах, разрешите их в браузере.
+              </p>
+            </div>
+          </div>
+          {notifPermission !== 'denied' && (
+            <button
+              onClick={requestNotifPermission}
+              className="w-full bg-amber-500 hover:bg-amber-400 text-[#0A051E] font-bold py-2.5 rounded-2xl text-[11px] uppercase tracking-[0.16em] transition active:scale-95"
+            >
+              Разрешить уведомления
+            </button>
+          )}
+          {notifPermission === 'denied' && (
+            <p className="text-[10px] text-amber-200/70">
+              Уведомления заблокированы в настройках браузера. Разрешите их вручную для этого сайта.
+            </p>
+          )}
+        </div>
+      )}
 
-      <div className="p-4 rounded-xl card space-y-4">
-        <h3 className="text-sm font-semibold text-[var(--c-text)]">Владельцам и администраторам</h3>
-        <p className="text-[11px] text-[var(--c-hint)]">
-          Telegram и PWA — каналы доставки. Для каждого уведомления выберите, куда его отправлять.
-        </p>
-
-        {usesTelegram && (
+      {/* Telegram admin config */}
+      {usesTelegram && (
+        <section className="rounded-3xl bg-[var(--c-surface)]/80 border border-[var(--c-border)] px-4 py-4 sm:px-5 sm:py-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-[#0088cc]/20 text-[#0088cc]">
+              <Send className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-[var(--c-text)]">Админ‑уведомления в Telegram</h3>
+              <p className="text-[10px] text-[var(--c-hint)] uppercase tracking-[0.18em]">
+                ВЛАДЕЛЬЦАМ И АДМИНИСТРАТОРАМ
+              </p>
+            </div>
+          </div>
           <div>
-            <label className="block text-[11px] font-medium text-[var(--c-hint)] mb-1">ID чатов Telegram (через запятую)</label>
+            <label className="block text-[11px] font-medium text-[var(--c-hint)] mb-1">
+              ID чатов Telegram (через запятую)
+            </label>
             <input
               type="text"
               value={telegramChatIds}
               onChange={(e) => setTelegramChatIds(e.target.value)}
               placeholder="556525624, 1005574994"
-              className="w-full px-3 py-2 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] text-sm text-[var(--c-text)] placeholder:text-[var(--c-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--c-accent)]"
+              className="w-full px-3 py-2.5 rounded-2xl bg-[var(--c-bg)]/40 border border-[var(--c-border)] text-sm text-[var(--c-text)] placeholder:text-[var(--c-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/60"
             />
           </div>
-        )}
+          <p className="text-[10px] text-[var(--c-muted)] leading-relaxed">
+            Добавьте сюда чаты владельцев/админов, куда будут приходить отчёты о сменах, оплатах и других событиях.
+          </p>
+        </section>
+      )}
 
-        <div>
-          <p className="text-[11px] font-medium text-[var(--c-hint)] mb-2">Типы уведомлений и каналы доставки</p>
-          <div className="space-y-2">
-            {(Object.keys(TYPE_LABELS) as AdminNotificationType[]).map((key) => (
+      {/* System events */}
+      <div className="space-y-3">
+        <h3 className="text-[10px] font-bold text-[var(--c-hint)] uppercase tracking-[0.24em] px-1">
+          Системные события
+        </h3>
+        <div className="space-y-2.5">
+          {(Object.keys(TYPE_LABELS) as AdminNotificationType[]).map((key) => {
+            const meta = TYPE_META[key];
+            const cfg = types[key] ?? DEFAULT_TYPES[key];
+            const { tg, pwa } = makeChannelFlags(cfg.channel);
+
+            return (
               <div
                 key={key}
-                className="p-2.5 rounded-xl card space-y-2"
+                className="rounded-3xl bg-[var(--c-surface)]/80 border border-[var(--c-border)] px-3.5 py-3.5 sm:px-4 sm:py-4 space-y-3 transition-transform active:scale-[0.98]"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-[var(--c-text)]">{TYPE_LABELS[key]}</span>
-                  <button
-                    onClick={() => toggleType(key)}
-                    className="shrink-0"
-                  >
-                    <Badge variant={types[key]?.enabled ? 'success' : 'default'} size="sm">
-                      {types[key]?.enabled ? 'Вкл' : 'Выкл'}
-                    </Badge>
-                  </button>
-                </div>
-                {types[key]?.enabled && (
-                  <div className="flex gap-1.5 pt-1 border-t border-[var(--c-border)]">
-                    <span className="text-[10px] text-[var(--c-muted)] self-center">Канал:</span>
-                    {CHANNEL_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.id}
-                        onClick={() => setTypeChannel(key, opt.id)}
-                        className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all flex items-center justify-center gap-1 ${
-                          types[key]?.channel === opt.id
-                            ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)]'
-                            : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-inner ${meta.iconBg} ${meta.color}`}>
+                      {meta.icon}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-[var(--c-text)] truncate">
+                          {TYPE_LABELS[key]}
+                        </span>
+                      </div>
+                      <span
+                        className={`mt-0.5 inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-[0.16em] ${
+                          cfg.enabled
+                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-slate-700/40 text-slate-300/70 border border-slate-600/60'
                         }`}
                       >
-                        {opt.id === 'telegram' && <Send className="w-3 h-3" />}
-                        {opt.id === 'pwa' && <Smartphone className="w-3 h-3" />}
-                        {opt.label}
-                      </button>
-                    ))}
+                        {cfg.enabled ? 'Активно' : 'Выключено'}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => toggleType(key)}
+                    className="hidden sm:inline-flex items-center justify-center px-2.5 py-1.5 rounded-full border border-[var(--c-border)] text-[10px] font-medium text-[var(--c-hint)] hover:border-[var(--c-accent)]/60 hover:text-[var(--c-accent)]/90 transition"
+                  >
+                    {cfg.enabled ? 'Выключить' : 'Включить'}
+                  </button>
+                </div>
+
+                {cfg.enabled && (
+                  <div className="flex gap-2">
+                    {/* Telegram switch */}
+                    <button
+                      type="button"
+                      onClick={() => toggleChannelFlag(key, 'tg')}
+                      className="flex-1 flex items-center justify-between bg-white/5 hover:bg-white/10 rounded-2xl px-3 py-2.5 transition"
+                    >
+                      <span className="text-[11px] font-medium text-slate-200 uppercase tracking-[0.16em]">
+                        Telegram
+                      </span>
+                      <div
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                          tg ? 'bg-[#0088cc]' : 'bg-white/15'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                            tg ? 'translate-x-4' : 'translate-x-0.5'
+                          }`}
+                        />
+                      </div>
+                    </button>
+
+                    {/* PWA switch */}
+                    <button
+                      type="button"
+                      onClick={() => toggleChannelFlag(key, 'pwa')}
+                      className="flex-1 flex items-center justify-between bg-white/5 hover:bg-white/10 rounded-2xl px-3 py-2.5 transition"
+                    >
+                      <span className="text-[11px] font-medium text-slate-200 uppercase tracking-[0.16em]">
+                        PWA
+                      </span>
+                      <div
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                          pwa ? 'bg-[var(--c-accent)]' : 'bg-white/15'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                            pwa ? 'translate-x-4' : 'translate-x-0.5'
+                          }`}
+                        />
+                      </div>
+                    </button>
                   </div>
                 )}
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       </div>
 
+      {/* Client / wallet section */}
       <button
         onClick={() => setShowClientSection(!showClientSection)}
-        className="w-full flex items-center justify-between p-3 rounded-xl card-interactive"
+        className="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl bg-[var(--c-surface)]/80 border border-[var(--c-border)] hover:bg-[var(--c-surface-hover)] transition"
       >
-        <span className="flex items-center gap-2">
+        <span className="flex items-center gap-2.5">
           <MessageSquare className="w-4 h-4 text-[var(--c-accent)]" />
-          <span className="text-sm font-medium text-[var(--c-text)]">Клиентам (Wallet)</span>
+          <span className="text-sm font-medium text-[var(--c-text)]">Клиентские уведомления (Wallet)</span>
         </span>
-        <ChevronRight className={`w-4 h-4 text-[var(--c-muted)] transition-transform ${showClientSection ? 'rotate-90' : ''}`} />
+        <ChevronRight
+          className={`w-4 h-4 text-[var(--c-muted)] transition-transform ${showClientSection ? 'rotate-90' : ''}`}
+        />
       </button>
 
       {showClientSection && (
-        <div className="p-4 rounded-xl card space-y-4 animate-fade-in-up">
+        <div className="rounded-3xl bg-[var(--c-surface)]/80 border border-[var(--c-border)] px-4 py-4 sm:px-5 sm:py-5 space-y-3">
           <p className="text-[11px] text-[var(--c-hint)]">
-            Уведомления в Telegram при изменении бонусов. Клиент должен быть привязан к @wallet боту.
+            Уведомления в Telegram при изменении бонусов. Клиент должен быть привязан к Wallet‑боту.
           </p>
           <div className="space-y-2">
             <button
               onClick={() => setClientBonusAccrual(!clientBonusAccrual)}
-              className="w-full flex items-center justify-between p-2.5 rounded-xl card-interactive text-left"
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 transition text-left"
             >
               <span className="text-sm text-[var(--c-text)]">Начисление бонусов</span>
               <Badge variant={clientBonusAccrual ? 'success' : 'default'} size="sm">
@@ -252,7 +439,7 @@ export function NotificationsManager() {
             </button>
             <button
               onClick={() => setClientBonusSpend(!clientBonusSpend)}
-              className="w-full flex items-center justify-between p-2.5 rounded-xl card-interactive text-left"
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 transition text-left"
             >
               <span className="text-sm text-[var(--c-text)]">Списание бонусов</span>
               <Badge variant={clientBonusSpend ? 'success' : 'default'} size="sm">
@@ -260,49 +447,36 @@ export function NotificationsManager() {
               </Badge>
             </button>
           </div>
-          <p className="text-[10px] text-[var(--c-muted)]">
-            Кастомное сообщение можно отправить через бота Wallet командой /broadcast (только для владельцев).
+          <p className="text-[10px] text-[var(--c-muted)] leading-relaxed">
+            Кастомные рассылки можно делать через Wallet‑бота командой /broadcast (доступно только владельцам).
           </p>
         </div>
       )}
 
-      <button
-        onClick={save}
-        disabled={saving}
-        className="w-full py-3 rounded-xl bg-[var(--c-accent)] text-[var(--c-accent-text)] font-semibold text-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
-      >
-        {saving ? 'Сохранение...' : 'Сохранить'}
-      </button>
+      {/* Save button */}
+      <div className="pt-1">
+        <button
+          onClick={save}
+          disabled={saving}
+          className="w-full py-3.5 rounded-2xl bg-[var(--c-accent)] text-[var(--c-accent-text)] font-semibold text-sm disabled:opacity-50 active:scale-[0.98] transition"
+        >
+          {saving ? 'Сохранение…' : 'Сохранить настройки'}
+        </button>
+      </div>
 
+      {/* Recent PWA notifications */}
       {(usesPwa || recentNotifications.length > 0) && (
-        <div className="p-4 rounded-xl card space-y-3">
-          {typeof Notification !== 'undefined' && notifPermission !== 'granted' && usesPwa && (
-            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
-              <p className="text-xs text-[var(--c-text)] mb-2">
-                {notifPermission === 'denied'
-                  ? 'Уведомления заблокированы в браузере. Разрешите их в настройках сайта.'
-                  : 'Разрешите уведомления, чтобы получать их в PWA.'}
-              </p>
-              {notifPermission !== 'denied' && (
-                <button
-                  onClick={requestNotifPermission}
-                  className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-medium"
-                >
-                  Разрешить уведомления
-                </button>
-              )}
-            </div>
-          )}
+        <div className="rounded-3xl bg-[var(--c-surface)]/80 border border-[var(--c-border)] px-4 py-4 sm:px-5 sm:py-5 space-y-3">
           <h3 className="text-sm font-semibold text-[var(--c-text)] flex items-center gap-2">
             <Inbox className="w-4 h-4" />
-            Последние уведомления (PWA)
+            Последние PWA‑уведомления
           </h3>
           {recentNotifications.length === 0 ? (
             <p className="text-xs text-[var(--c-muted)]">Пока нет уведомлений</p>
           ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
               {recentNotifications.map((n) => (
-                <div key={n.id} className="p-2.5 rounded-lg bg-[var(--c-surface)]">
+                <div key={n.id} className="p-2.5 rounded-2xl bg-[var(--c-bg)]/40 border border-[var(--c-border)]/60">
                   <p className="text-xs font-medium text-[var(--c-text)]">{n.title}</p>
                   {n.body && <p className="text-[11px] text-[var(--c-hint)] mt-0.5">{n.body}</p>}
                   <p className="text-[10px] text-[var(--c-muted)] mt-1">
