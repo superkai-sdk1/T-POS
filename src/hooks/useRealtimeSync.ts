@@ -4,8 +4,28 @@ import { usePOSStore, isSavingCart, isCancellingCheck, isClosingCheck, isRecentl
 import { useShiftStore } from '@/store/shift';
 import { useAuthStore } from '@/store/auth';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import type { AdminNotificationType, TypeSetting } from '@/lib/notifications';
 
 type PgPayload = RealtimePostgresChangesPayload<Record<string, unknown>>;
+
+let _userPwaTypes: Record<string, TypeSetting> = {};
+
+async function loadUserPwaSettings() {
+  const userId = useAuthStore.getState().user?.id;
+  if (!userId) { _userPwaTypes = {}; return; }
+  const { data } = await supabase
+    .from('user_notification_settings')
+    .select('types')
+    .eq('user_id', userId)
+    .maybeSingle();
+  _userPwaTypes = (data?.types as Record<string, TypeSetting>) || {};
+}
+
+function shouldShowPwa(type: string): boolean {
+  const t = _userPwaTypes[type as AdminNotificationType];
+  if (!t?.enabled) return false;
+  return t.channel === 'pwa' || t.channel === 'both';
+}
 
 function emitTableChange(table: string) {
   window.dispatchEvent(new CustomEvent('rt:change', { detail: table }));
@@ -13,6 +33,15 @@ function emitTableChange(table: string) {
 
 export function useRealtimeSync() {
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  useEffect(() => {
+    loadUserPwaSettings();
+    const handler = (e: Event) => {
+      if ((e as CustomEvent).detail === 'user_notification_settings') loadUserPwaSettings();
+    };
+    window.addEventListener('rt:change', handler);
+    return () => window.removeEventListener('rt:change', handler);
+  }, []);
 
   useEffect(() => {
     const channel = supabase
@@ -112,10 +141,15 @@ export function useRealtimeSync() {
       )
       .on(
         'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_notification_settings' },
+        () => emitTableChange('user_notification_settings'),
+      )
+      .on(
+        'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications' },
         (payload: PgPayload) => {
           const row = payload.new as Record<string, unknown> | undefined;
-          if (row && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          if (row && typeof Notification !== 'undefined' && Notification.permission === 'granted' && shouldShowPwa(String(row.type))) {
             const title = String(row.title || 'T-POS');
             const body = row.body != null ? String(row.body) : '';
             const meta = (row.meta || {}) as Record<string, unknown>;
@@ -212,6 +246,9 @@ export function useRealtimeSync() {
           .on('postgres_changes', { event: '*', schema: 'public', table: 'client_discount_rules' },
             () => emitTableChange('client_discount_rules'),
           )
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'user_notification_settings' },
+            () => emitTableChange('user_notification_settings'),
+          )
           .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' },
             (payload: PgPayload) => {
               if (payload.eventType !== 'DELETE') {
@@ -232,7 +269,7 @@ export function useRealtimeSync() {
           .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' },
             (payload: PgPayload) => {
               const row = payload.new as Record<string, unknown> | undefined;
-              if (row && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+              if (row && typeof Notification !== 'undefined' && Notification.permission === 'granted' && shouldShowPwa(String(row.type))) {
                 const title = String(row.title || 'T-POS');
                 const body = row.body != null ? String(row.body) : '';
                 const meta = (row.meta || {}) as Record<string, unknown>;

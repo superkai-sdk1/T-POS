@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/auth';
 import {
   Bell,
   MessageSquare,
   ChevronRight,
   Inbox,
   Send,
-  Smartphone,
   AlertTriangle,
   CreditCard,
   Banknote,
@@ -18,6 +18,7 @@ import {
 import { Badge } from '@/components/ui/Badge';
 import { hapticNotification } from '@/lib/telegram';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
+import { DEFAULT_TYPES } from '@/lib/notifications';
 import type { AdminNotificationType, NotificationChannel, TypeSetting } from '@/lib/notifications';
 
 interface Notification {
@@ -40,39 +41,6 @@ const TYPE_LABELS: Record<AdminNotificationType, string> = {
   supply: 'Приёмка товаров',
   revision: 'Ревизия',
 };
-
-const CHANNEL_OPTIONS: { id: NotificationChannel; label: string; short: string }[] = [
-  { id: 'telegram', label: 'Telegram', short: 'TG' },
-  { id: 'pwa', label: 'PWA', short: 'PWA' },
-  { id: 'both', label: 'Оба', short: 'Оба' },
-];
-
-const DEFAULT_TYPES: Record<AdminNotificationType, TypeSetting> = {
-  shift_open: { enabled: true, channel: 'both' },
-  shift_close: { enabled: true, channel: 'both' },
-  payment_cash: { enabled: true, channel: 'both' },
-  payment_card: { enabled: true, channel: 'both' },
-  payment_deposit: { enabled: true, channel: 'both' },
-  payment_debt: { enabled: true, channel: 'both' },
-  birthday: { enabled: true, channel: 'both' },
-  refund: { enabled: true, channel: 'both' },
-  supply: { enabled: true, channel: 'both' },
-  revision: { enabled: true, channel: 'both' },
-};
-
-function migrateLegacy(raw: Record<string, unknown>, legacyChannel?: string): Record<AdminNotificationType, TypeSetting> {
-  const result = { ...DEFAULT_TYPES };
-  const ch = (legacyChannel || 'both') as NotificationChannel;
-  for (const key of Object.keys(result) as AdminNotificationType[]) {
-    const v = raw[key];
-    if (typeof v === 'boolean') {
-      result[key] = { enabled: v, channel: ch };
-    } else if (v && typeof v === 'object' && 'enabled' in v && 'channel' in v) {
-      result[key] = { enabled: !!(v as TypeSetting).enabled, channel: ((v as TypeSetting).channel as NotificationChannel) || 'both' };
-    }
-  }
-  return result;
-}
 
 const TYPE_META: Record<
   AdminNotificationType,
@@ -131,8 +99,8 @@ const TYPE_META: Record<
 };
 
 export function NotificationsManager() {
-  const [telegramChatIds, setTelegramChatIds] = useState('');
-  const [types, setTypes] = useState<Record<AdminNotificationType, TypeSetting>>(DEFAULT_TYPES);
+  const user = useAuthStore((s) => s.user);
+  const [types, setTypes] = useState<Record<AdminNotificationType, TypeSetting>>({ ...DEFAULT_TYPES });
   const [saving, setSaving] = useState(false);
   const [clientBonusAccrual, setClientBonusAccrual] = useState(true);
   const [clientBonusSpend, setClientBonusSpend] = useState(true);
@@ -142,24 +110,43 @@ export function NotificationsManager() {
     typeof Notification !== 'undefined' ? Notification.permission : 'denied',
   );
 
+  const tgLinked = !!user?.tg_id;
+  const tgUsername = user?.tg_username || null;
+
   const load = useCallback(async () => {
-    const { data } = await supabase.from('app_settings').select('key, value').in('key', [
-      'notification_admin_channel',
-      'notification_admin_telegram_chat_ids',
-      'notification_admin_types',
-      'notification_client_bonus_accrual',
-      'notification_client_bonus_spend',
+    if (!user?.id) return;
+
+    const [settingsRes, clientRes] = await Promise.all([
+      supabase
+        .from('user_notification_settings')
+        .select('types')
+        .eq('user_id', user.id)
+        .maybeSingle(),
+      supabase.from('app_settings').select('key, value').in('key', [
+        'notification_client_bonus_accrual',
+        'notification_client_bonus_spend',
+      ]),
     ]);
-    const map = new Map((data || []).map((r) => [r.key, r.value]));
-    setTelegramChatIds(map.get('notification_admin_telegram_chat_ids') || '');
-    setClientBonusAccrual(map.get('notification_client_bonus_accrual') !== 'false');
-    setClientBonusSpend(map.get('notification_client_bonus_spend') !== 'false');
-    try {
-      const raw = JSON.parse(map.get('notification_admin_types') || '{}') as Record<string, unknown>;
-      const legacyChannel = map.get('notification_admin_channel') as string | undefined;
-      setTypes(migrateLegacy(raw, legacyChannel));
-    } catch { /* ignore */ }
-  }, []);
+
+    if (settingsRes.data?.types) {
+      const raw = settingsRes.data.types as Record<string, unknown>;
+      const parsed = { ...DEFAULT_TYPES };
+      for (const key of Object.keys(parsed) as AdminNotificationType[]) {
+        const v = raw[key];
+        if (v && typeof v === 'object' && 'enabled' in v && 'channel' in v) {
+          parsed[key] = {
+            enabled: !!(v as TypeSetting).enabled,
+            channel: ((v as TypeSetting).channel as NotificationChannel) || 'both',
+          };
+        }
+      }
+      setTypes(parsed);
+    }
+
+    const clientMap = new Map((clientRes.data || []).map((r) => [r.key, r.value]));
+    setClientBonusAccrual(clientMap.get('notification_client_bonus_accrual') !== 'false');
+    setClientBonusSpend(clientMap.get('notification_client_bonus_spend') !== 'false');
+  }, [user?.id]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -182,16 +169,23 @@ export function NotificationsManager() {
   }, []);
 
   const save = async () => {
+    if (!user?.id) return;
     setSaving(true);
     try {
-      await supabase.from('app_settings').upsert([
-        { key: 'notification_admin_telegram_chat_ids', value: telegramChatIds.trim(), updated_at: new Date().toISOString() },
-        { key: 'notification_admin_types', value: JSON.stringify(types), updated_at: new Date().toISOString() },
-        { key: 'notification_client_bonus_accrual', value: String(clientBonusAccrual), updated_at: new Date().toISOString() },
-        { key: 'notification_client_bonus_spend', value: String(clientBonusSpend), updated_at: new Date().toISOString() },
-      ], { onConflict: 'key' });
-      const usesPwa = Object.values(types).some((t) => t.enabled && (t.channel === 'pwa' || t.channel === 'both'));
-      if (usesPwa && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      await Promise.all([
+        supabase.from('user_notification_settings').upsert({
+          user_id: user.id,
+          types: types as unknown as Record<string, unknown>,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' }),
+        supabase.from('app_settings').upsert([
+          { key: 'notification_client_bonus_accrual', value: String(clientBonusAccrual), updated_at: new Date().toISOString() },
+          { key: 'notification_client_bonus_spend', value: String(clientBonusSpend), updated_at: new Date().toISOString() },
+        ], { onConflict: 'key' }),
+      ]);
+
+      const usesPwaLocal = Object.values(types).some((t) => t.enabled && (t.channel === 'pwa' || t.channel === 'both'));
+      if (usesPwaLocal && typeof Notification !== 'undefined' && Notification.permission === 'default') {
         const perm = await Notification.requestPermission();
         setNotifPermission(perm);
       }
@@ -205,13 +199,6 @@ export function NotificationsManager() {
     setTypes((prev) => ({
       ...prev,
       [key]: { ...prev[key], enabled: !prev[key].enabled },
-    }));
-  };
-
-  const setTypeChannel = (key: AdminNotificationType, channel: NotificationChannel) => {
-    setTypes((prev) => ({
-      ...prev,
-      [key]: { ...prev[key], channel },
     }));
   };
 
@@ -257,7 +244,7 @@ export function NotificationsManager() {
             <div className="space-y-1">
               <h4 className="text-sm font-bold text-amber-100">Требуется разрешение</h4>
               <p className="text-[11px] sm:text-xs text-amber-100/70 leading-relaxed">
-                Чтобы получать мгновенные PWA‑уведомления о сменах и оплатах, разрешите их в браузере.
+                Чтобы получать мгновенные PWA-уведомления о сменах и оплатах, разрешите их в браузере.
               </p>
             </div>
           </div>
@@ -277,35 +264,35 @@ export function NotificationsManager() {
         </div>
       )}
 
-      {/* Telegram admin config */}
+      {/* Telegram link status */}
       {usesTelegram && (
-        <section className="rounded-3xl bg-[var(--c-surface)]/80 border border-[var(--c-border)] px-4 py-4 sm:px-5 sm:py-5 space-y-4">
+        <section className="rounded-3xl bg-[var(--c-surface)]/80 border border-[var(--c-border)] px-4 py-4 sm:px-5 sm:py-5 space-y-3">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-[#0088cc]/20 text-[#0088cc]">
               <Send className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-[var(--c-text)]">Админ‑уведомления в Telegram</h3>
+              <h3 className="text-sm font-semibold text-[var(--c-text)]">Telegram</h3>
               <p className="text-[10px] text-[var(--c-hint)] uppercase tracking-[0.18em]">
-                ВЛАДЕЛЬЦАМ И АДМИНИСТРАТОРАМ
+                ЛИЧНЫЕ УВЕДОМЛЕНИЯ
               </p>
             </div>
           </div>
-          <div>
-            <label className="block text-[11px] font-medium text-[var(--c-hint)] mb-1">
-              ID чатов Telegram (через запятую)
-            </label>
-            <input
-              type="text"
-              value={telegramChatIds}
-              onChange={(e) => setTelegramChatIds(e.target.value)}
-              placeholder="556525624, 1005574994"
-              className="w-full px-3 py-2.5 rounded-2xl bg-[var(--c-bg)]/40 border border-[var(--c-border)] text-sm text-[var(--c-text)] placeholder:text-[var(--c-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/60"
-            />
-          </div>
-          <p className="text-[10px] text-[var(--c-muted)] leading-relaxed">
-            Добавьте сюда чаты владельцев/админов, куда будут приходить отчёты о сменах, оплатах и других событиях.
-          </p>
+          {tgLinked ? (
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/25">
+              <div className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span className="text-sm text-emerald-300 font-medium">
+                @{tgUsername || user?.tg_id}
+              </span>
+              <span className="text-[10px] text-emerald-300/60 ml-auto">Привязан</span>
+            </div>
+          ) : (
+            <div className="px-3 py-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/25">
+              <p className="text-xs text-amber-200">
+                Telegram не привязан. Войдите через Telegram, чтобы получать уведомления.
+              </p>
+            </div>
+          )}
         </section>
       )}
 
@@ -425,7 +412,7 @@ export function NotificationsManager() {
       {showClientSection && (
         <div className="rounded-3xl bg-[var(--c-surface)]/80 border border-[var(--c-border)] px-4 py-4 sm:px-5 sm:py-5 space-y-3">
           <p className="text-[11px] text-[var(--c-hint)]">
-            Уведомления в Telegram при изменении бонусов. Клиент должен быть привязан к Wallet‑боту.
+            Уведомления в Telegram при изменении бонусов. Клиент должен быть привязан к Wallet-боту.
           </p>
           <div className="space-y-2">
             <button
@@ -448,7 +435,7 @@ export function NotificationsManager() {
             </button>
           </div>
           <p className="text-[10px] text-[var(--c-muted)] leading-relaxed">
-            Кастомные рассылки можно делать через Wallet‑бота командой /broadcast (доступно только владельцам).
+            Кастомные рассылки можно делать через Wallet-бота командой /broadcast (доступно только владельцам).
           </p>
         </div>
       )}
@@ -469,7 +456,7 @@ export function NotificationsManager() {
         <div className="rounded-3xl bg-[var(--c-surface)]/80 border border-[var(--c-border)] px-4 py-4 sm:px-5 sm:py-5 space-y-3">
           <h3 className="text-sm font-semibold text-[var(--c-text)] flex items-center gap-2">
             <Inbox className="w-4 h-4" />
-            Последние PWA‑уведомления
+            Последние PWA-уведомления
           </h3>
           {recentNotifications.length === 0 ? (
             <p className="text-xs text-[var(--c-muted)]">Пока нет уведомлений</p>

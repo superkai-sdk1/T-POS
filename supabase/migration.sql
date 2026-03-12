@@ -378,6 +378,15 @@ create table notifications (
 create index idx_notifications_created_at on notifications(created_at desc);
 
 -- ==================
+-- user_notification_settings
+-- ==================
+create table user_notification_settings (
+  user_id uuid primary key references profiles(id) on delete cascade,
+  types jsonb not null default '{}',
+  updated_at timestamptz not null default now()
+);
+
+-- ==================
 -- cash_operations
 -- ==================
 create table cash_operations (
