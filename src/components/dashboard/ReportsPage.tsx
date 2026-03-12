@@ -114,7 +114,7 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
       total_amount: c.total_amount,
       payment_method: c.payment_method,
       bonus_used: (c as { bonus_used?: number }).bonus_used || 0,
-      closed_at: c.closed_at,
+      closed_at: c.closed_at ?? '',
       items,
       payments: payments.length > 0 ? payments : undefined,
     });
@@ -124,12 +124,21 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
   const currentRevenue = reportMode === 'shift' && shiftAnalytics
     ? shiftAnalytics.totalRevenue
     : data.revenue;
-  const currentChecks = reportMode === 'shift' && shiftAnalytics
-    ? shiftAnalytics.checks
-    : data.checks;
-  const currentPaymentBreakdown = reportMode === 'shift' && shiftAnalytics
-    ? shiftAnalytics.paymentBreakdown
-    : { cash: data.paymentBreakdown.cash, card: data.paymentBreakdown.card, debt: data.paymentBreakdown.debt, bonus: data.paymentBreakdown.bonus, deposit: data.paymentBreakdown.deposit };
+  const currentChecks = useMemo(() => {
+    const list = reportMode === 'shift' && shiftAnalytics ? shiftAnalytics.checks : data.checks;
+    return list.map((c) => ({ ...c, closed_at: c.closed_at ?? '' }));
+  }, [reportMode, shiftAnalytics, data.checks]);
+  const currentPaymentBreakdown = useMemo((): Record<string, { count?: number; amount: number }> => {
+    if (reportMode === 'shift' && shiftAnalytics) return shiftAnalytics.paymentBreakdown;
+    const pb = data.paymentBreakdown;
+    return {
+      cash: { amount: pb.cash },
+      card: { amount: pb.card },
+      debt: { amount: pb.debt },
+      bonus: { amount: pb.bonus },
+      deposit: { amount: pb.deposit },
+    };
+  }, [reportMode, shiftAnalytics, data.paymentBreakdown]);
   const currentItemsSold = reportMode === 'shift' && shiftAnalytics
     ? shiftAnalytics.itemsSold || []
     : data.productStats.map((p) => ({ name: p.name, category: p.category, quantity: p.qty, revenue: p.revenue }));
@@ -776,7 +785,7 @@ function TopsTab({
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[var(--c-text)] truncate">{p.nickname}</p>
-                <p className="text-[10px] text-[var(--c-muted)]">{p.checks || (p as { count?: number }).count || 0} чеков</p>
+                <p className="text-[10px] text-[var(--c-muted)]">{('checks' in p ? p.checks : 'count' in p ? p.count : 0) ?? 0} чеков</p>
               </div>
               <div className="text-right shrink-0">
                 <p className="text-sm font-bold text-[var(--c-text)] tabular-nums">{fmtCur(p.total)}</p>
