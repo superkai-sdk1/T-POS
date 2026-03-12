@@ -53,13 +53,15 @@ const ALL_MENU_ITEMS: { id: Screen; label: string; desc: string; icon: typeof Pa
 
 interface ManagementPageProps {
   initialScreen?: string;
+  initialSupplyId?: string;
+  initialRevisionId?: string;
   isActive?: boolean;
 }
 
 type MenuSubTab = 'positions' | 'modifiers';
 type InventorySubTab = 'stock' | 'revision';
 
-export function ManagementPage({ initialScreen, isActive = true }: ManagementPageProps) {
+export function ManagementPage({ initialScreen, initialSupplyId, initialRevisionId, isActive = true }: ManagementPageProps) {
   const user = useAuthStore((s) => s.user);
   const menuItems = useMemo(() => {
     return ALL_MENU_ITEMS.filter((item) => {
@@ -239,10 +241,10 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
               onNavigateToSupplies={() => startTransition(() => setScreen('supplies'))}
             />
           )}
-          {inventorySubTab === 'revision' && <RevisionPage />}
+          {inventorySubTab === 'revision' && <RevisionPage initialRevisionId={initialRevisionId} />}
         </div>
       )}
-      {screen === 'supplies' && <SupplyPage />}
+      {screen === 'supplies' && <SupplyPage initialSupplyId={initialSupplyId} />}
       {screen === 'clients' && <ClientsManager />}
       {screen === 'bonus' && <BonusManager />}
       {screen === 'cash' && <InkassationPage />}

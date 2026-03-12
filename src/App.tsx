@@ -93,6 +93,7 @@ export default function App() {
   }, [user, loadInventory, loadOpenChecks, loadActiveShift, refreshProfile]);
 
   const [managementScreen, setManagementScreen] = useState<string | undefined>();
+  const [managementParams, setManagementParams] = useState<{ supplyId?: string; revisionId?: string } | undefined>();
   const isMobile = useIsMobile();
 
   // Resizable split: left panel width % (20-60), persisted
@@ -147,7 +148,10 @@ export default function App() {
         setManagementScreen(undefined);
       }
     } else {
-      if (tab !== 'management') setManagementScreen(undefined);
+      if (tab !== 'management') {
+        setManagementScreen(undefined);
+        setManagementParams(undefined);
+      }
       if (tab !== 'pos') setShowCheckView(false);
     }
 
@@ -156,14 +160,29 @@ export default function App() {
     setVisitedTabs((prev) => new Set(prev).add(tab));
   }, [showCheckView, activeCheck, leaveCheck, activeTab]);
 
-  const handleDashboardNavigate = useCallback((target: string) => {
+  const handleDashboardNavigate = useCallback((target: string, params?: { supplyId?: string; revisionId?: string }) => {
     if (target.startsWith('management:')) {
-      const screen = target.split(':')[1];
+      const parts = target.split(':');
+      const screen = parts[1];
       setManagementScreen(screen);
+      setManagementParams(params);
       setActiveTab('management');
       setVisitedTabs((prev) => new Set(prev).add('management'));
     }
   }, []);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { type, supplyId, revisionId } = (e as CustomEvent).detail || {};
+      if (supplyId && type === 'supply') {
+        handleDashboardNavigate('management:supplies', { supplyId });
+      } else if (revisionId && type === 'revision') {
+        handleDashboardNavigate('management:revision', { revisionId });
+      }
+    };
+    window.addEventListener('tpos:notification-click', handler);
+    return () => window.removeEventListener('tpos:notification-click', handler);
+  }, [handleDashboardNavigate]);
 
   const needsPinSetup = useAuthStore((s) => s.needsPinSetup);
 
@@ -239,7 +258,13 @@ export default function App() {
       {visitedTabs.has('management') && (
         <TabPanel id="management" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
           <Suspense fallback={<TabFallback />}>
-            <ManagementPage key={tabKeys['management'] || 0} initialScreen={managementScreen} isActive={activeTab === 'management'} />
+            <ManagementPage
+              key={tabKeys['management'] || 0}
+              initialScreen={managementScreen}
+              initialSupplyId={managementParams?.supplyId}
+              initialRevisionId={managementParams?.revisionId}
+              isActive={activeTab === 'management'}
+            />
           </Suspense>
         </TabPanel>
       )}

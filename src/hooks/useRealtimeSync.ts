@@ -118,8 +118,18 @@ export function useRealtimeSync() {
           if (row && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
             const title = String(row.title || 'T-POS');
             const body = row.body != null ? String(row.body) : '';
+            const meta = (row.meta || {}) as Record<string, unknown>;
             try {
-              new Notification(title, { body, tag: `tpos-${row.id}` });
+              const n = new Notification(title, { body, tag: `tpos-${row.id}` });
+              n.onclick = () => {
+                n.close();
+                window.focus();
+                const supplyId = meta.supplyId as string | undefined;
+                const revisionId = meta.revisionId as string | undefined;
+                if (supplyId || revisionId) {
+                  window.dispatchEvent(new CustomEvent('tpos:notification-click', { detail: { type: row.type, supplyId, revisionId } }));
+                }
+              };
             } catch {
               // ignore
             }
@@ -225,8 +235,18 @@ export function useRealtimeSync() {
               if (row && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                 const title = String(row.title || 'T-POS');
                 const body = row.body != null ? String(row.body) : '';
+                const meta = (row.meta || {}) as Record<string, unknown>;
                 try {
-                  new Notification(title, { body, tag: `tpos-${row.id}` });
+                  const n = new Notification(title, { body, tag: `tpos-${row.id}` });
+                  n.onclick = () => {
+                    n.close();
+                    window.focus();
+                    const supplyId = meta.supplyId as string | undefined;
+                    const revisionId = meta.revisionId as string | undefined;
+                    if (supplyId || revisionId) {
+                      window.dispatchEvent(new CustomEvent('tpos:notification-click', { detail: { type: row.type, supplyId, revisionId } }));
+                    }
+                  };
                 } catch {
                   // ignore
                 }

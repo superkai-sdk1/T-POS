@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import type { Refund, Check, CheckItem } from '@/types';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
+import { notifyRefund } from '@/lib/notifications';
 import { useMemo } from 'react';
 
 interface CheckWithItems extends Check {
@@ -309,6 +310,10 @@ export function RefundsManager() {
         player_id: check.player_id || null,
         created_by: user.id,
       });
+
+      const playerNick = check.player?.nickname || check.guest_names || 'Гость';
+      const creatorNick = user?.nickname;
+      notifyRefund(adjustedTotal, actualType, playerNick, creatorNick).catch(() => {});
 
       hapticNotification('success');
       setSuccessMsg(`Возврат на ${fmtCur(adjustedTotal)} выполнен`);

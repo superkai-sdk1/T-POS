@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Bell, MessageSquare, ChevronRight, Inbox } from 'lucide-react';
+import { Bell, MessageSquare, ChevronRight, Inbox, Send, Smartphone } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { hapticNotification } from '@/lib/telegram';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
+import type { AdminNotificationType, NotificationChannel, TypeSetting } from '@/lib/notifications';
 
 interface Notification {
   id: string;
@@ -13,8 +14,6 @@ interface Notification {
   created_at: string;
 }
 
-type AdminNotificationType = 'shift_open' | 'shift_close' | 'payment_cash' | 'payment_card' | 'payment_deposit' | 'payment_debt' | 'birthday';
-
 const TYPE_LABELS: Record<AdminNotificationType, string> = {
   shift_open: 'Открытие смены',
   shift_close: 'Закрытие смены',
@@ -23,28 +22,47 @@ const TYPE_LABELS: Record<AdminNotificationType, string> = {
   payment_deposit: 'Оплата депозитом',
   payment_debt: 'Оплата в долг',
   birthday: 'День рождения',
+  refund: 'Возврат',
+  supply: 'Приёмка товаров',
+  revision: 'Ревизия',
 };
 
-type Channel = 'telegram' | 'pwa' | 'both';
-
-const CHANNEL_OPTIONS: { id: Channel; label: string }[] = [
-  { id: 'telegram', label: 'Telegram' },
-  { id: 'pwa', label: 'PWA' },
-  { id: 'both', label: 'Оба' },
+const CHANNEL_OPTIONS: { id: NotificationChannel; label: string; short: string }[] = [
+  { id: 'telegram', label: 'Telegram', short: 'TG' },
+  { id: 'pwa', label: 'PWA', short: 'PWA' },
+  { id: 'both', label: 'Оба', short: 'Оба' },
 ];
 
+const DEFAULT_TYPES: Record<AdminNotificationType, TypeSetting> = {
+  shift_open: { enabled: true, channel: 'both' },
+  shift_close: { enabled: true, channel: 'both' },
+  payment_cash: { enabled: true, channel: 'both' },
+  payment_card: { enabled: true, channel: 'both' },
+  payment_deposit: { enabled: true, channel: 'both' },
+  payment_debt: { enabled: true, channel: 'both' },
+  birthday: { enabled: true, channel: 'both' },
+  refund: { enabled: true, channel: 'both' },
+  supply: { enabled: true, channel: 'both' },
+  revision: { enabled: true, channel: 'both' },
+};
+
+function migrateLegacy(raw: Record<string, unknown>, legacyChannel?: string): Record<AdminNotificationType, TypeSetting> {
+  const result = { ...DEFAULT_TYPES };
+  const ch = (legacyChannel || 'both') as NotificationChannel;
+  for (const key of Object.keys(result) as AdminNotificationType[]) {
+    const v = raw[key];
+    if (typeof v === 'boolean') {
+      result[key] = { enabled: v, channel: ch };
+    } else if (v && typeof v === 'object' && 'enabled' in v && 'channel' in v) {
+      result[key] = { enabled: !!(v as TypeSetting).enabled, channel: ((v as TypeSetting).channel as NotificationChannel) || 'both' };
+    }
+  }
+  return result;
+}
+
 export function NotificationsManager() {
-  const [channel, setChannel] = useState<Channel>('telegram');
   const [telegramChatIds, setTelegramChatIds] = useState('');
-  const [types, setTypes] = useState<Record<AdminNotificationType, boolean>>({
-    shift_open: true,
-    shift_close: true,
-    payment_cash: true,
-    payment_card: true,
-    payment_deposit: true,
-    payment_debt: true,
-    birthday: true,
-  });
+  const [types, setTypes] = useState<Record<AdminNotificationType, TypeSetting>>(DEFAULT_TYPES);
   const [saving, setSaving] = useState(false);
   const [clientBonusAccrual, setClientBonusAccrual] = useState(true);
   const [clientBonusSpend, setClientBonusSpend] = useState(true);
@@ -63,13 +81,13 @@ export function NotificationsManager() {
       'notification_client_bonus_spend',
     ]);
     const map = new Map((data || []).map((r) => [r.key, r.value]));
-    setChannel((map.get('notification_admin_channel') as Channel) || 'telegram');
     setTelegramChatIds(map.get('notification_admin_telegram_chat_ids') || '');
     setClientBonusAccrual(map.get('notification_client_bonus_accrual') !== 'false');
     setClientBonusSpend(map.get('notification_client_bonus_spend') !== 'false');
     try {
-      const t = JSON.parse(map.get('notification_admin_types') || '{}');
-      setTypes((prev) => ({ ...prev, ...t }));
+      const raw = JSON.parse(map.get('notification_admin_types') || '{}') as Record<string, unknown>;
+      const legacyChannel = map.get('notification_admin_channel') as string | undefined;
+      setTypes(migrateLegacy(raw, legacyChannel));
     } catch { /* ignore */ }
   }, []);
 
@@ -97,13 +115,13 @@ export function NotificationsManager() {
     setSaving(true);
     try {
       await supabase.from('app_settings').upsert([
-        { key: 'notification_admin_channel', value: channel, updated_at: new Date().toISOString() },
         { key: 'notification_admin_telegram_chat_ids', value: telegramChatIds.trim(), updated_at: new Date().toISOString() },
         { key: 'notification_admin_types', value: JSON.stringify(types), updated_at: new Date().toISOString() },
         { key: 'notification_client_bonus_accrual', value: String(clientBonusAccrual), updated_at: new Date().toISOString() },
         { key: 'notification_client_bonus_spend', value: String(clientBonusSpend), updated_at: new Date().toISOString() },
       ], { onConflict: 'key' });
-      if ((channel === 'pwa' || channel === 'both') && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      const usesPwa = Object.values(types).some((t) => t.enabled && (t.channel === 'pwa' || t.channel === 'both'));
+      if (usesPwa && typeof Notification !== 'undefined' && Notification.permission === 'default') {
         const perm = await Notification.requestPermission();
         setNotifPermission(perm);
       }
@@ -114,8 +132,21 @@ export function NotificationsManager() {
   };
 
   const toggleType = (key: AdminNotificationType) => {
-    setTypes((prev) => ({ ...prev, [key]: !prev[key] }));
+    setTypes((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], enabled: !prev[key].enabled },
+    }));
   };
+
+  const setTypeChannel = (key: AdminNotificationType, channel: NotificationChannel) => {
+    setTypes((prev) => ({
+      ...prev,
+      [key]: { ...prev[key], channel },
+    }));
+  };
+
+  const usesTelegram = Object.values(types).some((t) => t.enabled && (t.channel === 'telegram' || t.channel === 'both'));
+  const usesPwa = Object.values(types).some((t) => t.enabled && (t.channel === 'pwa' || t.channel === 'both'));
 
   return (
     <div className="space-y-6">
@@ -125,28 +156,17 @@ export function NotificationsManager() {
           Уведомления
         </h2>
         <p className="text-xs text-[var(--c-hint)] mt-1">
-          Настройте уведомления для администраторов и клиентов
+          Выберите уведомления и канал доставки (Telegram или PWA) для каждого типа
         </p>
       </div>
 
       <div className="p-4 rounded-xl card space-y-4">
-        <h3 className="text-sm font-semibold text-[var(--c-text)]">Администраторам</h3>
-        <p className="text-[11px] text-[var(--c-hint)]">Куда отправлять уведомления</p>
-        <div className="flex gap-2">
-          {CHANNEL_OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              onClick={() => setChannel(opt.id)}
-              className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
-                channel === opt.id ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)]' : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <h3 className="text-sm font-semibold text-[var(--c-text)]">Владельцам и администраторам</h3>
+        <p className="text-[11px] text-[var(--c-hint)]">
+          Telegram и PWA — каналы доставки. Для каждого уведомления выберите, куда его отправлять.
+        </p>
 
-        {(channel === 'telegram' || channel === 'both') && (
+        {usesTelegram && (
           <div>
             <label className="block text-[11px] font-medium text-[var(--c-hint)] mb-1">ID чатов Telegram (через запятую)</label>
             <input
@@ -160,19 +180,45 @@ export function NotificationsManager() {
         )}
 
         <div>
-          <p className="text-[11px] font-medium text-[var(--c-hint)] mb-2">Какие уведомления отправлять</p>
+          <p className="text-[11px] font-medium text-[var(--c-hint)] mb-2">Типы уведомлений и каналы доставки</p>
           <div className="space-y-2">
             {(Object.keys(TYPE_LABELS) as AdminNotificationType[]).map((key) => (
-              <button
+              <div
                 key={key}
-                onClick={() => toggleType(key)}
-                className="w-full flex items-center justify-between p-2.5 rounded-xl card-interactive text-left"
+                className="p-2.5 rounded-xl card space-y-2"
               >
-                <span className="text-sm text-[var(--c-text)]">{TYPE_LABELS[key]}</span>
-                <Badge variant={types[key] ? 'success' : 'default'} size="sm">
-                  {types[key] ? 'Вкл' : 'Выкл'}
-                </Badge>
-              </button>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-[var(--c-text)]">{TYPE_LABELS[key]}</span>
+                  <button
+                    onClick={() => toggleType(key)}
+                    className="shrink-0"
+                  >
+                    <Badge variant={types[key]?.enabled ? 'success' : 'default'} size="sm">
+                      {types[key]?.enabled ? 'Вкл' : 'Выкл'}
+                    </Badge>
+                  </button>
+                </div>
+                {types[key]?.enabled && (
+                  <div className="flex gap-1.5 pt-1 border-t border-[var(--c-border)]">
+                    <span className="text-[10px] text-[var(--c-muted)] self-center">Канал:</span>
+                    {CHANNEL_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.id}
+                        onClick={() => setTypeChannel(key, opt.id)}
+                        className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all flex items-center justify-center gap-1 ${
+                          types[key]?.channel === opt.id
+                            ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)]'
+                            : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
+                        }`}
+                      >
+                        {opt.id === 'telegram' && <Send className="w-3 h-3" />}
+                        {opt.id === 'pwa' && <Smartphone className="w-3 h-3" />}
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         </div>
@@ -228,9 +274,9 @@ export function NotificationsManager() {
         {saving ? 'Сохранение...' : 'Сохранить'}
       </button>
 
-      {(channel === 'pwa' || channel === 'both') && (
+      {(usesPwa || recentNotifications.length > 0) && (
         <div className="p-4 rounded-xl card space-y-3">
-          {typeof Notification !== 'undefined' && notifPermission !== 'granted' && (
+          {typeof Notification !== 'undefined' && notifPermission !== 'granted' && usesPwa && (
             <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
               <p className="text-xs text-[var(--c-text)] mb-2">
                 {notifPermission === 'denied'

@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "update-server": "node server/update-server.js",
     "wallet-bot": "node server/wallet-bot.js",
-    "admin-bot": "node server/admin-bot.js"
+    "admin-bot": "node server/admin-bot.js",
+    "generate-icons": "node scripts/generate-icons.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",
@@ -38,6 +39,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4.2.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",

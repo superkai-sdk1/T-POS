@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { useLayoutStore } from '@/store/layout';
@@ -8,6 +8,7 @@ import {
   Search, FileText, Save, AlertCircle, CalendarDays, User,
 } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
+import { notifyRevision } from '@/lib/notifications';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import type { InventoryItem } from '@/types';
 
@@ -33,7 +34,12 @@ interface RevisionItem {
 
 const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
 
-export function RevisionPage() {
+interface RevisionPageProps {
+  initialRevisionId?: string;
+}
+
+export function RevisionPage({ initialRevisionId }: RevisionPageProps) {
+  const hasOpenedInitialRef = useRef(false);
   const [revisions, setRevisions] = useState<Revision[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -81,6 +87,15 @@ export function RevisionPage() {
   useEffect(() => {
     Promise.all([loadRevisions(), loadItems()]).then(() => setIsLoading(false));
   }, [loadRevisions, loadItems]);
+
+  useEffect(() => {
+    if (!initialRevisionId || hasOpenedInitialRef.current || revisions.length === 0) return;
+    const rev = revisions.find((r) => r.id === initialRevisionId);
+    if (rev) {
+      hasOpenedInitialRef.current = true;
+      openDetail(rev);
+    }
+  }, [initialRevisionId, revisions]);
 
   // Hide nav when creating revision
   useEffect(() => {
@@ -159,6 +174,14 @@ export function RevisionPage() {
         created_by: user?.id,
       });
     }
+
+    const revisionItems = changes.map((c) => ({
+      name: c.item.name,
+      expected: c.expected,
+      actual: c.actual,
+      diff: c.diff,
+    }));
+    notifyRevision(revision.id, totalDiff, revisionItems, user?.nickname).catch(() => {});
 
     hapticNotification('success');
     setIsSaving(false);

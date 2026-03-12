@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useLayoutStore } from '@/store/layout';
 import { supabase } from '@/lib/supabase';
+import { notifySupply } from '@/lib/notifications';
 import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -28,7 +29,12 @@ const categoryLabels: Record<string, string> = {
   drinks: 'Напитки', food: 'Еда', bar: 'Снеки', hookah: 'Кальяны', services: 'Услуги',
 };
 
-export function SupplyPage() {
+interface SupplyPageProps {
+  initialSupplyId?: string;
+}
+
+export function SupplyPage({ initialSupplyId }: SupplyPageProps) {
+  const hasOpenedInitialRef = useRef(false);
   const [supplies, setSupplies] = useState<Supply[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,6 +93,15 @@ export function SupplyPage() {
   useEffect(() => {
     Promise.all([loadSupplies(), loadInventory()]).then(() => setIsLoading(false));
   }, [loadSupplies, loadInventory]);
+
+  useEffect(() => {
+    if (!initialSupplyId || hasOpenedInitialRef.current || supplies.length === 0) return;
+    const supply = supplies.find((s) => s.id === initialSupplyId);
+    if (supply) {
+      hasOpenedInitialRef.current = true;
+      openDetail(supply);
+    }
+  }, [initialSupplyId, supplies]);
 
   // --- DRAFT HELPERS ---
 
@@ -200,6 +215,14 @@ export function SupplyPage() {
       description: `Поставка #${supply.id.slice(0, 8)}: ${draftItems.length} поз. на ${draftTotal}₽`,
       created_by: user?.id,
     });
+
+    const supplyItems = draftItems.map((d) => ({
+      name: d.item.name,
+      quantity: Number(d.quantity),
+      costPerUnit: Number(d.costPerUnit) || 0,
+      totalCost: Number(d.totalCost) || 0,
+    }));
+    notifySupply(supply.id, draftTotal, supplyItems, user?.nickname).catch(() => {});
 
     hapticNotification('success');
     setIsSaving(false);
