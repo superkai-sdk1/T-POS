@@ -4,6 +4,12 @@ import { getTelegramWebApp, initTelegramApp } from '@/lib/telegram';
 import QRCode from 'qrcode';
 import { ClientAvatar } from '@/components/ui/ClientAvatar';
 
+const tierStatusLabel: Record<string, string> = {
+  resident: 'Platinum',
+  student: 'Student',
+  regular: 'Guest',
+};
+
 const supabaseUrl = import.meta.env.PROD
   ? `${window.location.origin}/sb`
   : (import.meta.env.VITE_SUPABASE_URL as string);
@@ -402,8 +408,23 @@ export function WalletApp() {
   if (!profile) return null;
 
   return (
-    <div className="min-h-screen" style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)' }}>
-      <div className="px-4 pt-4 pb-8 space-y-5 max-w-md mx-auto">
+    <div
+      className="min-h-screen flex flex-col items-center"
+      style={{
+        paddingTop: 'var(--safe-top)',
+        paddingBottom: 'var(--safe-bottom)',
+        background: '#0A051E',
+      }}
+    >
+      <div
+        className="fixed inset-0 pointer-events-none -z-10"
+        style={{
+          background: 'radial-gradient(circle at 50% 30%, #7D54ED 0%, transparent 60%)',
+          opacity: 0.15,
+          filter: 'blur(120px)',
+        }}
+      />
+      <div className="w-full max-w-[380px] px-6 pt-8 pb-8 flex flex-col gap-8">
         <WalletCard profile={profile} />
         <TransactionList transactions={transactions} />
       </div>
@@ -414,6 +435,15 @@ export function WalletApp() {
 function WalletCard({ profile }: { profile: Profile }) {
   const [qrUrl, setQrUrl] = useState<string>('');
   const [showQR, setShowQR] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const shimmerRef = useRef<HTMLDivElement>(null);
+  const rotRef = useRef({ rotX: 0, rotY: 0, targetX: 0, targetY: 0 });
+  const dragRef = useRef({ isDragging: false, startX: 0, startY: 0 });
+  const idleRef = useRef(0);
+  const lastInteractionRef = useRef(Date.now());
+  const sensorRef = useRef(false);
+  const RESET_DELAY = 5000;
 
   useEffect(() => {
     QRCode.toDataURL(profile.id, {
@@ -423,85 +453,199 @@ function WalletCard({ profile }: { profile: Profile }) {
     }).then(setQrUrl).catch(() => {});
   }, [profile.id]);
 
+  useEffect(() => {
+    const container = containerRef.current;
+    const card = cardRef.current;
+    const shimmer = shimmerRef.current;
+    if (!container || !card || !shimmer) return;
+
+    const onPointerDown = (e: PointerEvent) => {
+      dragRef.current = { isDragging: true, startX: e.clientX, startY: e.clientY };
+      lastInteractionRef.current = Date.now();
+      sensorRef.current = false;
+      container.setPointerCapture(e.pointerId);
+    };
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (!dragRef.current.isDragging) return;
+      lastInteractionRef.current = Date.now();
+      const { startX, startY } = dragRef.current;
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+      rotRef.current.targetY += deltaX * 0.2;
+      rotRef.current.targetX -= deltaY * 0.2;
+      rotRef.current.targetX = Math.max(-40, Math.min(40, rotRef.current.targetX));
+      rotRef.current.targetY = Math.max(-45, Math.min(45, rotRef.current.targetY));
+      dragRef.current.startX = e.clientX;
+      dragRef.current.startY = e.clientY;
+    };
+
+    const onPointerUp = () => {
+      dragRef.current.isDragging = false;
+      lastInteractionRef.current = Date.now();
+    };
+
+    const onDeviceOrientation = (e: DeviceOrientationEvent) => {
+      if (dragRef.current.isDragging) return;
+      if (e.beta != null && e.gamma != null) {
+        sensorRef.current = true;
+        lastInteractionRef.current = Date.now();
+        rotRef.current.targetX = Math.max(-35, Math.min(35, (e.beta - 45) * 0.4));
+        rotRef.current.targetY = Math.max(-45, Math.min(45, e.gamma * 0.4));
+      }
+    };
+
+    let rafId: number;
+    const animate = () => {
+      const r = rotRef.current;
+      idleRef.current += 0.02;
+      const now = Date.now();
+      const idle = !dragRef.current.isDragging && !sensorRef.current;
+
+      if (idle) {
+        if (now - lastInteractionRef.current > RESET_DELAY) {
+          r.targetX *= 0.95;
+          r.targetY *= 0.95;
+        }
+        const idleX = Math.sin(idleRef.current) * 2.5;
+        const idleY = Math.cos(idleRef.current * 0.8) * 3.5;
+        r.rotX += (r.targetX + idleX - r.rotX) * 0.1;
+        r.rotY += (r.targetY + idleY - r.rotY) * 0.1;
+      } else {
+        r.rotX += (r.targetX - r.rotX) * 0.15;
+        r.rotY += (r.targetY - r.rotY) * 0.15;
+      }
+
+      card.style.transform = `rotateX(${r.rotX}deg) rotateY(${r.rotY}deg)`;
+      const shimX = 50 + r.rotY * 1.5;
+      const shimY = 50 - r.rotX * 1.5;
+      shimmer.style.setProperty('--shimmer-x', `${shimX}%`);
+      shimmer.style.setProperty('--shimmer-y', `${shimY}%`);
+      rafId = requestAnimationFrame(animate);
+    };
+    rafId = requestAnimationFrame(animate);
+
+    container.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('deviceorientation', onDeviceOrientation);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      container.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('deviceorientation', onDeviceOrientation);
+    };
+  }, []);
+
   return (
     <>
       <div className="animate-fade-in-up" style={{ animationDelay: '0ms' }}>
         <div
-          className="relative overflow-hidden rounded-2xl p-5 pb-6"
-          style={{
-            background: 'linear-gradient(135deg, #1a1a3e 0%, #0d0d2b 40%, #151538 100%)',
-            boxShadow: '0 0 30px rgba(108, 92, 231, 0.15), 0 8px 32px rgba(0, 0, 0, 0.4)',
-            animation: 'card-glow 4s ease-in-out infinite',
-          }}
+          ref={containerRef}
+          className="w-full touch-none select-none"
+          style={{ perspective: '2000px' }}
         >
-          <div className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-[0.07]"
-            style={{ background: 'radial-gradient(circle, #6c5ce7, transparent 70%)', transform: 'translate(20%, -30%)' }} />
-          <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full opacity-[0.05]"
-            style={{ background: 'radial-gradient(circle, #a29bfe, transparent 70%)', transform: 'translate(-20%, 30%)' }} />
-          <div className="absolute inset-0 opacity-[0.03]"
-            style={{ backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255,255,255,0.05) 20px, rgba(255,255,255,0.05) 21px)' }} />
+          <div
+            ref={cardRef}
+            className="relative overflow-hidden rounded-[42px] p-8 flex flex-col"
+            style={{
+              aspectRatio: '1.586 / 1',
+              background: 'linear-gradient(-45deg, #221562, #7D54ED, #4F359B, #0A051E, #221562)',
+              backgroundSize: '400% 400%',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              backdropFilter: 'blur(30px)',
+              boxShadow: '0 0 50px rgba(125, 84, 237, 0.25), inset 0 0 30px rgba(125, 84, 237, 0.1)',
+              animation: 'gradientFlow 15s ease-in-out infinite, neonPulse 3s infinite alternate ease-in-out',
+              transformStyle: 'preserve-3d',
+            }}
+          >
+            {/* Noise overlay */}
+            <div
+              className="absolute inset-0 pointer-events-none z-[2] rounded-[42px] opacity-[0.05] mix-blend-overlay"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+              }}
+            />
+            {/* Light lenses */}
+            <div
+              className="absolute w-[180px] h-[180px] rounded-full opacity-40 blur-[50px] pointer-events-none z-[1]"
+              style={{
+                background: 'radial-gradient(circle, #7D54ED 0%, transparent 70%)',
+                top: -60,
+                left: -60,
+                animation: 'floatLens 10s infinite alternate ease-in-out',
+              }}
+            />
+            <div
+              className="absolute w-[180px] h-[180px] rounded-full opacity-40 blur-[50px] pointer-events-none z-[1]"
+              style={{
+                background: 'radial-gradient(circle, #38bdf8 0%, transparent 70%)',
+                bottom: -60,
+                right: -60,
+                animation: 'floatLens 14s infinite alternate ease-in-out',
+                animationDelay: '-3s',
+              }}
+            />
+            {/* Dynamic shimmer */}
+            <div
+              ref={shimmerRef}
+              className="absolute inset-0 pointer-events-none z-[5] rounded-[42px]"
+              style={{
+                background: 'radial-gradient(circle at var(--shimmer-x, 50%) var(--shimmer-y, 50%), rgba(255,255,255,0.15) 0%, transparent 45%)',
+              }}
+            />
 
-          <div className="relative flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2.5">
-              <img src="/icons/wallet.svg" alt="TITAN Wallet" className="w-8 h-8 rounded-lg" />
-              <div>
-                <p className="text-[11px] font-semibold tracking-[0.15em] text-white/40 uppercase">TITAN</p>
-                <p className="text-[13px] font-bold text-white/90 -mt-0.5">Wallet</p>
+            <div className="flex justify-between items-center mb-8 relative z-10">
+              <span className="font-black text-xl tracking-[6px] text-white">TITAN</span>
+              <div
+                className="px-4 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider text-white"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                }}
+              >
+                {tierStatusLabel[profile.client_tier] || 'Guest'}
               </div>
             </div>
-            <div className={`text-[10px] font-semibold uppercase tracking-wider ${tierColor[profile.client_tier] || 'text-white/50'}`}>
-              {tierLabel[profile.client_tier] || profile.client_tier}
-            </div>
-          </div>
 
-          <div className="relative mb-5">
-            <p className="text-[10px] font-medium text-white/30 uppercase tracking-wider mb-1">Бонусный баланс</p>
-            <div className="flex items-baseline gap-2">
-              <p className="text-4xl font-bold text-white" style={{ fontFeatureSettings: "'tnum'" }}>
+            <div className="flex flex-col mb-auto relative z-10">
+              <div
+                className="text-[3.2rem] font-extrabold leading-none tracking-[0.02em] text-white"
+                style={{ fontFeatureSettings: "'tnum'", textShadow: '0 10px 20px rgba(0,0,0,0.4)' }}
+              >
                 {fmt(profile.bonus_points)}
-              </p>
-              <p className="text-lg font-medium text-white/30">баллов</p>
+              </div>
+              <span className="text-[10px] uppercase tracking-[4px] opacity-40 mt-1 font-bold">Resident Points</span>
             </div>
-          </div>
 
-          <div className="relative flex items-end justify-between">
-            <div className="flex items-center gap-2">
-              <ClientAvatar photoUrl={profile.photo_url} id={profile.id} size="sm" rounded="xl" className="!rounded-lg shrink-0" />
+            <div className="flex justify-between items-end relative z-10">
               <div>
-                <p className="text-[10px] text-white/25 uppercase tracking-wider mb-0.5">Владелец</p>
-                <p className="text-sm font-semibold text-white/80">{profile.nickname}</p>
+                <div className="text-[9px] uppercase tracking-widest opacity-30 mb-1">Holder</div>
+                <div className="text-sm font-bold uppercase tracking-widest text-white/90">{profile.nickname}</div>
               </div>
+              {qrUrl && (
+                <button
+                  onClick={() => setShowQR(!showQR)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 active:scale-90 transition-transform"
+                >
+                  <img src={qrUrl} alt="QR" className="w-12 h-12 opacity-30 hover:opacity-50 transition-opacity" />
+                </button>
+              )}
             </div>
-            {profile.balance < 0 ? (
-              <div className="text-right">
-                <p className="text-[10px] text-red-400/60 uppercase tracking-wider mb-0.5">Долг</p>
-                <p className="text-sm font-bold text-red-400">{fmt(Math.abs(profile.balance))}₽</p>
-              </div>
-            ) : (
-              <div className="text-right">
-                <p className="text-[10px] text-white/25 uppercase tracking-wider mb-0.5">Баланс</p>
-                <p className="text-sm font-semibold text-white/60">{fmt(profile.balance)}₽</p>
-              </div>
-            )}
           </div>
-
-          {qrUrl && (
-            <button
-              onClick={() => setShowQR(!showQR)}
-              className="absolute right-4 top-[52%] -translate-y-1/2 active:scale-90 transition-transform"
-            >
-              <img src={qrUrl} alt="QR" className="w-14 h-14 opacity-20 hover:opacity-40 transition-opacity" />
-            </button>
-          )}
         </div>
       </div>
 
       {showQR && qrUrl && (
         <div
-          className="animate-fade-in-up rounded-2xl p-6 text-center"
+          className="animate-fade-in-up rounded-[28px] p-6 text-center"
           style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.06)',
+            background: 'rgba(34, 21, 98, 0.4)',
+            border: '1px solid rgba(125, 84, 237, 0.1)',
+            backdropFilter: 'blur(15px)',
           }}
         >
           <p className="text-[11px] font-semibold text-white/30 uppercase tracking-wider mb-3">Ваш QR-код</p>
@@ -516,6 +660,11 @@ function WalletCard({ profile }: { profile: Profile }) {
 }
 
 function TransactionList({ transactions }: { transactions: Transaction[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const displayLimit = 5;
+  const displayTx = expanded ? transactions : transactions.slice(0, displayLimit);
+  const hasMore = transactions.length > displayLimit;
+
   if (transactions.length === 0) {
     return (
       <div className="animate-fade-in-up text-center py-8" style={{ animationDelay: '100ms' }}>
@@ -529,74 +678,72 @@ function TransactionList({ transactions }: { transactions: Transaction[] }) {
     );
   }
 
-  const grouped = groupByDate(transactions);
+  const formatDate = (createdAt: string) => {
+    const d = new Date(createdAt);
+    const now = new Date();
+    const today = now.toDateString();
+    const yesterday = new Date(now.getTime() - 86400000).toDateString();
+    const ds = d.toDateString();
+    const day = ds === today ? 'Сегодня' : ds === yesterday ? 'Вчера' : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    return `${day}, ${time}`;
+  };
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-sm font-semibold text-white/40 uppercase tracking-wider animate-fade-in-up" style={{ animationDelay: '100ms' }}>
-        История
-      </h2>
-      {grouped.map(([date, txs], gi) => (
-        <div key={date} className="animate-fade-in-up" style={{ animationDelay: `${150 + gi * 50}ms` }}>
-          <p className="text-[10px] font-medium text-white/20 uppercase tracking-wider mb-2 px-1">{date}</p>
-          <div className="rounded-xl overflow-hidden" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.05)' }}>
-            {txs.map((tx, i) => (
-              <div key={tx.id} className={`flex items-center gap-3 px-3.5 py-3 ${i > 0 ? 'border-t border-white/[0.04]' : ''}`}>
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                  tx.type === 'bonus_accrual' ? 'bg-emerald-500/10' : 'bg-amber-500/10'
-                }`}>
-                  {tx.type === 'bonus_accrual' ? (
-                    <svg className="w-4.5 h-4.5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4.5 h-4.5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12h-15" />
-                    </svg>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium text-white/80 truncate">
-                    {tx.type === 'bonus_accrual' ? 'Начисление' : 'Списание'}
-                  </p>
-                  {tx.description && (
-                    <p className="text-[11px] text-white/25 truncate mt-0.5">{tx.description}</p>
-                  )}
-                </div>
-                <div className="text-right shrink-0">
-                  <p className={`text-sm font-bold ${tx.type === 'bonus_accrual' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                    {tx.type === 'bonus_accrual' ? '+' : '-'}{fmt(tx.amount)}
-                  </p>
-                  <p className="text-[10px] text-white/15 mt-0.5">
-                    {new Date(tx.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                </div>
+    <div className="flex flex-col gap-4 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+      <h3 className="text-[10px] font-extrabold uppercase tracking-[3px] text-white/40 pl-3">
+        Последние действия
+      </h3>
+      <div className="flex flex-col gap-4">
+        {displayTx.map((tx, i) => (
+          <div
+            key={tx.id}
+            className="flex justify-between items-center py-5 px-5 rounded-[28px] backdrop-blur-[15px]"
+            style={{
+              background: 'rgba(34, 21, 98, 0.4)',
+              border: '1px solid rgba(125, 84, 237, 0.1)',
+              animationDelay: `${150 + i * 50}ms`,
+            }}
+          >
+            <div className="flex items-center gap-4">
+              <div
+                className="w-11 h-11 rounded-[18px] flex items-center justify-center shrink-0"
+                style={{ background: 'rgba(255, 255, 255, 0.03)' }}
+              >
+                {tx.type === 'bonus_accrual' ? (
+                  <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path d="M12 5v14M5 12l7 7 7-7" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 text-[#7D54ED]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                )}
               </div>
-            ))}
+              <div>
+                <div className="text-sm font-semibold text-white">
+                  {tx.type === 'bonus_accrual' ? 'Пополнение' : tx.description || 'Оплата услуг'}
+                </div>
+                <div className="text-[10px] text-slate-500 uppercase tracking-wider">{formatDate(tx.created_at)}</div>
+              </div>
+            </div>
+            <div className={`font-bold ${tx.type === 'bonus_accrual' ? 'text-emerald-400' : 'text-white'}`}>
+              {tx.type === 'bonus_accrual' ? '+' : '-'}{fmt(tx.amount)}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
+      {hasMore && (
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className="w-full py-5 text-[10px] font-bold uppercase tracking-[4px] text-slate-500 hover:text-white transition-all border border-white/10 rounded-[28px] hover:bg-white/5"
+        >
+          {expanded ? 'Свернуть' : 'Весь список'}
+        </button>
+      )}
     </div>
   );
-}
-
-function groupByDate(transactions: Transaction[]): [string, Transaction[]][] {
-  const map = new Map<string, Transaction[]>();
-  const now = new Date();
-  const today = now.toDateString();
-  const yesterday = new Date(now.getTime() - 86400000).toDateString();
-
-  for (const tx of transactions) {
-    const d = new Date(tx.created_at);
-    const ds = d.toDateString();
-    let label: string;
-    if (ds === today) label = 'Сегодня';
-    else if (ds === yesterday) label = 'Вчера';
-    else label = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-    if (!map.has(label)) map.set(label, []);
-    map.get(label)!.push(tx);
-  }
-  return Array.from(map.entries());
 }
 
 function LoadingSkeleton() {
