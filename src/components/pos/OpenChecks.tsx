@@ -653,14 +653,13 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                 onClick={() => handlePlayerSelected(player)}
                 className="w-full flex items-center gap-3 p-3.5 rounded-xl transition-all active:scale-[0.98] hover:bg-[rgba(255,255,255,0.04)] min-h-[56px]"
               >
-                <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.08))' }}
-                >
-                  <span className="text-sm font-bold text-[var(--c-accent-light)]">
-                    {player.nickname?.charAt(0).toUpperCase()}
-                  </span>
-                </div>
+                <ClientAvatar
+                  photoUrl={player.photo_url}
+                  id={player.id}
+                  size="lg"
+                  rounded="xl"
+                  className="!rounded-xl shrink-0"
+                />
                 <div className="text-left flex-1 min-w-0">
                   <p className="font-bold text-[14px] text-[var(--c-text)] truncate">
                     {player.nickname}
@@ -712,14 +711,13 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
                 border: '1px solid rgba(255, 255, 255, 0.08)',
               }}
             >
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(6, 182, 212, 0.08))' }}
-              >
-                <span className="text-sm font-bold text-[var(--c-accent-light)]">
-                  {selectedPlayer.nickname?.charAt(0).toUpperCase()}
-                </span>
-              </div>
+              <ClientAvatar
+                photoUrl={selectedPlayer.photo_url}
+                id={selectedPlayer.id}
+                size="md"
+                rounded="xl"
+                className="!rounded-xl shrink-0"
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-bold text-[var(--c-text)] truncate">{selectedPlayer?.nickname}</p>
                 <div className="flex gap-1 mt-0.5">

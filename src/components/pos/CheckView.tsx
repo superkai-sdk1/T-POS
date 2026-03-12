@@ -1369,11 +1369,13 @@ export function CheckView({ onBack }: CheckViewProps) {
                 onClick={() => handlePlayerForTariff(player)}
                 className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-[var(--c-surface)] transition-colors active:scale-[0.98]"
               >
-                <div className="w-8 h-8 rounded-lg bg-[var(--c-accent)]/10 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-bold text-[var(--c-accent)]">
-                    {player.nickname?.charAt(0).toUpperCase()}
-                  </span>
-                </div>
+                <ClientAvatar
+                  photoUrl={player.photo_url}
+                  id={player.id}
+                  size="sm"
+                  rounded="xl"
+                  className="!rounded-lg shrink-0"
+                />
                 <div className="text-left flex-1 min-w-0">
                   <p className="font-semibold text-[13px] text-[var(--c-text)] truncate">{player.nickname}</p>
                   <div className="flex gap-1 mt-0.5">
@@ -1406,11 +1408,13 @@ export function CheckView({ onBack }: CheckViewProps) {
         {selectedPlayer && (
           <div className="space-y-4">
             <div className="flex items-center gap-3 p-3 rounded-xl card">
-              <div className="w-10 h-10 rounded-xl bg-[var(--c-accent)]/10 flex items-center justify-center shrink-0">
-                <span className="text-sm font-bold text-[var(--c-accent)]">
-                  {selectedPlayer.nickname?.charAt(0).toUpperCase()}
-                </span>
-              </div>
+              <ClientAvatar
+                photoUrl={selectedPlayer.photo_url}
+                id={selectedPlayer.id}
+                size="md"
+                rounded="xl"
+                className="!rounded-xl shrink-0"
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-bold text-[var(--c-text)] truncate">{selectedPlayer.nickname}</p>
                 {selectedPlayer.client_tier === 'resident' && <span className="text-[10px] text-[var(--c-success)]">Резидент</span>}
