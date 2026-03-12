@@ -136,6 +136,11 @@ export function useRealtimeSync() {
       )
       .on(
         'postgres_changes',
+        { event: '*', schema: 'public', table: 'events' },
+        () => emitTableChange('events'),
+      )
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'client_discount_rules' },
         () => emitTableChange('client_discount_rules'),
       )
@@ -242,6 +247,9 @@ export function useRealtimeSync() {
               }
               emitTableChange('shifts');
             }
+          )
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'events' },
+            () => emitTableChange('events'),
           )
           .on('postgres_changes', { event: '*', schema: 'public', table: 'client_discount_rules' },
             () => emitTableChange('client_discount_rules'),

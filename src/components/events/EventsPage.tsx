@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import { useAuthStore } from '@/store/auth';
 import { usePOSStore } from '@/store/pos';
 import { useHideNav } from '@/store/layout';
@@ -83,6 +84,7 @@ export function EventsPage() {
     }, [activeTab]);
 
     useEffect(() => { loadEvents(); }, [loadEvents]);
+    useOnTableChange(['events'], loadEvents);
 
     const filteredEvents = useMemo(() => {
         const today = new Date().toISOString().split('T')[0];
@@ -102,10 +104,18 @@ export function EventsPage() {
 
     const handleCreateEvent = async () => {
         setIsSubmitting(true);
-        const { error } = await supabase.from('events').insert([{
-            ...formData,
-            created_by: useAuthStore.getState().user?.id,
-        }]);
+        const payload = {
+            type: formData.type || 'titan',
+            location: formData.type === 'exit' ? (formData.location || null) : null,
+            date: formData.date || new Date().toISOString().split('T')[0],
+            start_time: formData.start_time || '18:00',
+            payment_type: formData.payment_type || 'fixed',
+            fixed_amount: formData.payment_type === 'fixed' ? (formData.fixed_amount ?? 0) : null,
+            status: 'planned',
+            comment: formData.comment || null,
+            created_by: useAuthStore.getState().user?.id ?? null,
+        };
+        const { error } = await supabase.from('events').insert([payload]);
         if (!error) {
             hapticNotification('success');
             setShowAdd(false);

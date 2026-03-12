@@ -196,7 +196,7 @@ const server = http.createServer((req, res) => {
     if (!checkAuth(req, res)) return;
     readBody(req).then(async (body) => {
       try {
-        const { messages, context } = JSON.parse(body);
+        const { messages, context, draft } = JSON.parse(body);
         const POLZA_KEY = process.env.POLZA_AI_API_KEY;
         const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
         const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
@@ -303,7 +303,56 @@ const server = http.createServer((req, res) => {
 
           const salaryTotal = salaryPayments.reduce((s, p) => s + (p.amount || 0), 0);
 
+          // Аналитика по периодам (для ответов на вопросы)
+          const now = new Date();
+          const mskOffset = 3 * 3600000;
+          const todayStart = new Date(new Date(now.getTime() + mskOffset).toISOString().split('T')[0]).getTime() - mskOffset;
+          const weekAgo = todayStart - 7 * 86400000;
+          const twoWeeksAgo = todayStart - 14 * 86400000;
+          let weekRevenue = 0, weekChecks = 0, weekRefunded = 0;
+          let prevWeekRevenue = 0, prevWeekChecks = 0, prevWeekRefunded = 0;
+          for (const c of checks) {
+            const t = new Date(c.closed_at).getTime();
+            const refAmt = refundByCheck[c.id] || 0;
+            const amt = (c.total_amount || 0) - refAmt;
+            if (t >= weekAgo) {
+              weekRevenue += amt;
+              weekChecks++;
+              weekRefunded += refAmt;
+            } else if (t >= twoWeeksAgo) {
+              prevWeekRevenue += amt;
+              prevWeekChecks++;
+              prevWeekRefunded += refAmt;
+            }
+          }
+          const weekDelta = prevWeekRevenue > 0 ? Math.round(((weekRevenue - prevWeekRevenue) / prevWeekRevenue) * 100) : (weekRevenue > 0 ? 100 : 0);
+          const weekCogs = checkItems.filter((ci) => {
+            const ch = checks.find((c) => c.id === ci.check_id);
+            return ch && new Date(ch.closed_at).getTime() >= weekAgo;
+          }).reduce((s, ci) => s + (ci.quantity || 0) * (itemCosts[ci.item_id] || 0), 0);
+          const weekAgoStr = new Date(weekAgo + mskOffset).toISOString().split('T')[0];
+          const weekExpenses = expenses
+            .filter((e) => (e.expense_date || '') >= weekAgoStr)
+            .reduce((s, e) => s + Number(e.amount || 0), 0);
+          const weekProfit = Math.round(weekRevenue - weekCogs - weekExpenses);
+          const weekMargin = weekRevenue > 0 ? Math.round((weekProfit / weekRevenue) * 100) : 0;
+          const weekCheckIds = new Set(checks.filter((c) => new Date(c.closed_at).getTime() >= weekAgo).map((c) => c.id));
+          const weekProductSales = {};
+          for (const ci of checkItems) {
+            if (!weekCheckIds.has(ci.check_id)) continue;
+            if (!weekProductSales[ci.item_id]) weekProductSales[ci.item_id] = { qty: 0, revenue: 0 };
+            weekProductSales[ci.item_id].qty += ci.quantity || 0;
+            weekProductSales[ci.item_id].revenue += (ci.quantity || 0) * (ci.price_at_time || 0);
+          }
+          const weekTopProducts = inventory
+            .map((i) => ({ name: i.name, revenue: weekProductSales[i.id]?.revenue || 0, qty: weekProductSales[i.id]?.qty || 0 }))
+            .filter((p) => p.revenue > 0)
+            .sort((a, b) => b.revenue - a.revenue)
+            .slice(0, 10);
+
           dbContext = `\n\n=== ДАННЫЕ T-POS (актуальные из БД) ===
+АНАЛИТИКА ЗА НЕДЕЛЮ: выручка ${weekRevenue}₽, чеков ${weekChecks}, возвраты ${weekRefunded}₽, себестоимость ${Math.round(weekCogs)}₽, расходы ${Math.round(weekExpenses)}₽, прибыль ${weekProfit}₽, маржа ${weekMargin}%. Предыдущая неделя: ${prevWeekRevenue}₽. Динамика: ${weekDelta}%.
+ТОП ТОВАРОВ ЗА НЕДЕЛЮ: ${JSON.stringify(weekTopProducts)}.
 ПЕРСОНАЛ: ${JSON.stringify(staff.map((p) => ({ nickname: p.nickname, role: p.role })))}
 КЛИЕНТОВ: ${clients.length}, должников: ${debtors.length}
 ТОП-20 КЛИЕНТОВ: ${JSON.stringify(topClients)}
@@ -318,7 +367,7 @@ const server = http.createServer((req, res) => {
 КАССА: ${JSON.stringify(cashOps.slice(0, 15).map((o) => ({ type: o.type, amount: o.amount })))}
 ПОСЛЕДНИЕ СМЕНЫ: ${JSON.stringify(shifts.slice(0, 10).map((s) => ({ status: s.status, cash_start: s.cash_start, cash_end: s.cash_end, opened: s.opened_at, closed: s.closed_at })))}
 МЕНЮ (все ${inventory.length} позиций): ${JSON.stringify(inventory.map((i) => ({ name: i.name, cat: i.category, price: i.price, stock: i.stock_quantity, active: i.is_active })))}
-МЕРОПРИЯТИЯ (последние 10): ${JSON.stringify(events.slice(0, 10).map((e) => ({ type: e.type, location: e.location, date: e.date, status: e.status })))}
+МЕРОПРИЯТИЯ (предстоящие, с id для update_event): ${JSON.stringify(events.slice(0, 20).map((e) => ({ id: e.id, type: e.type, location: e.location, date: e.date, start_time: e.start_time, payment_type: e.payment_type, fixed_amount: e.fixed_amount, status: e.status, comment: e.comment })))}
 (ВНИМАНИЕ: Даты в списке могут быть старыми. ИСПОЛЬЗУЙ ТЕКУЩИЙ ГОД ИЗ СЕКЦИИ "СЕЙЧАС" ДЛЯ НОВЫХ ЗАПИСЕЙ!)
 ===`;
         }
@@ -333,23 +382,51 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
 ВАЖНО: Сегодня 2026 год. Игнорируй любые упоминания 2024 года в истории, если они противоречат здравому смыслу. Все новые мероприятия создавай на 2026 год.
 ИДЕНТИФИКАЦИЯ: Если пользователь спрашивает "кто ты", отвечай что ты ассистент T-POS.
 
-ИНСТРУМЕНТЫ:
-1. create_event: { type: 'titan'|'exit', location: string, date: 'YYYY-MM-DD', start_time: 'HH:mm', payment_type: 'fixed'|'hourly', fixed_amount: number, comment: string }
-2. list_events: { upcoming: boolean }
-3. create_check: { playerNickname: string }
-4. add_items: { checkId: string, items: [{ name: string, quantity: number }] }
+ВОПРОСЫ ПО АНАЛИТИКЕ (выручка, прибыль, товары, должники, отчёты):
+Отвечай текстом на основе данных из ДАННЫЕ T-POS. Используй конкретные цифры. Не возвращай JSON для таких вопросов.
+Примеры: "какая выручка?" → текст с суммой; "топ товаров?" → перечисли; "сколько должников?" → число и список; "как дела за неделю?" → краткий отчёт.
 
-Если пользователь просит создать мероприятие, ВЫЗЫВАЙ create_event в формате JSON-ответа: {"action": "create_event", "params": {...}}.
-Если пользователь спрашивает про планы, ВЫЗЫВАЙ list_events: {"action": "list_events", "params": {"upcoming": true}}.
+ИНСТРУМЕНТЫ (возвращай JSON только для действий):
+1. create_event: { type, location, date, start_time, payment_type, fixed_amount, comment }
+2. list_events: { upcoming: boolean } — показать мероприятия
+3. update_event: { event_id: string, type?, location?, date?, start_time?, payment_type?, fixed_amount?, comment?, status? } — изменить мероприятие по id
+4. create_check: { playerNickname: string }
+5. add_items: { checkId: string, items: [{ name: string, quantity: number }] }
 
-Отвечай кратко и по делу после выполнения действия. (Заменяй 2024 на 2026 везде!)`;
+СОЗДАНИЕ МЕРОПРИЯТИЙ (create_event):
+Когда пользователь пишет о мероприятии (выезд, титан, бронь и т.п.) — ВСЕГДА отвечай ТОЛЬКО JSON: {"action": "create_event", "params": {...}}.
+Парсинг из текста:
+- type: "титан"|"в титане"|"в клубе"|"клуб" → type: "titan", location: null
+- type: "выезд"|"выездное"|"на локации"|"на выезде" → type: "exit", location: из текста (адрес/место) или "Выезд"
+- date: "завтра" → завтрашняя дата, "15 марта"|"15.03" → 2026-03-15, "в субботу" → ближайшая суббота
+- start_time: "19:00"|"в 7"|"в 7 вечера" → "19:00", "14:30"|"в 2 дня"|"в 14:30" → "14:30"
+- payment_type: "почасовая"|"по часам"|"часовая" → "hourly", fixed_amount: 0
+- payment_type: "фиксированная"|"фикс"|"5000"|"5к" → "fixed", fixed_amount: число из текста (5000, 3000 и т.д.)
+Если оплата не указана → payment_type: "fixed", fixed_amount: 0
+Если дата не указана → сегодня или завтра по контексту
+Если время не указано → "18:00"
 
+Примеры: "Выезд 15 марта в 19:00 почасовая" → {"action":"create_event","params":{"type":"exit","location":"Выезд","date":"2026-03-15","start_time":"19:00","payment_type":"hourly","fixed_amount":0,"comment":null}}
+"Титан завтра в 18:00 фикс 5000" → вычисли date завтра от СЕЙЧАС, params: type:"titan", location:null, start_time:"18:00", payment_type:"fixed", fixed_amount:5000
+
+ЗАПРОСЫ ПО МЕРОПРИЯТИЯМ:
+- "какие мероприятия?", "что на этой неделе?", "планы на завтра?", "расскажи про мероприятия" → list_events: {"action":"list_events","params":{"upcoming":true}}
+- "перенеси на 20:00", "измени время/дату/локацию", "отмени" → update_event с event_id из МЕРОПРИЯТИЯ (id в списке). При отмене: status:"cancelled". При переносе: date и/или start_time.
+
+Для вопросов без действия (аналитика, отчёты) — отвечай текстом, не JSON.
+
+РЕЖИМ ИЗМЕНЕНИЯ (когда передан draft):
+Если в запросе есть draft — это черновик мероприятия. Пользователь хочет что-то изменить. Примени его правки к draft и верни обновлённый JSON: {"action": "create_event", "params": {...}}.
+Примеры правок: "время на 20:00" → start_time: "20:00"; "локация Офис" → location: "Офис"; "фикс 7000" → payment_type: "fixed", fixed_amount: 7000; "почасовая" → payment_type: "hourly", fixed_amount: 0.
+Отвечай ТОЛЬКО JSON. (Год 2026!)`;
+
+        const draftHint = draft ? `\n\nЧЕРНОВИК ДЛЯ ИЗМЕНЕНИЯ: ${JSON.stringify(draft)}\nПользователь написал правки. Примени их и верни обновлённый create_event.` : '';
         // Inject into messages
         let systemMessageFound = false;
         const enrichedMessages = messages.map((m) => {
           if (m.role === 'system') {
             systemMessageFound = true;
-            return { ...m, content: `${systemPromptHeader}\n\n${m.content}\n\n${dbContext}` };
+            return { ...m, content: `${systemPromptHeader}\n\n${m.content}${draftHint}\n\n${dbContext}` };
           }
           return m;
         });
@@ -357,7 +434,7 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
         if (!systemMessageFound) {
           enrichedMessages.unshift({
             role: 'system',
-            content: `${systemPromptHeader}\n\n${dbContext}`,
+            content: `${systemPromptHeader}${draftHint}\n\n${dbContext}`,
           });
         }
 
@@ -516,14 +593,53 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
 
         if (action === 'list_events') {
           const today = new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0];
-          const query = params.upcoming ? `status=neq.completed&date=gte.${today}` : '';
-          const eventsRes = await fetch(`${SUPABASE_URL}/rest/v1/events?${query}&order=date.asc,start_time.asc`, {
+          const query = params.upcoming !== false ? `status=in.(planned,active)&date=gte.${today}` : '';
+          const eventsRes = await fetch(`${SUPABASE_URL}/rest/v1/events?${query}&order=date.asc,start_time.asc&limit=30`, {
             headers: sbHeaders
           });
-          const events = await eventsRes.json();
-          json(res, { success: true, events });
+          const evList = await eventsRes.json();
+          const lines = evList.length === 0
+            ? ['📅 Нет запланированных мероприятий.']
+            : evList.map((e, i) => {
+                const label = e.type === 'titan' ? 'Титан' : (e.location || 'Выезд');
+                const pay = e.payment_type === 'hourly' ? 'почасовая' : `фикс ${e.fixed_amount || 0}₽`;
+                return `${i + 1}. ${label} — ${e.date} в ${e.start_time || '18:00'}, ${pay}${e.comment ? ` (${e.comment})` : ''}`;
+              });
+          json(res, { success: true, events: evList, message: `📅 Мероприятия:\n\n${lines.join('\n')}` });
           return;
-        } else if (action === 'add_items') {
+        }
+
+        if (action === 'update_event') {
+          const { event_id, ...updates } = params;
+          if (!event_id) {
+            json(res, { success: false, error: 'event_id обязателен' });
+            return;
+          }
+          const allowed = ['type', 'location', 'date', 'start_time', 'payment_type', 'fixed_amount', 'comment', 'status'];
+          const payload = {};
+          for (const k of allowed) {
+            if (params[k] !== undefined) payload[k] = params[k];
+          }
+          if (Object.keys(payload).length === 0) {
+            json(res, { success: false, error: 'Нет полей для обновления' });
+            return;
+          }
+          const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/events?id=eq.${encodeURIComponent(event_id)}`, {
+            method: 'PATCH',
+            headers: sbHeaders,
+            body: JSON.stringify(payload),
+          });
+          if (!patchRes.ok) {
+            const err = await patchRes.json();
+            json(res, { success: false, error: err.message || 'Ошибка обновления' });
+            return;
+          }
+          const label = payload.type === 'titan' ? 'Титан' : (payload.location || 'мероприятие');
+          json(res, { success: true, message: `✅ Обновлено: ${label}` });
+          return;
+        }
+
+        if (action === 'add_items') {
           const { checkId, items } = params; // items: [{ name, quantity }]
           if (!checkId || !Array.isArray(items) || items.length === 0) {
             json(res, { success: false, error: 'checkId и items[] обязательны' });
@@ -606,6 +722,68 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
   json(res, { error: 'Not found' }, 404);
 });
 
+// --- Event reminders (24h, 12h, 3h, 1h before) ---
+const REMINDER_INTERVALS = [
+  { key: '24h', hours: 24, label: '24 часа' },
+  { key: '12h', hours: 12, label: '12 часов' },
+  { key: '3h', hours: 3, label: '3 часа' },
+  { key: '1h', hours: 1, label: '1 час' },
+];
+
+async function runEventReminders() {
+  const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+  const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+  const BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN;
+  const CHAT_IDS = (process.env.OWNER_CHAT_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
+  if (!SUPABASE_URL || !SUPABASE_KEY || !BOT_TOKEN || CHAT_IDS.length === 0) return;
+
+  const today = new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0];
+  const sbHeaders = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/events?status=in.(planned,active)&date=gte.${today}&order=date.asc,start_time.asc`, { headers: sbHeaders });
+  const events = await res.json();
+  if (!Array.isArray(events)) return;
+
+  const nowMs = Date.now();
+
+  for (const ev of events) {
+    const startStr = `${ev.date}T${(ev.start_time || '18:00').slice(0, 5)}:00+03:00`;
+    const startMs = new Date(startStr).getTime();
+    const hoursUntil = (startMs - nowMs) / (1000 * 3600);
+    const raw = ev.reminders;
+    const reminders = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? Object.values(raw) : []);
+    const sent = new Set(reminders.filter((x) => x && x.t).map((x) => x.t));
+
+    for (const r of REMINDER_INTERVALS) {
+      const lo = r.hours - 0.5;
+      const hi = r.hours + 0.5;
+      if (hoursUntil >= lo && hoursUntil <= hi && !sent.has(r.key)) {
+        const label = ev.type === 'titan' ? 'Титан' : (ev.location || 'Выезд');
+        const text = `⏰ Напоминание: ${r.label} до мероприятия\n\n${label}\n${ev.date} в ${ev.start_time || '18:00'}`;
+        for (const chatId of CHAT_IDS) {
+          try {
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+            });
+          } catch (e) {
+            console.warn('[Reminders] Telegram send error:', e);
+          }
+        }
+        const updated = [...reminders, { t: r.key, at: new Date().toISOString() }];
+        await fetch(`${SUPABASE_URL}/rest/v1/events?id=eq.${ev.id}`, {
+          method: 'PATCH',
+          headers: sbHeaders,
+          body: JSON.stringify({ reminders: updated }),
+        });
+        break;
+      }
+    }
+  }
+}
+
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`T-POS Update Server on port ${PORT}`);
+  setInterval(runEventReminders, 10 * 60 * 1000);
+  setTimeout(runEventReminders, 30 * 1000);
 });

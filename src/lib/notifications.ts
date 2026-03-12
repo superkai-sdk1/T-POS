@@ -179,6 +179,14 @@ export interface CloseReportCheck {
   playerNickname: string;
   totalAmount: number;
   paymentMethod: string | null;
+  splitPayments?: { method: string; amount: number }[];
+}
+
+export interface CloseReportRefund {
+  playerNickname: string;
+  amount: number;
+  refundType: 'full' | 'partial';
+  creatorNickname?: string;
 }
 
 export interface CloseReportData {
@@ -187,7 +195,9 @@ export interface CloseReportData {
   closedAt: string;
   cashEnd: number;
   totalRevenue: number;
+  totalRefunded: number;
   checks: CloseReportCheck[];
+  refunds: CloseReportRefund[];
 }
 
 const pmLabel: Record<string, string> = {
@@ -195,7 +205,16 @@ const pmLabel: Record<string, string> = {
   card: 'карта',
   debt: 'долг',
   bonus: 'бонусы',
+  deposit: 'депозит',
   split: 'разд.',
+};
+
+const pmEmoji: Record<string, string> = {
+  cash: '💵',
+  card: '💳',
+  debt: '⏳',
+  bonus: '⭐',
+  deposit: '🏦',
 };
 
 export async function notifyShiftClose(d: CloseReportData): Promise<void> {
@@ -217,19 +236,76 @@ export async function notifyShiftClose(d: CloseReportData): Promise<void> {
     `- ${d.staffClose}`,
     ``,
   ];
+
+  // --- Checks section ---
   if (d.checks.length > 0) {
+    lines.push(`━━━ Чеки (${d.checks.length}) ━━━`);
     for (const c of d.checks) {
       const pm = pmLabel[c.paymentMethod || ''] || c.paymentMethod || '?';
       lines.push(`  ${c.playerNickname} — ${fmt(c.totalAmount)}₽ (${pm})`);
+      if (c.paymentMethod === 'split' && c.splitPayments && c.splitPayments.length > 0) {
+        for (let i = 0; i < c.splitPayments.length; i++) {
+          const sp = c.splitPayments[i];
+          const prefix = i < c.splitPayments.length - 1 ? '├' : '└';
+          const label = pmLabel[sp.method] || sp.method;
+          lines.push(`    ${prefix} ${label}: ${fmt(sp.amount)}₽`);
+        }
+      }
     }
     lines.push(``);
   }
-  lines.push(`<b>Итого: ${fmt(d.totalRevenue)}₽</b> · ${d.checks.length} чек.`);
-  lines.push(`- В кассе: ${fmt(d.cashEnd)}₽`);
+
+  // --- Payment breakdown section ---
+  const pmTotals: Record<string, { count: number; amount: number }> = {};
+  for (const c of d.checks) {
+    if (c.paymentMethod === 'split' && c.splitPayments) {
+      for (const sp of c.splitPayments) {
+        if (!pmTotals[sp.method]) pmTotals[sp.method] = { count: 0, amount: 0 };
+        pmTotals[sp.method].amount += sp.amount;
+        pmTotals[sp.method].count++;
+      }
+    } else {
+      const pm = c.paymentMethod || 'unknown';
+      if (!pmTotals[pm]) pmTotals[pm] = { count: 0, amount: 0 };
+      pmTotals[pm].count++;
+      pmTotals[pm].amount += c.totalAmount;
+    }
+  }
+  if (Object.keys(pmTotals).length > 0) {
+    lines.push(`━━━ Оплата по типам ━━━`);
+    for (const [method, data] of Object.entries(pmTotals)) {
+      const emoji = pmEmoji[method] || '💰';
+      const label = pmLabel[method] || method;
+      lines.push(`  ${emoji} ${label}: ${fmt(data.amount)}₽ (${data.count})`);
+    }
+    lines.push(``);
+  }
+
+  // --- Refunds section ---
+  if (d.refunds.length > 0) {
+    lines.push(`━━━ Возвраты (${d.refunds.length}) ━━━`);
+    for (const r of d.refunds) {
+      const typeLabel = r.refundType === 'full' ? 'полный' : 'частичный';
+      lines.push(`  ↩️ ${r.playerNickname} — −${fmt(r.amount)}₽ (${typeLabel})`);
+      if (r.creatorNickname) {
+        lines.push(`    Выполнил: ${r.creatorNickname}`);
+      }
+    }
+    lines.push(``);
+  }
+
+  // --- Totals ---
+  const grossRevenue = d.totalRevenue + d.totalRefunded;
+  lines.push(`📊 <b>Итого: ${fmt(grossRevenue)}₽</b> · ${d.checks.length} чек.`);
+  if (d.totalRefunded > 0) {
+    lines.push(`↩️ Возвраты: −${fmt(d.totalRefunded)}₽`);
+    lines.push(`💰 <b>Выручка: ${fmt(d.totalRevenue)}₽</b>`);
+  }
+  lines.push(`🏦 В кассе: ${fmt(d.cashEnd)}₽`);
   const text = lines.join('\n');
 
   const title = 'Смена закрыта';
-  const body = `Итого: ${fmt(d.totalRevenue)}₽ · ${d.checks.length} чек. В кассе: ${fmt(d.cashEnd)}₽`;
+  const body = `Выручка: ${fmt(d.totalRevenue)}₽ · ${d.checks.length} чек.${d.totalRefunded > 0 ? ` Возвраты: −${fmt(d.totalRefunded)}₽` : ''} В кассе: ${fmt(d.cashEnd)}₽`;
 
   for (const u of tgUsers) {
     await sendToTelegram(text, u.tgId!);
