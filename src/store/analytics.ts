@@ -46,6 +46,8 @@ export function getPreviousPeriod(range: DateRange): DateRange {
   return { start: new Date(range.start.getTime() - diff), end: new Date(range.start.getTime()) };
 }
 
+export type ReportMode = 'period' | 'shift';
+
 interface AnalyticsState {
   preset: PeriodPreset;
   range: DateRange;
@@ -53,12 +55,16 @@ interface AnalyticsState {
   paymentFilter: PaymentMethod | null;
   adminFilter: string | null;
   search: string;
+  reportMode: ReportMode;
+  selectedShiftId: string | null;
 
   setPreset: (p: PeriodPreset) => void;
   setCustomRange: (start: Date, end: Date) => void;
   setPaymentFilter: (pm: PaymentMethod | null) => void;
   setAdminFilter: (id: string | null) => void;
   setSearch: (s: string) => void;
+  setReportMode: (m: ReportMode) => void;
+  setSelectedShiftId: (id: string | null) => void;
 }
 
 const initialRange = presetToRange('month');
@@ -70,6 +76,8 @@ export const useAnalyticsStore = create<AnalyticsState>((set) => ({
   paymentFilter: null,
   adminFilter: null,
   search: '',
+  reportMode: 'period',
+  selectedShiftId: null,
 
   setPreset: (p) => {
     const range = presetToRange(p);
@@ -82,4 +90,6 @@ export const useAnalyticsStore = create<AnalyticsState>((set) => ({
   setPaymentFilter: (pm) => set({ paymentFilter: pm }),
   setAdminFilter: (id) => set({ adminFilter: id }),
   setSearch: (s) => set({ search: s }),
+  setReportMode: (m) => set({ reportMode: m }),
+  setSelectedShiftId: (id) => set({ selectedShiftId: id }),
 }));

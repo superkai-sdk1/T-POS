@@ -25,7 +25,7 @@ import { CheckCartBar } from '@/components/pos/CheckCartBar';
 import { TabPanel } from '@/components/ui/TabPanel';
 
 const ManagementPage = lazy(() => import('@/components/management/ManagementPage').then((m) => ({ default: m.ManagementPage })));
-const DashboardPage = lazy(() => import('@/components/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const ReportsPage = lazy(() => import('@/components/dashboard/ReportsPage').then((m) => ({ default: m.ReportsPage })));
 const EventsPage = lazy(() => import('@/components/events/EventsPage').then((m) => ({ default: m.EventsPage })));
 
 function TabFallback() {
@@ -247,7 +247,7 @@ export default function App() {
       {visitedTabs.has('dashboard') && (
         <TabPanel id="dashboard" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
           <Suspense fallback={<TabFallback />}>
-            <DashboardPage key={tabKeys['dashboard'] || 0} onNavigate={handleDashboardNavigate} />
+            <ReportsPage key={tabKeys['dashboard'] || 0} onNavigate={handleDashboardNavigate} />
           </Suspense>
         </TabPanel>
       )}
