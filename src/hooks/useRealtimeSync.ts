@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { usePOSStore, isSavingCart, isCancellingCheck, isClosingCheck } from '@/store/pos';
+import { usePOSStore, isSavingCart, isCancellingCheck, isClosingCheck, isRecentlyRemoved } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
 import { useAuthStore } from '@/store/auth';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
@@ -24,7 +24,7 @@ export function useRealtimeSync() {
           const id = payload.eventType === 'DELETE'
             ? (payload.old as Record<string, string>).id
             : (payload.new as Record<string, string>).id;
-          if (isCancellingCheck(id) || isClosingCheck(id)) return;
+          if (isCancellingCheck(id) || isClosingCheck(id) || isRecentlyRemoved(id)) return;
           if (payload.eventType === 'DELETE') {
             usePOSStore.getState().deleteCheckLocal(id);
           } else {
@@ -40,7 +40,7 @@ export function useRealtimeSync() {
           if (isSavingCart()) return;
           const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
           const checkId = rec?.check_id;
-          if (checkId && !isCancellingCheck(checkId) && !isClosingCheck(checkId)) usePOSStore.getState().refreshCheckById(checkId);
+          if (checkId && !isCancellingCheck(checkId) && !isClosingCheck(checkId) && !isRecentlyRemoved(checkId)) usePOSStore.getState().refreshCheckById(checkId);
           emitTableChange('check_items');
         },
       )
@@ -50,7 +50,7 @@ export function useRealtimeSync() {
         (payload: PgPayload) => {
           const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
           const checkId = rec?.check_id;
-          if (checkId && !isCancellingCheck(checkId) && !isClosingCheck(checkId)) usePOSStore.getState().refreshCheckById(checkId);
+          if (checkId && !isCancellingCheck(checkId) && !isClosingCheck(checkId) && !isRecentlyRemoved(checkId)) usePOSStore.getState().refreshCheckById(checkId);
           emitTableChange('check_discounts');
         },
       )
@@ -133,7 +133,7 @@ export function useRealtimeSync() {
               const id = payload.eventType === 'DELETE'
                 ? (payload.old as Record<string, string>).id
                 : (payload.new as Record<string, string>).id;
-              if (isCancellingCheck(id) || isClosingCheck(id)) return;
+              if (isCancellingCheck(id) || isClosingCheck(id) || isRecentlyRemoved(id)) return;
               if (payload.eventType === 'DELETE') usePOSStore.getState().deleteCheckLocal(id);
               else usePOSStore.getState().refreshCheckById(id);
               emitTableChange('checks');
@@ -144,7 +144,7 @@ export function useRealtimeSync() {
               if (isSavingCart()) return;
               const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
               const checkId = rec?.check_id;
-              if (checkId && !isCancellingCheck(checkId) && !isClosingCheck(checkId)) usePOSStore.getState().refreshCheckById(checkId);
+              if (checkId && !isCancellingCheck(checkId) && !isClosingCheck(checkId) && !isRecentlyRemoved(checkId)) usePOSStore.getState().refreshCheckById(checkId);
               emitTableChange('check_items');
             }
           )
@@ -152,7 +152,7 @@ export function useRealtimeSync() {
             (payload: PgPayload) => {
               const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
               const checkId = rec?.check_id;
-              if (checkId && !isCancellingCheck(checkId) && !isClosingCheck(checkId)) usePOSStore.getState().refreshCheckById(checkId);
+              if (checkId && !isCancellingCheck(checkId) && !isClosingCheck(checkId) && !isRecentlyRemoved(checkId)) usePOSStore.getState().refreshCheckById(checkId);
               emitTableChange('check_discounts');
             }
           )

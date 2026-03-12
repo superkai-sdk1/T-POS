@@ -67,6 +67,13 @@ export function isCancellingCheck(checkId: string) { return _cancellingCheckIds.
 const _closingCheckIds = new Set<string>();
 export function isClosingCheck(checkId: string) { return _closingCheckIds.has(checkId); }
 
+const _recentlyRemovedCheckIds = new Set<string>();
+function markCheckRemoved(checkId: string) {
+  _recentlyRemovedCheckIds.add(checkId);
+  setTimeout(() => _recentlyRemovedCheckIds.delete(checkId), 5000);
+}
+export function isRecentlyRemoved(checkId: string) { return _recentlyRemovedCheckIds.has(checkId); }
+
 let _lastCartFingerprint = '';
 let _savePromise: Promise<void> | null = null;
 
@@ -266,7 +273,16 @@ export const usePOSStore = create<POSState>((set, get) => ({
       space: Array.isArray(data.space) ? data.space[0] : data.space,
     } as Check;
     _lastCartFingerprint = '';
-    set({ activeCheck: check, cart: [], checkItems: [], appliedDiscounts: [] });
+    set((state) => ({
+      activeCheck: check,
+      cart: [],
+      checkItems: [],
+      appliedDiscounts: [],
+      openChecks: [check, ...state.openChecks],
+      openCheckCarts: { ...state.openCheckCarts, [check.id]: [] },
+      openCheckItems: { ...state.openCheckItems, [check.id]: [] },
+      openCheckDiscounts: { ...state.openCheckDiscounts, [check.id]: [] },
+    }));
     return check;
   },
 
@@ -740,6 +756,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const prevFp = _lastCartFingerprint;
     _lastCartFingerprint = '';
     _cancellingCheckIds.add(checkId);
+    markCheckRemoved(checkId);
     set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [], recentlyDeletedCheck: deletedCheck });
     get().deleteCheckLocal(checkId);
     // Помечаем связанное мероприятие как отменённое, чтобы оно попало в историю
@@ -772,10 +789,34 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   leaveCheck: async () => {
-    get().saveCartToDb(); // Fire and forget
+    const { activeCheck, cart, checkItems, appliedDiscounts } = get();
+    get().saveCartToDb();
     _lastCartFingerprint = '';
-    set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
-    get().loadOpenChecks(); // Fire and forget background reload
+
+    if (activeCheck) {
+      const subtotal = cart.reduce((sum, c) => {
+        if (!c?.item) return sum;
+        const modPrice = (c.modifiers || []).reduce((ms, m) => ms + m.price, 0);
+        return sum + (c.item.price + modPrice) * c.quantity;
+      }, 0);
+      const discountTotal = appliedDiscounts.reduce((sum, d) => sum + d.discount_amount, 0);
+      const total = Math.max(0, subtotal - discountTotal);
+      const checkId = activeCheck.id;
+      set((state) => ({
+        activeCheck: null,
+        cart: [],
+        checkItems: [],
+        appliedDiscounts: [],
+        openChecks: state.openChecks.map((c) =>
+          c.id === checkId ? { ...c, total_amount: total } : c
+        ),
+        openCheckCarts: { ...state.openCheckCarts, [checkId]: cart },
+        openCheckItems: { ...state.openCheckItems, [checkId]: checkItems },
+        openCheckDiscounts: { ...state.openCheckDiscounts, [checkId]: appliedDiscounts },
+      }));
+    } else {
+      set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
+    }
   },
 
   closeCheck: async (payments: PaymentPortion[], bonusUsed = 0, spaceRental = 0, certificateUsed = 0, certificateId: string | null = null) => {
@@ -808,6 +849,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const primaryMethod: PaymentMethod = isSplit ? 'split' : payments[0]?.method || 'cash';
 
     _closingCheckIds.add(checkId);
+    markCheckRemoved(checkId);
 
     set((state) => {
       const { [checkId]: _carts, ...restCarts } = state.openCheckCarts;
@@ -1017,7 +1059,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   refreshCheckById: async (checkId: string) => {
-    if (_cancellingCheckIds.has(checkId) || _closingCheckIds.has(checkId)) return;
+    if (_cancellingCheckIds.has(checkId) || _closingCheckIds.has(checkId) || _recentlyRemovedCheckIds.has(checkId)) return;
 
     const { data: checkData } = await supabase
       .from('checks')
@@ -1118,6 +1160,8 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   deleteCheckLocal: (checkId: string) => {
+    const state = get();
+    if (!state.openChecks.some((c) => c.id === checkId) && state.activeCheck?.id !== checkId) return;
     set((state) => {
       const { [checkId]: _carts, ...restCarts } = state.openCheckCarts;
       const { [checkId]: _items, ...restItems } = state.openCheckItems;
