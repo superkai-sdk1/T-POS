@@ -22,8 +22,8 @@ export default defineConfig({
         background_color: '#0A051E',
         theme_color: '#7D54ED',
         icons: [
-          { src: '/icons/tpos-192.png', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-          { src: '/icons/tpos-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          { src: '/icons/tpos-192.png?v=2', sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+          { src: '/icons/tpos-512.png?v=2', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
       workbox: {
