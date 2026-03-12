@@ -495,7 +495,9 @@ $$ language plpgsql;
 create or replace function decrement_stock(p_item_id uuid, p_qty numeric)
 returns void as $$
 begin
-  update inventory set stock_quantity = greatest(0, stock_quantity - p_qty) where id = p_item_id;
+  update inventory
+  set stock_quantity = stock_quantity - p_qty
+  where id = p_item_id;
 end;
 $$ language plpgsql;
 
