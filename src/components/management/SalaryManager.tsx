@@ -91,35 +91,44 @@ export function SalaryManager() {
       .eq('status', 'closed')
       .order('closed_at', { ascending: false })
       .limit(100);
-    if (!shiftsData) return;
+    if (!shiftsData || shiftsData.length === 0) {
+      setShifts([]);
+      return;
+    }
+
+    const shiftIds = shiftsData.map((s) => s.id);
+
+    const [paidRes, checksRes, refundsRes] = await Promise.all([
+      supabase.from('salary_payments').select('shift_id').in('shift_id', shiftIds),
+      supabase.from('checks').select('shift_id, total_amount').in('shift_id', shiftIds).eq('status', 'closed'),
+      supabase.from('refunds').select('shift_id, total_amount').in('shift_id', shiftIds),
+    ]);
 
     const paidShiftIds = new Set<string>();
-    const { data: paidData } = await supabase.from('salary_payments').select('shift_id');
-    if (paidData) for (const p of paidData) if (p.shift_id) paidShiftIds.add(p.shift_id);
+    if (paidRes.data) for (const p of paidRes.data) if (p.shift_id) paidShiftIds.add(p.shift_id);
 
-    const shiftsWithRevenue: ShiftWithRevenue[] = [];
-    for (const s of shiftsData) {
-      const { data: checks } = await supabase
-        .from('checks')
-        .select('total_amount')
-        .eq('shift_id', s.id)
-        .eq('status', 'closed');
-      const { data: refunds } = await supabase
-        .from('refunds')
-        .select('total_amount')
-        .eq('shift_id', s.id);
-      const totalRevenue = (checks || []).reduce((sum: number, c: { total_amount: number }) => sum + (c.total_amount || 0), 0) -
-        (refunds || []).reduce((sum: number, r: { total_amount: number }) => sum + (r.total_amount || 0), 0);
+    const revenueByShift = new Map<string, number>();
+    for (const c of checksRes.data || []) {
+      const sid = c.shift_id as string;
+      revenueByShift.set(sid, (revenueByShift.get(sid) || 0) + (c.total_amount || 0));
+    }
+    for (const r of refundsRes.data || []) {
+      const sid = r.shift_id as string;
+      revenueByShift.set(sid, (revenueByShift.get(sid) || 0) - (r.total_amount || 0));
+    }
+
+    const shiftsWithRevenue: ShiftWithRevenue[] = shiftsData.map((s) => {
+      const totalRevenue = revenueByShift.get(s.id) || 0;
       const salary = calcSalaryFromRevenue(totalRevenue);
       const closer = Array.isArray(s.closer) ? s.closer[0] : s.closer;
-      shiftsWithRevenue.push({
+      return {
         ...s,
         closer: closer as Profile,
         revenue: totalRevenue,
         salary,
         _paid: paidShiftIds.has(s.id),
-      } as ShiftWithRevenue & { _paid: boolean });
-    }
+      } as ShiftWithRevenue & { _paid: boolean };
+    });
     setShifts(shiftsWithRevenue);
   }, []);
 
