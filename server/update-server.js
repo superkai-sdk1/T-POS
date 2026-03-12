@@ -197,10 +197,10 @@ const server = http.createServer((req, res) => {
     readBody(req).then(async (body) => {
       try {
         const { messages, context } = JSON.parse(body);
-        const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY;
+        const POLZA_KEY = process.env.POLZA_AI_API_KEY;
         const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
         const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
-        const aiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+        const aiUrl = 'https://polza.ai/api/v1/chat/completions';
 
         // --- Fetch compact database context from Supabase ---
         let dbContext = '';
@@ -330,16 +330,16 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
           });
         }
 
-        if (!OPENROUTER_KEY) {
+        if (!POLZA_KEY) {
           json(res, {
             error: 'AI API error: Missing Key',
-            details: 'В файле .env на сервере отсутствует OPENROUTER_API_KEY. Пожалуйста, добавьте его.',
+            details: 'В файле .env на сервере отсутствует POLZA_AI_API_KEY. Получите ключ на polza.ai/dashboard/api-keys',
           }, 200);
           return;
         }
 
         const aiBody = {
-          model: 'meta-llama/llama-3.3-70b-instruct',
+          model: 'deepseek/deepseek-v3.2-exP',
           messages: enrichedMessages,
           temperature: 0.7,
           max_tokens: 4096,
@@ -354,9 +354,7 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${OPENROUTER_KEY}`,
-              'HTTP-Referer': 'https://tpos.ru', // Optional, for OpenRouter analytics
-              'X-Title': 'T-POS',
+              'Authorization': `Bearer ${POLZA_KEY}`,
             },
             body: JSON.stringify(aiBody),
           });
@@ -377,7 +375,10 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
           console.error(`AI API Error (${aiRes.status}):`, JSON.stringify(data));
           let errorDetail = data.error?.message || 'Unknown error';
           if (aiRes.status === 401) {
-            errorDetail = 'Неверный API ключ OpenRouter. Проверьте .env файл и убедитесь, что ключ скопирован полностью.';
+            errorDetail = 'Неверный API ключ Polza.ai. Проверьте .env и ключ на polza.ai/dashboard';
+          }
+          if (aiRes.status === 402) {
+            errorDetail = 'Недостаточно средств на балансе Polza.ai. Пополните счёт на polza.ai/dashboard';
           }
           json(res, {
             error: `AI API error: ${aiRes.status}`,

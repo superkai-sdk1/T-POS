@@ -71,7 +71,7 @@ check_optional "VITE_TELEGRAM_BOT_TOKEN" "admin-бот"
 check_optional "CLIENT_BOT_TOKEN" "wallet-бот"
 check_optional "API_SECRET" "защита /api/system/update"
 check_optional "OWNER_CHAT_IDS" "чат admins"
-check_optional "OPENROUTER_API_KEY" "AI-ассистент"
+check_optional "POLZA_AI_API_KEY" "AI-ассистент (Polza.ai)"
 echo ""
 
 echo "--- Домены ---"
