@@ -35,6 +35,7 @@ interface ReportSection {
   metrics?: { label: string; value: string; trend?: 'up' | 'down' | 'neutral' }[];
   details: string;
   severity?: 'success' | 'warning' | 'danger' | 'info';
+  actions?: string[];
 }
 
 interface ChatMessage {
@@ -74,6 +75,7 @@ function parseAIResponse(text: string): ReportSection[] {
         metrics: Array.isArray(s.metrics) ? s.metrics : undefined,
         details: (s.details as string) || '',
         severity: (s.severity as string) || 'info',
+        actions: Array.isArray(s.actions) ? s.actions : undefined,
       }));
     }
   } catch {
@@ -155,6 +157,19 @@ function ReportCard({ section }: { section: ReportSection }) {
           <div className="pt-2 text-xs text-[var(--c-text)] leading-relaxed whitespace-pre-wrap">
             {section.details}
           </div>
+          {section.actions && section.actions.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-[var(--c-border)]">
+              <p className="text-[11px] font-semibold text-[var(--c-hint)] mb-2">Рекомендуемые действия</p>
+              <ul className="space-y-1.5">
+                {section.actions.map((a, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-[var(--c-text)]">
+                    <span className="text-emerald-500 shrink-0">•</span>
+                    <span>{a}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -162,42 +177,47 @@ function ReportCard({ section }: { section: ReportSection }) {
 }
 
 function buildReportPrompt(userName: string): string {
-  return `Ты — профессиональный бизнес-аналитик POS-системы T-POS для развлекательных заведений.
+  return `Ты — опытный бизнес-аналитик POS-системы T-POS для развлекательных заведений (боулинг, бильярд, клубы).
 Обращайся к пользователю по имени: ${userName}.
 
-ЗАДАЧА: Сгенерировать аналитический отчёт в формате JSON.
+ЗАДАЧА: Сгенерировать глубокий аналитический отчёт в формате JSON.
 
 ФОРМАТ ОТВЕТА — строго JSON (без markdown, без \`\`\`):
 {
   "sections": [
     {
       "emoji": "📊",
-      "title": "Краткое название секции",
+      "title": "Название секции",
       "summary": "Одно предложение — ключевой вывод",
       "metrics": [
-        { "label": "Выручка", "value": "125 000₽", "trend": "up" },
-        { "label": "Маржа", "value": "72%", "trend": "down" }
+        { "label": "Метрика", "value": "125 000₽", "trend": "up" }
       ],
-      "details": "Подробный анализ в 3-5 предложениях с конкретными цифрами и рекомендациями.",
-      "severity": "success|warning|danger|info"
+      "details": "Подробный анализ 4-6 предложений. Конкретные цифры, сравнения с прошлым периодом, выводы.",
+      "severity": "success|warning|danger|info",
+      "actions": ["Действие 1", "Действие 2"]
     }
   ]
 }
 
-ОБЯЗАТЕЛЬНЫЕ СЕКЦИИ (5-7 штук):
-1. 📊 Общий итог — ключевые KPI (выручка, прибыль, чеки, маржа)
-2. 💰 Финансы — анализ доходов vs расходов, себестоимость
-3. 🏆 Топ товары — что продаётся лучше, ABC-анализ
-4. 👥 Игроки — сегменты, удержание, топ клиенты
-5. 💳 Оплата — разбивка по способам
-6. ⚠️ Проблемы — если есть (долги, маржа < 70%, спящие)
-7. 💡 Рекомендации — 3 совета по росту
+ОБЯЗАТЕЛЬНЫЕ СЕКЦИИ (8-10 штук):
+1. 📊 Исполнительное резюме — 3 главных вывода периода, общий вердикт (успех/внимание/тревога)
+2. 💰 Выручка и динамика — сравнение с прошлым периодом, % роста/падения, средний чек
+3. 📈 Прибыль и маржа — чистая прибыль, маржинальность, себестоимость vs выручка
+4. 🏆 Топ-5 товаров — что продаётся лучше всего, выручка по позициям, ABC-группы
+5. 👥 Клиенты — новые/активные/спящие, retention, топ-5 по тратам
+6. 💳 Способы оплаты — разбивка наличные/карта/долг/бонусы, тренды
+7. ⚠️ Риски и проблемы — долги (если есть), низкая маржа, спящие клиенты
+8. 💡 Рекомендации — 4-5 конкретных действий для роста (что сделать на этой неделе)
+9. 🎯 Цели на следующий период — 2-3 измеримых цели на основе данных
+10. 📉 Антирейтинг — что не продаётся, залежавшиеся позиции (если данные есть)
 
 ПРАВИЛА:
-- severity: success если > нормы, warning если на грани, danger если проблема
-- metrics: max 3 для каждой секции, trend: up/down/neutral
-- details: НЕ таблицы, НЕ диаграммы. Только текст с числами.
-- Формат чисел: пробел-разделитель, валюта ₽
+- severity: success если показатели хорошие, warning если на грани нормы, danger если проблема
+- metrics: 2-4 для каждой секции, trend: up/down/neutral
+- details: Только текст. Конкретные числа. Сравнения (было X, стало Y, +Z%)
+- actions: 1-3 конкретных действия для секций с проблемами или возможностями
+- Формат чисел: пробел-разделитель (125 000), валюта ₽
+- Будь конкретен: называй товары, суммы, проценты
 - Ответ СТРОГО JSON. Никакого текста до/после.`;
 }
 

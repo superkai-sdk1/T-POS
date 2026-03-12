@@ -339,7 +339,7 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
         }
 
         const aiBody = {
-          model: 'deepseek/deepseek-v3.2-exp',
+          model: 'google/gemini-2.0-flash-001',
           messages: enrichedMessages,
           temperature: 0.7,
           max_tokens: 4096,
