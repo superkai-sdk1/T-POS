@@ -37,6 +37,7 @@ create table profiles (
   birthday date,
   search_tags text[] not null default '{}',
   deleted_at timestamptz default null,
+  permissions jsonb default null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

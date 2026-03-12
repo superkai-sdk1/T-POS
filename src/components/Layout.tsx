@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { ShiftAnalytics as ShiftAnalyticsModal } from '@/components/shift/ShiftAnalytics';
 import {
-  Receipt, Package, BarChart3, LogOut, Settings, Calendar,
+  Receipt, BarChart3, LogOut, Settings, Calendar,
   PlayCircle, StopCircle, AlertTriangle, X, Plus,
   PanelLeftClose, PanelLeftOpen, RefreshCw, CreditCard, UserPlus,
 } from 'lucide-react';
@@ -113,20 +113,12 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
   const [isRefreshing, setIsRefreshing] = useState(false);
   const scrollRef = useRef<HTMLElement>(null);
 
-  const tabs = useMemo(() => isOwner()
-    ? [
-      { id: 'pos', label: 'Касса', icon: Receipt },
-      { id: 'events', label: 'События', icon: Calendar },
-      { id: 'dashboard', label: 'Отчёты', icon: BarChart3 },
-      { id: 'management', label: 'Меню', icon: Settings },
-    ]
-    : [
-      { id: 'pos', label: 'Касса', icon: Receipt },
-      { id: 'events', label: 'События', icon: Calendar },
-      { id: 'inventory', label: 'Остатки', icon: Package },
-      { id: 'dashboard', label: 'Отчёты', icon: BarChart3 },
-    ],
-    [isOwner]);
+  const tabs = useMemo(() => [
+    { id: 'pos', label: 'Касса', icon: Receipt },
+    { id: 'events', label: 'События', icon: Calendar },
+    { id: 'dashboard', label: 'Отчёты', icon: BarChart3 },
+    { id: 'management', label: 'Управление', icon: Settings },
+  ], []);
 
   const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
 

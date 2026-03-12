@@ -24,7 +24,6 @@ import { CheckView } from '@/components/pos/CheckView';
 import { CheckCartBar } from '@/components/pos/CheckCartBar';
 import { TabPanel } from '@/components/ui/TabPanel';
 
-const InventoryPage = lazy(() => import('@/components/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })));
 const ManagementPage = lazy(() => import('@/components/management/ManagementPage').then((m) => ({ default: m.ManagementPage })));
 const DashboardPage = lazy(() => import('@/components/dashboard/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const EventsPage = lazy(() => import('@/components/events/EventsPage').then((m) => ({ default: m.EventsPage })));
@@ -60,7 +59,7 @@ export default function App() {
   const [showCheckView, setShowCheckView] = useState(false);
   const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(['pos']));
   const [tabKeys, setTabKeys] = useState<Record<string, number>>({});
-  const tabOrder = ['pos', 'events', 'inventory', 'dashboard', 'management'];
+  const tabOrder = ['pos', 'events', 'dashboard', 'management'];
 
   useRealtimeSync();
 
@@ -228,14 +227,6 @@ export default function App() {
           )}
         </div>
       </TabPanel>
-
-      {visitedTabs.has('inventory') && (
-        <TabPanel id="inventory" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
-          <Suspense fallback={<TabFallback />}>
-            <InventoryPage key={tabKeys['inventory'] || 0} />
-          </Suspense>
-        </TabPanel>
-      )}
 
       {visitedTabs.has('events') && (
         <TabPanel id="events" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>

@@ -4,12 +4,29 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
-import { UserPlus, Users, Pencil, Trash2, Eye, EyeOff, Search, Crown } from 'lucide-react';
+import { Switch } from '@/components/ui/Switch';
+import { UserPlus, Users, Pencil, Trash2, Eye, EyeOff, Search, Crown, ArrowLeft, Shield } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
-import type { Profile } from '@/types';
+import { useAuthStore } from '@/store/auth';
+import { normalizePermissions, ALL_KEYS, type ManagementPermissionKey } from '@/lib/permissions';
+import type { Profile, ManagementPermissions } from '@/types';
+
+const PERMISSION_LABELS: Record<ManagementPermissionKey, { label: string; desc: string }> = {
+  menu: { label: 'Меню', desc: 'Позиции, модификаторы, разделы' },
+  inventory: { label: 'Склад', desc: 'Остатки и ревизии' },
+  supplies: { label: 'Поставки', desc: 'История и новые поставки' },
+  clients: { label: 'Клиенты', desc: 'Профили, контакты' },
+  discounts: { label: 'Скидки', desc: 'Процентные и фиксированные' },
+  bonus: { label: 'Бонусы', desc: 'Баллы и настройки' },
+  expenses: { label: 'Расходы', desc: 'Аренда, коммуналка, зарплаты' },
+  debtors: { label: 'Должники', desc: 'Управление долгами' },
+  staff: { label: 'Персонал', desc: 'Сотрудники и доступы' },
+  about: { label: 'О системе', desc: 'Версия, обновление' },
+};
 
 export function StaffManager() {
+  const isOwner = useAuthStore((s) => s.isOwner());
   const [staff, setStaff] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -21,6 +38,9 @@ export function StaffManager() {
   const [password, setPassword] = useState('');
   const [pinCode, setPinCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [permissions, setPermissions] = useState<ManagementPermissions>(() =>
+    Object.fromEntries(ALL_KEYS.map((k) => [k, true])) as ManagementPermissions
+  );
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
@@ -47,6 +67,7 @@ export function StaffManager() {
     setPassword('');
     setPinCode('');
     setShowPassword(false);
+    setPermissions(Object.fromEntries(ALL_KEYS.map((k) => [k, true])) as ManagementPermissions);
     setError('');
     setSelected(null);
   };
@@ -99,6 +120,7 @@ export function StaffManager() {
     setNickname(p.nickname);
     setPassword('');
     setPinCode(p.pin || '');
+    setPermissions(normalizePermissions(p.permissions));
     setShowEdit(true);
     setError('');
   };
@@ -116,11 +138,17 @@ export function StaffManager() {
     if (pinCode.trim()) {
       if (pinCode.trim().length !== 4 || !/^\d{4}$/.test(pinCode.trim())) {
         setError('PIN-код должен быть 4 цифры');
+        setIsSaving(false);
         return;
       }
       updates.pin = pinCode.trim();
     } else if (selected.pin) {
       updates.pin = null;
+    }
+
+    if (selected.role === 'staff' && isOwner) {
+      const hasAll = ALL_KEYS.every((k) => permissions[k] !== false);
+      updates.permissions = hasAll ? null : permissions;
     }
 
     const { error: updErr } = await supabase
@@ -162,6 +190,10 @@ export function StaffManager() {
     setShowEdit(false);
     resetForm();
     loadStaff();
+  };
+
+  const togglePermission = (key: ManagementPermissionKey, value: boolean) => {
+    setPermissions((prev) => ({ ...prev, [key]: value }));
   };
 
   const filtered = search
@@ -211,7 +243,10 @@ export function StaffManager() {
 
       <div className="space-y-2">
         {filtered.map((p) => {
-          const isOwner = p.role === 'owner';
+          const isOwnerRole = p.role === 'owner';
+          const permCount = p.permissions
+            ? ALL_KEYS.filter((k) => p.permissions![k] !== false).length
+            : ALL_KEYS.length;
           return (
             <button
               key={p.id}
@@ -219,9 +254,9 @@ export function StaffManager() {
               className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
             >
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                isOwner ? 'bg-[var(--c-warning-bg)]' : 'bg-[var(--c-accent)]/15'
+                isOwnerRole ? 'bg-[var(--c-warning-bg)]' : 'bg-[var(--c-accent)]/15'
               }`}>
-                {isOwner ? (
+                {isOwnerRole ? (
                   <Crown className="w-4.5 h-4.5 text-[var(--c-warning)]" />
                 ) : (
                   <span className="text-sm font-bold text-[var(--c-accent)]">
@@ -231,11 +266,16 @@ export function StaffManager() {
               </div>
               <div className="text-left flex-1 min-w-0">
                 <p className="font-semibold text-[13px] text-[var(--c-text)] truncate">{p.nickname}</p>
-                <div className="flex gap-1.5 mt-0.5">
-                  {isOwner ? (
+                <div className="flex gap-1.5 mt-0.5 flex-wrap">
+                  {isOwnerRole ? (
                     <Badge variant="warning" size="sm">Владелец</Badge>
                   ) : (
-                    <Badge size="sm">Сотрудник</Badge>
+                    <>
+                      <Badge size="sm">Сотрудник</Badge>
+                      {permCount < ALL_KEYS.length && (
+                        <Badge variant="accent" size="sm">{permCount}/{ALL_KEYS.length}</Badge>
+                      )}
+                    </>
                   )}
                   {p.pin && <Badge variant="success" size="sm">PIN</Badge>}
                   {p.tg_id && <Badge variant="accent" size="sm">TG</Badge>}
@@ -251,6 +291,9 @@ export function StaffManager() {
       {/* Add staff drawer */}
       <Drawer open={showAdd} onClose={() => { setShowAdd(false); resetForm(); }} title="Новый сотрудник" size="sm">
         <div className="space-y-4">
+          <p className="text-xs text-[var(--c-hint)]">
+            Новые сотрудники получают полный доступ ко всем разделам управления по умолчанию.
+          </p>
           <Input
             label="Никнейм"
             placeholder="Имя для входа"
@@ -292,49 +335,82 @@ export function StaffManager() {
         </div>
       </Drawer>
 
-      {/* Edit staff drawer */}
-      <Drawer open={showEdit} onClose={() => { setShowEdit(false); resetForm(); }} title="Редактирование" size="sm">
-        <div className="space-y-4">
+      {/* Edit staff drawer — full interface with permissions */}
+      <Drawer open={showEdit} onClose={() => { setShowEdit(false); resetForm(); }} title="Редактирование профиля" size="lg">
+        <div className="space-y-6">
           {selected?.role === 'owner' && (
             <div className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--c-warning-bg)] border border-[var(--c-border)]">
               <Crown className="w-4 h-4 text-[var(--c-warning)] shrink-0" />
-              <span className="text-xs font-semibold text-[var(--c-warning)]">Владелец системы</span>
+              <span className="text-xs font-semibold text-[var(--c-warning)]">Владелец — полный доступ ко всем разделам</span>
             </div>
           )}
-          <Input
-            label="Никнейм"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            autoFocus
-          />
-          <div className="relative">
-            <Input
-              label="Новый пароль"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Оставьте пустым чтобы не менять"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-[38px] text-[var(--c-hint)] hover:text-[var(--c-hint)]"
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
+
+          <div>
+            <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Учётные данные</h3>
+            <div className="space-y-3">
+              <Input
+                label="Никнейм"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                autoFocus
+              />
+              <div className="relative">
+                <Input
+                  label="Новый пароль"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Оставьте пустым чтобы не менять"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-[38px] text-[var(--c-hint)] hover:text-[var(--c-hint)]"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <Input
+                label="PIN-код (4 цифры)"
+                placeholder="Для быстрого входа"
+                value={pinCode}
+                onChange={(e) => setPinCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                maxLength={4}
+                inputMode="numeric"
+              />
+            </div>
           </div>
-          <Input
-            label="PIN-код (4 цифры)"
-            placeholder="Для быстрого входа"
-            value={pinCode}
-            onChange={(e) => setPinCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
-            maxLength={4}
-            inputMode="numeric"
-          />
+
+          {selected?.role === 'staff' && isOwner && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Shield className="w-4 h-4 text-[var(--c-accent)]" />
+                <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">
+                  Доступ к разделам управления
+                </h3>
+              </div>
+              <p className="text-xs text-[var(--c-muted)] mb-3">
+                Касса и аналитика доступны всегда. Включите или отключите доступ к остальным разделам.
+              </p>
+              <div className="space-y-2">
+                {ALL_KEYS.map((key) => (
+                  <Switch
+                    key={key}
+                    checked={permissions[key] !== false}
+                    onCheckedChange={(v) => togglePermission(key, v)}
+                    label={PERMISSION_LABELS[key].label}
+                    description={PERMISSION_LABELS[key].desc}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
           {error && (
             <p className="text-[13px] text-[var(--c-danger)] bg-[var(--c-danger-bg)] rounded-lg px-3 py-2">{error}</p>
           )}
-          <div className="flex gap-2">
+
+          <div className="flex gap-2 pt-2">
             <Button fullWidth onClick={handleSaveEdit}>
               Сохранить
             </Button>

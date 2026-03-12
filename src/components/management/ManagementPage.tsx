@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback, startTransition } from 'react';
+import { useState, useEffect, useCallback, useMemo, startTransition } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/auth';
+import { hasPermission } from '@/lib/permissions';
 import {
   Package, Truck, ClipboardList, Users, AlertTriangle, Wallet, Star, Banknote, UtensilsCrossed, UserCircle,
   ArrowLeft, Percent, Info, SlidersHorizontal, Ticket, Receipt, History, Filter, ArrowDownToLine, TrendingDown, Box, MoreVertical, Search,
@@ -29,19 +31,20 @@ const categoryLabels: Record<string, string> = {
   drinks: 'Напитки', food: 'Еда', bar: 'Снеки', hookah: 'Кальяны', services: 'Услуги',
 };
 
-const menuItems: { id: Screen; label: string; desc: string; icon: typeof Package; color: string }[] = [
-  { id: 'menuEditor', label: 'Меню', desc: 'Позиции, модификаторы, разделы', icon: UtensilsCrossed, color: 'bg-orange-500/10 text-orange-400' },
-  { id: 'inventory', label: 'Склад', desc: 'Контроль остатков и ревизии', icon: Package, color: 'bg-blue-500/10 text-blue-400' },
-  { id: 'supplies', label: 'Поставки', desc: 'История и новые поставки', icon: Truck, color: 'bg-[var(--c-success-bg)] text-[var(--c-success)]' },
-  { id: 'clients', label: 'Клиенты', desc: 'Профили, контакты, ДР', icon: UserCircle, color: 'bg-sky-500/10 text-sky-400' },
-  { id: 'discounts', label: 'Скидки', desc: 'Процентные и фиксированные', icon: Percent, color: 'bg-pink-500/10 text-pink-400' },
-  { id: 'bonus', label: 'Бонусы', desc: 'Баллы и настройки', icon: Star, color: 'bg-yellow-500/10 text-yellow-400' },
-  { id: 'certificates', label: 'Сертификаты', desc: 'Подарочные сертификаты', icon: Ticket, color: 'bg-[var(--c-warning-bg)] text-[var(--c-warning)]' },
+type PermKey = import('@/types').ManagementPermissionKey;
+const ALL_MENU_ITEMS: { id: Screen; label: string; desc: string; icon: typeof Package; color: string; permKey?: PermKey }[] = [
+  { id: 'menuEditor', label: 'Меню', desc: 'Позиции, модификаторы, разделы', icon: UtensilsCrossed, color: 'bg-orange-500/10 text-orange-400', permKey: 'menu' },
+  { id: 'inventory', label: 'Склад', desc: 'Контроль остатков и ревизии', icon: Package, color: 'bg-blue-500/10 text-blue-400', permKey: 'inventory' },
+  { id: 'supplies', label: 'Поставки', desc: 'История и новые поставки', icon: Truck, color: 'bg-[var(--c-success-bg)] text-[var(--c-success)]', permKey: 'supplies' },
+  { id: 'clients', label: 'Клиенты', desc: 'Профили, контакты, ДР', icon: UserCircle, color: 'bg-sky-500/10 text-sky-400', permKey: 'clients' },
+  { id: 'discounts', label: 'Скидки', desc: 'Процентные и фиксированные', icon: Percent, color: 'bg-pink-500/10 text-pink-400', permKey: 'discounts' },
+  { id: 'bonus', label: 'Бонусы', desc: 'Баллы и настройки', icon: Star, color: 'bg-yellow-500/10 text-yellow-400', permKey: 'bonus' },
+  { id: 'certificates', label: 'Сертификаты', desc: 'Подарочные сертификаты', icon: Ticket, color: 'bg-[var(--c-warning-bg)] text-[var(--c-warning)]', permKey: 'bonus' },
   { id: 'cash', label: 'Инкассация', desc: 'Операции с наличными', icon: Banknote, color: 'bg-cyan-500/10 text-cyan-400' },
-  { id: 'expenses', label: 'Расходы', desc: 'Аренда, коммуналка, зарплаты', icon: Receipt, color: 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' },
-  { id: 'debtors', label: 'Должники', desc: 'Управление долгами', icon: Wallet, color: 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' },
-  { id: 'staff', label: 'Персонал', desc: 'Сотрудники и доступы', icon: Users, color: 'bg-violet-500/10 text-violet-400' },
-  { id: 'about', label: 'О системе', desc: 'Версия, обновление', icon: Info, color: 'bg-gray-500/10 text-gray-400' },
+  { id: 'expenses', label: 'Расходы', desc: 'Аренда, коммуналка, зарплаты', icon: Receipt, color: 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]', permKey: 'expenses' },
+  { id: 'debtors', label: 'Должники', desc: 'Управление долгами', icon: Wallet, color: 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]', permKey: 'debtors' },
+  { id: 'staff', label: 'Персонал', desc: 'Сотрудники и доступы', icon: Users, color: 'bg-violet-500/10 text-violet-400', permKey: 'staff' },
+  { id: 'about', label: 'О системе', desc: 'Версия, обновление', icon: Info, color: 'bg-gray-500/10 text-gray-400', permKey: 'about' },
 ];
 
 interface ManagementPageProps {
@@ -53,6 +56,14 @@ type MenuSubTab = 'positions' | 'modifiers';
 type InventorySubTab = 'stock' | 'revision';
 
 export function ManagementPage({ initialScreen, isActive = true }: ManagementPageProps) {
+  const user = useAuthStore((s) => s.user);
+  const menuItems = useMemo(() => {
+    return ALL_MENU_ITEMS.filter((item) => {
+      if (!item.permKey) return true;
+      return hasPermission(user, item.permKey);
+    });
+  }, [user]);
+
   const resolveInitial = (): { screen: Screen; menuSub?: MenuSubTab; inventorySub?: InventorySubTab } => {
     if (initialScreen === 'modifiers') return { screen: 'menuEditor', menuSub: 'modifiers' };
     if (initialScreen === 'revision') return { screen: 'inventory', inventorySub: 'revision' };
@@ -65,18 +76,27 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
 
   useEffect(() => {
     if (initialScreen === 'modifiers') {
-      setScreen('menuEditor');
-      setMenuSubTab('modifiers');
+      if (hasPermission(user, 'menu')) {
+        setScreen('menuEditor');
+        setMenuSubTab('modifiers');
+      } else setScreen('menu');
     } else if (initialScreen === 'revision') {
-      setScreen('inventory');
-      setInventorySubTab('revision');
-    } else if (initialScreen !== undefined && initialScreen !== screen) {
-      setScreen(initialScreen as Screen);
+      if (hasPermission(user, 'inventory')) {
+        setScreen('inventory');
+        setInventorySubTab('revision');
+      } else setScreen('menu');
+    } else if (initialScreen !== undefined && initialScreen !== 'menu') {
+      const item = ALL_MENU_ITEMS.find((m) => m.id === initialScreen);
+      if (item && (!item.permKey || hasPermission(user, item.permKey))) {
+        setScreen(initialScreen as Screen);
+      } else {
+        setScreen('menu');
+      }
     } else if (initialScreen === undefined && screen !== 'menu') {
       setScreen('menu');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialScreen]);
+  }, [initialScreen, user]);
 
   const goToMenu = useCallback(() => startTransition(() => setScreen('menu')), []);
   const addHideReason = useLayoutStore((s) => s.addHideReason);

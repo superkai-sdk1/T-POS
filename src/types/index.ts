@@ -1,4 +1,22 @@
 export type UserRole = 'owner' | 'staff' | 'client';
+
+/** Management section IDs (cash & analytics always accessible) */
+export type ManagementPermissionKey =
+  | 'menu' | 'inventory' | 'supplies' | 'clients' | 'discounts' | 'bonus'
+  | 'expenses' | 'debtors' | 'staff' | 'about';
+
+export interface ManagementPermissions {
+  menu?: boolean;
+  inventory?: boolean;
+  supplies?: boolean;
+  clients?: boolean;
+  discounts?: boolean;
+  bonus?: boolean;
+  expenses?: boolean;
+  debtors?: boolean;
+  staff?: boolean;
+  about?: boolean;
+}
 export type ClientTier = 'regular' | 'resident' | 'student';
 export type VisitTariff = 'regular' | 'resident' | 'student' | 'single_game';
 export type ItemCategory = string;
@@ -22,6 +40,7 @@ export interface Profile {
   birthday: string | null;
   client_tier: ClientTier;
   search_tags: string[];
+  permissions?: ManagementPermissions | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;

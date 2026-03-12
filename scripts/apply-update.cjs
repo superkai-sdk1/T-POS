@@ -135,6 +135,9 @@ ALTER TABLE expenses REPLICA IDENTITY FULL;
 -- Search tags for client profiles
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS search_tags text[] NOT NULL DEFAULT '{}';
 
+-- Staff management permissions (null = full access by default)
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS permissions jsonb DEFAULT null;
+
 -- Certificate tracking on checks
 ALTER TABLE checks ADD COLUMN IF NOT EXISTS certificate_used numeric NOT NULL DEFAULT 0;
 DO $$ BEGIN
