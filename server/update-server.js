@@ -339,7 +339,7 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
         }
 
         const aiBody = {
-          model: 'deepseek/deepseek-v3.2-exP',
+          model: 'deepseek/deepseek-v3.2-exp',
           messages: enrichedMessages,
           temperature: 0.7,
           max_tokens: 4096,
