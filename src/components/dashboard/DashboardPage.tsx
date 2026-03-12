@@ -13,7 +13,7 @@ import { supabase } from '@/lib/supabase';
 import {
   BarChart3, ShoppingBag, Users, Sparkles,
   ChevronDown, ChevronRight, ChevronLeft,
-  Banknote, CreditCard, HandCoins, Star,
+  Banknote, CreditCard, HandCoins, Star, RotateCcw,
 } from 'lucide-react';
 
 type TabId = 'finance' | 'checks' | 'products' | 'players' | 'ai';
@@ -50,6 +50,7 @@ interface ReportDayAnalytics {
   totalRevenue: number;
   totalChecks: number;
   avgCheck: number;
+  refundsByCheckId: Map<string, number>;
 }
 
 export function DashboardPage({ onNavigate }: DashboardPageProps) {
@@ -264,6 +265,7 @@ function ChecksTab({ allChecks }: {
       totalRevenue += c.total_amount;
     }
 
+    const refundsByCheckId = new Map<string, number>();
     const checkIdsList = dayChecks.map((c) => c.id);
     if (checkIdsList.length > 0) {
       const { data: refundsData } = await supabase
@@ -272,12 +274,13 @@ function ChecksTab({ allChecks }: {
         .in('check_id', checkIdsList);
       for (const r of refundsData || []) {
         totalRevenue -= r.total_amount || 0;
+        refundsByCheckId.set(r.check_id, (refundsByCheckId.get(r.check_id) || 0) + (r.total_amount || 0));
       }
     }
 
     const totalChecks = dayChecks.length;
     const avgCheck = totalChecks > 0 ? Math.round(totalRevenue / totalChecks) : 0;
-    setDayAnalytics({ checks: dayChecks, totalRevenue, totalChecks, avgCheck });
+    setDayAnalytics({ checks: dayChecks, totalRevenue, totalChecks, avgCheck, refundsByCheckId });
     setAnalyticsLoading(false);
   }, []);
 
@@ -378,11 +381,19 @@ function ChecksTab({ allChecks }: {
             ) : dayAnalytics.checks.map((c) => {
               const isExp = expandedCheckId === c.id;
               const origTotal = c.total_amount + (c.bonus_used || 0);
+              const refundAmt = dayAnalytics.refundsByCheckId?.get(c.id) ?? 0;
+              const hasRefund = refundAmt > 0;
+              const displayTotal = hasRefund ? origTotal - refundAmt : (c.bonus_used > 0 ? origTotal : c.total_amount);
               return (
                 <button key={c.id} onClick={() => setExpandedCheckId(isExp ? null : c.id)} className="w-full text-left p-2.5 rounded-xl card active:scale-[0.99] transition-transform">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <span className="font-medium text-sm text-[var(--c-text)] truncate">{c.player_nickname}</span>
+                      {hasRefund && (
+                        <span className="flex items-center gap-0.5 shrink-0 text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--c-warning-bg)] text-[var(--c-warning)] font-medium">
+                          <RotateCcw className="w-3 h-3" /> Возврат
+                        </span>
+                      )}
                       <span className="text-[10px] text-[var(--c-hint)]">{fmtTime(c.closed_at)}</span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -395,7 +406,7 @@ function ChecksTab({ allChecks }: {
                           {pmLabels[c.payment_method] || c.payment_method}
                         </span>
                       )}
-                      <span className="font-bold text-sm text-[var(--c-accent)]">{fmtCur(c.bonus_used > 0 ? origTotal : c.total_amount)}</span>
+                      <span className="font-bold text-sm text-[var(--c-accent)]">{fmtCur(displayTotal)}</span>
                       <ChevronDown className={`w-4 h-4 text-[var(--c-muted)] transition-transform ${isExp ? 'rotate-180' : ''}`} />
                     </div>
                   </div>
@@ -423,6 +434,12 @@ function ChecksTab({ allChecks }: {
                               <span className="font-semibold text-[var(--c-text)]">{fmtCur(c.total_amount)}</span>
                             </div>
                           </>
+                        )}
+                        {hasRefund && (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-[var(--c-warning)]">Возврат</span>
+                            <span className="font-semibold text-[var(--c-warning)]">−{fmtCur(refundAmt)}</span>
+                          </div>
                         )}
                         {c.payment_method === 'split' && splitBreakdowns[c.id] ? (
                           <div className="space-y-0.5">

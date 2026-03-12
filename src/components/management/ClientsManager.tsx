@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef, useMemo, memo, startTransitio
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { ClientAvatar } from '@/components/ui/ClientAvatar';
 import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
 import {
@@ -16,45 +17,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import type { Profile, ClientTier } from '@/types';
 
 const WALLET_BOT_USERNAME = (import.meta.env.VITE_WALLET_BOT_USERNAME as string) || 'titanwalletrobot';
-
-// Compress image to max 256px and JPEG quality 0.7 (~10-30KB)
-function compressImage(file: File, maxSize = 256): Promise<{ blob: Blob; dataUrl: string }> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      const canvas = document.createElement('canvas');
-      let { width, height } = img;
-      if (width > height) {
-        if (width > maxSize) { height = (height * maxSize) / width; width = maxSize; }
-      } else {
-        if (height > maxSize) { width = (width * maxSize) / height; height = maxSize; }
-      }
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        resolve({ blob: file, dataUrl: URL.createObjectURL(file) });
-        return;
-      }
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(
-        (blob) => {
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-          resolve({ blob: blob || file, dataUrl });
-        },
-        'image/jpeg',
-        0.7
-      );
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      resolve({ blob: file, dataUrl: URL.createObjectURL(file) });
-    };
-    img.src = objectUrl;
-  });
-}
+import { compressImage } from '@/lib/image';
 
 interface LinkRequest {
   id: string;
@@ -95,14 +58,7 @@ const ClientRow = memo(function ClientRow({ client, onSelect, getAge, isBirthday
       onClick={() => onSelect(client)}
       className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive text-left"
     >
-      {/* Avatar */}
-      <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 bg-[var(--c-surface-hover)] flex items-center justify-center">
-        {client.photo_url ? (
-          <img src={client.photo_url} alt={client.nickname} className="w-full h-full object-cover" />
-        ) : (
-          <User className="w-5 h-5 text-[var(--c-hint)]" />
-        )}
-      </div>
+      <ClientAvatar photoUrl={client.photo_url} id={client.id} size="lg" />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
@@ -112,6 +68,8 @@ const ClientRow = memo(function ClientRow({ client, onSelect, getAge, isBirthday
           )}
         </div>
         <div className="flex items-center gap-2 mt-0.5">
+          {client.role === 'owner' && <Badge variant="warning" size="sm">Владелец</Badge>}
+          {client.role === 'staff' && <Badge size="sm">Сотрудник</Badge>}
           {client.client_tier === 'resident' && <Badge variant="success" size="sm">Резидент</Badge>}
           {client.client_tier === 'student' && <Badge variant="accent" size="sm">Студент</Badge>}
           {client.tg_username && (
@@ -161,7 +119,7 @@ export function ClientsManager() {
     const { data } = await supabase
       .from('profiles')
       .select('*')
-      .eq('role', 'client')
+      .in('role', ['client', 'staff', 'owner'])
       .is('deleted_at', null)
       .order('nickname');
     if (data) setClients(data as Profile[]);
@@ -523,14 +481,10 @@ export function ClientsManager() {
           <div className="space-y-3">
             {/* Компактный блок: аватар + статус (имя уже в заголовке) */}
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full overflow-hidden bg-[var(--c-surface-hover)] flex items-center justify-center shrink-0">
-                {detailClient.photo_url ? (
-                  <img src={detailClient.photo_url} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-6 h-6 text-[var(--c-muted)]" />
-                )}
-              </div>
+              <ClientAvatar photoUrl={detailClient.photo_url} id={detailClient.id} size="xl" />
               <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+                {detailClient.role === 'owner' && <Badge variant="warning" size="sm">Владелец</Badge>}
+                {detailClient.role === 'staff' && <Badge size="sm">Сотрудник</Badge>}
                 {detailClient.client_tier === 'resident' && <Badge variant="success" size="sm">Резидент</Badge>}
                 {detailClient.client_tier === 'student' && <Badge variant="accent" size="sm">Студент</Badge>}
                 <span className="text-[10px] text-[var(--c-muted)]">
@@ -602,12 +556,14 @@ export function ClientsManager() {
               >
                 <QrCode className="w-4 h-4" />
               </Button>
-              <Button
-                variant="danger"
-                onClick={() => { setShowDetail(false); setDeleteTarget(detailClient); }}
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+              {(detailClient.role === 'client') && (
+                <Button
+                  variant="danger"
+                  onClick={() => { setShowDetail(false); setDeleteTarget(detailClient); }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -663,13 +619,7 @@ export function ClientsManager() {
           {/* Photo */}
           <div className="flex items-center gap-3">
             <div className="relative shrink-0">
-              <div className="w-16 h-16 rounded-full overflow-hidden bg-[var(--c-surface-hover)] flex items-center justify-center">
-                {form.photo_url ? (
-                  <img src={form.photo_url} alt="Photo" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-7 h-7 text-[var(--c-muted)]" />
-                )}
-              </div>
+              <ClientAvatar photoUrl={form.photo_url} id={editingClient?.id || 'new'} size="2xl" />
               {form.photo_url && (
                 <button
                   onClick={() => updateField('photo_url', '')}
@@ -779,13 +729,7 @@ export function ClientsManager() {
         {deleteTarget && (
           <div className="space-y-4">
             <div className="flex items-center gap-3 p-2.5 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-border)]">
-              <div className="w-10 h-10 rounded-full overflow-hidden bg-[var(--c-surface-hover)] flex items-center justify-center shrink-0">
-                {deleteTarget.photo_url ? (
-                  <img src={deleteTarget.photo_url} className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-5 h-5 text-[var(--c-hint)]" />
-                )}
-              </div>
+              <ClientAvatar photoUrl={deleteTarget.photo_url} id={deleteTarget.id} size="md" />
               <div>
                 <p className="text-[13px] font-semibold text-[var(--c-text)]">{deleteTarget.nickname}</p>
                 <p className="text-xs text-[var(--c-danger)]">Все данные будут утеряны</p>

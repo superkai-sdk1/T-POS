@@ -5,10 +5,11 @@ import type { Check, CheckItem, CheckPayment } from '@/types';
 import {
   Receipt, User, DoorOpen, Home, Building2, Warehouse,
   ChevronRight, Package, ArrowLeft, CreditCard, Banknote,
-  BadgeDollarSign, Wallet, Split, PiggyBank,
+  BadgeDollarSign, Wallet, Split, PiggyBank, RotateCcw,
 } from 'lucide-react';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import { Badge } from '@/components/ui/Badge';
+import { ClientAvatar } from '@/components/ui/ClientAvatar';
 import { hapticFeedback } from '@/lib/telegram';
 
 const spaceIconMap: Record<string, typeof Home> = {
@@ -100,15 +101,6 @@ function getAnonymousClientName(seed: string): string {
   return ANON_CLIENT_NAMES[idx];
 }
 
-function getAvatarHue(seed: string): number {
-  if (!seed) return 0;
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-  }
-  return hash % 360;
-}
-
 interface CheckDetail {
   check: Check;
   items: (CheckItem & { item?: { name: string; category?: string } })[];
@@ -122,9 +114,12 @@ export function ShiftClosedChecks() {
   const [detail, setDetail] = useState<CheckDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  const [refundsByCheckId, setRefundsByCheckId] = useState<Map<string, number>>(new Map());
+
   const load = useCallback(async () => {
     if (!activeShift?.id) {
       setChecks([]);
+      setRefundsByCheckId(new Map());
       setIsLoading(false);
       return;
     }
@@ -143,8 +138,23 @@ export function ShiftClosedChecks() {
           space: Array.isArray(c.space) ? c.space[0] : c.space,
         })) as Check[],
       );
+      const checkIds = data.map((c) => c.id);
+      if (checkIds.length > 0) {
+        const { data: refundsData } = await supabase
+          .from('refunds')
+          .select('check_id, total_amount')
+          .in('check_id', checkIds);
+        const map = new Map<string, number>();
+        for (const r of refundsData || []) {
+          map.set(r.check_id, (map.get(r.check_id) || 0) + (r.total_amount || 0));
+        }
+        setRefundsByCheckId(map);
+      } else {
+        setRefundsByCheckId(new Map());
+      }
     } else {
       setChecks([]);
+      setRefundsByCheckId(new Map());
     }
     setIsLoading(false);
   }, [activeShift?.id]);
@@ -225,7 +235,6 @@ export function ShiftClosedChecks() {
     const Icon = hasSpace
       ? spaceIconMap[check.space!.type] || DoorOpen
       : null;
-    const avatarHue = getAvatarHue(check.player_id || check.id);
 
     const pm = paymentMethodLabels[check.payment_method || ''];
 
@@ -250,11 +259,12 @@ export function ShiftClosedChecks() {
               {hasSpace && Icon ? (
                 <Icon className="w-5 h-5 text-[var(--c-accent)]" />
               ) : (
-                <img
-                  src="/icons/client.svg"
-                  alt=""
-                  className="w-full h-full object-cover"
-                  style={{ filter: `hue-rotate(${avatarHue}deg) saturate(0.7) brightness(1.25)` }}
+                <ClientAvatar
+                  photoUrl={check.player?.photo_url}
+                  id={check.player_id || check.id}
+                  size="md"
+                  rounded="xl"
+                  className="w-full h-full !rounded-xl"
                 />
               )}
             </div>
@@ -428,7 +438,9 @@ export function ShiftClosedChecks() {
         const Icon = hasSpace
           ? spaceIconMap[check.space!.type] || DoorOpen
           : null;
-        const avatarHue = getAvatarHue(check.player_id || check.id);
+        const refundAmt = refundsByCheckId.get(check.id) ?? 0;
+        const hasRefund = refundAmt > 0;
+        const displayAmount = hasRefund ? (check.total_amount || 0) - refundAmt : (check.total_amount || 0);
 
         return (
           <button
@@ -442,11 +454,12 @@ export function ShiftClosedChecks() {
                   {hasSpace && Icon ? (
                     <Icon className="w-5 h-5 text-[var(--c-accent)]" />
                   ) : (
-                    <img
-                      src="/icons/client.svg"
-                      alt=""
-                      className="w-full h-full object-cover"
-                      style={{ filter: `hue-rotate(${avatarHue}deg) saturate(0.7) brightness(1.25)` }}
+                    <ClientAvatar
+                      photoUrl={check.player?.photo_url}
+                      id={check.player_id || check.id}
+                      size="md"
+                      rounded="xl"
+                      className="w-full h-full !rounded-xl"
                     />
                   )}
                 </div>
@@ -454,14 +467,19 @@ export function ShiftClosedChecks() {
                   <p className="font-semibold text-sm text-[var(--c-text)] truncate">
                     {displayName}
                   </p>
-                  <p className="text-[11px] text-[var(--c-hint)] mt-0.5">
+                  <p className="text-[11px] text-[var(--c-hint)] mt-0.5 flex items-center gap-1.5">
+                    {hasRefund && (
+                      <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--c-warning-bg)] text-[var(--c-warning)] font-medium">
+                        <RotateCcw className="w-2.5 h-2.5" /> Возврат
+                      </span>
+                    )}
                     {check.closed_at ? fmtDate(check.closed_at) : '—'}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <span className="font-black italic tabular-nums text-[var(--c-accent)]">
-                  {fmtCur(check.total_amount || 0)}
+                  {fmtCur(displayAmount)}
                 </span>
                 <ChevronRight className="w-4 h-4 text-[var(--c-muted)]" />
               </div>

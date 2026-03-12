@@ -36,6 +36,7 @@ export interface ProductStat {
 export interface PlayerStat {
   id: string;
   nickname: string;
+  photo_url: string | null;
   total: number;
   count: number;
   avgCheck: number;
@@ -318,7 +319,7 @@ export function useAnalyticsData() {
       if (!map[c.player_id]) {
         const profile = allPlayers.find((p) => p.id === c.player_id);
         map[c.player_id] = {
-          id: c.player_id, nickname: nick, total: 0, count: 0,
+          id: c.player_id, nickname: nick, photo_url: profile?.photo_url || null, total: 0, count: 0,
           avgCheck: 0, lastVisit: new Date(c.closed_at), firstVisit: new Date(c.closed_at),
           segment: 'new', bonusBalance: profile?.bonus_points || 0, tier: profile?.client_tier || 'regular',
         };
@@ -383,6 +384,7 @@ export function useAnalyticsData() {
     delta, productStats, playerStats, retentionRate,
     debtors, totalDebt, supplies, cashOps, opExpenses, supplyCostInPeriod, salaryPaidInPeriod,
     admins, allPlayers, allChecks, allCheckItems, itemCostMap,
+    refundsByCheckId,
     reload: loadAll,
   };
 }

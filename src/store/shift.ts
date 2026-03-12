@@ -29,6 +29,7 @@ export interface ShiftAnalytics {
   paymentBreakdown: Record<string, { count: number; amount: number }>;
   itemsSold: { name: string; category: string; quantity: number; revenue: number }[];
   playerBreakdown: { nickname: string; checks: number; total: number }[];
+  refundsByCheckId: Map<string, number>;
 }
 
 export const useShiftStore = create<ShiftState>()(
@@ -338,9 +339,11 @@ export const useShiftStore = create<ShiftState>()(
           .select('total_amount, check_id')
           .eq('shift_id', shiftId);
 
+        const refundsByCheckId = new Map<string, number>();
         let totalRefunded = 0;
         for (const r of refundsData || []) {
           totalRefunded += r.total_amount || 0;
+          refundsByCheckId.set(r.check_id, (refundsByCheckId.get(r.check_id) || 0) + (r.total_amount || 0));
           const origCheck = (checksData || []).find((c) => c.id === r.check_id);
           if (origCheck) {
             const pm = origCheck.payment_method || 'unknown';
@@ -365,6 +368,7 @@ export const useShiftStore = create<ShiftState>()(
           paymentBreakdown,
           itemsSold: Array.from(itemMap.values()).sort((a, b) => b.revenue - a.revenue),
           playerBreakdown: Array.from(playerMap.values()).sort((a, b) => b.total - a.total),
+          refundsByCheckId,
         };
       },
       upsertShiftLocal: (shift: Shift) => {

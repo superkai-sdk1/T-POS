@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { getTelegramWebApp, initTelegramApp } from '@/lib/telegram';
 import QRCode from 'qrcode';
+import { ClientAvatar } from '@/components/ui/ClientAvatar';
 
 const supabaseUrl = import.meta.env.PROD
   ? `${window.location.origin}/sb`
@@ -464,9 +465,12 @@ function WalletCard({ profile }: { profile: Profile }) {
           </div>
 
           <div className="relative flex items-end justify-between">
-            <div>
-              <p className="text-[10px] text-white/25 uppercase tracking-wider mb-0.5">Владелец</p>
-              <p className="text-sm font-semibold text-white/80">{profile.nickname}</p>
+            <div className="flex items-center gap-2">
+              <ClientAvatar photoUrl={profile.photo_url} id={profile.id} size="sm" rounded="xl" className="!rounded-lg shrink-0" />
+              <div>
+                <p className="text-[10px] text-white/25 uppercase tracking-wider mb-0.5">Владелец</p>
+                <p className="text-sm font-semibold text-white/80">{profile.nickname}</p>
+              </div>
             </div>
             {profile.balance < 0 ? (
               <div className="text-right">

@@ -1,15 +1,17 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
 import { Switch } from '@/components/ui/Switch';
-import { UserPlus, Users, Pencil, Trash2, Eye, EyeOff, Search, Crown, ArrowLeft, Shield } from 'lucide-react';
+import { UserPlus, Users, Pencil, Trash2, Eye, EyeOff, Search, Crown, ArrowLeft, Shield, X } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import { useAuthStore } from '@/store/auth';
 import { normalizePermissions, ALL_KEYS, type ManagementPermissionKey } from '@/lib/permissions';
+import { compressImage } from '@/lib/image';
+import { ClientAvatar } from '@/components/ui/ClientAvatar';
 import type { Profile, ManagementPermissions } from '@/types';
 
 const PERMISSION_LABELS: Record<ManagementPermissionKey, { label: string; desc: string }> = {
@@ -42,8 +44,11 @@ export function StaffManager() {
   const [permissions, setPermissions] = useState<ManagementPermissions>(() =>
     Object.fromEntries(ALL_KEYS.map((k) => [k, true])) as ManagementPermissions
   );
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadStaff = useCallback(async () => {
     const { data } = await supabase
@@ -67,10 +72,33 @@ export function StaffManager() {
     setNickname('');
     setPassword('');
     setPinCode('');
+    setPhotoUrl('');
     setShowPassword(false);
     setPermissions(Object.fromEntries(ALL_KEYS.map((k) => [k, true])) as ManagementPermissions);
     setError('');
     setSelected(null);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    const { blob, dataUrl } = await compressImage(file);
+    setPhotoUrl(dataUrl);
+    try {
+      const path = `staff-${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+      const { error: uploadErr } = await supabase.storage.from('client-photos').upload(path, blob, {
+        contentType: 'image/jpeg',
+        upsert: true,
+      });
+      if (!uploadErr) {
+        const { data: urlData } = supabase.storage.from('client-photos').getPublicUrl(path);
+        if (urlData?.publicUrl) setPhotoUrl(urlData.publicUrl);
+      }
+    } catch { /* fallback to dataUrl */ }
+    hapticNotification('success');
+    setIsUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleAdd = async () => {
@@ -121,6 +149,7 @@ export function StaffManager() {
     setNickname(p.nickname);
     setPassword('');
     setPinCode(p.pin || '');
+    setPhotoUrl(p.photo_url || '');
     setPermissions(normalizePermissions(p.permissions));
     setShowEdit(true);
     setError('');
@@ -132,7 +161,7 @@ export function StaffManager() {
     setError('');
     setIsSaving(true);
 
-    const updates: Record<string, unknown> = { nickname: nickname.trim() };
+    const updates: Record<string, unknown> = { nickname: nickname.trim(), photo_url: photoUrl || null };
     if (password.trim()) {
       updates.password_hash = password.trim();
     }
@@ -254,17 +283,21 @@ export function StaffManager() {
               onClick={() => openEdit(p)}
               className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
             >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                isOwnerRole ? 'bg-[var(--c-warning-bg)]' : 'bg-[var(--c-accent)]/15'
-              }`}>
-                {isOwnerRole ? (
-                  <Crown className="w-4.5 h-4.5 text-[var(--c-warning)]" />
-                ) : (
-                  <span className="text-sm font-bold text-[var(--c-accent)]">
-                    {p.nickname.charAt(0).toUpperCase()}
-                  </span>
-                )}
-              </div>
+              {p.photo_url ? (
+                <ClientAvatar photoUrl={p.photo_url} id={p.id} size="md" rounded="xl" />
+              ) : (
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  isOwnerRole ? 'bg-[var(--c-warning-bg)]' : 'bg-[var(--c-accent)]/15'
+                }`}>
+                  {isOwnerRole ? (
+                    <Crown className="w-4.5 h-4.5 text-[var(--c-warning)]" />
+                  ) : (
+                    <span className="text-sm font-bold text-[var(--c-accent)]">
+                      {p.nickname.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="text-left flex-1 min-w-0">
                 <p className="font-semibold text-[13px] text-[var(--c-text)] truncate">{p.nickname}</p>
                 <div className="flex gap-1.5 mt-0.5 flex-wrap">
@@ -345,6 +378,39 @@ export function StaffManager() {
               <span className="text-xs font-semibold text-[var(--c-warning)]">Владелец — полный доступ ко всем разделам</span>
             </div>
           )}
+
+          <div>
+            <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Профиль</h3>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="relative shrink-0">
+                <ClientAvatar photoUrl={photoUrl || selected?.photo_url} id={selected?.id || ''} size="2xl" />
+                {photoUrl && (
+                  <button
+                    onClick={() => setPhotoUrl('')}
+                    className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-red-500/80 flex items-center justify-center active:scale-90"
+                  >
+                    <X className="w-3 h-3 text-white" />
+                  </button>
+                )}
+              </div>
+              <div>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="text-xs text-[var(--c-accent)] font-medium"
+                >
+                  {isUploading ? 'Загрузка...' : photoUrl || selected?.photo_url ? 'Изменить фото' : 'Загрузить фото'}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </div>
+            </div>
+          </div>
 
           <div>
             <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Учётные данные</h3>

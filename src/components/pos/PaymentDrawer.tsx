@@ -7,6 +7,7 @@ import { usePOSStore, type PaymentPortion } from '@/store/pos';
 import { supabase } from '@/lib/supabase';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { Banknote, CreditCard, Clock, Star, Split, Plus, Minus, ArrowLeft, Ticket, X, PiggyBank } from 'lucide-react';
+import { ClientAvatar } from '@/components/ui/ClientAvatar';
 import type { PaymentMethod, Profile, Certificate, Event } from '@/types';
 
 interface PaymentDrawerProps {
@@ -377,9 +378,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
         <div className="space-y-6 relative z-10">
           {playerInfo && (
             <div className="bg-white/5 border border-white/10 rounded-3xl p-4 flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400 font-black border border-purple-500/20 shadow-inner">
-                {playerInfo.nickname?.charAt(0).toUpperCase()}
-              </div>
+              <ClientAvatar photoUrl={playerInfo.photo_url} id={playerInfo.id} size="xl" rounded="xl" className="!rounded-2xl shrink-0" />
               <div>
                 <h4 className="font-bold text-white">{playerInfo.nickname}</h4>
                 <div className="flex gap-2 mt-1 flex-wrap">

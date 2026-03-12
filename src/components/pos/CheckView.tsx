@@ -18,6 +18,7 @@ import { useMenuCategories, getIconComponent, getCategoryColorConfig } from '@/h
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { useHideNav } from '@/store/layout';
 import { Input } from '@/components/ui/Input';
+import { ClientAvatar } from '@/components/ui/ClientAvatar';
 import { Button } from '@/components/ui/Button';
 import type { InventoryItem, Discount, Profile, VisitTariff, ClientTier, Modifier, ClientDiscountRule, Event } from '@/types';
 
@@ -89,15 +90,6 @@ function getAnonymousClientName(seed: string): string {
   }
   const idx = hash % ANON_CLIENT_NAMES.length;
   return ANON_CLIENT_NAMES[idx];
-}
-
-function getAvatarHue(seed: string): number {
-  if (!seed) return 0;
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-  }
-  return hash % 360;
 }
 
 function tierToTariff(tier: ClientTier | undefined): VisitTariff {
@@ -404,11 +396,6 @@ export function CheckView({ onBack }: CheckViewProps) {
       setEventAmountStr('');
     }
   }, [activeCheck?.id]);
-  const avatarHue = useMemo(
-    () => getAvatarHue(activeCheck?.player_id || activeCheck?.id || ''),
-    [activeCheck?.player_id, activeCheck?.id],
-  );
-
   // Close view when activeCheck disappears (e.g. cancelled or deleted remotely)
   useEffect(() => {
     if (!activeCheck) onBack();
@@ -789,20 +776,13 @@ export function CheckView({ onBack }: CheckViewProps) {
             >
               <ArrowLeft className="w-4.5 h-4.5 text-white" />
             </button>
-            {activeCheck.player?.photo_url ? (
-              <div className="w-9 h-9 rounded-xl overflow-hidden shrink-0 border border-white/10">
-                <img src={activeCheck.player.photo_url} alt="" className="w-full h-full object-cover" />
-              </div>
-            ) : (
-              <div className="w-9 h-9 rounded-xl overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
-                <img
-                  src="/icons/client.svg"
-                  alt=""
-                  className="w-full h-full object-cover"
-                  style={{ filter: `hue-rotate(${avatarHue}deg) saturate(0.7) brightness(1.25)` }}
-                />
-              </div>
-            )}
+            <ClientAvatar
+              photoUrl={activeCheck.player?.photo_url}
+              id={activeCheck.player_id || activeCheck.id}
+              size="md"
+              rounded="xl"
+              className="w-9 h-9 !rounded-xl shrink-0 !bg-white/10 border border-white/10"
+            />
             <div className="min-w-0">
               <h2 className="text-[14px] font-black italic uppercase leading-none truncate text-white">
                 {linkedEvent

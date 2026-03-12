@@ -10,7 +10,7 @@ import { AiReport } from './AiReport';
 import {
   BarChart3, Receipt, ShoppingBag, Users, Sparkles,
   ChevronLeft, ChevronRight, CalendarDays, Layers,
-  Crown, Search, Filter, X,
+  Crown, Search, Filter, X, RotateCcw,
 } from 'lucide-react';
 import type { Shift } from '@/types';
 
@@ -75,12 +75,15 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
     }
   }, [reportMode, shifts, selectedShiftId, setSelectedShiftId]);
 
+  const refundsByCheckIdForDetail = reportMode === 'shift' && shiftAnalytics ? shiftAnalytics.refundsByCheckId : data.refundsByCheckId;
   const openCheckDetail = useCallback(async (checkId: string) => {
     const checks = reportMode === 'shift' && shiftAnalytics
       ? shiftAnalytics.checks
       : data.checks;
     const c = checks.find((ch) => ch.id === checkId);
     if (!c) return;
+
+    const refundAmount = refundsByCheckIdForDetail?.get(checkId) ?? 0;
 
     let items: { name: string; quantity: number; price: number }[] = [];
     if ('items' in c && Array.isArray(c.items)) {
@@ -111,15 +114,16 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
     setCheckDetail({
       id: c.id,
       player_nickname: nick || 'Гость',
-      total_amount: c.total_amount,
+      total_amount: refundAmount > 0 ? c.total_amount - refundAmount : c.total_amount,
       payment_method: c.payment_method,
       bonus_used: (c as { bonus_used?: number }).bonus_used || 0,
       closed_at: c.closed_at ?? '',
       items,
       payments: payments.length > 0 ? payments : undefined,
+      refund_amount: refundAmount > 0 ? refundAmount : undefined,
     });
     setCheckDetailOpen(true);
-  }, [reportMode, shiftAnalytics, data.checks]);
+  }, [reportMode, shiftAnalytics, data.checks, refundsByCheckIdForDetail]);
 
   const currentRevenue = reportMode === 'shift' && shiftAnalytics
     ? shiftAnalytics.totalRevenue
@@ -291,6 +295,7 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
           onCheckClick={openCheckDetail}
           onNavigate={nav}
           onShowAllChecks={() => setTab('checks')}
+          refundsByCheckId={reportMode === 'shift' && shiftAnalytics ? shiftAnalytics.refundsByCheckId : data.refundsByCheckId}
         />
       )}
 
@@ -300,6 +305,7 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
           paymentBreakdown={currentPaymentBreakdown}
           onCheckClick={openCheckDetail}
           checkPaymentsMap={data.checkPaymentsMap}
+          refundsByCheckId={reportMode === 'shift' && shiftAnalytics ? shiftAnalytics.refundsByCheckId : data.refundsByCheckId}
         />
       )}
 
@@ -497,6 +503,7 @@ function OverviewTab({
   onCheckClick,
   onNavigate,
   onShowAllChecks,
+  refundsByCheckId,
 }: {
   revenue: number;
   revenueDelta?: number;
@@ -508,6 +515,7 @@ function OverviewTab({
   onCheckClick: (id: string) => void;
   onNavigate: (t: string) => void;
   onShowAllChecks: () => void;
+  refundsByCheckId?: Map<string, number>;
 }) {
   const totalPayments = Object.values(paymentBreakdown).reduce((s, p) => s + (typeof p.amount === 'number' ? p.amount : 0), 0);
 
@@ -580,23 +588,34 @@ function OverviewTab({
       <div>
         <p className="text-[10px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Последние чеки</p>
         <div className="space-y-1.5">
-          {checks.slice(0, 5).map((c) => (
-            <button
-              key={c.id}
-              onClick={() => onCheckClick(c.id)}
-              className="w-full flex items-center justify-between p-2.5 rounded-xl card-interactive text-left"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="font-medium text-sm text-[var(--c-text)] truncate">
-                  {(c as { player_nickname?: string }).player_nickname || (c as { player?: { nickname: string } }).player?.nickname || 'Гость'}
+          {checks.slice(0, 5).map((c) => {
+            const refundAmt = refundsByCheckId?.get(c.id) ?? 0;
+            const hasRefund = refundAmt > 0;
+            return (
+              <button
+                key={c.id}
+                onClick={() => onCheckClick(c.id)}
+                className="w-full flex items-center justify-between p-2.5 rounded-xl card-interactive text-left"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-medium text-sm text-[var(--c-text)] truncate">
+                    {(c as { player_nickname?: string }).player_nickname || (c as { player?: { nickname: string } }).player?.nickname || 'Гость'}
+                  </span>
+                  {hasRefund && (
+                    <span className="flex items-center gap-0.5 shrink-0 text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--c-warning-bg)] text-[var(--c-warning)] font-medium">
+                      <RotateCcw className="w-3 h-3" /> Возврат
+                    </span>
+                  )}
+                  <span className="text-[10px] text-[var(--c-hint)] shrink-0">
+                    {new Date(c.closed_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                <span className="font-bold text-sm text-[var(--c-accent)] tabular-nums shrink-0">
+                  {fmtCur(hasRefund ? c.total_amount - refundAmt : c.total_amount)}
                 </span>
-                <span className="text-[10px] text-[var(--c-hint)] shrink-0">
-                  {new Date(c.closed_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              </div>
-              <span className="font-bold text-sm text-[var(--c-accent)] tabular-nums shrink-0">{fmtCur(c.total_amount)}</span>
-            </button>
-          ))}
+              </button>
+            );
+          })}
           {checks.length > 5 && (
             <button
               onClick={onShowAllChecks}
@@ -616,11 +635,13 @@ function ChecksTab({
   paymentBreakdown,
   onCheckClick,
   checkPaymentsMap,
+  refundsByCheckId,
 }: {
   checks: { id: string; player_nickname?: string; total_amount: number; payment_method: string | null; bonus_used?: number; closed_at: string; player?: { nickname: string } | null }[];
   paymentBreakdown: Record<string, { count?: number; amount: number }>;
   onCheckClick: (id: string) => void;
   checkPaymentsMap: Record<string, { method: string; amount: number }[]>;
+  refundsByCheckId?: Map<string, number>;
 }) {
   const fmtTime = (d: string) => new Date(d).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
@@ -638,6 +659,9 @@ function ChecksTab({
       {checks.map((c) => {
         const nick = (c as { player_nickname?: string }).player_nickname || (c as { player?: { nickname: string } }).player?.nickname || 'Гость';
         const origTotal = c.total_amount + (c.bonus_used || 0);
+        const refundAmt = refundsByCheckId?.get(c.id) ?? 0;
+        const hasRefund = refundAmt > 0;
+        const displayTotal = hasRefund ? origTotal - refundAmt : (c.bonus_used ? origTotal : c.total_amount);
         return (
           <button
             key={c.id}
@@ -646,6 +670,11 @@ function ChecksTab({
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
               <span className="font-medium text-sm text-[var(--c-text)] truncate">{nick}</span>
+              {hasRefund && (
+                <span className="flex items-center gap-0.5 shrink-0 text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--c-warning-bg)] text-[var(--c-warning)] font-medium">
+                  <RotateCcw className="w-3 h-3" /> Возврат
+                </span>
+              )}
               <span className="text-[10px] text-[var(--c-hint)] shrink-0">{fmtTime(c.closed_at)}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -659,7 +688,7 @@ function ChecksTab({
                   {pmLabels[c.payment_method] || c.payment_method}
                 </span>
               )}
-              <span className="font-bold text-sm text-[var(--c-accent)] tabular-nums">{fmtCur(c.bonus_used ? origTotal : c.total_amount)}</span>
+              <span className="font-bold text-sm text-[var(--c-accent)] tabular-nums">{fmtCur(displayTotal)}</span>
             </div>
           </button>
         );

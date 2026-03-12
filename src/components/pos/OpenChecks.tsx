@@ -12,6 +12,7 @@ import type { Profile, Space, VisitTariff, ClientTier, Check } from '@/types';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { RefundsManager } from '@/components/management/RefundsManager';
 import { useHideNav } from '@/store/layout';
+import { ClientAvatar } from '@/components/ui/ClientAvatar';
 
 interface OpenChecksProps {
   onSelectCheck: () => void;
@@ -87,15 +88,6 @@ function getAnonymousClientName(seed: string): string {
   return ANON_CLIENT_NAMES[idx];
 }
 
-function getAvatarHue(seed: string): number {
-  if (!seed) return 0;
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-  }
-  return hash % 360;
-}
-
 function tierToTariff(tier: ClientTier): VisitTariff {
   if (tier === 'resident') return 'resident';
   if (tier === 'student') return 'student';
@@ -141,12 +133,6 @@ const CheckTile = memo(({ check, onSelect, listMode, exiting, isEvent }: { check
       })();
   const isEventCheck = !!check.note?.startsWith('Заказ в ');
   const isEmpty = !check.player && !check.space && check.total_amount === 0 && !isEventCheck;
-  const avatarUrl = check.player?.photo_url ?? null;
-  const avatarHue = useMemo(
-    () => getAvatarHue(check.player?.id || check.id),
-    [check.player?.id, check.id],
-  );
-
   return (
     <button
       type="button"
@@ -171,14 +157,13 @@ const CheckTile = memo(({ check, onSelect, listMode, exiting, isEvent }: { check
                 const Icon = spaceIconMap[check.space?.type ?? ''] || DoorOpen;
                 return <Icon className={listMode ? 'w-4 h-4' : 'w-5 h-5'} />;
               })()
-            ) : avatarUrl ? (
-              <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
-              <img
-                src="/icons/client.svg"
-                alt=""
-                className="w-full h-full object-cover"
-                style={{ filter: `hue-rotate(${avatarHue}deg) saturate(0.7) brightness(1.25)` }}
+              <ClientAvatar
+                photoUrl={check.player?.photo_url}
+                id={check.player?.id || check.id}
+                size="md"
+                rounded="xl"
+                className="w-full h-full !rounded-xl !bg-transparent"
               />
             )}
           </div>

@@ -1,6 +1,7 @@
 import { memo, useMemo, useState, useEffect } from 'react';
 import { useLayoutStore } from '@/store/layout';
 import { ArrowLeft, Users, Crown, Search, Activity, UserPlus, Moon, ChevronRight, Star } from 'lucide-react';
+import { ClientAvatar } from '@/components/ui/ClientAvatar';
 import { Badge } from '@/components/ui/Badge';
 import type { PlayerStat } from '@/hooks/useAnalyticsData';
 import { useAnalyticsStore } from '@/store/analytics';
@@ -137,6 +138,7 @@ export const PlayersModule = memo(function PlayersModule({ players, retentionRat
                 }`}>
                   {i === 0 ? <Crown className="w-3 h-3" /> : i + 1}
                 </span>
+                <ClientAvatar photoUrl={p.photo_url} id={p.id} size="sm" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <p className="text-sm font-medium text-[var(--c-text)] truncate">{p.nickname}</p>
@@ -189,6 +191,7 @@ function PlayerDrilldown({ player, checks, onBack }: {
         <button onClick={onBack} className="w-9 h-9 rounded-xl bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform shrink-0">
           <ArrowLeft className="w-4 h-4 text-[var(--c-text)]" />
         </button>
+        <ClientAvatar photoUrl={player.photo_url} id={player.id} size="md" />
         <div>
           <h2 className="text-lg font-bold text-[var(--c-text)]">{player.nickname}</h2>
           <div className="flex items-center gap-2">

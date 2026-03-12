@@ -1,7 +1,7 @@
 import { Drawer } from '@/components/ui/Drawer';
 import {
   Receipt, ShoppingBag, Users, CreditCard,
-  TrendingUp,
+  TrendingUp, RotateCcw,
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { useSwipe } from '@/hooks/useSwipe';
@@ -169,11 +169,20 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
               {analytics.checks.length === 0 && (
                 <p className="text-center text-xs text-[var(--c-muted)] py-8">Нет закрытых чеков</p>
               )}
-              {analytics.checks.map((c) => (
+              {analytics.checks.map((c) => {
+                const refundAmt = analytics.refundsByCheckId?.get(c.id) ?? 0;
+                const hasRefund = refundAmt > 0;
+                const displayTotal = (c.total_amount + (c.bonus_used || 0) + (c.certificate_used || 0)) - refundAmt;
+                return (
                 <div key={c.id} className="p-2.5 rounded-xl card space-y-1.5">
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="font-semibold text-[13px] text-[var(--c-text)]">{c.player_nickname}</span>
+                      {hasRefund && (
+                        <span className="inline-flex items-center gap-0.5 ml-1.5 text-[9px] px-1.5 py-0.5 rounded-md bg-[var(--c-warning-bg)] text-[var(--c-warning)] font-medium">
+                          <RotateCcw className="w-2.5 h-2.5" /> Возврат
+                        </span>
+                      )}
                       <span className="text-[10px] text-[var(--c-muted)] ml-1.5">{fmtTime(c.closed_at)}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -187,7 +196,7 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                           {pmLabels[c.payment_method] || c.payment_method}
                         </span>
                       )}
-                      <span className="font-black text-[13px] text-[var(--c-accent)] tabular-nums">{fmtCur(c.total_amount + (c.bonus_used || 0) + (c.certificate_used || 0))}</span>
+                      <span className="font-black text-[13px] text-[var(--c-accent)] tabular-nums">{fmtCur(displayTotal)}</span>
                     </div>
                   </div>
                   {c.items.length > 0 && (
@@ -212,8 +221,15 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                       <span className="font-bold text-[#8b5cf6] tabular-nums">-{fmtCur(c.certificate_used)}</span>
                     </div>
                   )}
+                  {hasRefund && (
+                    <div className="flex justify-between text-[11px] pt-1 border-t border-[var(--c-border)]">
+                      <span className="text-[var(--c-warning)]">Возврат</span>
+                      <span className="font-bold text-[var(--c-warning)] tabular-nums">−{fmtCur(refundAmt)}</span>
+                    </div>
+                  )}
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
 

@@ -9,6 +9,7 @@ import {
   AlertTriangle, TrendingDown, TrendingUp, User, Wallet,
   Plus, Search, ArrowUpCircle, ArrowDownCircle, Clock, PiggyBank,
 } from 'lucide-react';
+import { ClientAvatar } from '@/components/ui/ClientAvatar';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import type { Profile, Transaction } from '@/types';
@@ -319,9 +320,7 @@ export function DebtorsManager() {
               onClick={() => openAdjust(d)}
               className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
             >
-              <div className={`w-10 h-10 rounded-xl ${isDebtorTab ? 'bg-red-500/15' : 'bg-cyan-500/15'} flex items-center justify-center shrink-0`}>
-                <User className={`w-5 h-5 ${isDebtorTab ? 'text-red-400' : 'text-cyan-400'}`} />
-              </div>
+              <ClientAvatar photoUrl={d.photo_url} id={d.id} size="md" rounded="xl" />
               <div className="flex-1 min-w-0 text-left">
                 <p className="font-semibold text-[13px] text-[var(--c-text)] truncate">{d.nickname}</p>
                 {d.is_resident && <span className="text-[10px] text-[var(--c-success)]">Резидент</span>}
@@ -537,9 +536,7 @@ export function DebtorsManager() {
                     onClick={() => { setSelectedNewClient(c); hapticFeedback('light'); }}
                     className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-[var(--c-surface-hover)] flex items-center justify-center shrink-0">
-                      <User className="w-4 h-4 text-[var(--c-hint)]" />
-                    </div>
+                    <ClientAvatar photoUrl={c.photo_url} id={c.id} size="sm" rounded="xl" className="!rounded-lg" />
                     <div className="flex-1 min-w-0 text-left">
                       <p className="font-medium text-[13px] text-[var(--c-text)] truncate">{c.nickname}</p>
                       {c.balance !== 0 && (
@@ -558,9 +555,7 @@ export function DebtorsManager() {
           ) : (
             <>
               <div className="flex items-center gap-3 p-3 rounded-xl card border border-[var(--c-border)]">
-                <div className="w-10 h-10 rounded-lg bg-[var(--c-surface-hover)] flex items-center justify-center shrink-0">
-                  <User className="w-5 h-5 text-[var(--c-hint)]" />
-                </div>
+                <ClientAvatar photoUrl={selectedNewClient.photo_url} id={selectedNewClient.id} size="md" rounded="xl" className="!rounded-lg" />
                 <div className="flex-1">
                   <p className="font-semibold text-[var(--c-text)]">{selectedNewClient.nickname}</p>
                   <p className={`text-[11px] ${selectedNewClient.balance < 0 ? 'text-[var(--c-danger)]' : selectedNewClient.balance > 0 ? 'text-cyan-400' : 'text-[var(--c-muted)]'}`}>

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/ui/Drawer';
 import { Plus, Percent, Banknote, Trash2, Edit2, Package, Search, Hash, User, Zap } from 'lucide-react';
+import { ClientAvatar } from '@/components/ui/ClientAvatar';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import type { Discount, DiscountType, InventoryItem, Profile, ClientDiscountRule } from '@/types';
@@ -30,6 +31,7 @@ export function DiscountsManager() {
   const [showRuleForm, setShowRuleForm] = useState(false);
   const [ruleProfileId, setRuleProfileId] = useState<string | null>(null);
   const [ruleProfileName, setRuleProfileName] = useState('');
+  const [ruleProfilePhotoUrl, setRuleProfilePhotoUrl] = useState<string | null>(null);
   const [ruleItemId, setRuleItemId] = useState<string | null>(null);
   const [ruleItemName, setRuleItemName] = useState('');
   const [ruleType, setRuleType] = useState<DiscountType>('percentage');
@@ -170,6 +172,7 @@ export function DiscountsManager() {
   const openRuleForm = () => {
     setRuleProfileId(null);
     setRuleProfileName('');
+    setRuleProfilePhotoUrl(null);
     setRuleItemId(null);
     setRuleItemName('');
     setRuleType('percentage');
@@ -241,6 +244,7 @@ export function DiscountsManager() {
   const selectClient = (p: Profile) => {
     setRuleProfileId(p.id);
     setRuleProfileName(p.nickname);
+    setRuleProfilePhotoUrl(p.photo_url || null);
     setShowClientPicker(false);
     hapticFeedback('light');
   };
@@ -248,6 +252,7 @@ export function DiscountsManager() {
   const clearRuleClient = () => {
     setRuleProfileId(null);
     setRuleProfileName('');
+    setRuleProfilePhotoUrl(null);
   };
 
   const handleItemPickerSelect = (item: InventoryItem) => {
@@ -545,7 +550,7 @@ export function DiscountsManager() {
             <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider mb-2">Клиент</p>
             {ruleProfileId ? (
               <div className="flex items-center gap-2 p-2 rounded-xl card">
-                <User className="w-4 h-4 text-[var(--c-accent)] shrink-0" />
+                <ClientAvatar photoUrl={ruleProfilePhotoUrl} id={ruleProfileId} size="sm" rounded="xl" className="!rounded-lg" />
                 <span className="text-[13px] text-[var(--c-text)] truncate flex-1 min-w-0">{ruleProfileName}</span>
                 <button onClick={clearRuleClient} className="w-6 h-6 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 shrink-0">
                   <Trash2 className="w-3 h-3 text-[var(--c-hint)]" />
@@ -644,9 +649,7 @@ export function DiscountsManager() {
                 onClick={() => selectClient(p)}
                 className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-[var(--c-surface-hover)] transition-colors active:scale-[0.98]"
               >
-                <div className="w-8 h-8 rounded-lg bg-[var(--c-surface)] flex items-center justify-center shrink-0">
-                  <User className="w-4 h-4 text-[var(--c-hint)]" />
-                </div>
+                <ClientAvatar photoUrl={p.photo_url} id={p.id} size="sm" rounded="xl" className="!rounded-lg" />
                 <div className="text-left flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{p.nickname}</p>
                 </div>

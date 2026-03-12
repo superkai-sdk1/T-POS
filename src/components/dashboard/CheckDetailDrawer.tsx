@@ -1,5 +1,5 @@
 import { Drawer } from '@/components/ui/Drawer';
-import { Receipt, Banknote, CreditCard, HandCoins, Star, Gift } from 'lucide-react';
+import { Receipt, Banknote, CreditCard, HandCoins, Star, Gift, RotateCcw } from 'lucide-react';
 
 const pmLabels: Record<string, string> = {
   cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы', deposit: 'Депозит', split: 'Разделённая',
@@ -19,6 +19,7 @@ export interface CheckDetail {
   closed_at: string;
   items: { name: string; quantity: number; price: number }[];
   payments?: { method: string; amount: number }[];
+  refund_amount?: number;
 }
 
 interface Props {
@@ -49,8 +50,13 @@ export function CheckDetailDrawer({ check, open, onClose }: Props) {
           <span className="text-lg font-black text-[var(--c-accent)] tabular-nums">{fmtCur(check.total_amount)}</span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium text-[var(--c-text)]">{check.player_nickname}</span>
+          {check.refund_amount != null && check.refund_amount > 0 && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--c-warning-bg)] text-[var(--c-warning)]">
+              <RotateCcw className="w-3 h-3" /> Возврат −{fmtCur(check.refund_amount)}
+            </span>
+          )}
           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
             paymentMethod === 'cash' ? 'bg-[var(--c-success-bg)] text-[var(--c-success)]' :
             paymentMethod === 'card' ? 'bg-[var(--c-info-bg)] text-[var(--c-info)]' :
