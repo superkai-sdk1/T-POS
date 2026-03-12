@@ -417,7 +417,7 @@ export function WalletApp() {
           filter: 'blur(120px)',
         }}
       />
-      <div className="w-full max-w-[380px] px-6 pt-8 pb-8 flex flex-col gap-8">
+      <div className="w-full max-w-[380px] px-6 pt-16 pb-8 flex flex-col gap-8">
         <WalletCard profile={profile} />
         <TransactionList transactions={transactions} />
       </div>
@@ -546,7 +546,7 @@ function WalletCard({ profile }: { profile: Profile }) {
           >
             {/* Noise overlay */}
             <div
-              className="absolute inset-0 pointer-events-none z-[2] rounded-[42px] opacity-[0.05] mix-blend-overlay"
+              className="absolute inset-0 pointer-events-none z-[2] overflow-hidden rounded-[42px] opacity-[0.05] mix-blend-overlay"
               style={{
                 backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
               }}
@@ -574,7 +574,7 @@ function WalletCard({ profile }: { profile: Profile }) {
             {/* Dynamic shimmer */}
             <div
               ref={shimmerRef}
-              className="absolute inset-0 pointer-events-none z-[5] rounded-[42px]"
+              className="absolute inset-0 pointer-events-none z-[5] overflow-hidden rounded-[42px]"
               style={{
                 background: 'radial-gradient(circle at var(--shimmer-x, 50%) var(--shimmer-y, 50%), rgba(255,255,255,0.15) 0%, transparent 45%)',
               }}
@@ -583,7 +583,7 @@ function WalletCard({ profile }: { profile: Profile }) {
             <div className="flex justify-between items-center mb-8 relative z-10">
               <span className="font-black text-xl tracking-[6px] text-white">TITAN</span>
               <div
-                className="px-4 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider text-white"
+                className="px-4 py-1.5 rounded-2xl text-[10px] font-extrabold uppercase tracking-wider text-white"
                 style={{
                   background: 'rgba(255, 255, 255, 0.08)',
                   backdropFilter: 'blur(8px)',
@@ -665,7 +665,7 @@ function TransactionList({ transactions }: { transactions: Transaction[] }) {
           >
             <div className="flex items-center gap-4">
               <div
-                className="w-11 h-11 rounded-[18px] flex items-center justify-center shrink-0"
+                className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
                 style={{ background: 'rgba(255, 255, 255, 0.03)' }}
               >
                 {tx.type === 'bonus_accrual' ? (
