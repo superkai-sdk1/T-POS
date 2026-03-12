@@ -218,7 +218,7 @@ export interface SalaryPayment {
   id: string;
   profile_id: string;
   amount: number;
-  shift_id: string | null;
+  shift_id: string;
   payment_method: 'cash' | 'transfer';
   cash_operation_id: string | null;
   paid_by: string | null;

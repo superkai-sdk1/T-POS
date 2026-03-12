@@ -4,14 +4,16 @@ import { useAuthStore } from '@/store/auth';
 import { useShiftStore } from '@/store/shift';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
+import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { calcSalaryFromRevenue } from '@/lib/salary';
-import { Banknote, Wallet, ArrowRightLeft, UserPlus } from 'lucide-react';
-import { hapticFeedback, hapticNotification } from '@/lib/telegram';
+import { Banknote, ArrowRightLeft, CalendarDays, Users, BarChart3, Clock } from 'lucide-react';
+import { hapticNotification } from '@/lib/telegram';
 import type { SalaryPayment, Profile, Shift } from '@/types';
 
 const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
+const fmtDate = (d: string) => new Date(d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+const fmtDateTime = (d: string) => new Date(d).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 interface ShiftWithRevenue extends Shift {
   revenue: number;
@@ -19,23 +21,27 @@ interface ShiftWithRevenue extends Shift {
   closer?: Profile;
 }
 
+type Tab = 'shifts' | 'history' | 'reports';
+
 export function SalaryManager() {
   const user = useAuthStore((s) => s.user);
   const isOwner = useAuthStore((s) => s.isOwner());
   const activeShift = useShiftStore((s) => s.activeShift);
 
-  const [payments, setPayments] = useState<SalaryPayment[]>([]);
+  const [tab, setTab] = useState<Tab>(isOwner ? 'shifts' : 'history');
+  const [payments, setPayments] = useState<(SalaryPayment & { shiftClosedAt?: string; shiftRevenue?: number })[]>([]);
   const [shifts, setShifts] = useState<ShiftWithRevenue[]>([]);
   const [staff, setStaff] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
   const [showPay, setShowPay] = useState(false);
+  const [payShift, setPayShift] = useState<ShiftWithRevenue | null>(null);
   const [selectedRecipient, setSelectedRecipient] = useState<Profile | null>(null);
-  const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
-  const [amount, setAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
   const [filterMonth, setFilterMonth] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -48,7 +54,7 @@ export function SalaryManager() {
 
     let q = supabase
       .from('salary_payments')
-      .select('*, profile:profiles!salary_payments_profile_id_fkey(nickname), paidBy:profiles!salary_payments_paid_by_fkey(nickname)')
+      .select('*, profile:profiles!salary_payments_profile_id_fkey(nickname), paidBy:profiles!salary_payments_paid_by_fkey(nickname), shift:shifts!salary_payments_shift_id_fkey(closed_at)')
       .gte('created_at', start)
       .lte('created_at', end)
       .order('created_at', { ascending: false });
@@ -58,22 +64,34 @@ export function SalaryManager() {
     }
     const { data } = await q;
     if (data) {
-      setPayments(data.map((p) => ({
-        ...p,
-        profile: Array.isArray(p.profile) ? p.profile[0] : p.profile,
-        paidBy: Array.isArray(p.paidBy) ? p.paidBy[0] : p.paidBy,
-      })) as SalaryPayment[]);
+      const mapped = data.map((p: Record<string, unknown>) => {
+        const profile = Array.isArray(p.profile) ? p.profile[0] : p.profile;
+        const paidBy = Array.isArray(p.paidBy) ? p.paidBy[0] : p.paidBy;
+        const shift = Array.isArray(p.shift) ? p.shift[0] : p.shift;
+        return {
+          ...p,
+          profile,
+          paidBy,
+          shift,
+          shiftClosedAt: (shift as Record<string, string> | null)?.closed_at || null,
+        };
+      });
+      setPayments(mapped as typeof payments);
     }
   }, [filterMonth, isOwner, user?.id]);
 
   const loadShifts = useCallback(async () => {
     const { data: shiftsData } = await supabase
       .from('shifts')
-      .select('*, closer:profiles!shifts_closed_by_fkey(nickname)')
+      .select('*, closer:profiles!shifts_closed_by_fkey(id, nickname)')
       .eq('status', 'closed')
       .order('closed_at', { ascending: false })
-      .limit(50);
+      .limit(100);
     if (!shiftsData) return;
+
+    const paidShiftIds = new Set<string>();
+    const { data: paidData } = await supabase.from('salary_payments').select('shift_id');
+    if (paidData) for (const p of paidData) if (p.shift_id) paidShiftIds.add(p.shift_id);
 
     const shiftsWithRevenue: ShiftWithRevenue[] = [];
     for (const s of shiftsData) {
@@ -86,15 +104,17 @@ export function SalaryManager() {
         .from('refunds')
         .select('total_amount')
         .eq('shift_id', s.id);
-      const totalRevenue = (checks || []).reduce((sum, c) => sum + (c.total_amount || 0), 0) -
-        (refunds || []).reduce((sum, r) => sum + (r.total_amount || 0), 0);
+      const totalRevenue = (checks || []).reduce((sum: number, c: { total_amount: number }) => sum + (c.total_amount || 0), 0) -
+        (refunds || []).reduce((sum: number, r: { total_amount: number }) => sum + (r.total_amount || 0), 0);
       const salary = calcSalaryFromRevenue(totalRevenue);
+      const closer = Array.isArray(s.closer) ? s.closer[0] : s.closer;
       shiftsWithRevenue.push({
         ...s,
-        closer: Array.isArray(s.closer) ? s.closer[0] : s.closer,
+        closer: closer as Profile,
         revenue: totalRevenue,
         salary,
-      });
+        _paid: paidShiftIds.has(s.id),
+      } as ShiftWithRevenue & { _paid: boolean });
     }
     setShifts(shiftsWithRevenue);
   }, []);
@@ -118,10 +138,24 @@ export function SalaryManager() {
   useEffect(() => { loadAll(); }, [loadAll]);
   useOnTableChange(useMemo(() => ['salary_payments', 'shifts', 'checks', 'refunds'], []), loadAll);
 
+  const paidShiftIds = useMemo(() => new Set(payments.filter((p) => p.shift_id).map((p) => p.shift_id)), [payments]);
+  const pendingShifts = useMemo(() => shifts.filter((s) => !paidShiftIds.has(s.id) && !(s as ShiftWithRevenue & { _paid?: boolean })._paid), [shifts, paidShiftIds]);
+  const paidShifts = useMemo(() => shifts.filter((s) => paidShiftIds.has(s.id) || (s as ShiftWithRevenue & { _paid?: boolean })._paid), [shifts, paidShiftIds]);
+
+  const openPayDrawer = (shift: ShiftWithRevenue) => {
+    setPayShift(shift);
+    setSelectedRecipient((shift.closer as Profile) || null);
+    setPaymentMethod('cash');
+    setNote('');
+    setError('');
+    setShowPay(true);
+  };
+
   const handlePay = async () => {
-    const amt = Math.round(Number(amount));
+    if (!payShift) return;
+    const amt = payShift.salary;
     if (!selectedRecipient || amt <= 0) {
-      setError('Укажите сотрудника и сумму');
+      setError('Укажите сотрудника');
       return;
     }
     if (paymentMethod === 'cash') {
@@ -145,7 +179,7 @@ export function SalaryManager() {
           shift_id: activeShift.id,
           type: 'salary',
           amount: amt,
-          note: `Зарплата: ${(selectedRecipient as Profile).nickname}`,
+          note: `Зарплата: ${selectedRecipient.nickname}`,
           created_by: user?.id || null,
         })
         .select('id')
@@ -161,7 +195,7 @@ export function SalaryManager() {
     const { error: payErr } = await supabase.from('salary_payments').insert({
       profile_id: selectedRecipient.id,
       amount: amt,
-      shift_id: selectedShiftId || null,
+      shift_id: payShift.id,
       payment_method: paymentMethod,
       cash_operation_id: cashOpId,
       paid_by: user?.id || null,
@@ -175,26 +209,27 @@ export function SalaryManager() {
     }
     hapticNotification('success');
     setShowPay(false);
-    setSelectedRecipient(null);
-    setSelectedShiftId(null);
-    setAmount('');
-    setNote('');
+    setPayShift(null);
     loadAll();
   };
-
-  const myTotal = useMemo(() => {
-    if (!user || isOwner) return 0;
-    return payments.filter((p) => p.profile_id === user.id).reduce((s, p) => s + p.amount, 0);
-  }, [payments, user?.id, isOwner]);
 
   const periodTotal = payments.reduce((s, p) => s + p.amount, 0);
   const cashTotal = payments.filter((p) => p.payment_method === 'cash').reduce((s, p) => s + p.amount, 0);
   const transferTotal = payments.filter((p) => p.payment_method === 'transfer').reduce((s, p) => s + p.amount, 0);
 
-  const pendingShifts = useMemo(() => {
-    const paidShiftIds = new Set(payments.filter((p) => p.shift_id).map((p) => p.shift_id));
-    return shifts.filter((s) => !paidShiftIds.has(s.id));
-  }, [shifts, payments]);
+  const byEmployee = useMemo(() => {
+    const map: Record<string, { nickname: string; total: number; count: number; cash: number; transfer: number }> = {};
+    for (const p of payments) {
+      const pid = p.profile_id;
+      const nick = (p.profile as Profile)?.nickname || '—';
+      if (!map[pid]) map[pid] = { nickname: nick, total: 0, count: 0, cash: 0, transfer: 0 };
+      map[pid].total += p.amount;
+      map[pid].count++;
+      if (p.payment_method === 'cash') map[pid].cash += p.amount;
+      else map[pid].transfer += p.amount;
+    }
+    return Object.values(map).sort((a, b) => b.total - a.total);
+  }, [payments]);
 
   if (isLoading) {
     return (
@@ -204,176 +239,343 @@ export function SalaryManager() {
     );
   }
 
+  const tabsConfig = isOwner
+    ? [
+        { id: 'shifts' as Tab, label: 'Смены', icon: <Clock className="w-3.5 h-3.5" /> },
+        { id: 'history' as Tab, label: 'История', icon: <CalendarDays className="w-3.5 h-3.5" /> },
+        { id: 'reports' as Tab, label: 'Отчёт', icon: <BarChart3 className="w-3.5 h-3.5" /> },
+      ]
+    : [
+        { id: 'history' as Tab, label: 'Мои выплаты', icon: <CalendarDays className="w-3.5 h-3.5" /> },
+      ];
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <input
-          type="month"
-          value={filterMonth}
-          onChange={(e) => setFilterMonth(e.target.value)}
-          className="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-3 py-2 text-sm text-[var(--c-text)]"
-        />
-      </div>
+      <TabSwitcher
+        tabs={tabsConfig}
+        activeId={tab}
+        onChange={(id) => setTab(id as Tab)}
+      />
 
-      {!isOwner && (
-        <div className="p-4 rounded-xl bg-[var(--c-success-bg)] border border-[var(--c-success-border)] text-center">
-          <p className="text-[11px] text-[var(--c-hint)] uppercase tracking-wider">Моя зарплата за период</p>
-          <p className="text-2xl font-black text-[var(--c-success)] tabular-nums">{fmtCur(myTotal)}</p>
-        </div>
-      )}
-
-      {isOwner && (
-        <>
+      {/* ── Shifts tab (owner only) ── */}
+      {tab === 'shifts' && isOwner && (
+        <div className="space-y-4">
           <div className="grid grid-cols-2 gap-2">
             <div className="p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] text-center">
-              <p className="text-lg font-bold text-[var(--c-text)] tabular-nums">{fmtCur(periodTotal)}</p>
-              <p className="text-[10px] text-[var(--c-hint)]">Выдано за период</p>
+              <p className="text-2xl font-black text-[var(--c-warning)] tabular-nums">{pendingShifts.length}</p>
+              <p className="text-[10px] text-[var(--c-hint)]">К выплате</p>
             </div>
             <div className="p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] text-center">
-              <p className="text-lg font-bold text-[var(--c-danger)] tabular-nums">{fmtCur(cashTotal)}</p>
-              <p className="text-[10px] text-[var(--c-hint)]">Наличными</p>
+              <p className="text-2xl font-black text-[var(--c-success)] tabular-nums">{paidShifts.length}</p>
+              <p className="text-[10px] text-[var(--c-hint)]">Оплачено</p>
             </div>
           </div>
 
-          <div className="p-3 rounded-xl bg-[var(--c-accent)]/10 border border-[var(--c-border)]">
-            <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">К расчёту по сменам</h3>
-            {pendingShifts.length === 0 ? (
-              <p className="text-sm text-[var(--c-muted)]">Нет смен с невыданной зарплатой</p>
-            ) : (
+          {pendingShifts.length > 0 && (
+            <div>
+              <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Невыплаченные смены</h3>
               <div className="space-y-2">
-                {pendingShifts.slice(0, 5).map((s) => (
-                  <div key={s.id} className="flex items-center justify-between py-2 border-b border-[var(--c-border)] last:border-0">
+                {pendingShifts.map((s) => (
+                  <div key={s.id} className="p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-warning)]/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-[var(--c-text)]">
+                          {(s.closer as Profile)?.nickname || '—'}
+                        </p>
+                        <p className="text-xs text-[var(--c-muted)]">
+                          {fmtDate(s.closed_at!)} · Выручка {fmtCur(s.revenue)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <p className="text-base font-black text-[var(--c-warning)] tabular-nums">{fmtCur(s.salary)}</p>
+                        <Button size="sm" onClick={() => openPayDrawer(s)}>Выдать</Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {pendingShifts.length === 0 && (
+            <div className="text-center py-8">
+              <Clock className="w-12 h-12 text-[var(--c-muted)] mx-auto mb-2" />
+              <p className="text-sm text-[var(--c-muted)]">Все смены оплачены</p>
+            </div>
+          )}
+
+          {paidShifts.length > 0 && (
+            <div>
+              <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Оплаченные смены</h3>
+              <div className="space-y-2">
+                {paidShifts.slice(0, 10).map((s) => (
+                  <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] opacity-70">
                     <div>
-                      <p className="text-sm font-medium text-[var(--c-text)]">
-                        {(s.closer as Profile)?.nickname || '—'} · {new Date(s.closed_at!).toLocaleDateString('ru-RU')}
-                      </p>
-                      <p className="text-xs text-[var(--c-muted)]">Выручка {fmtCur(s.revenue)}</p>
+                      <p className="text-sm font-medium text-[var(--c-text)]">{(s.closer as Profile)?.nickname || '—'}</p>
+                      <p className="text-xs text-[var(--c-muted)]">{fmtDate(s.closed_at!)} · {fmtCur(s.revenue)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold text-[var(--c-success)]">{fmtCur(s.salary)}</p>
-                      <button
-                        onClick={() => {
-                          setSelectedRecipient((s.closer as Profile) || null);
-                          setSelectedShiftId(s.id);
-                          setAmount(String(s.salary));
-                          setShowPay(true);
-                        }}
-                        className="text-[10px] text-[var(--c-accent)] font-medium"
-                      >
-                        Выдать
-                      </button>
+                      <p className="text-sm font-bold text-[var(--c-success)] tabular-nums">{fmtCur(s.salary)}</p>
+                      <p className="text-[10px] text-[var(--c-success)]">Выдано</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── History tab ── */}
+      {tab === 'history' && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <input
+              type="month"
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value)}
+              className="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-3 py-2 text-sm text-[var(--c-text)]"
+            />
+            {!isOwner && (
+              <div className="text-right">
+                <p className="text-lg font-black text-[var(--c-success)] tabular-nums">{fmtCur(periodTotal)}</p>
+                <p className="text-[10px] text-[var(--c-hint)]">За период</p>
+              </div>
+            )}
+          </div>
+
+          {isOwner && (
+            <div className="grid grid-cols-3 gap-2">
+              <div className="p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] text-center">
+                <p className="text-lg font-bold text-[var(--c-text)] tabular-nums">{fmtCur(periodTotal)}</p>
+                <p className="text-[10px] text-[var(--c-hint)]">Всего</p>
+              </div>
+              <div className="p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] text-center">
+                <p className="text-lg font-bold text-[var(--c-success)] tabular-nums">{fmtCur(cashTotal)}</p>
+                <p className="text-[10px] text-[var(--c-hint)]">Наличные</p>
+              </div>
+              <div className="p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] text-center">
+                <p className="text-lg font-bold text-[var(--c-info)] tabular-nums">{fmtCur(transferTotal)}</p>
+                <p className="text-[10px] text-[var(--c-hint)]">Перевод</p>
+              </div>
+            </div>
+          )}
+
+          {payments.length === 0 ? (
+            <div className="text-center py-8">
+              <Banknote className="w-12 h-12 text-[var(--c-muted)] mx-auto mb-2" />
+              <p className="text-sm text-[var(--c-muted)]">Нет выплат за период</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {payments.map((p) => (
+                <div
+                  key={p.id}
+                  className="p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)]"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                        p.payment_method === 'cash' ? 'bg-[var(--c-success-bg)]' : 'bg-[var(--c-info-bg)]'
+                      }`}>
+                        {p.payment_method === 'cash' ? (
+                          <Banknote className="w-4 h-4 text-[var(--c-success)]" />
+                        ) : (
+                          <ArrowRightLeft className="w-4 h-4 text-[var(--c-info)]" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-[var(--c-text)]">{(p.profile as Profile)?.nickname || '—'}</p>
+                        <p className="text-[10px] text-[var(--c-muted)]">
+                          {p.payment_method === 'cash' ? 'Наличные' : 'Перевод'}
+                          {p.shiftClosedAt && ` · Смена ${fmtDate(p.shiftClosedAt)}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold text-[var(--c-success)] tabular-nums">{fmtCur(p.amount)}</p>
+                      <p className="text-[10px] text-[var(--c-muted)]">{fmtDateTime(p.created_at)}</p>
+                    </div>
+                  </div>
+                  {p.note && <p className="text-xs text-[var(--c-muted)] mt-1 pl-10">{p.note}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Reports tab (owner only) ── */}
+      {tab === 'reports' && isOwner && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <input
+              type="month"
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value)}
+              className="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-3 py-2 text-sm text-[var(--c-text)]"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div className="p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] text-center">
+              <p className="text-lg font-bold text-[var(--c-text)] tabular-nums">{fmtCur(periodTotal)}</p>
+              <p className="text-[10px] text-[var(--c-hint)]">Всего</p>
+            </div>
+            <div className="p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] text-center">
+              <p className="text-lg font-bold text-[var(--c-success)] tabular-nums">{fmtCur(cashTotal)}</p>
+              <p className="text-[10px] text-[var(--c-hint)]">Наличные</p>
+            </div>
+            <div className="p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] text-center">
+              <p className="text-lg font-bold text-[var(--c-info)] tabular-nums">{fmtCur(transferTotal)}</p>
+              <p className="text-[10px] text-[var(--c-hint)]">Перевод</p>
+            </div>
+          </div>
+
+          <div className="p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)]">
+            <div className="flex items-center gap-2 mb-3">
+              <Users className="w-4 h-4 text-[var(--c-accent)]" />
+              <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">По сотрудникам</h3>
+            </div>
+            {byEmployee.length === 0 ? (
+              <p className="text-sm text-[var(--c-muted)] text-center py-4">Нет данных</p>
+            ) : (
+              <div className="space-y-2">
+                {byEmployee.map((emp) => {
+                  const pct = periodTotal > 0 ? (emp.total / periodTotal) * 100 : 0;
+                  return (
+                    <div key={emp.nickname}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-[var(--c-text)]">{emp.nickname}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-[var(--c-muted)]">{emp.count} выплат</span>
+                          <span className="text-sm font-bold text-[var(--c-text)] tabular-nums">{fmtCur(emp.total)}</span>
+                        </div>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-[var(--c-bg)] overflow-hidden">
+                        <div className="h-full rounded-full bg-[var(--c-accent)] transition-all duration-500" style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="flex gap-3 mt-0.5 text-[10px] text-[var(--c-muted)]">
+                        {emp.cash > 0 && <span>Наличные: {fmtCur(emp.cash)}</span>}
+                        {emp.transfer > 0 && <span>Перевод: {fmtCur(emp.transfer)}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)]">
+            <div className="flex items-center gap-2 mb-3">
+              <BarChart3 className="w-4 h-4 text-[var(--c-accent)]" />
+              <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider">Все выплаты</h3>
+            </div>
+            {payments.length === 0 ? (
+              <p className="text-sm text-[var(--c-muted)] text-center py-4">Нет выплат</p>
+            ) : (
+              <div className="space-y-1.5">
+                {payments.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between py-2 border-b border-[var(--c-border)] last:border-0">
+                    <div>
+                      <p className="text-xs font-medium text-[var(--c-text)]">{(p.profile as Profile)?.nickname || '—'}</p>
+                      <p className="text-[10px] text-[var(--c-muted)]">
+                        {fmtDateTime(p.created_at)}
+                        {p.shiftClosedAt && ` · Смена ${fmtDate(p.shiftClosedAt)}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                        p.payment_method === 'cash'
+                          ? 'bg-[var(--c-success-bg)] text-[var(--c-success)]'
+                          : 'bg-[var(--c-info-bg)] text-[var(--c-info)]'
+                      }`}>
+                        {p.payment_method === 'cash' ? 'Нал' : 'Перевод'}
+                      </span>
+                      <span className="text-xs font-bold text-[var(--c-text)] tabular-nums">{fmtCur(p.amount)}</span>
                     </div>
                   </div>
                 ))}
               </div>
             )}
           </div>
-
-          <Button fullWidth size="lg" onClick={() => { setShowPay(true); setSelectedRecipient(null); setSelectedShiftId(null); setAmount(''); }}>
-            <UserPlus className="w-5 h-5" />
-            Выдать зарплату
-          </Button>
-        </>
+        </div>
       )}
 
-      <div>
-        <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">История выплат</h3>
-        {payments.length === 0 ? (
-          <div className="text-center py-8">
-            <Banknote className="w-12 h-12 text-[var(--c-muted)] mx-auto mb-2" />
-            <p className="text-sm text-[var(--c-muted)]">Нет выплат за период</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {payments.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center justify-between p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)]"
+      {/* ── Pay drawer ── */}
+      <Drawer open={showPay} onClose={() => { setShowPay(false); setError(''); }} title="Выдать зарплату за смену" size="md">
+        {payShift && (
+          <div className="space-y-4">
+            <div className="p-3 rounded-xl bg-[var(--c-accent)]/10 border border-[var(--c-border)]">
+              <p className="text-xs text-[var(--c-hint)]">Смена</p>
+              <p className="text-sm font-medium text-[var(--c-text)]">{fmtDate(payShift.closed_at!)}</p>
+              <p className="text-xs text-[var(--c-muted)]">Выручка: {fmtCur(payShift.revenue)}</p>
+              <p className="text-lg font-black text-[var(--c-accent)] mt-1">{fmtCur(payShift.salary)}</p>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-[var(--c-hint)] mb-1.5 uppercase tracking-wider">Кому</label>
+              <select
+                value={selectedRecipient?.id || ''}
+                onChange={(e) => {
+                  const p = staff.find((s) => s.id === e.target.value);
+                  setSelectedRecipient(p || null);
+                }}
+                className="w-full px-4 py-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] text-[var(--c-text)]"
               >
-                <div className="flex items-center gap-1.5">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    p.payment_method === 'cash' ? 'bg-[var(--c-success-bg)]' : 'bg-[var(--c-info-bg)]'
-                  }`}>
-                    {p.payment_method === 'cash' ? (
-                      <Banknote className="w-4 h-4 text-[var(--c-success)]" />
-                    ) : (
-                      <ArrowRightLeft className="w-4 h-4 text-[var(--c-info)]" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-[var(--c-text)]">{(p.profile as Profile)?.nickname || '—'}</p>
-                    <p className="text-[10px] text-[var(--c-muted)]">
-                      {new Date(p.created_at).toLocaleString('ru-RU')} · {p.payment_method === 'cash' ? 'Наличные' : 'Перевод'}
-                    </p>
-                  </div>
-                </div>
-                <p className="text-sm font-bold text-[var(--c-success)]">{fmtCur(p.amount)}</p>
+                <option value="">Выберите сотрудника</option>
+                {staff.map((s) => (
+                  <option key={s.id} value={s.id}>{s.nickname} ({s.role === 'owner' ? 'Владелец' : 'Сотрудник'})</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-[var(--c-hint)] mb-1.5 uppercase tracking-wider">Способ выдачи</label>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setPaymentMethod('cash')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border transition-all ${
+                    paymentMethod === 'cash'
+                      ? 'bg-[var(--c-success-bg)] border-[var(--c-success-border)] text-[var(--c-success)]'
+                      : 'bg-[var(--c-surface)] border-[var(--c-border)] text-[var(--c-muted)]'
+                  }`}
+                >
+                  <Banknote className="w-4 h-4" /> Наличные
+                </button>
+                <button
+                  onClick={() => setPaymentMethod('transfer')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border transition-all ${
+                    paymentMethod === 'transfer'
+                      ? 'bg-[var(--c-info-bg)] border-[var(--c-info-border)] text-[var(--c-info)]'
+                      : 'bg-[var(--c-surface)] border-[var(--c-border)] text-[var(--c-muted)]'
+                  }`}
+                >
+                  <ArrowRightLeft className="w-4 h-4" /> Перевод
+                </button>
               </div>
-            ))}
+              {paymentMethod === 'cash' && !activeShift && (
+                <p className="text-xs text-[var(--c-warning)] mt-1">Смена закрыта. Невозможно выдать из кассы.</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-[var(--c-hint)] mb-1.5 uppercase tracking-wider">Примечание</label>
+              <input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="Опционально"
+                className="w-full px-4 py-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] text-[var(--c-text)] text-sm"
+              />
+            </div>
+
+            {error && <p className="text-sm text-[var(--c-danger)] bg-[var(--c-danger-bg)] rounded-lg px-3 py-2">{error}</p>}
+
+            <Button fullWidth size="lg" onClick={handlePay} disabled={saving}>
+              {saving ? 'Сохранение...' : `Выдать ${fmtCur(payShift.salary)}`}
+            </Button>
           </div>
         )}
-      </div>
-
-      <Drawer open={showPay} onClose={() => { setShowPay(false); setError(''); setSelectedShiftId(null); }} title="Выдать зарплату" size="md">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-[11px] font-semibold text-[var(--c-hint)] mb-1.5 uppercase tracking-wider">Кому</label>
-            <select
-              value={selectedRecipient?.id || ''}
-              onChange={(e) => {
-                const p = staff.find((s) => s.id === e.target.value);
-                setSelectedRecipient(p || null);
-              }}
-              className="w-full px-4 py-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] text-[var(--c-text)]"
-            >
-              <option value="">Выберите сотрудника</option>
-              {staff.map((s) => (
-                <option key={s.id} value={s.id}>{s.nickname} ({s.role === 'owner' ? 'Владелец' : 'Сотрудник'})</option>
-              ))}
-            </select>
-          </div>
-          <Input
-            label="Сумма (₽)"
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0"
-            min={0}
-          />
-          <div>
-            <label className="block text-[11px] font-semibold text-[var(--c-hint)] mb-1.5 uppercase tracking-wider">Способ выдачи</label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPaymentMethod('cash')}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border transition-all ${
-                  paymentMethod === 'cash'
-                    ? 'bg-[var(--c-success-bg)] border-[var(--c-success-border)] text-[var(--c-success)]'
-                    : 'bg-[var(--c-surface)] border-[var(--c-border)] text-[var(--c-muted)]'
-                }`}
-              >
-                <Banknote className="w-4 h-4" /> Наличные
-              </button>
-              <button
-                onClick={() => setPaymentMethod('transfer')}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border transition-all ${
-                  paymentMethod === 'transfer'
-                    ? 'bg-[var(--c-info-bg)] border-[var(--c-info-border)] text-[var(--c-info)]'
-                    : 'bg-[var(--c-surface)] border-[var(--c-border)] text-[var(--c-muted)]'
-                }`}
-              >
-                <ArrowRightLeft className="w-4 h-4" /> Перевод
-              </button>
-            </div>
-            {paymentMethod === 'cash' && !activeShift && (
-              <p className="text-xs text-[var(--c-warning)] mt-1">Смена закрыта. Невозможно выдать из кассы.</p>
-            )}
-          </div>
-          <Input label="Примечание" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Опционально" />
-          {error && <p className="text-sm text-[var(--c-danger)] bg-[var(--c-danger-bg)] rounded-lg px-3 py-2">{error}</p>}
-          <Button fullWidth size="lg" onClick={handlePay} disabled={saving}>
-            {saving ? 'Сохранение...' : 'Выдать зарплату'}
-          </Button>
-        </div>
       </Drawer>
     </div>
   );

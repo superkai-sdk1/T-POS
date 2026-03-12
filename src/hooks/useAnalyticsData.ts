@@ -61,7 +61,7 @@ export function useAnalyticsData() {
   const [allPlayers, setAllPlayers] = useState<Profile[]>([]);
   const [admins, setAdmins] = useState<Pick<Profile, 'id' | 'nickname'>[]>([]);
   const [checkPaymentsMap, setCheckPaymentsMap] = useState<Record<string, { method: string; amount: number }[]>>({});
-  const [salaryPayments, setSalaryPayments] = useState<{ amount: number; created_at: string }[]>([]);
+  const [salaryPayments, setSalaryPayments] = useState<{ amount: number; created_at: string; payment_method: string; profile_id: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadAll = useCallback(async () => {
@@ -78,7 +78,7 @@ export function useAnalyticsData() {
       supabase.from('profiles').select('id, nickname').in('role', ['owner', 'staff']).is('deleted_at', null),
       supabase.from('refunds').select('check_id, total_amount, created_at').order('created_at', { ascending: false }),
       supabase.from('refund_items').select('item_id, quantity, refund:refunds!refund_items_refund_id_fkey(check_id)'),
-      supabase.from('salary_payments').select('amount, created_at').order('created_at', { ascending: false }),
+      supabase.from('salary_payments').select('amount, created_at, payment_method, profile_id').order('created_at', { ascending: false }),
     ]);
 
     if (checksRes.data) {
@@ -114,7 +114,7 @@ export function useAnalyticsData() {
     if (playersRes.data) setAllPlayers(playersRes.data as Profile[]);
     if (adminsRes.data) setAdmins(adminsRes.data as Pick<Profile, 'id' | 'nickname'>[]);
     if (refundsRes.data) setAllRefunds(refundsRes.data as { check_id: string; total_amount: number; created_at: string }[]);
-    if (salaryRes.data) setSalaryPayments(salaryRes.data as { amount: number; created_at: string }[]);
+    if (salaryRes.data) setSalaryPayments(salaryRes.data as { amount: number; created_at: string; payment_method: string; profile_id: string }[]);
     if (refundItemsRes.data) {
       const items = (refundItemsRes.data as { item_id: string; quantity: number; refund: { check_id: string } | { check_id: string }[] }[]).flatMap((ri) => {
         const refund = Array.isArray(ri.refund) ? ri.refund[0] : ri.refund;
