@@ -52,6 +52,7 @@ export function useAnalyticsData() {
   const [allChecks, setAllChecks] = useState<ClosedCheck[]>([]);
   const [allCheckItems, setAllCheckItems] = useState<CheckItemStat[]>([]);
   const [allRefunds, setAllRefunds] = useState<{ check_id: string; total_amount: number; created_at: string }[]>([]);
+  const [allRefundItems, setAllRefundItems] = useState<{ item_id: string; quantity: number; check_id: string }[]>([]);
   const [debtors, setDebtors] = useState<Profile[]>([]);
   const [supplies, setSupplies] = useState<Supply[]>([]);
   const [cashOps, setCashOps] = useState<CashOperation[]>([]);
@@ -64,7 +65,7 @@ export function useAnalyticsData() {
 
   const loadAll = useCallback(async () => {
     setIsLoading(true);
-    const [checksRes, itemsRes, debtorsRes, suppliesRes, cashRes, costsRes, expensesRes, playersRes, adminsRes, refundsRes] = await Promise.all([
+    const [checksRes, itemsRes, debtorsRes, suppliesRes, cashRes, costsRes, expensesRes, playersRes, adminsRes, refundsRes, refundItemsRes] = await Promise.all([
       supabase.from('checks').select('id, total_amount, payment_method, closed_at, player_id, staff_id, player:profiles!checks_player_id_fkey(nickname)').eq('status', 'closed').order('closed_at', { ascending: false }),
       supabase.from('check_items').select('item_id, check_id, quantity, price_at_time, item:inventory(name, category, price)'),
       supabase.from('profiles').select('*').lt('balance', 0).order('balance', { ascending: true }),
@@ -75,6 +76,7 @@ export function useAnalyticsData() {
       supabase.from('profiles').select('*').eq('role', 'client').is('deleted_at', null),
       supabase.from('profiles').select('id, nickname').in('role', ['owner', 'staff']).is('deleted_at', null),
       supabase.from('refunds').select('check_id, total_amount, created_at').order('created_at', { ascending: false }),
+      supabase.from('refund_items').select('item_id, quantity, refund:refunds!refund_items_refund_id_fkey(check_id)'),
     ]);
 
     if (checksRes.data) {
@@ -110,6 +112,14 @@ export function useAnalyticsData() {
     if (playersRes.data) setAllPlayers(playersRes.data as Profile[]);
     if (adminsRes.data) setAdmins(adminsRes.data as Pick<Profile, 'id' | 'nickname'>[]);
     if (refundsRes.data) setAllRefunds(refundsRes.data as { check_id: string; total_amount: number; created_at: string }[]);
+    if (refundItemsRes.data) {
+      const items = (refundItemsRes.data as { item_id: string; quantity: number; refund: { check_id: string } | { check_id: string }[] }[]).flatMap((ri) => {
+        const refund = Array.isArray(ri.refund) ? ri.refund[0] : ri.refund;
+        if (!refund?.check_id) return [];
+        return [{ item_id: ri.item_id, quantity: ri.quantity, check_id: refund.check_id }];
+      });
+      setAllRefundItems(items);
+    }
 
     if (costsRes.data && costsRes.data.length > 0) {
       const agg: Record<string, { totalCost: number; totalQty: number }> = {};
@@ -161,6 +171,9 @@ export function useAnalyticsData() {
   const checkItems = useMemo(() => allCheckItems.filter((ci) => checkIds.has(ci.check_id)), [allCheckItems, checkIds]);
   const prevCheckItems = useMemo(() => allCheckItems.filter((ci) => prevCheckIds.has(ci.check_id)), [allCheckItems, prevCheckIds]);
 
+  const refundItemsInPeriod = useMemo(() => allRefundItems.filter((ri) => checkIds.has(ri.check_id)), [allRefundItems, checkIds]);
+  const prevRefundItemsInPeriod = useMemo(() => allRefundItems.filter((ri) => prevCheckIds.has(ri.check_id)), [allRefundItems, prevCheckIds]);
+
   const revenue = useMemo(() => checks.reduce((s, c) => s + (c.total_amount || 0), 0) - totalRefunded, [checks, totalRefunded]);
   const prevRevenue = useMemo(() => prevChecks.reduce((s, c) => s + (c.total_amount || 0), 0) - prevTotalRefunded, [prevChecks, prevTotalRefunded]);
 
@@ -204,8 +217,12 @@ export function useAnalyticsData() {
       const cost = itemCostMap[ci.item_id];
       if (cost) total += ci.quantity * cost;
     }
+    for (const ri of refundItemsInPeriod) {
+      const cost = itemCostMap[ri.item_id];
+      if (cost) total -= ri.quantity * cost;
+    }
     return Math.round(total);
-  }, [checkItems, itemCostMap]);
+  }, [checkItems, refundItemsInPeriod, itemCostMap]);
 
   const prevCogs = useMemo(() => {
     let total = 0;
@@ -213,8 +230,12 @@ export function useAnalyticsData() {
       const cost = itemCostMap[ci.item_id];
       if (cost) total += ci.quantity * cost;
     }
+    for (const ri of prevRefundItemsInPeriod) {
+      const cost = itemCostMap[ri.item_id];
+      if (cost) total -= ri.quantity * cost;
+    }
     return Math.round(total);
-  }, [prevCheckItems, itemCostMap]);
+  }, [prevCheckItems, prevRefundItemsInPeriod, itemCostMap]);
 
   const periodExpenses = useMemo(() => {
     let opex = 0;
