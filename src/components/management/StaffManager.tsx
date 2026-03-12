@@ -19,9 +19,10 @@ const PERMISSION_LABELS: Record<ManagementPermissionKey, { label: string; desc: 
   clients: { label: 'Клиенты', desc: 'Профили, контакты' },
   discounts: { label: 'Скидки', desc: 'Процентные и фиксированные' },
   bonus: { label: 'Бонусы', desc: 'Баллы и настройки' },
-  expenses: { label: 'Расходы', desc: 'Аренда, коммуналка, зарплаты' },
+  expenses: { label: 'Расходы', desc: 'Аренда, коммуналка' },
   debtors: { label: 'Должники', desc: 'Управление долгами' },
   staff: { label: 'Персонал', desc: 'Сотрудники и доступы' },
+  salary: { label: 'Зарплата', desc: 'Начисление и выдача ЗП' },
   about: { label: 'О системе', desc: 'Версия, обновление' },
 };
 

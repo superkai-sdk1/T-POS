@@ -3,7 +3,7 @@ export type UserRole = 'owner' | 'staff' | 'client';
 /** Management section IDs (cash & analytics always accessible) */
 export type ManagementPermissionKey =
   | 'menu' | 'inventory' | 'supplies' | 'clients' | 'discounts' | 'bonus'
-  | 'expenses' | 'debtors' | 'staff' | 'about';
+  | 'expenses' | 'debtors' | 'staff' | 'salary' | 'about';
 
 export interface ManagementPermissions {
   menu?: boolean;
@@ -15,6 +15,7 @@ export interface ManagementPermissions {
   expenses?: boolean;
   debtors?: boolean;
   staff?: boolean;
+  salary?: boolean;
   about?: boolean;
 }
 export type ClientTier = 'regular' | 'resident' | 'student';
@@ -200,7 +201,7 @@ export interface AppSettings {
   bonus_accrual_on_debt: boolean;
 }
 
-export type CashOperationType = 'inkassation' | 'deposit';
+export type CashOperationType = 'inkassation' | 'deposit' | 'salary';
 
 export interface CashOperation {
   id: string;
@@ -211,6 +212,21 @@ export interface CashOperation {
   created_by: string | null;
   created_at: string;
   creator?: { nickname: string };
+}
+
+export interface SalaryPayment {
+  id: string;
+  profile_id: string;
+  amount: number;
+  shift_id: string | null;
+  payment_method: 'cash' | 'transfer';
+  cash_operation_id: string | null;
+  paid_by: string | null;
+  note: string | null;
+  created_at: string;
+  profile?: Profile;
+  paidBy?: Profile;
+  shift?: Shift;
 }
 
 export type DiscountType = 'percentage' | 'fixed';

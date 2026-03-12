@@ -4,7 +4,7 @@ export type { ManagementPermissionKey, ManagementPermissions };
 
 const ALL_KEYS: ManagementPermissionKey[] = [
   'menu', 'inventory', 'supplies', 'clients', 'discounts', 'bonus',
-  'expenses', 'debtors', 'staff', 'about',
+  'expenses', 'debtors', 'staff', 'salary', 'about',
 ];
 
 /** Default: full access (null or missing key = true) */

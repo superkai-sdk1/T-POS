@@ -16,7 +16,7 @@ import type { CashOperation, Shift } from '@/types';
 
 interface LedgerEntry {
   id: string;
-  type: 'shift_open' | 'shift_close' | 'inkassation' | 'deposit' | 'refund';
+  type: 'shift_open' | 'shift_close' | 'inkassation' | 'deposit' | 'refund' | 'salary';
   amount: number;
   balanceAfter: number;
   date: string;
@@ -224,7 +224,7 @@ export function InkassationPage() {
         sortKey: new Date(op.created_at).getTime(),
         entry: {
           id: op.id,
-          type: op.type as 'inkassation' | 'deposit',
+          type: op.type as 'inkassation' | 'deposit' | 'salary',
           amount: op.amount,
           date: op.created_at,
           note: op.note || undefined,
@@ -242,7 +242,7 @@ export function InkassationPage() {
         balance = e.entry.amount;
       } else if (e.entry.type === 'shift_close') {
         balance = e.entry.amount;
-      } else if (e.entry.type === 'inkassation' || e.entry.type === 'refund') {
+      } else if (e.entry.type === 'inkassation' || e.entry.type === 'refund' || e.entry.type === 'salary') {
         balance -= e.entry.amount;
       } else if (e.entry.type === 'deposit') {
         balance += e.entry.amount;
@@ -330,6 +330,7 @@ export function InkassationPage() {
     inkassation: { label: 'Инкассация', icon: ArrowUpFromLine, color: 'text-[var(--c-danger)]', bg: 'bg-[var(--c-danger-bg)]', sign: '−' },
     deposit: { label: 'Внесение', icon: ArrowDownToLine, color: 'text-[var(--c-success)]', bg: 'bg-[var(--c-success-bg)]', sign: '+' },
     refund: { label: 'Возврат', icon: RotateCcw, color: 'text-[var(--c-warning)]', bg: 'bg-[var(--c-warning-bg)]', sign: '−' },
+    salary: { label: 'Зарплата', icon: Wallet, color: 'text-emerald-500', bg: 'bg-emerald-500/10', sign: '−' },
   };
 
   return (

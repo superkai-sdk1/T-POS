@@ -368,7 +368,7 @@ create table app_settings (
 create table cash_operations (
   id uuid primary key default gen_random_uuid(),
   shift_id uuid references shifts(id) on delete set null,
-  type text not null check (type in ('inkassation', 'deposit', 'shift_open', 'shift_close')),
+  type text not null check (type in ('inkassation', 'deposit', 'shift_open', 'shift_close', 'salary')),
   amount numeric not null default 0,
   note text,
   created_by uuid references profiles(id),
@@ -448,6 +448,25 @@ create table expenses (
 create index idx_expenses_date on expenses(expense_date);
 create index idx_expenses_category on expenses(category);
 
+-- ==================
+-- salary_payments
+-- ==================
+create table salary_payments (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references profiles(id) on delete restrict,
+  amount numeric not null,
+  shift_id uuid references shifts(id) on delete set null,
+  payment_method text not null check (payment_method in ('cash', 'transfer')),
+  cash_operation_id uuid references cash_operations(id) on delete set null,
+  paid_by uuid references profiles(id),
+  note text,
+  created_at timestamptz not null default now()
+);
+
+create index idx_salary_payments_profile on salary_payments(profile_id);
+create index idx_salary_payments_created_at on salary_payments(created_at);
+create index idx_salary_payments_shift on salary_payments(shift_id);
+
 -- ==============================
 -- Functions
 -- ==============================
@@ -520,6 +539,7 @@ alter table refunds enable row level security;
 alter table refund_items enable row level security;
 alter table tg_link_requests enable row level security;
 alter table expenses enable row level security;
+alter table salary_payments enable row level security;
 
 create policy "profiles_select" on profiles for select to anon, authenticated using (true);
 create policy "profiles_insert" on profiles for insert to anon, authenticated with check (true);
@@ -567,6 +587,7 @@ create policy "refunds_all" on refunds for all to anon, authenticated using (tru
 create policy "refund_items_all" on refund_items for all to anon, authenticated using (true) with check (true);
 create policy "tg_link_requests_all" on tg_link_requests for all to anon, authenticated using (true) with check (true);
 create policy "expenses_all" on expenses for all to anon, authenticated using (true) with check (true);
+create policy "salary_payments_all" on salary_payments for all to anon, authenticated using (true) with check (true);
 
 -- ==============================
 -- Realtime
@@ -575,7 +596,7 @@ alter publication supabase_realtime add table
   checks, check_items, check_discounts, inventory, shifts,
   cash_operations, bookings, profiles, events, discounts,
   supplies, revisions, refunds, menu_categories, modifiers,
-  tg_link_requests, client_discount_rules, expenses;
+  tg_link_requests, client_discount_rules, expenses, salary_payments;
 
 alter table checks replica identity full;
 alter table check_items replica identity full;
@@ -595,6 +616,7 @@ alter table modifiers replica identity full;
 alter table tg_link_requests replica identity full;
 alter table client_discount_rules replica identity full;
 alter table expenses replica identity full;
+alter table salary_payments replica identity full;
 
 -- ==============================
 -- Storage buckets

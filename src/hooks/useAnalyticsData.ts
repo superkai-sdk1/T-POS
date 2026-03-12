@@ -61,11 +61,12 @@ export function useAnalyticsData() {
   const [allPlayers, setAllPlayers] = useState<Profile[]>([]);
   const [admins, setAdmins] = useState<Pick<Profile, 'id' | 'nickname'>[]>([]);
   const [checkPaymentsMap, setCheckPaymentsMap] = useState<Record<string, { method: string; amount: number }[]>>({});
+  const [salaryPayments, setSalaryPayments] = useState<{ amount: number; created_at: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadAll = useCallback(async () => {
     setIsLoading(true);
-    const [checksRes, itemsRes, debtorsRes, suppliesRes, cashRes, costsRes, expensesRes, playersRes, adminsRes, refundsRes, refundItemsRes] = await Promise.all([
+    const [checksRes, itemsRes, debtorsRes, suppliesRes, cashRes, costsRes, expensesRes, playersRes, adminsRes, refundsRes, refundItemsRes, salaryRes] = await Promise.all([
       supabase.from('checks').select('id, total_amount, payment_method, closed_at, player_id, staff_id, player:profiles!checks_player_id_fkey(nickname)').eq('status', 'closed').order('closed_at', { ascending: false }),
       supabase.from('check_items').select('item_id, check_id, quantity, price_at_time, item:inventory(name, category, price)'),
       supabase.from('profiles').select('*').lt('balance', 0).order('balance', { ascending: true }),
@@ -77,6 +78,7 @@ export function useAnalyticsData() {
       supabase.from('profiles').select('id, nickname').in('role', ['owner', 'staff']).is('deleted_at', null),
       supabase.from('refunds').select('check_id, total_amount, created_at').order('created_at', { ascending: false }),
       supabase.from('refund_items').select('item_id, quantity, refund:refunds!refund_items_refund_id_fkey(check_id)'),
+      supabase.from('salary_payments').select('amount, created_at').order('created_at', { ascending: false }),
     ]);
 
     if (checksRes.data) {
@@ -112,6 +114,7 @@ export function useAnalyticsData() {
     if (playersRes.data) setAllPlayers(playersRes.data as Profile[]);
     if (adminsRes.data) setAdmins(adminsRes.data as Pick<Profile, 'id' | 'nickname'>[]);
     if (refundsRes.data) setAllRefunds(refundsRes.data as { check_id: string; total_amount: number; created_at: string }[]);
+    if (salaryRes.data) setSalaryPayments(salaryRes.data as { amount: number; created_at: string }[]);
     if (refundItemsRes.data) {
       const items = (refundItemsRes.data as { item_id: string; quantity: number; refund: { check_id: string } | { check_id: string }[] }[]).flatMap((ri) => {
         const refund = Array.isArray(ri.refund) ? ri.refund[0] : ri.refund;
@@ -363,13 +366,22 @@ export function useAnalyticsData() {
     }).reduce((sum, s) => sum + (s.total_cost || 0), 0);
   }, [supplies, range]);
 
+  const salaryPaidInPeriod = useMemo(() => {
+    return salaryPayments
+      .filter((p) => {
+        const d = new Date(p.created_at);
+        return d >= range.start && d < range.end;
+      })
+      .reduce((sum, p) => sum + (p.amount || 0), 0);
+  }, [salaryPayments, range]);
+
   return {
     isLoading, checks, prevChecks, checkItems, prevCheckItems,
     revenue, prevRevenue, paymentBreakdown, checkPaymentsMap,
     cogs, prevCogs, periodExpenses, prevPeriodExpenses,
     totalExpenses, prevTotalExpenses, netProfit, prevNetProfit, marginPct,
     delta, productStats, playerStats, retentionRate,
-    debtors, totalDebt, supplies, cashOps, opExpenses, supplyCostInPeriod,
+    debtors, totalDebt, supplies, cashOps, opExpenses, supplyCostInPeriod, salaryPaidInPeriod,
     admins, allPlayers, allChecks, allCheckItems, itemCostMap,
     reload: loadAll,
   };

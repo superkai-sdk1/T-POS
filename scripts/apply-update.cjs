@@ -144,6 +144,43 @@ DO $$ BEGIN
   ALTER TABLE checks ADD COLUMN certificate_id uuid REFERENCES certificates(id);
 EXCEPTION WHEN duplicate_column THEN NULL;
 END $$;
+
+-- Salary payments
+CREATE TABLE IF NOT EXISTS salary_payments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id uuid NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
+  amount numeric NOT NULL,
+  shift_id uuid REFERENCES shifts(id) ON DELETE SET NULL,
+  payment_method text NOT NULL CHECK (payment_method IN ('cash', 'transfer')),
+  cash_operation_id uuid REFERENCES cash_operations(id) ON DELETE SET NULL,
+  paid_by uuid REFERENCES profiles(id),
+  note text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_salary_payments_profile ON salary_payments(profile_id);
+CREATE INDEX IF NOT EXISTS idx_salary_payments_created_at ON salary_payments(created_at);
+CREATE INDEX IF NOT EXISTS idx_salary_payments_shift ON salary_payments(shift_id);
+
+-- Add salary to cash_operations type
+DO $$ BEGIN
+  ALTER TABLE cash_operations DROP CONSTRAINT IF EXISTS cash_operations_type_check;
+  ALTER TABLE cash_operations ADD CONSTRAINT cash_operations_type_check
+    CHECK (type IN ('inkassation', 'deposit', 'shift_open', 'shift_close', 'salary'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'salary_payments' AND policyname = 'salary_payments_all') THEN
+    ALTER TABLE salary_payments ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY "salary_payments_all" ON salary_payments FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE salary_payments;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+ALTER TABLE salary_payments REPLICA IDENTITY FULL;
 `;
 
 async function main() {

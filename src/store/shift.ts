@@ -97,7 +97,8 @@ export const useShiftStore = create<ShiftState>()(
           .eq('shift_id', activeShift.id);
         let opsBalance = 0;
         for (const op of cashOps || []) {
-          opsBalance += op.type === 'deposit' ? op.amount : -op.amount;
+          if (op.type === 'deposit') opsBalance += op.amount;
+          else opsBalance -= op.amount;
         }
 
         let cashRefunded = 0;

@@ -145,6 +145,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
             cogs={data.cogs}
             periodExpenses={data.periodExpenses}
             supplyCostInPeriod={data.supplyCostInPeriod}
+            salaryPaidInPeriod={data.salaryPaidInPeriod}
             paymentBreakdown={data.paymentBreakdown}
             debtors={data.debtors}
             totalDebt={data.totalDebt}

@@ -17,6 +17,7 @@ interface Props {
   cogs: number;
   periodExpenses: number;
   supplyCostInPeriod: number;
+  salaryPaidInPeriod: number;
   paymentBreakdown: { cash: number; card: number; debt: number; bonus: number; deposit: number };
   debtors: Profile[];
   totalDebt: number;
@@ -211,7 +212,7 @@ export const FinanceModule = memo(function FinanceModule(props: Props) {
 
 function DetailScreen(props: Props & { detail: DetailView; onBack: () => void }) {
   const { detail, onBack, revenue, prevRevenue, netProfit, marginPct, totalExpenses,
-    cogs, periodExpenses, supplyCostInPeriod, paymentBreakdown, debtors, totalDebt,
+    cogs, periodExpenses, supplyCostInPeriod, salaryPaidInPeriod, paymentBreakdown, debtors, totalDebt,
     checkCount, delta, onNavigate } = props;
 
   // Stable timestamp for debtors view (useState initializer runs once, not on re-render)
@@ -274,10 +275,16 @@ function DetailScreen(props: Props & { detail: DetailView; onBack: () => void })
           {cogs > 0 && statRow('Себестоимость проданного (COGS)', cogs, 'text-[var(--c-warning)]')}
           {periodExpenses > 0 && statRow('Операционные расходы (OPEX)', periodExpenses, 'text-[var(--c-danger)]')}
           {supplyCostInPeriod > 0 && statRow('Закупки (поставки)', supplyCostInPeriod, 'text-[var(--c-danger)]')}
+          {salaryPaidInPeriod > 0 && statRow('Зарплаты', salaryPaidInPeriod, 'text-emerald-500')}
         </div>
-        <button onClick={() => onNavigate('management:expenses')} className="w-full p-3 rounded-xl card-interactive flex items-center gap-2">
-          <span className="text-xs text-[var(--c-accent)] font-medium">Управление расходами →</span>
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => onNavigate('management:expenses')} className="flex-1 p-3 rounded-xl card-interactive flex items-center justify-center gap-2">
+            <span className="text-xs text-[var(--c-accent)] font-medium">Расходы →</span>
+          </button>
+          <button onClick={() => onNavigate('management:salary')} className="flex-1 p-3 rounded-xl card-interactive flex items-center justify-center gap-2">
+            <span className="text-xs text-emerald-500 font-medium">Зарплата →</span>
+          </button>
+        </div>
       </div>
     );
   }
