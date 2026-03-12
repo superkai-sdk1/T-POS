@@ -42,12 +42,61 @@ async function sendMessage(chatId, text, extra = {}) {
     return tg('sendMessage', { chat_id: chatId, text, parse_mode: 'HTML', ...extra });
 }
 
+async function editMessageText(chatId, messageId, text) {
+    try {
+        return await tg('editMessageText', {
+            chat_id: chatId,
+            message_id: messageId,
+            text,
+            parse_mode: 'HTML',
+        });
+    } catch { return null; }
+}
+
 function formatEventDraft(params) {
     const typeLabel = params.type === 'titan' ? 'Титан' : 'Выезд';
     const loc = params.location || '—';
     const pay = params.payment_type === 'hourly' ? 'Почасовая' : `Фикс ${params.fixed_amount || 0}₽`;
     return `📅 <b>Всё верно?</b>\n\nТип: ${typeLabel}\nЛокация: ${loc}\nДата: ${params.date}\nВремя: ${params.start_time}\nОплата: ${pay}`;
 }
+
+// --- Conversation history with 1h TTL ---
+const chatHistory = new Map(); // chatId -> { messages: [], lastActivity: timestamp }
+const HISTORY_TTL_MS = 60 * 60 * 1000; // 1 hour
+const MAX_HISTORY_MESSAGES = 20;
+
+function getHistory(chatId) {
+    const entry = chatHistory.get(chatId);
+    if (!entry || Date.now() - entry.lastActivity > HISTORY_TTL_MS) {
+        chatHistory.set(chatId, { messages: [], lastActivity: Date.now() });
+        return [];
+    }
+    entry.lastActivity = Date.now();
+    return entry.messages;
+}
+
+function addToHistory(chatId, role, content) {
+    let entry = chatHistory.get(chatId);
+    if (!entry || Date.now() - entry.lastActivity > HISTORY_TTL_MS) {
+        entry = { messages: [], lastActivity: Date.now() };
+    }
+    entry.messages.push({ role, content });
+    if (entry.messages.length > MAX_HISTORY_MESSAGES) {
+        entry.messages = entry.messages.slice(-MAX_HISTORY_MESSAGES);
+    }
+    entry.lastActivity = Date.now();
+    chatHistory.set(chatId, entry);
+}
+
+// Cleanup expired entries every 10 minutes
+setInterval(() => {
+    const now = Date.now();
+    for (const [chatId, entry] of chatHistory) {
+        if (now - entry.lastActivity > HISTORY_TTL_MS) {
+            chatHistory.delete(chatId);
+        }
+    }
+}, 10 * 60 * 1000);
 
 const chatState = new Map(); // chatId -> { pendingEvent, mode }
 
@@ -58,15 +107,98 @@ const CONFIRM_KEYBOARD = {
     ],
 };
 
-async function callAi(messages, draft = null) {
+// --- Streaming AI call with editMessageText ---
+async function callAiStream(messages, chatId, thinkingMsgId, draft = null) {
     const headers = { 'Content-Type': 'application/json' };
     if (API_SECRET) headers['Authorization'] = `Bearer ${API_SECRET}`;
     const body = { messages };
     if (draft) body.draft = draft;
-    const res = await fetch('http://127.0.0.1:3100/api/ai', { method: 'POST', headers, body: JSON.stringify(body) });
-    const data = await res.json();
-    if (!res.ok) return { error: data.details || data.error || `HTTP ${res.status}` };
-    return data;
+
+    let fullText = '';
+
+    try {
+        const res = await fetch('http://127.0.0.1:3100/api/ai/stream', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+            const errText = await res.text();
+            return { error: errText || `HTTP ${res.status}` };
+        }
+
+        // Parse SSE stream
+        const reader = res.body;
+        let buffer = '';
+        let lastEditTime = 0;
+        const EDIT_INTERVAL = 800; // ms between editMessageText calls
+        let pendingEdit = null;
+
+        await new Promise((resolve, reject) => {
+            reader.on('data', (chunk) => {
+                buffer += chunk.toString();
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed || !trimmed.startsWith('data: ')) continue;
+                    const payload = trimmed.slice(6);
+                    try {
+                        const parsed = JSON.parse(payload);
+                        if (parsed.error) {
+                            fullText = '';
+                            reject(new Error(parsed.error));
+                            return;
+                        }
+                        if (parsed.done) {
+                            fullText = parsed.full || fullText;
+                            return;
+                        }
+                        if (parsed.token) {
+                            fullText += parsed.token;
+                            // Throttled edit
+                            const now = Date.now();
+                            if (now - lastEditTime >= EDIT_INTERVAL && fullText.length > 3) {
+                                lastEditTime = now;
+                                const editText = fullText + ' ✍️';
+                                if (pendingEdit) clearTimeout(pendingEdit);
+                                editMessageText(chatId, thinkingMsgId, editText);
+                            }
+                        }
+                    } catch { }
+                }
+            });
+
+            reader.on('end', () => {
+                if (pendingEdit) clearTimeout(pendingEdit);
+                resolve();
+            });
+            reader.on('error', reject);
+        });
+
+        return { response: fullText };
+    } catch (err) {
+        // Fallback to non-streaming
+        console.warn('[AdminBot] Stream failed, falling back to non-streaming:', err.message);
+        try {
+            const fallbackHeaders = { 'Content-Type': 'application/json' };
+            if (API_SECRET) fallbackHeaders['Authorization'] = `Bearer ${API_SECRET}`;
+            const fallbackBody = { messages };
+            if (draft) fallbackBody.draft = draft;
+            const res = await fetch('http://127.0.0.1:3100/api/ai', {
+                method: 'POST',
+                headers: fallbackHeaders,
+                body: JSON.stringify(fallbackBody),
+            });
+            const data = await res.json();
+            if (!res.ok) return { error: data.details || data.error || `HTTP ${res.status}` };
+            return data;
+        } catch (e2) {
+            return { error: String(e2) };
+        }
+    }
 }
 
 async function handleAiMessage(msg) {
@@ -75,8 +207,8 @@ async function handleAiMessage(msg) {
 
     try {
         const state = chatState.get(chatId);
-        let messages = [{ role: 'user', content: text }];
         let draft = null;
+        let userContent = text;
 
         if (state?.pendingEvent && state.mode === 'awaiting_changes') {
             const cancel = /^(отмена|отменить|cancel)$/i.test(text);
@@ -86,20 +218,40 @@ async function handleAiMessage(msg) {
                 return;
             }
             draft = state.pendingEvent;
-            messages = [{ role: 'user', content: `[Режим изменения] Пользователь: ${text}` }];
+            userContent = `[Режим изменения] Пользователь: ${text}`;
             chatState.delete(chatId);
         }
 
-        console.log(`[AdminBot] Sending to AI: "${text}"${draft ? ' (edit mode)' : ''}`);
-        const data = await callAi(messages, draft);
+        // Add user message to history
+        addToHistory(chatId, 'user', userContent);
+
+        // Build messages array with history
+        const history = getHistory(chatId);
+        const messages = [...history]; // already includes the current user message
+
+        // Send "thinking" message immediately
+        const thinkingResult = await sendMessage(chatId, '🤔 Думаю...');
+        const thinkingMsgId = thinkingResult?.result?.message_id;
+
+        console.log(`[AdminBot] Sending to AI (${messages.length} messages): "${text}"${draft ? ' (edit mode)' : ''}`);
+        const data = await callAiStream(messages, chatId, thinkingMsgId, draft);
 
         if (!data.response && data.error) {
-            await sendMessage(chatId, `❌ Ошибка ИИ: ${data.error}`);
+            const errText = `❌ Ошибка ИИ: ${data.error}`;
+            if (thinkingMsgId) {
+                await editMessageText(chatId, thinkingMsgId, errText);
+            } else {
+                await sendMessage(chatId, errText);
+            }
             return;
         }
 
         const aiResponse = data.response || '';
 
+        // Save AI response to history
+        addToHistory(chatId, 'assistant', aiResponse);
+
+        // Try to parse as JSON action
         try {
             let jsonStr = aiResponse.trim();
             const jsonMatch = jsonStr.match(/\{[\s\S]*"action"[\s\S]*\}/);
@@ -119,7 +271,17 @@ async function handleAiMessage(msg) {
                 };
 
                 chatState.set(chatId, { pendingEvent: normParams, mode: 'awaiting_confirmation' });
-                await sendMessage(chatId, formatEventDraft(normParams), { reply_markup: CONFIRM_KEYBOARD });
+                // Replace thinking message with event draft
+                if (thinkingMsgId) {
+                    await editMessageText(chatId, thinkingMsgId, formatEventDraft(normParams));
+                    await tg('editMessageReplyMarkup', {
+                        chat_id: chatId,
+                        message_id: thinkingMsgId,
+                        reply_markup: CONFIRM_KEYBOARD,
+                    });
+                } else {
+                    await sendMessage(chatId, formatEventDraft(normParams), { reply_markup: CONFIRM_KEYBOARD });
+                }
                 return;
             }
 
@@ -132,16 +294,24 @@ async function handleAiMessage(msg) {
                     body: JSON.stringify({ action: parsed.action, params: parsed.params, staffId: null }),
                 });
                 const actionData = await actionRes.json();
-                if (actionData.success) {
-                    await sendMessage(chatId, `✅ ${actionData.message || 'Готово!'}`);
+                const resultText = actionData.success
+                    ? `✅ ${actionData.message || 'Готово!'}`
+                    : `❌ ${actionData.error}`;
+                if (thinkingMsgId) {
+                    await editMessageText(chatId, thinkingMsgId, resultText);
                 } else {
-                    await sendMessage(chatId, `❌ ${actionData.error}`);
+                    await sendMessage(chatId, resultText);
                 }
                 return;
             }
         } catch { }
 
-        await sendMessage(chatId, aiResponse);
+        // Final edit with complete response
+        if (thinkingMsgId) {
+            await editMessageText(chatId, thinkingMsgId, aiResponse);
+        } else {
+            await sendMessage(chatId, aiResponse);
+        }
     } catch (err) {
         console.error('Admin Bot AI Error:', err);
         await sendMessage(chatId, '⚠️ Не удалось связаться с сервером ИИ.');

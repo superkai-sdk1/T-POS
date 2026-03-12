@@ -192,165 +192,151 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  if (url.pathname === '/api/ai' && req.method === 'POST') {
-    if (!checkAuth(req, res)) return;
-    readBody(req).then(async (body) => {
-      try {
-        const { messages, context, draft } = JSON.parse(body);
-        const POLZA_KEY = process.env.POLZA_AI_API_KEY;
-        const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-        const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
-        const aiUrl = 'https://polza.ai/api/v1/chat/completions';
+  // --- Shared: Build enriched messages for AI ---
+  async function buildEnrichedMessages(messages, draft) {
+    const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+    const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 
-        // --- Fetch compact database context from Supabase ---
-        let dbContext = '';
-        if (SUPABASE_URL && SUPABASE_KEY) {
-          const sbHeaders = {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Content-Type': 'application/json',
-          };
-          const sbFetch = (table, query = '') =>
-            fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: sbHeaders })
-              .then((r) => r.ok ? r.json() : [])
-              .catch(() => []);
+    let dbContext = '';
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      const sbHeaders = {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+      };
+      const sbFetch = (table, query = '') =>
+        fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: sbHeaders })
+          .then((r) => r.ok ? r.json() : [])
+          .catch(() => []);
 
-          const [
-            profiles, checks, checkItems, inventory,
-            expenses, supplies, cashOps, shifts, events,
-            refunds, salaryPayments, supplyItems,
-          ] = await Promise.all([
-            sbFetch('profiles', 'select=id,nickname,role,balance,bonus_points,client_tier,is_resident,created_at,deleted_at&order=created_at.desc&limit=500'),
-            sbFetch('checks', 'select=id,player_id,total_amount,payment_method,bonus_used,closed_at,staff_id&status=eq.closed&order=closed_at.desc&limit=500'),
-            sbFetch('check_items', 'select=check_id,item_id,quantity,price_at_time&limit=3000'),
-            sbFetch('inventory', 'select=id,name,category,price,stock_quantity,is_active&order=name'),
-            sbFetch('expenses', 'select=category,amount,expense_date&order=expense_date.desc&limit=200'),
-            sbFetch('supplies', 'select=total_cost,created_at&order=created_at.desc&limit=100'),
-            sbFetch('cash_operations', 'select=type,amount,created_at&order=created_at.desc&limit=100'),
-            sbFetch('shifts', 'select=status,cash_start,cash_end,opened_at,closed_at&order=opened_at.desc&limit=20'),
-            sbFetch('events', `status=neq.completed&date=gte.${new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0]}&order=date.asc&limit=20`),
-            sbFetch('refunds', 'select=check_id,total_amount,created_at&order=created_at.desc&limit=100'),
-            sbFetch('salary_payments', 'select=amount,created_at,payment_method,profile_id&order=created_at.desc&limit=50'),
-            sbFetch('supply_items', 'select=item_id,cost_per_unit,quantity&limit=500'),
-          ]);
+      const [
+        profiles, checks, checkItems, inventory,
+        expenses, supplies, cashOps, shifts, events,
+        refunds, salaryPayments, supplyItems,
+      ] = await Promise.all([
+        sbFetch('profiles', 'select=id,nickname,role,balance,bonus_points,client_tier,is_resident,created_at,deleted_at&order=created_at.desc&limit=500'),
+        sbFetch('checks', 'select=id,player_id,total_amount,payment_method,bonus_used,closed_at,staff_id&status=eq.closed&order=closed_at.desc&limit=500'),
+        sbFetch('check_items', 'select=check_id,item_id,quantity,price_at_time&limit=3000'),
+        sbFetch('inventory', 'select=id,name,category,price,stock_quantity,is_active&order=name'),
+        sbFetch('expenses', 'select=category,amount,expense_date&order=expense_date.desc&limit=200'),
+        sbFetch('supplies', 'select=total_cost,created_at&order=created_at.desc&limit=100'),
+        sbFetch('cash_operations', 'select=type,amount,created_at&order=created_at.desc&limit=100'),
+        sbFetch('shifts', 'select=status,cash_start,cash_end,opened_at,closed_at&order=opened_at.desc&limit=20'),
+        sbFetch('events', `status=neq.completed&date=gte.${new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0]}&order=date.asc&limit=20`),
+        sbFetch('refunds', 'select=check_id,total_amount,created_at&order=created_at.desc&limit=100'),
+        sbFetch('salary_payments', 'select=amount,created_at,payment_method,profile_id&order=created_at.desc&limit=50'),
+        sbFetch('supply_items', 'select=item_id,cost_per_unit,quantity&limit=500'),
+      ]);
 
-          // Pre-aggregate data to keep context compact
-          const staff = profiles.filter((p) => p.role === 'owner' || p.role === 'staff');
-          const clients = profiles.filter((p) => p.role === 'client' && !p.deleted_at);
-          const debtors = clients.filter((p) => p.balance < 0);
+      const staff = profiles.filter((p) => p.role === 'owner' || p.role === 'staff');
+      const clients = profiles.filter((p) => p.role === 'client' && !p.deleted_at);
+      const debtors = clients.filter((p) => p.balance < 0);
 
-          // Себестоимость из поставок
-          const supplyCostAgg = {};
-          for (const si of supplyItems) {
-            if (!supplyCostAgg[si.item_id]) supplyCostAgg[si.item_id] = { cost: 0, qty: 0 };
-            supplyCostAgg[si.item_id].cost += (si.cost_per_unit || 0) * (si.quantity || 0);
-            supplyCostAgg[si.item_id].qty += si.quantity || 0;
-          }
-          const itemCosts = {};
-          for (const [id, v] of Object.entries(supplyCostAgg)) {
-            itemCosts[id] = v.qty > 0 ? Math.round(v.cost / v.qty) : 0;
-          }
+      const supplyCostAgg = {};
+      for (const si of supplyItems) {
+        if (!supplyCostAgg[si.item_id]) supplyCostAgg[si.item_id] = { cost: 0, qty: 0 };
+        supplyCostAgg[si.item_id].cost += (si.cost_per_unit || 0) * (si.quantity || 0);
+        supplyCostAgg[si.item_id].qty += si.quantity || 0;
+      }
+      const itemCosts = {};
+      for (const [id, v] of Object.entries(supplyCostAgg)) {
+        itemCosts[id] = v.qty > 0 ? Math.round(v.cost / v.qty) : 0;
+      }
 
-          // Aggregate product sales from check items
-          const productSales = {};
-          for (const ci of checkItems) {
-            if (!productSales[ci.item_id]) productSales[ci.item_id] = { qty: 0, revenue: 0 };
-            productSales[ci.item_id].qty += ci.quantity;
-            productSales[ci.item_id].revenue += ci.quantity * ci.price_at_time;
-          }
-          const productStats = inventory.map((item) => {
-            const sales = productSales[item.id] || { qty: 0, revenue: 0 };
-            const cost = itemCosts[item.id];
-            return { name: item.name, category: item.category, price: item.price, cost, stock: item.stock_quantity, sold: sales.qty, revenue: sales.revenue };
-          }).filter((p) => p.sold > 0).sort((a, b) => b.revenue - a.revenue).slice(0, 30);
+      const productSales = {};
+      for (const ci of checkItems) {
+        if (!productSales[ci.item_id]) productSales[ci.item_id] = { qty: 0, revenue: 0 };
+        productSales[ci.item_id].qty += ci.quantity;
+        productSales[ci.item_id].revenue += ci.quantity * ci.price_at_time;
+      }
+      const productStats = inventory.map((item) => {
+        const sales = productSales[item.id] || { qty: 0, revenue: 0 };
+        const cost = itemCosts[item.id];
+        return { name: item.name, category: item.category, price: item.price, cost, stock: item.stock_quantity, sold: sales.qty, revenue: sales.revenue };
+      }).filter((p) => p.sold > 0).sort((a, b) => b.revenue - a.revenue).slice(0, 30);
 
-          // Refunds
-          const refundByCheck = {};
-          let totalRefunded = 0;
-          for (const r of refunds) {
-            refundByCheck[r.check_id] = (refundByCheck[r.check_id] || 0) + (r.total_amount || 0);
-            totalRefunded += r.total_amount || 0;
-          }
+      const refundByCheck = {};
+      let totalRefunded = 0;
+      for (const r of refunds) {
+        refundByCheck[r.check_id] = (refundByCheck[r.check_id] || 0) + (r.total_amount || 0);
+        totalRefunded += r.total_amount || 0;
+      }
 
-          // Aggregate payment methods
-          const payments = { cash: 0, card: 0, debt: 0, bonus: 0 };
-          let totalRevenue = 0;
-          for (const c of checks) {
-            const refAmt = refundByCheck[c.id] || 0;
-            const effectiveAmt = (c.total_amount || 0) - refAmt;
-            totalRevenue += effectiveAmt;
-            if (c.payment_method && payments.hasOwnProperty(c.payment_method)) {
-              payments[c.payment_method] += effectiveAmt;
-            }
-          }
+      const payments = { cash: 0, card: 0, debt: 0, bonus: 0 };
+      let totalRevenue = 0;
+      for (const c of checks) {
+        const refAmt = refundByCheck[c.id] || 0;
+        const effectiveAmt = (c.total_amount || 0) - refAmt;
+        totalRevenue += effectiveAmt;
+        if (c.payment_method && payments.hasOwnProperty(c.payment_method)) {
+          payments[c.payment_method] += effectiveAmt;
+        }
+      }
 
-          // Aggregate expenses by category
-          const expByCategory = {};
-          for (const e of expenses) {
-            expByCategory[e.category] = (expByCategory[e.category] || 0) + Number(e.amount);
-          }
+      const expByCategory = {};
+      for (const e of expenses) {
+        expByCategory[e.category] = (expByCategory[e.category] || 0) + Number(e.amount);
+      }
 
-          // Top clients by spend
-          const clientSpend = {};
-          for (const c of checks) {
-            if (!c.player_id) continue;
-            clientSpend[c.player_id] = (clientSpend[c.player_id] || 0) + (c.total_amount || 0);
-          }
-          const topClients = clients
-            .map((p) => ({ nickname: p.nickname, balance: p.balance, bonus: p.bonus_points, tier: p.client_tier, spent: clientSpend[p.id] || 0 }))
-            .sort((a, b) => b.spent - a.spent)
-            .slice(0, 20);
+      const clientSpend = {};
+      for (const c of checks) {
+        if (!c.player_id) continue;
+        clientSpend[c.player_id] = (clientSpend[c.player_id] || 0) + (c.total_amount || 0);
+      }
+      const topClients = clients
+        .map((p) => ({ nickname: p.nickname, balance: p.balance, bonus: p.bonus_points, tier: p.client_tier, spent: clientSpend[p.id] || 0 }))
+        .sort((a, b) => b.spent - a.spent)
+        .slice(0, 20);
 
-          const salaryTotal = salaryPayments.reduce((s, p) => s + (p.amount || 0), 0);
+      const salaryTotal = salaryPayments.reduce((s, p) => s + (p.amount || 0), 0);
 
-          // Аналитика по периодам (для ответов на вопросы)
-          const now = new Date();
-          const mskOffset = 3 * 3600000;
-          const todayStart = new Date(new Date(now.getTime() + mskOffset).toISOString().split('T')[0]).getTime() - mskOffset;
-          const weekAgo = todayStart - 7 * 86400000;
-          const twoWeeksAgo = todayStart - 14 * 86400000;
-          let weekRevenue = 0, weekChecks = 0, weekRefunded = 0;
-          let prevWeekRevenue = 0, prevWeekChecks = 0, prevWeekRefunded = 0;
-          for (const c of checks) {
-            const t = new Date(c.closed_at).getTime();
-            const refAmt = refundByCheck[c.id] || 0;
-            const amt = (c.total_amount || 0) - refAmt;
-            if (t >= weekAgo) {
-              weekRevenue += amt;
-              weekChecks++;
-              weekRefunded += refAmt;
-            } else if (t >= twoWeeksAgo) {
-              prevWeekRevenue += amt;
-              prevWeekChecks++;
-              prevWeekRefunded += refAmt;
-            }
-          }
-          const weekDelta = prevWeekRevenue > 0 ? Math.round(((weekRevenue - prevWeekRevenue) / prevWeekRevenue) * 100) : (weekRevenue > 0 ? 100 : 0);
-          const weekCogs = checkItems.filter((ci) => {
-            const ch = checks.find((c) => c.id === ci.check_id);
-            return ch && new Date(ch.closed_at).getTime() >= weekAgo;
-          }).reduce((s, ci) => s + (ci.quantity || 0) * (itemCosts[ci.item_id] || 0), 0);
-          const weekAgoStr = new Date(weekAgo + mskOffset).toISOString().split('T')[0];
-          const weekExpenses = expenses
-            .filter((e) => (e.expense_date || '') >= weekAgoStr)
-            .reduce((s, e) => s + Number(e.amount || 0), 0);
-          const weekProfit = Math.round(weekRevenue - weekCogs - weekExpenses);
-          const weekMargin = weekRevenue > 0 ? Math.round((weekProfit / weekRevenue) * 100) : 0;
-          const weekCheckIds = new Set(checks.filter((c) => new Date(c.closed_at).getTime() >= weekAgo).map((c) => c.id));
-          const weekProductSales = {};
-          for (const ci of checkItems) {
-            if (!weekCheckIds.has(ci.check_id)) continue;
-            if (!weekProductSales[ci.item_id]) weekProductSales[ci.item_id] = { qty: 0, revenue: 0 };
-            weekProductSales[ci.item_id].qty += ci.quantity || 0;
-            weekProductSales[ci.item_id].revenue += (ci.quantity || 0) * (ci.price_at_time || 0);
-          }
-          const weekTopProducts = inventory
-            .map((i) => ({ name: i.name, revenue: weekProductSales[i.id]?.revenue || 0, qty: weekProductSales[i.id]?.qty || 0 }))
-            .filter((p) => p.revenue > 0)
-            .sort((a, b) => b.revenue - a.revenue)
-            .slice(0, 10);
+      const now = new Date();
+      const mskOffset = 3 * 3600000;
+      const todayStart = new Date(new Date(now.getTime() + mskOffset).toISOString().split('T')[0]).getTime() - mskOffset;
+      const weekAgo = todayStart - 7 * 86400000;
+      const twoWeeksAgo = todayStart - 14 * 86400000;
+      let weekRevenue = 0, weekChecks = 0, weekRefunded = 0;
+      let prevWeekRevenue = 0, prevWeekChecks = 0, prevWeekRefunded = 0;
+      for (const c of checks) {
+        const t = new Date(c.closed_at).getTime();
+        const refAmt = refundByCheck[c.id] || 0;
+        const amt = (c.total_amount || 0) - refAmt;
+        if (t >= weekAgo) {
+          weekRevenue += amt;
+          weekChecks++;
+          weekRefunded += refAmt;
+        } else if (t >= twoWeeksAgo) {
+          prevWeekRevenue += amt;
+          prevWeekChecks++;
+          prevWeekRefunded += refAmt;
+        }
+      }
+      const weekDelta = prevWeekRevenue > 0 ? Math.round(((weekRevenue - prevWeekRevenue) / prevWeekRevenue) * 100) : (weekRevenue > 0 ? 100 : 0);
+      const weekCogs = checkItems.filter((ci) => {
+        const ch = checks.find((c) => c.id === ci.check_id);
+        return ch && new Date(ch.closed_at).getTime() >= weekAgo;
+      }).reduce((s, ci) => s + (ci.quantity || 0) * (itemCosts[ci.item_id] || 0), 0);
+      const weekAgoStr = new Date(weekAgo + mskOffset).toISOString().split('T')[0];
+      const weekExpenses = expenses
+        .filter((e) => (e.expense_date || '') >= weekAgoStr)
+        .reduce((s, e) => s + Number(e.amount || 0), 0);
+      const weekProfit = Math.round(weekRevenue - weekCogs - weekExpenses);
+      const weekMargin = weekRevenue > 0 ? Math.round((weekProfit / weekRevenue) * 100) : 0;
+      const weekCheckIds = new Set(checks.filter((c) => new Date(c.closed_at).getTime() >= weekAgo).map((c) => c.id));
+      const weekProductSales = {};
+      for (const ci of checkItems) {
+        if (!weekCheckIds.has(ci.check_id)) continue;
+        if (!weekProductSales[ci.item_id]) weekProductSales[ci.item_id] = { qty: 0, revenue: 0 };
+        weekProductSales[ci.item_id].qty += ci.quantity || 0;
+        weekProductSales[ci.item_id].revenue += (ci.quantity || 0) * (ci.price_at_time || 0);
+      }
+      const weekTopProducts = inventory
+        .map((i) => ({ name: i.name, revenue: weekProductSales[i.id]?.revenue || 0, qty: weekProductSales[i.id]?.qty || 0 }))
+        .filter((p) => p.revenue > 0)
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 10);
 
-          dbContext = `\n\n=== ДАННЫЕ T-POS (актуальные из БД) ===
+      dbContext = `\n\n=== ДАННЫЕ T-POS (актуальные из БД) ===
 АНАЛИТИКА ЗА НЕДЕЛЮ: выручка ${weekRevenue}₽, чеков ${weekChecks}, возвраты ${weekRefunded}₽, себестоимость ${Math.round(weekCogs)}₽, расходы ${Math.round(weekExpenses)}₽, прибыль ${weekProfit}₽, маржа ${weekMargin}%. Предыдущая неделя: ${prevWeekRevenue}₽. Динамика: ${weekDelta}%.
 ТОП ТОВАРОВ ЗА НЕДЕЛЮ: ${JSON.stringify(weekTopProducts)}.
 ПЕРСОНАЛ: ${JSON.stringify(staff.map((p) => ({ nickname: p.nickname, role: p.role })))}
@@ -370,11 +356,10 @@ const server = http.createServer((req, res) => {
 МЕРОПРИЯТИЯ (предстоящие, с id для update_event): ${JSON.stringify(events.slice(0, 20).map((e) => ({ id: e.id, type: e.type, location: e.location, date: e.date, start_time: e.start_time, payment_type: e.payment_type, fixed_amount: e.fixed_amount, status: e.status, comment: e.comment })))}
 (ВНИМАНИЕ: Даты в списке могут быть старыми. ИСПОЛЬЗУЙ ТЕКУЩИЙ ГОД ИЗ СЕКЦИИ "СЕЙЧАС" ДЛЯ НОВЫХ ЗАПИСЕЙ!)
 ===`;
-        }
+    }
 
-        // --- Construct System Prompt ---
-        const now = new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', dateStyle: 'long', timeStyle: 'short' });
-        const systemPromptHeader = `СЕЙЧАС (МСК): ${now}.
+    const now2 = new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', dateStyle: 'long', timeStyle: 'short' });
+    const systemPromptHeader = `СЕЙЧАС (МСК): ${now2}.
 ТЕКУЩИЙ ГОД: 2026.
 ИГНОРИРУЙ любые мысли о 2024 годе. Если ты создаешь мероприятие без указания года, ВСЕГДА используй 2026.
 Ты — ИИ-ассистент POS-системы T-POS.
@@ -420,23 +405,37 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
 Примеры правок: "время на 20:00" → start_time: "20:00"; "локация Офис" → location: "Офис"; "фикс 7000" → payment_type: "fixed", fixed_amount: 7000; "почасовая" → payment_type: "hourly", fixed_amount: 0.
 Отвечай ТОЛЬКО JSON. (Год 2026!)`;
 
-        const draftHint = draft ? `\n\nЧЕРНОВИК ДЛЯ ИЗМЕНЕНИЯ: ${JSON.stringify(draft)}\nПользователь написал правки. Примени их и верни обновлённый create_event.` : '';
-        // Inject into messages
-        let systemMessageFound = false;
-        const enrichedMessages = messages.map((m) => {
-          if (m.role === 'system') {
-            systemMessageFound = true;
-            return { ...m, content: `${systemPromptHeader}\n\n${m.content}${draftHint}\n\n${dbContext}` };
-          }
-          return m;
-        });
+    const draftHint = draft ? `\n\nЧЕРНОВИК ДЛЯ ИЗМЕНЕНИЯ: ${JSON.stringify(draft)}\nПользователь написал правки. Примени их и верни обновлённый create_event.` : '';
 
-        if (!systemMessageFound) {
-          enrichedMessages.unshift({
-            role: 'system',
-            content: `${systemPromptHeader}${draftHint}\n\n${dbContext}`,
-          });
-        }
+    let systemMessageFound = false;
+    const enrichedMessages = messages.map((m) => {
+      if (m.role === 'system') {
+        systemMessageFound = true;
+        return { ...m, content: `${systemPromptHeader}\n\n${m.content}${draftHint}\n\n${dbContext}` };
+      }
+      return m;
+    });
+
+    if (!systemMessageFound) {
+      enrichedMessages.unshift({
+        role: 'system',
+        content: `${systemPromptHeader}${draftHint}\n\n${dbContext}`,
+      });
+    }
+
+    return enrichedMessages;
+  }
+
+  // --- /api/ai (non-streaming, original) ---
+  if (url.pathname === '/api/ai' && req.method === 'POST') {
+    if (!checkAuth(req, res)) return;
+    readBody(req).then(async (body) => {
+      try {
+        const { messages, context, draft } = JSON.parse(body);
+        const POLZA_KEY = process.env.POLZA_AI_API_KEY;
+        const aiUrl = 'https://polza.ai/api/v1/chat/completions';
+
+        const enrichedMessages = await buildEnrichedMessages(messages, draft);
 
         if (!POLZA_KEY) {
           json(res, {
@@ -503,6 +502,137 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
       }
     }).catch((e) => {
       json(res, { error: String(e) }, 400);
+    });
+    return;
+  }
+
+  // --- /api/ai/stream (SSE streaming) ---
+  if (url.pathname === '/api/ai/stream' && req.method === 'POST') {
+    if (!checkAuth(req, res)) return;
+    readBody(req).then(async (body) => {
+      try {
+        const { messages, draft } = JSON.parse(body);
+        const POLZA_KEY = process.env.POLZA_AI_API_KEY;
+        const aiUrl = 'https://polza.ai/api/v1/chat/completions';
+
+        const enrichedMessages = await buildEnrichedMessages(messages, draft);
+
+        if (!POLZA_KEY) {
+          cors(res);
+          res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
+          res.write(`data: ${JSON.stringify({ error: 'Missing POLZA_AI_API_KEY' })}\n\n`);
+          res.end();
+          return;
+        }
+
+        const aiBody = {
+          model: 'google/gemini-2.5-flash-lite-preview-09-2025',
+          messages: enrichedMessages,
+          temperature: 0.7,
+          max_tokens: 4096,
+          stream: true,
+        };
+
+        let aiRes;
+        let attempts = 0;
+        const maxAttempts = 3;
+
+        while (attempts < maxAttempts) {
+          aiRes = await fetch(aiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${POLZA_KEY}`,
+            },
+            body: JSON.stringify(aiBody),
+          });
+
+          if (aiRes.status === 429 && attempts < maxAttempts - 1) {
+            attempts++;
+            const delay = Math.pow(2, attempts) * 1000;
+            await new Promise(r => setTimeout(r, delay));
+            continue;
+          }
+          break;
+        }
+
+        cors(res);
+        res.writeHead(200, {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        });
+
+        if (!aiRes.ok) {
+          const errData = await aiRes.text();
+          res.write(`data: ${JSON.stringify({ error: `AI API ${aiRes.status}`, details: errData })}\n\n`);
+          res.end();
+          return;
+        }
+
+        // Parse SSE stream from Polza.ai
+        let fullText = '';
+        const reader = aiRes.body;
+        let buffer = '';
+
+        reader.on('data', (chunk) => {
+          buffer += chunk.toString();
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+            const payload = trimmed.slice(6);
+            if (payload === '[DONE]') {
+              res.write(`data: ${JSON.stringify({ done: true, full: fullText })}\n\n`);
+              return;
+            }
+            try {
+              const parsed = JSON.parse(payload);
+              const token = parsed.choices?.[0]?.delta?.content || '';
+              if (token) {
+                fullText += token;
+                res.write(`data: ${JSON.stringify({ token })}\n\n`);
+              }
+            } catch { /* skip unparseable lines */ }
+          }
+        });
+
+        reader.on('end', () => {
+          // Process any remaining buffer
+          if (buffer.trim()) {
+            const trimmed = buffer.trim();
+            if (trimmed.startsWith('data: ') && trimmed.slice(6) !== '[DONE]') {
+              try {
+                const parsed = JSON.parse(trimmed.slice(6));
+                const token = parsed.choices?.[0]?.delta?.content || '';
+                if (token) fullText += token;
+              } catch { }
+            }
+          }
+          res.write(`data: ${JSON.stringify({ done: true, full: fullText })}\n\n`);
+          res.end();
+        });
+
+        reader.on('error', (err) => {
+          console.error('Stream error:', err);
+          res.write(`data: ${JSON.stringify({ error: String(err) })}\n\n`);
+          res.end();
+        });
+
+      } catch (e) {
+        console.error('AI Stream Error:', e);
+        cors(res);
+        res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
+        res.write(`data: ${JSON.stringify({ error: String(e) })}\n\n`);
+        res.end();
+      }
+    }).catch((e) => {
+      cors(res);
+      res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
+      res.write(`data: ${JSON.stringify({ error: String(e) })}\n\n`);
+      res.end();
     });
     return;
   }
@@ -601,10 +731,10 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
           const lines = evList.length === 0
             ? ['📅 Нет запланированных мероприятий.']
             : evList.map((e, i) => {
-                const label = e.type === 'titan' ? 'Титан' : (e.location || 'Выезд');
-                const pay = e.payment_type === 'hourly' ? 'почасовая' : `фикс ${e.fixed_amount || 0}₽`;
-                return `${i + 1}. ${label} — ${e.date} в ${e.start_time || '18:00'}, ${pay}${e.comment ? ` (${e.comment})` : ''}`;
-              });
+              const label = e.type === 'titan' ? 'Титан' : (e.location || 'Выезд');
+              const pay = e.payment_type === 'hourly' ? 'почасовая' : `фикс ${e.fixed_amount || 0}₽`;
+              return `${i + 1}. ${label} — ${e.date} в ${e.start_time || '18:00'}, ${pay}${e.comment ? ` (${e.comment})` : ''}`;
+            });
           json(res, { success: true, events: evList, message: `📅 Мероприятия:\n\n${lines.join('\n')}` });
           return;
         }
