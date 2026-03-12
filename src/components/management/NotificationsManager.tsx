@@ -313,7 +313,11 @@ export function NotificationsManager() {
                 className="rounded-3xl bg-[var(--c-surface)]/80 border border-[var(--c-border)] px-3.5 py-3.5 sm:px-4 sm:py-4 space-y-3 transition-transform active:scale-[0.98]"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => toggleType(key)}
+                    className="flex items-center gap-3 min-w-0 flex-1 text-left"
+                  >
                     <div className={`w-9 h-9 rounded-2xl flex items-center justify-center shadow-inner ${meta.iconBg} ${meta.color}`}>
                       {meta.icon}
                     </div>
@@ -333,10 +337,10 @@ export function NotificationsManager() {
                         {cfg.enabled ? 'Активно' : 'Выключено'}
                       </span>
                     </div>
-                  </div>
+                  </button>
                   <button
                     onClick={() => toggleType(key)}
-                    className="hidden sm:inline-flex items-center justify-center px-2.5 py-1.5 rounded-full border border-[var(--c-border)] text-[10px] font-medium text-[var(--c-hint)] hover:border-[var(--c-accent)]/60 hover:text-[var(--c-accent)]/90 transition"
+                    className="inline-flex items-center justify-center px-2.5 py-1.5 rounded-full border border-[var(--c-border)] text-[10px] font-medium text-[var(--c-hint)] hover:border-[var(--c-accent)]/60 hover:text-[var(--c-accent)]/90 transition"
                   >
                     {cfg.enabled ? 'Выключить' : 'Включить'}
                   </button>
