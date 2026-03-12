@@ -184,6 +184,7 @@ create table supplies (
   id uuid primary key default gen_random_uuid(),
   note text,
   total_cost numeric not null default 0,
+  payment_method text not null default 'transfer' check (payment_method in ('cash', 'transfer')),
   created_by uuid references profiles(id),
   created_at timestamptz not null default now()
 );

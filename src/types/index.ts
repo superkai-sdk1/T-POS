@@ -154,10 +154,13 @@ export interface CartItem {
   modifiers?: { id: string; name: string; price: number }[];
 }
 
+export type SupplyPaymentMethod = 'cash' | 'transfer';
+
 export interface Supply {
   id: string;
   note: string | null;
   total_cost: number;
+  payment_method: SupplyPaymentMethod;
   created_by: string | null;
   created_at: string;
   creator?: { nickname: string };

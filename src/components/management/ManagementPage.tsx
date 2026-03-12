@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/auth';
 import { hasPermission } from '@/lib/permissions';
 import {
   Package, Truck, ClipboardList, Users, AlertTriangle, Wallet, Star, Banknote, UtensilsCrossed, UserCircle,
-  ArrowLeft, Percent, Info, SlidersHorizontal, Ticket, Receipt, History, Filter, ArrowDownToLine, TrendingDown, Box, MoreVertical, Search, DollarSign, Bell,
+  ArrowLeft, Percent, Info, SlidersHorizontal, Ticket, Receipt, History, Filter, TrendingDown, Box, MoreVertical, Search, DollarSign, Bell,
 } from 'lucide-react';
 import type { InventoryItem } from '@/types';
 import { SupplyPage } from '@/components/supply/SupplyPage';
@@ -237,9 +237,7 @@ export function ManagementPage({ initialScreen, initialSupplyId, initialRevision
             variant="indigo"
           />
           {inventorySubTab === 'stock' && (
-            <InventoryFull
-              onNavigateToSupplies={() => startTransition(() => setScreen('supplies'))}
-            />
+            <InventoryFull />
           )}
           {inventorySubTab === 'revision' && <RevisionPage initialRevisionId={initialRevisionId} />}
         </div>
@@ -260,7 +258,7 @@ export function ManagementPage({ initialScreen, initialSupplyId, initialRevision
   );
 }
 
-function InventoryFull({ onNavigateToSupplies }: { onNavigateToSupplies?: () => void }) {
+function InventoryFull() {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -392,17 +390,6 @@ function InventoryFull({ onNavigateToSupplies }: { onNavigateToSupplies?: () => 
       </div>
       )}
 
-      {/* FAB — Поставка */}
-      {onNavigateToSupplies && (
-        <div className="fixed bottom-6 right-4 sm:bottom-8 sm:right-6 lg:bottom-10 lg:right-10 z-20">
-          <button
-            onClick={() => { hapticFeedback(); onNavigateToSupplies(); }}
-            className="w-12 h-12 sm:w-14 sm:h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-xl shadow-indigo-600/40 hover:scale-105 active:scale-95 transition-all border-2 sm:border-4 border-[var(--c-bg)]"
-          >
-            <ArrowDownToLine className="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
-        </div>
-      )}
     </div>
   );
 }

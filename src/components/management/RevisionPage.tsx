@@ -239,95 +239,98 @@ export function RevisionPage({ initialRevisionId }: RevisionPageProps) {
   // ==================
   if (isCreating) {
     return (
-      <div className="relative min-h-screen -mx-4 -my-3 lg:-mx-5 lg:-my-4 bg-[#0b0e14]">
+      <div className="flex flex-col -mx-4 -my-3 lg:-mx-5 lg:-my-4 bg-[#0b0e14]" style={{ height: '100dvh' }}>
         <div className="absolute top-[-5%] right-[-5%] w-[30%] h-[30%] bg-indigo-600/5 blur-[100px] rounded-full pointer-events-none" />
 
-        <div className="relative max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6 pb-28 sm:pb-32">
-          {/* Header */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <button
-                onClick={handleTryExit}
-                className="p-2 sm:p-2.5 bg-slate-800/50 hover:bg-slate-800 rounded-xl sm:rounded-2xl border border-slate-700 transition-all text-slate-400 active:scale-95 shrink-0"
-              >
-                <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-              </button>
-              <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl lg:text-2xl font-black tracking-tight text-white leading-tight uppercase italic truncate">Новая ревизия</h1>
-                <p className="text-slate-500 text-xs sm:text-sm font-medium">Ввод фактических остатков</p>
+        {/* Scrollable content */}
+        <div className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden scroll-area">
+          <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <button
+                  onClick={handleTryExit}
+                  className="p-2 sm:p-2.5 bg-slate-800/50 hover:bg-slate-800 rounded-xl sm:rounded-2xl border border-slate-700 transition-all text-slate-400 active:scale-95 shrink-0"
+                >
+                  <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+                </button>
+                <div className="min-w-0">
+                  <h1 className="text-lg sm:text-xl lg:text-2xl font-black tracking-tight text-white leading-tight uppercase italic truncate">Новая ревизия</h1>
+                  <p className="text-slate-500 text-xs sm:text-sm font-medium">Ввод фактических остатков</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="space-y-3 sm:space-y-4">
-            <div className="flex flex-col">
-              <label className="text-slate-500 text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-1 ml-1">Примечание</label>
-              <textarea
-                value={revisionNote}
-                onChange={(e) => setRevisionNote(e.target.value)}
-                placeholder="Комментарий (необязательно)..."
-                className="w-full bg-slate-900/40 border border-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-sm sm:text-base text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all placeholder:text-slate-700 resize-none h-14 sm:h-16"
-              />
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex flex-col">
+                <label className="text-slate-500 text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-1 ml-1">Примечание</label>
+                <textarea
+                  value={revisionNote}
+                  onChange={(e) => setRevisionNote(e.target.value)}
+                  placeholder="Комментарий (необязательно)..."
+                  className="w-full bg-slate-900/40 border border-slate-800 rounded-xl sm:rounded-2xl p-3 sm:p-4 text-sm sm:text-base text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all placeholder:text-slate-700 resize-none h-14 sm:h-16"
+                />
+              </div>
+
+              <div className="relative">
+                <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4 sm:w-5 sm:h-5" />
+                <input
+                  type="text"
+                  placeholder="Поиск позиции..."
+                  value={createSearch}
+                  onChange={(e) => setCreateSearch(e.target.value)}
+                  className="w-full bg-slate-900/40 border border-slate-800 rounded-xl sm:rounded-2xl py-2.5 sm:py-3 pl-10 sm:pl-12 pr-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-700 text-white"
+                />
+              </div>
             </div>
 
-            <div className="relative">
-              <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4 sm:w-5 sm:h-5" />
-              <input
-                type="text"
-                placeholder="Поиск позиции..."
-                value={createSearch}
-                onChange={(e) => setCreateSearch(e.target.value)}
-                className="w-full bg-slate-900/40 border border-slate-800 rounded-xl sm:rounded-2xl py-2.5 sm:py-3 pl-10 sm:pl-12 pr-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-700 text-white"
-              />
-            </div>
-          </div>
+            <div className="space-y-2 sm:space-y-3">
+              <div className="flex items-center justify-between px-1 sm:px-2 text-[9px] sm:text-[10px]">
+                <span className="text-slate-500 font-black uppercase tracking-widest">Товар / Система</span>
+                <span className="text-slate-500 font-black uppercase tracking-widest">Факт</span>
+              </div>
 
-          <div className="space-y-2 sm:space-y-3">
-            <div className="flex items-center justify-between px-1 sm:px-2 text-[9px] sm:text-[10px]">
-              <span className="text-slate-500 font-black uppercase tracking-widest">Товар / Система</span>
-              <span className="text-slate-500 font-black uppercase tracking-widest">Факт</span>
-            </div>
+              {filteredPhysical.map((item) => {
+                const val = revisionData[item.id] || '';
+                const delta = val === '' ? 0 : Number(val) - item.stock_quantity;
+                const hasDiscrepancy = val !== '' && delta !== 0;
 
-            {filteredPhysical.map((item) => {
-              const val = revisionData[item.id] || '';
-              const delta = val === '' ? 0 : Number(val) - item.stock_quantity;
-              const hasDiscrepancy = val !== '' && delta !== 0;
-
-              return (
-                <div
-                  key={item.id}
-                  className={`bg-slate-900/30 border ${hasDiscrepancy ? 'border-rose-500/20' : 'border-slate-800'} rounded-xl sm:rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2 transition-all`}
-                >
-                  <div className="flex flex-col min-w-0 flex-1">
-                    <h4 className="font-bold text-white text-sm sm:text-base leading-tight truncate">{item.name}</h4>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase">Система: {item.stock_quantity}</span>
-                      {val !== '' && (
-                        <span className={`text-[9px] sm:text-[10px] font-black px-1 py-0.5 rounded shrink-0 ${delta >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
-                          {delta > 0 ? `+${delta}` : delta}
-                        </span>
-                      )}
+                return (
+                  <div
+                    key={item.id}
+                    className={`bg-slate-900/30 border ${hasDiscrepancy ? 'border-rose-500/20' : 'border-slate-800'} rounded-xl sm:rounded-2xl p-2.5 sm:p-3 flex items-center justify-between gap-2 transition-all`}
+                  >
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <h4 className="font-bold text-white text-sm sm:text-base leading-tight truncate">{item.name}</h4>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase">Система: {item.stock_quantity}</span>
+                        {val !== '' && (
+                          <span className={`text-[9px] sm:text-[10px] font-black px-1 py-0.5 rounded shrink-0 ${delta >= 0 ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+                            {delta > 0 ? `+${delta}` : delta}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  <input
-                    type="number"
-                    value={val}
-                    onChange={(e) => { hapticFeedback('light'); setRevisionData((prev) => ({ ...prev, [item.id]: e.target.value })); }}
-                    placeholder="—"
-                    min={0}
-                    className={`w-14 sm:w-16 lg:w-20 bg-slate-800/50 border border-slate-700 rounded-lg sm:rounded-xl py-2 sm:py-2.5 px-2 text-center text-base sm:text-lg font-black focus:outline-none focus:ring-2 transition-all shrink-0 ${
-                      hasDiscrepancy ? 'text-rose-400 focus:ring-rose-500/30' : 'text-indigo-400 focus:ring-indigo-500/30'
-                    }`}
-                  />
-                </div>
-              );
-            })}
+                    <input
+                      type="number"
+                      value={val}
+                      onChange={(e) => { hapticFeedback('light'); setRevisionData((prev) => ({ ...prev, [item.id]: e.target.value })); }}
+                      placeholder="—"
+                      min={0}
+                      className={`w-14 sm:w-16 lg:w-20 bg-slate-800/50 border border-slate-700 rounded-lg sm:rounded-xl py-2 sm:py-2.5 px-2 text-center text-base sm:text-lg font-black focus:outline-none focus:ring-2 transition-all shrink-0 ${
+                        hasDiscrepancy ? 'text-rose-400 focus:ring-rose-500/30' : 'text-indigo-400 focus:ring-indigo-500/30'
+                      }`}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        {/* Floating Action Bar */}
-        <div className="fixed bottom-0 left-0 right-0 bg-[#0b0e14]/90 backdrop-blur-xl border-t border-slate-800 p-3 sm:p-4 lg:p-5 z-30 flex justify-center">
+        {/* Bottom Action Bar — pinned */}
+        <div className="shrink-0 bg-[#0b0e14] border-t border-slate-800 p-3 sm:p-4 lg:p-5 flex justify-center safe-area-bottom">
           <div className="max-w-md w-full flex gap-2 sm:gap-3">
             <button
               onClick={handleTryExit}

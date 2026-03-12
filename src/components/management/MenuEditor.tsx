@@ -625,50 +625,6 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
       >
         <div className="flex flex-col -mx-6 sm:-mx-10 -mb-6 sm:-mb-10">
           <div className="flex-1 overflow-y-auto px-6 sm:px-10 pb-4 space-y-8">
-            {/* Изображение */}
-            <div className="space-y-3">
-              <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Изображение</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {form.image_url ? (
-                  <div className="relative aspect-video md:aspect-auto md:h-32 rounded-3xl overflow-hidden border border-slate-800">
-                    <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => updateField('image_url', '')}
-                      className="absolute top-2 right-2 w-10 h-10 rounded-2xl bg-black/60 flex items-center justify-center active:scale-90 transition-all"
-                    >
-                      <X className="w-5 h-5 text-white" />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploading}
-                    className="aspect-video md:aspect-auto md:h-32 border-2 border-dashed border-slate-800 hover:border-indigo-500/50 hover:bg-indigo-500/5 rounded-3xl flex flex-col items-center justify-center gap-2 transition-all group"
-                  >
-                    {isUploading ? (
-                      <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <div className="p-3 bg-slate-800/50 rounded-2xl text-slate-400 group-hover:text-indigo-400 transition-colors">
-                        <Upload size={20} />
-                      </div>
-                    )}
-                    <span className="text-sm font-bold text-slate-400 group-hover:text-slate-200">{isUploading ? 'Загрузка...' : 'Загрузить фото'}</span>
-                  </button>
-                )}
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                <div className="flex flex-col justify-center gap-3">
-                  <span className="text-[10px] font-bold text-slate-600 uppercase md:text-left">или ссылка на изображение</span>
-                  <input
-                    type="text"
-                    placeholder="https://..."
-                    value={form.image_url}
-                    onChange={(e) => updateField('image_url', e.target.value)}
-                    className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all text-slate-200"
-                  />
-                </div>
-              </div>
-            </div>
-
             {/* Название и Цена */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">

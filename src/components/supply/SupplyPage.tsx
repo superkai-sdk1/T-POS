@@ -10,12 +10,12 @@ import { Drawer } from '@/components/ui/Drawer';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import {
   Plus, Truck, ArrowLeft, Trash2, Search, Package,
-  Pencil, CalendarDays, User, ChevronRight, AlertTriangle,
+  Pencil, CalendarDays, User, ChevronRight, AlertTriangle, Banknote, CreditCard,
 } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
-import type { Supply, SupplyItem, InventoryItem } from '@/types';
+import type { Supply, SupplyItem, InventoryItem, SupplyPaymentMethod } from '@/types';
 
 interface DraftItem {
   item: InventoryItem;
@@ -43,6 +43,7 @@ export function SupplyPage({ initialSupplyId }: SupplyPageProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [draftItems, setDraftItems] = useState<DraftItem[]>([]);
   const [draftNote, setDraftNote] = useState('');
+  const [draftPaymentMethod, setDraftPaymentMethod] = useState<SupplyPaymentMethod>('transfer');
   const [showAddItem, setShowAddItem] = useState(false);
   const [itemSearch, setItemSearch] = useState('');
   const [showExitWarning, setShowExitWarning] = useState(false);
@@ -120,6 +121,7 @@ export function SupplyPage({ initialSupplyId }: SupplyPageProps) {
     setIsCreating(false);
     setDraftItems([]);
     setDraftNote('');
+    setDraftPaymentMethod('transfer');
   };
 
   const { swipeIndicatorStyle: createIndicator, overlayStyle: createOverlay } = useSwipeBack({
@@ -187,7 +189,7 @@ export function SupplyPage({ initialSupplyId }: SupplyPageProps) {
 
     const { data: supply, error } = await supabase
       .from('supplies')
-      .insert({ note: draftNote || null, total_cost: draftTotal, created_by: user?.id })
+      .insert({ note: draftNote || null, total_cost: draftTotal, payment_method: draftPaymentMethod, created_by: user?.id })
       .select()
       .single();
 
@@ -224,11 +226,23 @@ export function SupplyPage({ initialSupplyId }: SupplyPageProps) {
     }));
     notifySupply(supply.id, draftTotal, supplyItems, user?.nickname).catch(() => {});
 
+    if (draftPaymentMethod === 'cash') {
+      const activeShift = (await supabase.from('shifts').select('id').eq('status', 'open').limit(1).single()).data;
+      await supabase.from('cash_operations').insert({
+        shift_id: activeShift?.id || null,
+        type: 'inkassation',
+        amount: draftTotal,
+        note: `Поставка #${supply.id.slice(0, 8)} (из кассы)`,
+        created_by: user?.id,
+      });
+    }
+
     hapticNotification('success');
     setIsSaving(false);
     setIsCreating(false);
     setDraftItems([]);
     setDraftNote('');
+    setDraftPaymentMethod('transfer');
     loadSupplies();
     loadInventory();
   };
@@ -423,6 +437,35 @@ export function SupplyPage({ initialSupplyId }: SupplyPageProps) {
           onChange={(e) => setDraftNote(e.target.value)}
         />
 
+        {/* Payment method */}
+        <div className="space-y-1.5">
+          <p className="text-[11px] font-medium text-[var(--c-hint)]">Способ оплаты</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setDraftPaymentMethod('cash')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.97] ${
+                draftPaymentMethod === 'cash'
+                  ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                  : 'bg-[var(--c-surface)] text-[var(--c-hint)] border border-[var(--c-border)]'
+              }`}
+            >
+              <Banknote className="w-4 h-4" />
+              Из кассы
+            </button>
+            <button
+              onClick={() => setDraftPaymentMethod('transfer')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.97] ${
+                draftPaymentMethod === 'transfer'
+                  ? 'bg-sky-500/15 text-sky-400 border border-sky-500/30'
+                  : 'bg-[var(--c-surface)] text-[var(--c-hint)] border border-[var(--c-border)]'
+              }`}
+            >
+              <CreditCard className="w-4 h-4" />
+              Перевод
+            </button>
+          </div>
+        </div>
+
         {/* Draft items */}
         {draftItems.length > 0 && (
           <div className="space-y-3">
@@ -566,6 +609,13 @@ export function SupplyPage({ initialSupplyId }: SupplyPageProps) {
                       <span className="text-xs text-[var(--c-hint)]">{formatTime(s.created_at)}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                        s.payment_method === 'cash'
+                          ? 'bg-emerald-500/15 text-emerald-400'
+                          : 'bg-sky-500/15 text-sky-400'
+                      }`}>
+                        {s.payment_method === 'cash' ? 'Касса' : 'Перевод'}
+                      </span>
                       {s.note && <span className="text-xs text-[var(--c-hint)] truncate">{s.note}</span>}
                       {s.creator && <span className="text-xs text-[var(--c-hint)]">{s.creator.nickname}</span>}
                     </div>
@@ -601,6 +651,15 @@ export function SupplyPage({ initialSupplyId }: SupplyPageProps) {
                   <span className="text-[var(--c-text)]">{selectedSupply.creator.nickname}</span>
                 </div>
               )}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-[var(--c-hint)] flex items-center gap-1.5">
+                  {selectedSupply.payment_method === 'cash' ? <Banknote className="w-3.5 h-3.5" /> : <CreditCard className="w-3.5 h-3.5" />}
+                  Оплата
+                </span>
+                <span className={`font-medium ${selectedSupply.payment_method === 'cash' ? 'text-emerald-400' : 'text-sky-400'}`}>
+                  {selectedSupply.payment_method === 'cash' ? 'Из кассы' : 'Перевод'}
+                </span>
+              </div>
               {selectedSupply.note && (
                 <div className="text-sm">
                   <span className="text-[var(--c-hint)]">Примечание:</span>
