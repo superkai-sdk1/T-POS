@@ -363,6 +363,20 @@ create table app_settings (
 );
 
 -- ==================
+-- notifications (in-app / PWA)
+-- ==================
+create table notifications (
+  id uuid primary key default gen_random_uuid(),
+  type text not null,
+  title text not null,
+  body text,
+  meta jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index idx_notifications_created_at on notifications(created_at desc);
+
+-- ==================
 -- cash_operations
 -- ==================
 create table cash_operations (
@@ -532,6 +546,7 @@ alter table check_item_modifiers enable row level security;
 alter table revisions enable row level security;
 alter table revision_items enable row level security;
 alter table app_settings enable row level security;
+alter table notifications enable row level security;
 alter table cash_operations enable row level security;
 alter table bonus_history enable row level security;
 alter table certificates enable row level security;
@@ -578,6 +593,8 @@ create policy "revision_items_all" on revision_items for all to anon, authentica
 create policy "settings_select" on app_settings for select to anon, authenticated using (true);
 create policy "settings_insert" on app_settings for insert to anon, authenticated with check (true);
 create policy "settings_update" on app_settings for update to anon, authenticated using (true);
+create policy "notifications_select" on notifications for select to anon, authenticated using (true);
+create policy "notifications_insert" on notifications for insert to anon, authenticated with check (true);
 create policy "cash_ops_select" on cash_operations for select to anon, authenticated using (true);
 create policy "cash_ops_insert" on cash_operations for insert to anon, authenticated with check (true);
 create policy "cash_ops_delete" on cash_operations for delete to anon, authenticated using (true);
@@ -596,7 +613,7 @@ alter publication supabase_realtime add table
   checks, check_items, check_discounts, inventory, shifts,
   cash_operations, bookings, profiles, events, discounts,
   supplies, revisions, refunds, menu_categories, modifiers,
-  tg_link_requests, client_discount_rules, expenses, salary_payments;
+  tg_link_requests, client_discount_rules, expenses, salary_payments, notifications;
 
 alter table checks replica identity full;
 alter table check_items replica identity full;
@@ -617,6 +634,7 @@ alter table tg_link_requests replica identity full;
 alter table client_discount_rules replica identity full;
 alter table expenses replica identity full;
 alter table salary_payments replica identity full;
+alter table notifications replica identity full;
 
 -- ==============================
 -- Storage buckets
@@ -663,7 +681,12 @@ insert into app_settings (key, value) values
   ('bonus_accrual_rate', '10'),
   ('bonus_min_purchase', '0'),
   ('bonus_enabled', 'true'),
-  ('bonus_accrual_on_debt', 'false')
+  ('bonus_accrual_on_debt', 'false'),
+  ('notification_admin_channel', 'telegram'),
+  ('notification_admin_telegram_chat_ids', '556525624,1005574994'),
+  ('notification_admin_types', '{"shift_open":true,"shift_close":true,"payment_cash":true,"payment_card":true,"payment_deposit":true,"payment_debt":true,"birthday":true}'),
+  ('notification_client_bonus_accrual', 'true'),
+  ('notification_client_bonus_spend', 'true')
 on conflict (key) do nothing;
 
 -- Menu categories

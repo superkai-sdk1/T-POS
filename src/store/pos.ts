@@ -3,6 +3,7 @@ import type { CartItem, Check, CheckItem, CheckDiscount, InventoryItem, PaymentM
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from './auth';
 import { useShiftStore } from './shift';
+import { notifyPayment } from '@/lib/notifications';
 
 export interface PaymentPortion {
   method: PaymentMethod;
@@ -897,6 +898,20 @@ export const usePOSStore = create<POSState>((set, get) => ({
         amount: p.amount,
       }));
       await supabase.from('check_payments').insert(paymentRows);
+
+      const playerNick = (activeCheck.player as { nickname?: string })?.nickname || 'Гость';
+      const paymentMap: Record<string, 'payment_cash' | 'payment_card' | 'payment_deposit' | 'payment_debt'> = {
+        cash: 'payment_cash',
+        card: 'payment_card',
+        deposit: 'payment_deposit',
+        debt: 'payment_debt',
+      };
+      for (const p of payments) {
+        const notifType = paymentMap[p.method];
+        if (notifType && p.amount > 0) {
+          notifyPayment(notifType, p.amount, playerNick, checkId);
+        }
+      }
     }
 
     if (activeCheck.player_id) {

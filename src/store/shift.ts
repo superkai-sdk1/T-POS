@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { Shift, ShiftCheckDetail } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from './auth';
-import { sendToOwners, buildShiftOpenReport, buildShiftCloseReport, buildBirthdayReport, type CloseReportCheck } from '@/lib/bot';
+import { notifyShiftOpen, notifyShiftClose, notifyBirthday, type CloseReportCheck } from '@/lib/notifications';
 
 interface ShiftState {
   activeShift: Shift | null;
@@ -149,7 +149,7 @@ export const useShiftStore = create<ShiftState>()(
         const shift = data as Shift;
         set({ activeShift: shift });
 
-        sendToOwners(buildShiftOpenReport(user.nickname, cashStart));
+        notifyShiftOpen(user.nickname, cashStart);
 
         const now = new Date();
         const month = now.getMonth() + 1;
@@ -169,7 +169,7 @@ export const useShiftStore = create<ShiftState>()(
         }
         if (names.length > 0) {
           set({ birthdayNames: names });
-          sendToOwners(buildBirthdayReport(names));
+          notifyBirthday(names);
         }
 
         return shift;
@@ -225,14 +225,14 @@ export const useShiftStore = create<ShiftState>()(
         const totalRefunded = (shiftRefunds || []).reduce((s, r) => s + (r.total_amount || 0), 0);
         const totalRevenue = checks.reduce((s, c) => s + c.totalAmount, 0) - totalRefunded;
 
-        sendToOwners(buildShiftCloseReport({
+        notifyShiftClose({
           staffClose: user?.nickname || '?',
           openedAt: activeShift.opened_at,
           closedAt,
           cashEnd,
           totalRevenue,
           checks,
-        }));
+        });
 
         set({ activeShift: null });
         return true;

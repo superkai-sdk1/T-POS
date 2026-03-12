@@ -338,15 +338,32 @@ async function notifyOwnersAboutLinkRequest(tgName, tgUsername, nickname) {
   }
 }
 
+async function getNotificationSettings() {
+  const { data } = await supabase.from('app_settings').select('key, value').in('key', [
+    'notification_client_bonus_accrual',
+    'notification_client_bonus_spend',
+  ]);
+  const map = new Map((data || []).map((r) => [r.key, r.value]));
+  return {
+    bonusAccrual: map.get('notification_client_bonus_accrual') !== 'false',
+    bonusSpend: map.get('notification_client_bonus_spend') !== 'false',
+  };
+}
+
 async function setupBonusNotifications() {
   const channel = supabase
     .channel('wallet-bonus-notifications')
     .on(
       'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'transactions', filter: 'type=eq.bonus_accrual' },
+      { event: 'INSERT', schema: 'public', table: 'transactions' },
       async (payload) => {
         const tx = payload.new;
         if (!tx.player_id) return;
+
+        const settings = await getNotificationSettings();
+        if (tx.type === 'bonus_accrual' && !settings.bonusAccrual) return;
+        if (tx.type === 'bonus_spend' && !settings.bonusSpend) return;
+        if (tx.type !== 'bonus_accrual' && tx.type !== 'bonus_spend') return;
 
         const { data: profile } = await supabase
           .from('profiles')
@@ -356,18 +373,26 @@ async function setupBonusNotifications() {
 
         if (!profile?.tg_id) return;
 
-        const text =
-          `🎁 <b>Начисление бонусов!</b>\n\n` +
-          `+<b>${fmt(tx.amount)}</b> баллов\n` +
-          `${tx.description || ''}\n\n` +
-          `Баланс: <b>${fmt(profile.bonus_points)} баллов</b>`;
-
-        await sendMessage(profile.tg_id, text, walletButton());
+        if (tx.type === 'bonus_accrual') {
+          const text =
+            `🎁 <b>Начисление бонусов!</b>\n\n` +
+            `+<b>${fmt(tx.amount)}</b> баллов\n` +
+            `${tx.description || ''}\n\n` +
+            `Баланс: <b>${fmt(profile.bonus_points)} баллов</b>`;
+          await sendMessage(profile.tg_id, text, walletButton());
+        } else if (tx.type === 'bonus_spend') {
+          const text =
+            `💸 <b>Списание бонусов</b>\n\n` +
+            `−<b>${fmt(tx.amount)}</b> баллов\n` +
+            `${tx.description || ''}\n\n` +
+            `Баланс: <b>${fmt(profile.bonus_points)} баллов</b>`;
+          await sendMessage(profile.tg_id, text, walletButton());
+        }
       }
     )
     .subscribe();
 
-  console.log('Subscribed to bonus notifications');
+  console.log('Subscribed to bonus notifications (accrual + spend)');
   return channel;
 }
 
@@ -404,10 +429,51 @@ const WEBHOOK_PORT = parseInt(env.WALLET_BOT_PORT || process.env.WALLET_BOT_PORT
 const POS_DOMAIN = env.POS_DOMAIN || process.env.POS_DOMAIN || 'titanpos.ru';
 const WEBHOOK_PATH = `/webhook/wallet-bot-${BOT_TOKEN.split(':')[0]}`;
 
+async function isOwner(tgId) {
+  const { data } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('tg_id', String(tgId))
+    .single();
+  return data?.role === 'owner';
+}
+
+async function handleBroadcast(chatId, tgId, text) {
+  const msg = text.replace(/^\/broadcast\s*/i, '').trim();
+  if (!msg) {
+    await sendMessage(chatId, 'Использование: /broadcast <сообщение>');
+    return;
+  }
+  const ok = await isOwner(tgId);
+  if (!ok) {
+    await sendMessage(chatId, '❌ Только владельцы могут отправлять рассылку.');
+    return;
+  }
+  const { data: clients } = await supabase
+    .from('profiles')
+    .select('tg_id, nickname')
+    .eq('role', 'client')
+    .not('tg_id', 'is', null);
+  let sent = 0;
+  for (const c of clients || []) {
+    try {
+      await sendMessage(c.tg_id, `📢 <b>Рассылка</b>\n\n${msg}`, walletButton());
+      sent++;
+    } catch { /* skip */ }
+  }
+  await sendMessage(chatId, `✅ Отправлено ${sent} из ${(clients || []).length} клиентам.`);
+}
+
 async function handleUpdate(update) {
   try {
     if (update.message?.text?.startsWith('/start')) {
       await handleStart(update.message);
+    } else if (update.message?.text?.startsWith('/broadcast')) {
+      await handleBroadcast(
+        update.message.chat.id,
+        update.message.from.id,
+        update.message.text
+      );
     } else if (update.callback_query) {
       await handleCallback(update.callback_query);
     }

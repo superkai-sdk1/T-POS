@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/auth';
 import { hasPermission } from '@/lib/permissions';
 import {
   Package, Truck, ClipboardList, Users, AlertTriangle, Wallet, Star, Banknote, UtensilsCrossed, UserCircle,
-  ArrowLeft, Percent, Info, SlidersHorizontal, Ticket, Receipt, History, Filter, ArrowDownToLine, TrendingDown, Box, MoreVertical, Search, DollarSign,
+  ArrowLeft, Percent, Info, SlidersHorizontal, Ticket, Receipt, History, Filter, ArrowDownToLine, TrendingDown, Box, MoreVertical, Search, DollarSign, Bell,
 } from 'lucide-react';
 import type { InventoryItem } from '@/types';
 import { SupplyPage } from '@/components/supply/SupplyPage';
@@ -21,12 +21,13 @@ import { ModifiersManager } from './ModifiersManager';
 import { CertificatesManager } from './CertificatesManager';
 import { ExpensesManager } from './ExpensesManager';
 import { SalaryManager } from './SalaryManager';
+import { NotificationsManager } from './NotificationsManager';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { hapticFeedback } from '@/lib/telegram';
 import { useLayoutStore, useHideNav, useHasHideReason } from '@/store/layout';
 import { TabSwitcher } from '@/components/ui/TabSwitcher';
 
-type Screen = 'menu' | 'inventory' | 'supplies' | 'revision' | 'debtors' | 'staff' | 'bonus' | 'cash' | 'menuEditor' | 'clients' | 'discounts' | 'refunds' | 'modifiers' | 'certificates' | 'expenses' | 'salary' | 'about';
+type Screen = 'menu' | 'inventory' | 'supplies' | 'revision' | 'debtors' | 'staff' | 'bonus' | 'cash' | 'menuEditor' | 'clients' | 'discounts' | 'refunds' | 'modifiers' | 'certificates' | 'expenses' | 'salary' | 'notifications' | 'about';
 
 const categoryLabels: Record<string, string> = {
   drinks: 'Напитки', food: 'Еда', bar: 'Снеки', hookah: 'Кальяны', services: 'Услуги',
@@ -46,6 +47,7 @@ const ALL_MENU_ITEMS: { id: Screen; label: string; desc: string; icon: typeof Pa
   { id: 'debtors', label: 'Должники', desc: 'Управление долгами', icon: Wallet, color: 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]', permKey: 'debtors' },
   { id: 'staff', label: 'Персонал', desc: 'Сотрудники и доступы', icon: Users, color: 'bg-violet-500/10 text-violet-400', permKey: 'staff' },
   { id: 'salary', label: 'Зарплата', desc: 'Начисление и выдача ЗП', icon: DollarSign, color: 'bg-emerald-500/10 text-emerald-400', permKey: 'salary' },
+  { id: 'notifications', label: 'Уведомления', desc: 'Telegram, PWA, настройки', icon: Bell, color: 'bg-amber-500/10 text-amber-400', permKey: 'about' },
   { id: 'about', label: 'О системе', desc: 'Версия, обновление', icon: Info, color: 'bg-gray-500/10 text-gray-400', permKey: 'about' },
 ];
 
@@ -250,6 +252,7 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
       {screen === 'debtors' && <DebtorsManager />}
       {screen === 'staff' && <StaffManager />}
       {screen === 'salary' && <SalaryManager />}
+      {screen === 'notifications' && <NotificationsManager />}
       {screen === 'about' && <AboutSystem />}
     </div>
   );
