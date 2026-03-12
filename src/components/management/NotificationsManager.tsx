@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
   Bell,
@@ -76,7 +76,7 @@ function migrateLegacy(raw: Record<string, unknown>, legacyChannel?: string): Re
 
 const TYPE_META: Record<
   AdminNotificationType,
-  { color: string; iconBg: string; icon: JSX.Element }
+  { color: string; iconBg: string; icon: React.ReactNode }
 > = {
   shift_open: {
     color: 'text-emerald-400',
