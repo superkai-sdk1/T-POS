@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
 import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { calcSalaryFromRevenue } from '@/lib/salary';
-import { Banknote, ArrowRightLeft, CalendarDays, Users, BarChart3, Clock } from 'lucide-react';
+import { notifySalaryPaid } from '@/lib/notifications';
+import { Banknote, ArrowRightLeft, CalendarDays, Users, BarChart3, Clock, Pencil, XCircle } from 'lucide-react';
 import { hapticNotification } from '@/lib/telegram';
 import type { SalaryPayment, Profile, Shift } from '@/types';
 
@@ -39,8 +40,11 @@ export function SalaryManager() {
   const [selectedRecipient, setSelectedRecipient] = useState<Profile | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer'>('cash');
   const [note, setNote] = useState('');
+  const [manualAmount, setManualAmount] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState('');
 
   const [filterMonth, setFilterMonth] = useState(() => {
     const d = new Date();
@@ -142,20 +146,20 @@ export function SalaryManager() {
   const pendingShifts = useMemo(() => shifts.filter((s) => !paidShiftIds.has(s.id) && !(s as ShiftWithRevenue & { _paid?: boolean })._paid), [shifts, paidShiftIds]);
   const paidShifts = useMemo(() => shifts.filter((s) => paidShiftIds.has(s.id) || (s as ShiftWithRevenue & { _paid?: boolean })._paid), [shifts, paidShiftIds]);
 
-  const openPayDrawer = (shift: ShiftWithRevenue) => {
+  const openPayDrawer = (shift: ShiftWithRevenue | null) => {
     setPayShift(shift);
-    setSelectedRecipient((shift.closer as Profile) || null);
+    setSelectedRecipient(shift ? (shift.closer as Profile) || null : null);
     setPaymentMethod('cash');
     setNote('');
+    setManualAmount(shift ? String(shift.salary) : '');
     setError('');
     setShowPay(true);
   };
 
   const handlePay = async () => {
-    if (!payShift) return;
-    const amt = payShift.salary;
+    const amt = manualAmount.trim() ? Math.round(parseFloat(manualAmount.replace(/\s/g, '')) || 0) : (payShift?.salary ?? 0);
     if (!selectedRecipient || amt <= 0) {
-      setError('Укажите сотрудника');
+      setError('Укажите сотрудника и сумму');
       return;
     }
     if (paymentMethod === 'cash') {
@@ -195,7 +199,7 @@ export function SalaryManager() {
     const { error: payErr } = await supabase.from('salary_payments').insert({
       profile_id: selectedRecipient.id,
       amount: amt,
-      shift_id: payShift.id,
+      shift_id: payShift?.id ?? null,
       payment_method: paymentMethod,
       cash_operation_id: cashOpId,
       paid_by: user?.id || null,
@@ -207,9 +211,45 @@ export function SalaryManager() {
       setError('Ошибка сохранения');
       return;
     }
+    notifySalaryPaid(selectedRecipient.tg_id ?? null, amt, paymentMethod);
     hapticNotification('success');
     setShowPay(false);
     setPayShift(null);
+    loadAll();
+  };
+
+  const handleCancel = async (p: SalaryPayment & { cash_operation_id?: string | null }) => {
+    if (!isOwner) return;
+    if (!confirm(`Отменить выдачу ${fmtCur(p.amount)} для ${(p.profile as Profile)?.nickname || '—'}?`)) return;
+    setCancellingId(p.id);
+
+    if (p.payment_method === 'cash' && p.cash_operation_id && activeShift) {
+      const { error: depErr } = await supabase.from('cash_operations').insert({
+        shift_id: activeShift.id,
+        type: 'deposit',
+        amount: p.amount,
+        note: `Отмена зарплаты: ${(p.profile as Profile)?.nickname || '—'}`,
+        created_by: user?.id || null,
+      });
+      if (depErr) {
+        setCancelError('Ошибка возврата в кассу');
+        setCancellingId(null);
+        return;
+      }
+    } else if (p.payment_method === 'cash' && p.cash_operation_id && !activeShift) {
+      setCancelError('Невозможно отменить: нет открытой смены для возврата в кассу');
+      setCancellingId(null);
+      return;
+    }
+
+    const { error: delErr } = await supabase.from('salary_payments').delete().eq('id', p.id);
+    setCancellingId(null);
+    if (delErr) {
+      setCancelError('Ошибка отмены');
+      return;
+    }
+    setCancelError('');
+    hapticNotification('success');
     loadAll();
   };
 
@@ -271,6 +311,15 @@ export function SalaryManager() {
             </div>
           </div>
 
+          {isOwner && (
+            <div className="mb-4">
+              <Button fullWidth onClick={() => openPayDrawer(null)} variant="secondary">
+                <Pencil className="w-4 h-4 mr-2" />
+                Ручная выплата
+              </Button>
+            </div>
+          )}
+
           {pendingShifts.length > 0 && (
             <div>
               <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Невыплаченные смены</h3>
@@ -329,6 +378,12 @@ export function SalaryManager() {
       {/* ── History tab ── */}
       {tab === 'history' && (
         <div className="space-y-4">
+          {cancelError && (
+            <div className="p-3 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-danger-border)] text-[var(--c-danger)] text-sm flex justify-between items-center">
+              <span>{cancelError}</span>
+              <button onClick={() => setCancelError('')} className="text-[var(--c-danger)] hover:opacity-80">×</button>
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <input
               type="month"
@@ -345,6 +400,11 @@ export function SalaryManager() {
           </div>
 
           {isOwner && (
+            <>
+            <Button fullWidth onClick={() => openPayDrawer(null)} variant="secondary" className="mb-2">
+              <Pencil className="w-4 h-4 mr-2" />
+              Ручная выплата
+            </Button>
             <div className="grid grid-cols-3 gap-2">
               <div className="p-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] text-center">
                 <p className="text-lg font-bold text-[var(--c-text)] tabular-nums">{fmtCur(periodTotal)}</p>
@@ -359,6 +419,7 @@ export function SalaryManager() {
                 <p className="text-[10px] text-[var(--c-hint)]">Перевод</p>
               </div>
             </div>
+            </>
           )}
 
           {payments.length === 0 ? (
@@ -392,9 +453,21 @@ export function SalaryManager() {
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-[var(--c-success)] tabular-nums">{fmtCur(p.amount)}</p>
-                      <p className="text-[10px] text-[var(--c-muted)]">{fmtDateTime(p.created_at)}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-[var(--c-success)] tabular-nums">{fmtCur(p.amount)}</p>
+                        <p className="text-[10px] text-[var(--c-muted)]">{fmtDateTime(p.created_at)}</p>
+                      </div>
+                      {isOwner && (
+                        <button
+                          onClick={() => handleCancel(p)}
+                          disabled={cancellingId === p.id}
+                          className="p-2 rounded-lg text-[var(--c-danger)] hover:bg-[var(--c-danger-bg)] transition-colors disabled:opacity-50"
+                          title="Отменить выдачу"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                   {p.note && <p className="text-xs text-[var(--c-muted)] mt-1 pl-10">{p.note}</p>}
@@ -503,15 +576,16 @@ export function SalaryManager() {
       )}
 
       {/* ── Pay drawer ── */}
-      <Drawer open={showPay} onClose={() => { setShowPay(false); setError(''); }} title="Выдать зарплату за смену" size="md">
-        {payShift && (
-          <div className="space-y-4">
+      <Drawer open={showPay} onClose={() => { setShowPay(false); setError(''); }} title={payShift ? 'Выдать зарплату за смену' : 'Ручная выплата'} size="md">
+        <div className="space-y-4">
+          {payShift && (
             <div className="p-3 rounded-xl bg-[var(--c-accent)]/10 border border-[var(--c-border)]">
               <p className="text-xs text-[var(--c-hint)]">Смена</p>
               <p className="text-sm font-medium text-[var(--c-text)]">{fmtDate(payShift.closed_at!)}</p>
               <p className="text-xs text-[var(--c-muted)]">Выручка: {fmtCur(payShift.revenue)}</p>
               <p className="text-lg font-black text-[var(--c-accent)] mt-1">{fmtCur(payShift.salary)}</p>
             </div>
+          )}
 
             <div>
               <label className="block text-[11px] font-semibold text-[var(--c-hint)] mb-1.5 uppercase tracking-wider">Кому</label>
@@ -560,6 +634,21 @@ export function SalaryManager() {
             </div>
 
             <div>
+              <label className="block text-[11px] font-semibold text-[var(--c-hint)] mb-1.5 uppercase tracking-wider">Сумма (₽)</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={manualAmount}
+                onChange={(e) => setManualAmount(e.target.value.replace(/[^\d\s]/g, ''))}
+                placeholder={payShift ? String(payShift.salary) : '0'}
+                className="w-full px-4 py-3 rounded-xl bg-[var(--c-surface)] border border-[var(--c-border)] text-[var(--c-text)] text-sm tabular-nums"
+              />
+              {payShift && (
+                <p className="text-[10px] text-[var(--c-muted)] mt-1">Рассчитано: {fmtCur(payShift.salary)}</p>
+              )}
+            </div>
+
+            <div>
               <label className="block text-[11px] font-semibold text-[var(--c-hint)] mb-1.5 uppercase tracking-wider">Примечание</label>
               <input
                 value={note}
@@ -572,10 +661,9 @@ export function SalaryManager() {
             {error && <p className="text-sm text-[var(--c-danger)] bg-[var(--c-danger-bg)] rounded-lg px-3 py-2">{error}</p>}
 
             <Button fullWidth size="lg" onClick={handlePay} disabled={saving}>
-              {saving ? 'Сохранение...' : `Выдать ${fmtCur(payShift.salary)}`}
+              {saving ? 'Сохранение...' : `Выдать ${fmtCur(manualAmount.trim() ? parseFloat(manualAmount.replace(/\s/g, '')) || 0 : payShift?.salary ?? 0)}`}
             </Button>
           </div>
-        )}
       </Drawer>
     </div>
   );

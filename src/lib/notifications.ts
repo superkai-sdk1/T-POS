@@ -106,6 +106,18 @@ async function sendToTelegram(text: string, chatId: string): Promise<void> {
   }
 }
 
+/** Уведомление получателю о выдаче зарплаты в Telegram */
+export async function notifySalaryPaid(
+  recipientTgId: string | null,
+  amount: number,
+  paymentMethod: 'cash' | 'transfer'
+): Promise<void> {
+  if (!recipientTgId) return;
+  const methodLabel = paymentMethod === 'cash' ? 'наличными' : 'переводом';
+  const text = `💵 <b>Вам выдана зарплата</b>\n\nСумма: ${fmt(amount)}₽\nСпособ: ${methodLabel}`;
+  await sendToTelegram(text, recipientTgId);
+}
+
 async function insertPwaNotification(type: string, title: string, body: string, meta?: Record<string, unknown>): Promise<void> {
   await supabase.from('notifications').insert({
     type,
