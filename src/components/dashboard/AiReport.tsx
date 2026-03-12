@@ -5,6 +5,7 @@ import {
   CreditCard, ChevronDown, Package, Target,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { sendReportToTelegram } from '@/lib/notifications';
 
 interface AnalyticsContext {
   revenue: number;
@@ -241,9 +242,10 @@ function buildChatPrompt(userName: string, context: AnalyticsContext): string {
 interface Props {
   context: AnalyticsContext;
   userName: string;
+  userTgId?: string | null;
 }
 
-export const AiReport = memo(function AiReport({ context, userName }: Props) {
+export const AiReport = memo(function AiReport({ context, userName, userTgId }: Props) {
   const [sections, setSections] = useState<ReportSection[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -298,8 +300,11 @@ export const AiReport = memo(function AiReport({ context, userName }: Props) {
     } catch {
       /* ignore storage errors */
     }
+    if (userTgId && parsed.length > 0) {
+      sendReportToTelegram(userTgId, parsed).catch(() => {});
+    }
     setLoading(false);
-  }, [context, userName]);
+  }, [context, userName, userTgId]);
 
   const sendChat = useCallback(async () => {
     if (!chatInput.trim() || chatLoading) return;

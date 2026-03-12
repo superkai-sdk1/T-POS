@@ -193,7 +193,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       )}
 
       {tab === 'ai' && (
-        <AiReport context={aiContext} userName={authUser?.nickname || 'Пользователь'} />
+        <AiReport context={aiContext} userName={authUser?.nickname || 'Пользователь'} userTgId={authUser?.tg_id ?? null} />
       )}
     </div>
   );

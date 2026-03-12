@@ -354,7 +354,7 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
       )}
 
       {tab === 'ai' && (
-        <AiReport context={aiContext} userName={authUser?.nickname || 'Пользователь'} />
+        <AiReport context={aiContext} userName={authUser?.nickname || 'Пользователь'} userTgId={authUser?.tg_id ?? null} />
       )}
 
       <CheckDetailDrawer check={checkDetail} open={checkDetailOpen} onClose={() => setCheckDetailOpen(false)} />

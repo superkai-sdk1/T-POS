@@ -106,6 +106,35 @@ async function sendToTelegram(text: string, chatId: string): Promise<void> {
   }
 }
 
+const TG_MAX_LEN = 4000;
+
+/** Отправить ИИ-отчёт пользователю в Telegram */
+export async function sendReportToTelegram(
+  tgId: string | null,
+  sections: { emoji: string; title: string; summary: string; details: string; actions?: string[] }[]
+): Promise<void> {
+  if (!tgId || !sections.length) return;
+  const parts: string[] = [];
+  let buf = `📊 <b>ИИ-отчёт T-POS</b>\n\n`;
+  for (const s of sections) {
+    const block = `${s.emoji} <b>${escapeHtml(s.title)}</b>\n${escapeHtml(s.summary)}\n${escapeHtml(s.details)}${s.actions?.length ? '\n\n• ' + s.actions.map(escapeHtml).join('\n• ') : ''}\n\n`;
+    if (buf.length + block.length > TG_MAX_LEN && buf.length > 100) {
+      parts.push(buf.trim());
+      buf = block;
+    } else {
+      buf += block;
+    }
+  }
+  if (buf.trim()) parts.push(buf.trim());
+  for (const text of parts) {
+    await sendToTelegram(text, tgId);
+  }
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 /** Уведомление получателю о выдаче зарплаты в Telegram */
 export async function notifySalaryPaid(
   recipientTgId: string | null,
