@@ -98,7 +98,7 @@ export function ManagementPage({ initialScreen, isActive = true }: ManagementPag
       setScreen('menu');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialScreen, user]);
+  }, [initialScreen]);
 
   const goToMenu = useCallback(() => startTransition(() => setScreen('menu')), []);
   const addHideReason = useLayoutStore((s) => s.addHideReason);
