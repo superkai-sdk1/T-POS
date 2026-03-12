@@ -8,7 +8,7 @@ import { Drawer } from '@/components/ui/Drawer';
 import { TabSwitcher } from '@/components/ui/TabSwitcher';
 import { calcSalaryFromRevenue } from '@/lib/salary';
 import { notifySalaryPaid } from '@/lib/notifications';
-import { Banknote, ArrowRightLeft, CalendarDays, Users, BarChart3, Clock, Pencil, XCircle } from 'lucide-react';
+import { Banknote, ArrowRightLeft, CalendarDays, Users, BarChart3, Clock, Pencil, XCircle, Trash2 } from 'lucide-react';
 import { hapticNotification } from '@/lib/telegram';
 import type { SalaryPayment, Profile, Shift } from '@/types';
 
@@ -98,14 +98,17 @@ export function SalaryManager() {
 
     const shiftIds = shiftsData.map((s) => s.id);
 
-    const [paidRes, checksRes, refundsRes] = await Promise.all([
+    const [paidRes, checksRes, refundsRes, skippedRes] = await Promise.all([
       supabase.from('salary_payments').select('shift_id').in('shift_id', shiftIds),
       supabase.from('checks').select('shift_id, total_amount').in('shift_id', shiftIds).eq('status', 'closed'),
       supabase.from('refunds').select('shift_id, total_amount').in('shift_id', shiftIds),
+      supabase.from('salary_skipped_shifts').select('shift_id').in('shift_id', shiftIds),
     ]);
 
     const paidShiftIds = new Set<string>();
     if (paidRes.data) for (const p of paidRes.data) if (p.shift_id) paidShiftIds.add(p.shift_id);
+    const skippedShiftIds = new Set<string>();
+    if (skippedRes.data) for (const s of skippedRes.data) skippedShiftIds.add(s.shift_id);
 
     const revenueByShift = new Map<string, number>();
     for (const c of checksRes.data || []) {
@@ -127,7 +130,8 @@ export function SalaryManager() {
         revenue: totalRevenue,
         salary,
         _paid: paidShiftIds.has(s.id),
-      } as ShiftWithRevenue & { _paid: boolean };
+        _skipped: skippedShiftIds.has(s.id),
+      } as ShiftWithRevenue & { _paid?: boolean; _skipped?: boolean };
     });
     setShifts(shiftsWithRevenue);
   }, []);
@@ -149,10 +153,16 @@ export function SalaryManager() {
   }, [loadPayments, loadShifts, loadStaff]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
-  useOnTableChange(useMemo(() => ['salary_payments', 'shifts', 'checks', 'refunds'], []), loadAll);
+  useOnTableChange(useMemo(() => ['salary_payments', 'salary_skipped_shifts', 'shifts', 'checks', 'refunds'], []), loadAll);
 
   const paidShiftIds = useMemo(() => new Set(payments.filter((p) => p.shift_id).map((p) => p.shift_id)), [payments]);
-  const pendingShifts = useMemo(() => shifts.filter((s) => !paidShiftIds.has(s.id) && !(s as ShiftWithRevenue & { _paid?: boolean })._paid), [shifts, paidShiftIds]);
+  const pendingShifts = useMemo(() =>
+    shifts.filter((s) => {
+      const ext = s as ShiftWithRevenue & { _paid?: boolean; _skipped?: boolean };
+      return !paidShiftIds.has(s.id) && !ext._paid && !ext._skipped;
+    }),
+    [shifts, paidShiftIds]
+  );
   const paidShifts = useMemo(() => shifts.filter((s) => paidShiftIds.has(s.id) || (s as ShiftWithRevenue & { _paid?: boolean })._paid), [shifts, paidShiftIds]);
 
   const openPayDrawer = (shift: ShiftWithRevenue | null) => {
@@ -262,6 +272,18 @@ export function SalaryManager() {
     loadAll();
   };
 
+  const handleSkip = async (shift: ShiftWithRevenue) => {
+    if (!isOwner) return;
+    if (!confirm(`Удалить смену ${fmtDate(shift.closed_at!)} из списка к выплате? Смена не будет оплачена.`)) return;
+    const { error } = await supabase.from('salary_skipped_shifts').upsert(
+      { shift_id: shift.id, created_by: user?.id || null },
+      { onConflict: 'shift_id' }
+    );
+    if (error) return;
+    hapticNotification('success');
+    loadAll();
+  };
+
   const periodTotal = payments.reduce((s, p) => s + p.amount, 0);
   const cashTotal = payments.filter((p) => p.payment_method === 'cash').reduce((s, p) => s + p.amount, 0);
   const transferTotal = payments.filter((p) => p.payment_method === 'transfer').reduce((s, p) => s + p.amount, 0);
@@ -344,9 +366,16 @@ export function SalaryManager() {
                           {fmtDate(s.closed_at!)} · Выручка {fmtCur(s.revenue)}
                         </p>
                       </div>
-                      <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0">
                         <p className="text-base font-black text-[var(--c-warning)] tabular-nums">{fmtCur(s.salary)}</p>
                         <Button size="sm" onClick={() => openPayDrawer(s)}>Выдать</Button>
+                        <button
+                          onClick={() => handleSkip(s)}
+                          className="p-2 rounded-lg text-[var(--c-muted)] hover:text-[var(--c-danger)] hover:bg-[var(--c-danger-bg)] transition-colors"
+                          title="Удалить из списка"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </div>
                   </div>

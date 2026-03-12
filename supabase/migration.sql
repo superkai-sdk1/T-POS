@@ -491,6 +491,18 @@ create index idx_salary_payments_profile on salary_payments(profile_id);
 create index idx_salary_payments_created_at on salary_payments(created_at);
 create index idx_salary_payments_shift on salary_payments(shift_id);
 
+-- ==================
+-- salary_skipped_shifts (смены, исключённые из выплаты)
+-- ==================
+create table salary_skipped_shifts (
+  id uuid primary key default gen_random_uuid(),
+  shift_id uuid not null references shifts(id) on delete cascade,
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now(),
+  unique(shift_id)
+);
+create index idx_salary_skipped_shifts_shift on salary_skipped_shifts(shift_id);
+
 -- ==============================
 -- Functions
 -- ==============================
@@ -617,6 +629,7 @@ create policy "refund_items_all" on refund_items for all to anon, authenticated 
 create policy "tg_link_requests_all" on tg_link_requests for all to anon, authenticated using (true) with check (true);
 create policy "expenses_all" on expenses for all to anon, authenticated using (true) with check (true);
 create policy "salary_payments_all" on salary_payments for all to anon, authenticated using (true) with check (true);
+create policy "salary_skipped_shifts_all" on salary_skipped_shifts for all to anon, authenticated using (true) with check (true);
 
 -- ==============================
 -- Realtime
@@ -625,7 +638,7 @@ alter publication supabase_realtime add table
   checks, check_items, check_discounts, inventory, shifts,
   cash_operations, bookings, profiles, events, discounts,
   supplies, revisions, refunds, menu_categories, modifiers,
-  tg_link_requests, client_discount_rules, expenses, salary_payments, notifications;
+  tg_link_requests, client_discount_rules, expenses, salary_payments, salary_skipped_shifts, notifications;
 
 alter table checks replica identity full;
 alter table check_items replica identity full;
@@ -646,6 +659,7 @@ alter table tg_link_requests replica identity full;
 alter table client_discount_rules replica identity full;
 alter table expenses replica identity full;
 alter table salary_payments replica identity full;
+alter table salary_skipped_shifts replica identity full;
 alter table notifications replica identity full;
 
 -- ==============================

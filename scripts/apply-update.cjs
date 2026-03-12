@@ -181,6 +181,29 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 ALTER TABLE salary_payments REPLICA IDENTITY FULL;
+
+-- salary_skipped_shifts (смены, исключённые из выплаты)
+CREATE TABLE IF NOT EXISTS salary_skipped_shifts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  shift_id uuid NOT NULL REFERENCES shifts(id) ON DELETE CASCADE,
+  created_by uuid REFERENCES profiles(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(shift_id)
+);
+CREATE INDEX IF NOT EXISTS idx_salary_skipped_shifts_shift ON salary_skipped_shifts(shift_id);
+
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'salary_skipped_shifts' AND policyname = 'salary_skipped_shifts_all') THEN
+    ALTER TABLE salary_skipped_shifts ENABLE ROW LEVEL SECURITY;
+    CREATE POLICY "salary_skipped_shifts_all" ON salary_skipped_shifts FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE salary_skipped_shifts;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+ALTER TABLE salary_skipped_shifts REPLICA IDENTITY FULL;
 `;
 
 async function main() {
