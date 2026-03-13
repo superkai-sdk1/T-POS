@@ -192,262 +192,198 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // --- Shared: Build enriched messages for AI ---
-  async function buildEnrichedMessages(messages, draft) {
-    const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-    const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+  if (url.pathname === '/api/ai' && req.method === 'POST') {
+    if (!checkAuth(req, res)) return;
+    readBody(req).then(async (body) => {
+      try {
+        const { messages, context, draft } = JSON.parse(body);
+        const POLZA_KEY = process.env.POLZA_AI_API_KEY;
+        const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+        const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+        const aiUrl = 'https://polza.ai/api/v1/chat/completions';
 
-    let dbContext = '';
-    if (SUPABASE_URL && SUPABASE_KEY) {
-      const sbHeaders = {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-      };
-      const sbFetch = (table, query = '') =>
-        fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: sbHeaders })
-          .then((r) => r.ok ? r.json() : [])
-          .catch(() => []);
+        // --- Fetch compact database context from Supabase ---
+        let dbContext = '';
+        if (SUPABASE_URL && SUPABASE_KEY) {
+          const sbHeaders = {
+            'apikey': SUPABASE_KEY,
+            'Authorization': `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+          };
+          const sbFetch = (table, query = '') =>
+            fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: sbHeaders })
+              .then((r) => r.ok ? r.json() : [])
+              .catch(() => []);
 
-      const [
-        profiles, checks, checkItems, inventory,
-        expenses, supplies, cashOps, shifts, events,
-        refunds, salaryPayments, supplyItems,
-        checkPayments, refundItems, checkDiscounts,
-        openChecks, certificates, transactions,
-      ] = await Promise.all([
-        sbFetch('profiles', 'select=id,nickname,role,balance,bonus_points,client_tier,is_resident,created_at,deleted_at&order=created_at.desc&limit=500'),
-        sbFetch('checks', 'select=id,player_id,total_amount,payment_method,bonus_used,closed_at,staff_id,discount_total,note&status=eq.closed&order=closed_at.desc&limit=500'),
-        sbFetch('check_items', 'select=check_id,item_id,quantity,price_at_time&limit=3000'),
-        sbFetch('inventory', 'select=id,name,category,price,stock_quantity,is_active&order=name'),
-        sbFetch('expenses', 'select=category,amount,expense_date,description&order=expense_date.desc&limit=200'),
-        sbFetch('supplies', 'select=total_cost,created_at,supplier&order=created_at.desc&limit=100'),
-        sbFetch('cash_operations', 'select=type,amount,created_at,description&order=created_at.desc&limit=100'),
-        sbFetch('shifts', 'select=id,status,cash_start,cash_end,opened_at,closed_at,staff_id&order=opened_at.desc&limit=20'),
-        sbFetch('events', `status=neq.completed&date=gte.${new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0]}&order=date.asc&limit=20`),
-        sbFetch('refunds', 'select=id,check_id,total_amount,refund_type,created_at,created_by&order=created_at.desc&limit=100'),
-        sbFetch('salary_payments', 'select=amount,created_at,payment_method,profile_id&order=created_at.desc&limit=50'),
-        sbFetch('supply_items', 'select=item_id,cost_per_unit,quantity&limit=500'),
-        sbFetch('check_payments', 'select=check_id,method,amount&limit=1000'),
-        sbFetch('refund_items', 'select=refund_id,item_id,quantity,price_at_time&limit=500'),
-        sbFetch('check_discounts', 'select=check_id,type,value,amount&limit=500'),
-        sbFetch('checks', 'select=id,player_id,total_amount,status,created_at,note&status=eq.open&order=created_at.desc&limit=20'),
-        sbFetch('certificates', 'select=id,code,amount,balance,is_active,created_at,used_by&order=created_at.desc&limit=50'),
-        sbFetch('transactions', 'select=profile_id,type,amount,description,created_at&order=created_at.desc&limit=200'),
-      ]);
+          const [
+            profiles, checks, checkItems, inventory,
+            expenses, supplies, cashOps, shifts, events,
+            refunds, salaryPayments, supplyItems,
+            certificates, spaces,
+          ] = await Promise.all([
+            sbFetch('profiles', 'select=id,nickname,role,balance,bonus_points,client_tier,is_resident,created_at,deleted_at&order=created_at.desc&limit=500'),
+            sbFetch('checks', 'select=id,player_id,total_amount,payment_method,bonus_used,closed_at,staff_id&status=eq.closed&order=closed_at.desc&limit=500'),
+            sbFetch('check_items', 'select=check_id,item_id,quantity,price_at_time&limit=3000'),
+            sbFetch('inventory', 'select=id,name,category,price,stock_quantity,is_active&order=name'),
+            sbFetch('expenses', 'select=category,amount,expense_date&order=expense_date.desc&limit=200'),
+            sbFetch('supplies', 'select=total_cost,created_at&order=created_at.desc&limit=100'),
+            sbFetch('cash_operations', 'select=type,amount,created_at&order=created_at.desc&limit=100'),
+            sbFetch('shifts', 'select=status,cash_start,cash_end,opened_at,closed_at&order=opened_at.desc&limit=20'),
+            sbFetch('events', `status=in.(planned,active)&date=gte.${new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0]}&order=date.asc&limit=20`),
+            sbFetch('refunds', 'select=check_id,total_amount,created_at&order=created_at.desc&limit=100'),
+            sbFetch('salary_payments', 'select=amount,created_at,payment_method,profile_id&order=created_at.desc&limit=50'),
+            sbFetch('supply_items', 'select=item_id,cost_per_unit,quantity&limit=500'),
+            sbFetch('certificates', 'select=nominal,balance,is_used&limit=500'),
+            sbFetch('spaces', 'select=name,type,hourly_rate&is_active=eq.true'),
+          ]);
 
-      const staff = profiles.filter((p) => p.role === 'owner' || p.role === 'staff');
-      const clients = profiles.filter((p) => p.role === 'client' && !p.deleted_at);
-      const debtors = clients.filter((p) => p.balance < 0);
+          // Pre-aggregate data to keep context compact
+          const staff = profiles.filter((p) => p.role === 'owner' || p.role === 'staff');
+          const clients = profiles.filter((p) => p.role === 'client' && !p.deleted_at);
+          const debtors = clients.filter((p) => p.balance < 0);
 
-      const supplyCostAgg = {};
-      for (const si of supplyItems) {
-        if (!supplyCostAgg[si.item_id]) supplyCostAgg[si.item_id] = { cost: 0, qty: 0 };
-        supplyCostAgg[si.item_id].cost += (si.cost_per_unit || 0) * (si.quantity || 0);
-        supplyCostAgg[si.item_id].qty += si.quantity || 0;
-      }
-      const itemCosts = {};
-      for (const [id, v] of Object.entries(supplyCostAgg)) {
-        itemCosts[id] = v.qty > 0 ? Math.round(v.cost / v.qty) : 0;
-      }
+          // Себестоимость из поставок
+          const supplyCostAgg = {};
+          for (const si of supplyItems) {
+            if (!supplyCostAgg[si.item_id]) supplyCostAgg[si.item_id] = { cost: 0, qty: 0 };
+            supplyCostAgg[si.item_id].cost += (si.cost_per_unit || 0) * (si.quantity || 0);
+            supplyCostAgg[si.item_id].qty += si.quantity || 0;
+          }
+          const itemCosts = {};
+          for (const [id, v] of Object.entries(supplyCostAgg)) {
+            itemCosts[id] = v.qty > 0 ? Math.round(v.cost / v.qty) : 0;
+          }
 
-      const productSales = {};
-      for (const ci of checkItems) {
-        if (!productSales[ci.item_id]) productSales[ci.item_id] = { qty: 0, revenue: 0 };
-        productSales[ci.item_id].qty += ci.quantity;
-        productSales[ci.item_id].revenue += ci.quantity * ci.price_at_time;
-      }
-      const productStats = inventory.map((item) => {
-        const sales = productSales[item.id] || { qty: 0, revenue: 0 };
-        const cost = itemCosts[item.id];
-        return { name: item.name, category: item.category, price: item.price, cost, stock: item.stock_quantity, sold: sales.qty, revenue: sales.revenue };
-      }).filter((p) => p.sold > 0).sort((a, b) => b.revenue - a.revenue).slice(0, 30);
+          // Aggregate product sales from check items
+          const productSales = {};
+          for (const ci of checkItems) {
+            if (!productSales[ci.item_id]) productSales[ci.item_id] = { qty: 0, revenue: 0 };
+            productSales[ci.item_id].qty += ci.quantity;
+            productSales[ci.item_id].revenue += ci.quantity * ci.price_at_time;
+          }
+          const productStats = inventory.map((item) => {
+            const sales = productSales[item.id] || { qty: 0, revenue: 0 };
+            const cost = itemCosts[item.id];
+            return { name: item.name, category: item.category, price: item.price, cost, stock: item.stock_quantity, sold: sales.qty, revenue: sales.revenue };
+          }).filter((p) => p.sold > 0).sort((a, b) => b.revenue - a.revenue).slice(0, 30);
 
-      const refundByCheck = {};
-      let totalRefunded = 0;
-      for (const r of refunds) {
-        refundByCheck[r.check_id] = (refundByCheck[r.check_id] || 0) + (r.total_amount || 0);
-        totalRefunded += r.total_amount || 0;
-      }
+          // Refunds
+          const refundByCheck = {};
+          let totalRefunded = 0;
+          for (const r of refunds) {
+            refundByCheck[r.check_id] = (refundByCheck[r.check_id] || 0) + (r.total_amount || 0);
+            totalRefunded += r.total_amount || 0;
+          }
 
-      const payments = { cash: 0, card: 0, debt: 0, bonus: 0 };
-      let totalRevenue = 0;
-      for (const c of checks) {
-        const refAmt = refundByCheck[c.id] || 0;
-        const effectiveAmt = (c.total_amount || 0) - refAmt;
-        totalRevenue += effectiveAmt;
-        if (c.payment_method && payments.hasOwnProperty(c.payment_method)) {
-          payments[c.payment_method] += effectiveAmt;
-        }
-      }
+          // Aggregate payment methods
+          const payments = { cash: 0, card: 0, debt: 0, bonus: 0 };
+          let totalRevenue = 0;
+          for (const c of checks) {
+            const refAmt = refundByCheck[c.id] || 0;
+            const effectiveAmt = (c.total_amount || 0) - refAmt;
+            totalRevenue += effectiveAmt;
+            if (c.payment_method && payments.hasOwnProperty(c.payment_method)) {
+              payments[c.payment_method] += effectiveAmt;
+            }
+          }
 
-      const expByCategory = {};
-      for (const e of expenses) {
-        expByCategory[e.category] = (expByCategory[e.category] || 0) + Number(e.amount);
-      }
+          // Aggregate expenses by category
+          const expByCategory = {};
+          for (const e of expenses) {
+            expByCategory[e.category] = (expByCategory[e.category] || 0) + Number(e.amount);
+          }
 
-      const clientSpend = {};
-      for (const c of checks) {
-        if (!c.player_id) continue;
-        clientSpend[c.player_id] = (clientSpend[c.player_id] || 0) + (c.total_amount || 0);
-      }
-      const topClients = clients
-        .map((p) => ({ nickname: p.nickname, balance: p.balance, bonus: p.bonus_points, tier: p.client_tier, spent: clientSpend[p.id] || 0 }))
-        .sort((a, b) => b.spent - a.spent)
-        .slice(0, 20);
+          // Top clients by spend
+          const clientSpend = {};
+          for (const c of checks) {
+            if (!c.player_id) continue;
+            clientSpend[c.player_id] = (clientSpend[c.player_id] || 0) + (c.total_amount || 0);
+          }
+          const topClients = clients
+            .map((p) => ({ nickname: p.nickname, balance: p.balance, bonus: p.bonus_points, tier: p.client_tier, spent: clientSpend[p.id] || 0 }))
+            .sort((a, b) => b.spent - a.spent)
+            .slice(0, 20);
 
-      const salaryTotal = salaryPayments.reduce((s, p) => s + (p.amount || 0), 0);
+          const salaryTotal = salaryPayments.reduce((s, p) => s + (p.amount || 0), 0);
 
-      const now = new Date();
-      const mskOffset = 3 * 3600000;
-      const todayStart = new Date(new Date(now.getTime() + mskOffset).toISOString().split('T')[0]).getTime() - mskOffset;
-      const weekAgo = todayStart - 7 * 86400000;
-      const twoWeeksAgo = todayStart - 14 * 86400000;
-      let weekRevenue = 0, weekChecks = 0, weekRefunded = 0;
-      let prevWeekRevenue = 0, prevWeekChecks = 0, prevWeekRefunded = 0;
-      for (const c of checks) {
-        const t = new Date(c.closed_at).getTime();
-        const refAmt = refundByCheck[c.id] || 0;
-        const amt = (c.total_amount || 0) - refAmt;
-        if (t >= weekAgo) {
-          weekRevenue += amt;
-          weekChecks++;
-          weekRefunded += refAmt;
-        } else if (t >= twoWeeksAgo) {
-          prevWeekRevenue += amt;
-          prevWeekChecks++;
-          prevWeekRefunded += refAmt;
-        }
-      }
-      const weekDelta = prevWeekRevenue > 0 ? Math.round(((weekRevenue - prevWeekRevenue) / prevWeekRevenue) * 100) : (weekRevenue > 0 ? 100 : 0);
-      const weekCogs = checkItems.filter((ci) => {
-        const ch = checks.find((c) => c.id === ci.check_id);
-        return ch && new Date(ch.closed_at).getTime() >= weekAgo;
-      }).reduce((s, ci) => s + (ci.quantity || 0) * (itemCosts[ci.item_id] || 0), 0);
-      const weekAgoStr = new Date(weekAgo + mskOffset).toISOString().split('T')[0];
-      const weekExpenses = expenses
-        .filter((e) => (e.expense_date || '') >= weekAgoStr)
-        .reduce((s, e) => s + Number(e.amount || 0), 0);
-      const weekProfit = Math.round(weekRevenue - weekCogs - weekExpenses);
-      const weekMargin = weekRevenue > 0 ? Math.round((weekProfit / weekRevenue) * 100) : 0;
-      const weekCheckIds = new Set(checks.filter((c) => new Date(c.closed_at).getTime() >= weekAgo).map((c) => c.id));
-      const weekProductSales = {};
-      for (const ci of checkItems) {
-        if (!weekCheckIds.has(ci.check_id)) continue;
-        const pid = ci.item_id;
-        if (!weekProductSales[pid]) weekProductSales[pid] = { qty: 0, revenue: 0 };
-        weekProductSales[pid].qty += ci.quantity;
-        weekProductSales[pid].revenue += ci.quantity * ci.price_at_time;
-      }
-      const weekTopProducts = inventory
-        .map((i) => ({ name: i.name, revenue: weekProductSales[i.id]?.revenue || 0, qty: weekProductSales[i.id]?.qty || 0 }))
-        .filter((p) => p.revenue > 0)
-        .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 10);
+          // Выручка по персоналу (для контекстной аналитики)
+          const staffRevenue = {};
+          for (const c of checks) {
+            const refAmt = refundByCheck[c.id] || 0;
+            const amt = (c.total_amount || 0) - refAmt;
+            const sid = c.staff_id || '_без_смены_';
+            staffRevenue[sid] = (staffRevenue[sid] || 0) + amt;
+          }
+          const staffWithRevenue = staff.map((p) => ({ nickname: p.nickname, role: p.role, revenue: staffRevenue[p.id] || 0 })).sort((a, b) => b.revenue - a.revenue);
 
-      // Build lookup maps
-      const profileMap = {};
-      for (const p of profiles) profileMap[p.id] = p.nickname;
-      const itemNameMap = {};
-      for (const i of inventory) itemNameMap[i.id] = i.name;
+          // Товары с низким остатком (дефицит)
+          const lowStock = inventory.filter((i) => i.is_active && (i.stock_quantity || 0) < 5).map((i) => ({ name: i.name, stock: i.stock_quantity }));
 
-      // Current Shift Logic
-      const currentShift = shifts.find(s => s.status === 'open');
-      let shiftData = null;
-      if (currentShift) {
-        const start = new Date(currentShift.opened_at).getTime();
-        const shiftChecks = checks.filter(c => new Date(c.closed_at).getTime() >= start);
-        const shiftExp = expenses.filter(e => new Date(e.expense_date).getTime() >= start);
-        const shiftCashOps = cashOps.filter(o => new Date(o.created_at).getTime() >= start);
+          // Аналитика по периодам (для ответов на вопросы)
+          const now = new Date();
+          const mskOffset = 3 * 3600000;
+          const todayStart = new Date(new Date(now.getTime() + mskOffset).toISOString().split('T')[0]).getTime() - mskOffset;
+          const weekAgo = todayStart - 7 * 86400000;
+          const twoWeeksAgo = todayStart - 14 * 86400000;
+          let weekRevenue = 0, weekChecks = 0, weekRefunded = 0;
+          let prevWeekRevenue = 0, prevWeekChecks = 0, prevWeekRefunded = 0;
+          for (const c of checks) {
+            const t = new Date(c.closed_at).getTime();
+            const refAmt = refundByCheck[c.id] || 0;
+            const amt = (c.total_amount || 0) - refAmt;
+            if (t >= weekAgo) {
+              weekRevenue += amt;
+              weekChecks++;
+              weekRefunded += refAmt;
+            } else if (t >= twoWeeksAgo) {
+              prevWeekRevenue += amt;
+              prevWeekChecks++;
+              prevWeekRefunded += refAmt;
+            }
+          }
+          const weekDelta = prevWeekRevenue > 0 ? Math.round(((weekRevenue - prevWeekRevenue) / prevWeekRevenue) * 100) : (weekRevenue > 0 ? 100 : 0);
+          const weekCogs = checkItems.filter((ci) => {
+            const ch = checks.find((c) => c.id === ci.check_id);
+            return ch && new Date(ch.closed_at).getTime() >= weekAgo;
+          }).reduce((s, ci) => s + (ci.quantity || 0) * (itemCosts[ci.item_id] || 0), 0);
+          const weekAgoStr = new Date(weekAgo + mskOffset).toISOString().split('T')[0];
+          const weekExpenses = expenses
+            .filter((e) => (e.expense_date || '') >= weekAgoStr)
+            .reduce((s, e) => s + Number(e.amount || 0), 0);
+          const weekProfit = Math.round(weekRevenue - weekCogs - weekExpenses);
+          const weekMargin = weekRevenue > 0 ? Math.round((weekProfit / weekRevenue) * 100) : 0;
+          const weekCheckIds = new Set(checks.filter((c) => new Date(c.closed_at).getTime() >= weekAgo).map((c) => c.id));
+          const weekProductSales = {};
+          for (const ci of checkItems) {
+            if (!weekCheckIds.has(ci.check_id)) continue;
+            if (!weekProductSales[ci.item_id]) weekProductSales[ci.item_id] = { qty: 0, revenue: 0 };
+            weekProductSales[ci.item_id].qty += ci.quantity || 0;
+            weekProductSales[ci.item_id].revenue += (ci.quantity || 0) * (ci.price_at_time || 0);
+          }
+          const weekTopProducts = inventory
+            .map((i) => ({ name: i.name, revenue: weekProductSales[i.id]?.revenue || 0, qty: weekProductSales[i.id]?.qty || 0 }))
+            .filter((p) => p.revenue > 0)
+            .sort((a, b) => b.revenue - a.revenue)
+            .slice(0, 10);
 
-        const shiftRev = shiftChecks.reduce((s, c) => s + ((c.total_amount || 0) - (refundByCheck[c.id] || 0)), 0);
-        const shiftExpAmt = shiftExp.reduce((s, e) => s + Number(e.amount || 0), 0);
-        const shiftCashIn = shiftCashOps.filter(o => o.type === 'in').reduce((s, o) => s + (o.amount || 0), 0);
-        const shiftCashOut = shiftCashOps.filter(o => o.type === 'out').reduce((s, o) => s + (o.amount || 0), 0);
+          // Зарплата: до 7к → 700₽, каждые 1000₽ сверх → +100₽
+          const calcSalary = (rev) => rev <= 7000 ? 700 : 700 + Math.ceil((rev - 7000) / 1000) * 100;
+          const weekSalaryEstimate = calcSalary(weekRevenue);
 
-        shiftData = {
-          opened: currentShift.opened_at,
-          admin: profileMap[currentShift.staff_id] || '?',
-          revenue: shiftRev,
-          checks: shiftChecks.length,
-          expenses: shiftExpAmt,
-          cash_start: currentShift.cash_start,
-          cash_in: shiftCashIn,
-          cash_out: shiftCashOut,
-          current_cash: currentShift.cash_start + shiftCashIn - shiftCashOut - shiftExpAmt
-        };
-      }
+          const tierCounts = { regular: 0, resident: 0, student: 0 };
+          for (const c of clients) {
+            const t = c.client_tier || 'regular';
+            if (tierCounts[t] !== undefined) tierCounts[t]++;
+          }
+          const certTotal = (certificates || []).length;
+          const certUsed = (certificates || []).filter((c) => c.is_used).length;
+          const certBalance = (certificates || []).filter((c) => !c.is_used).reduce((s, c) => s + (c.balance || 0), 0);
 
-      const itemsByCheck = {};
-      for (const ci of checkItems) {
-        if (!itemsByCheck[ci.check_id]) itemsByCheck[ci.check_id] = [];
-        itemsByCheck[ci.check_id].push({ name: itemNameMap[ci.item_id] || '?', qty: ci.quantity, price: ci.price_at_time });
-      }
-
-      const splitByCheck = {};
-      for (const cp of checkPayments) {
-        if (!splitByCheck[cp.check_id]) splitByCheck[cp.check_id] = [];
-        splitByCheck[cp.check_id].push({ method: cp.method, amount: cp.amount });
-      }
-
-      const refItemsByRefund = {};
-      for (const ri of refundItems) {
-        if (!refItemsByRefund[ri.refund_id]) refItemsByRefund[ri.refund_id] = [];
-        refItemsByRefund[ri.refund_id].push({ name: itemNameMap[ri.item_id] || '?', qty: ri.quantity, price: ri.price_at_time });
-      }
-
-      const detailedRefunds = refunds.slice(0, 30).map((r) => {
-        return {
-          id: r.id,
-          amount: r.total_amount,
-          type: r.refund_type,
-          who: profileMap[r.created_by] || '?',
-          date: r.created_at,
-          items: refItemsByRefund[r.id] || [],
-        };
-      });
-
-      // Staff on shifts
-      const shiftStaff = shifts.slice(0, 10).map((s) => ({
-        admin: profileMap[s.staff_id] || '?',
-        status: s.status,
-        cash_start: s.cash_start,
-        cash_end: s.cash_end,
-        opened: s.opened_at,
-        closed: s.closed_at,
-      }));
-
-      // Open checks
-      const openChecksList = (openChecks || []).map((c) => ({
-        player: profileMap[c.player_id] || 'Гость',
-        total: c.total_amount,
-        created: c.created_at,
-        note: c.note,
-        items: itemsByCheck[c.id] || [],
-      }));
-
-      // Recent transactions
-      const recentTransactions = (transactions || []).slice(0, 50).map((t) => ({
-        player: profileMap[t.profile_id] || '?',
-        type: t.type,
-        amount: t.amount,
-        desc: t.description,
-        date: t.created_at,
-      }));
-
-      // Salary with names
-      const salaryDetailed = salaryPayments.slice(0, 20).map((sp) => ({
-        who: profileMap[sp.profile_id] || '?',
-        amount: sp.amount,
-        method: sp.payment_method,
-        date: sp.created_at,
-      }));
-
-      dbContext = `\n\n=== ДАННЫЕ T-POS (актуальные из БД) ===
-ДАННЫЕ ТЕКУЩЕЙ СМЕНЫ: ${shiftData ? JSON.stringify(shiftData) : 'Смена закрыта'}
-      АНАЛИТИКА ЗА НЕДЕЛЮ: выручка ${weekRevenue}₽, чеков ${weekChecks}, возвраты ${weekRefunded}₽, себестоимость ${Math.round(weekCogs)}₽, расходы ${Math.round(weekExpenses)}₽, прибыль ${weekProfit}₽, маржа ${weekMargin}%. Предыдущая неделя: ${prevWeekRevenue}₽. Динамика: ${weekDelta}%.
+          dbContext = `\n\n=== ДАННЫЕ T-POS (актуальные из БД) ===
+АНАЛИТИКА ЗА НЕДЕЛЮ: выручка ${weekRevenue}₽, чеков ${weekChecks}, возвраты ${weekRefunded}₽, себестоимость ${Math.round(weekCogs)}₽, расходы ${Math.round(weekExpenses)}₽, прибыль ${weekProfit}₽, маржа ${weekMargin}%. Предыдущая неделя: ${prevWeekRevenue}₽. Динамика: ${weekDelta}%.
 ТОП ТОВАРОВ ЗА НЕДЕЛЮ: ${JSON.stringify(weekTopProducts)}.
-ПЕРСОНАЛ: ${JSON.stringify(staff.map((p) => ({ nickname: p.nickname, role: p.role })))}
+ПЕРСОНАЛ И ВЫРУЧКА: ${JSON.stringify(staffWithRevenue)} — сопоставляй работу с цифрами.
+ДЕФИЦИТ (остаток < 5): ${JSON.stringify(lowStock)} — обращай внимание на товары для дозаказа.
 КЛИЕНТОВ: ${clients.length}, должников: ${debtors.length}
 ТОП-20 КЛИЕНТОВ: ${JSON.stringify(topClients)}
 ДОЛЖНИКИ: ${JSON.stringify(debtors.map((p) => ({ nickname: p.nickname, debt: p.balance })))}
@@ -455,122 +391,87 @@ const server = http.createServer((req, res) => {
 ОПЛАТА: ${JSON.stringify(payments)}
 ТОП-20 ТОВАРОВ: ${JSON.stringify(productStats)}
 РАСХОДЫ ПО КАТЕГОРИЯМ: ${JSON.stringify(expByCategory)}
-РАСХОДЫ ДЕТАЛЬНО (последние 30): ${JSON.stringify(expenses.slice(0, 30).map((e) => ({ cat: e.category, amount: e.amount, date: e.expense_date, desc: e.description })))}
-ПОСТАВКИ: ${supplies.length} шт, сумма: ${supplies.reduce((s, x) => s + (x.total_cost || 0), 0)}₽, последние: ${JSON.stringify(supplies.slice(0, 10).map((s) => ({ cost: s.total_cost, supplier: s.supplier, date: s.created_at })))}
-ВОЗВРАТЫ ПОДРОБНО (последние 30): ${JSON.stringify(detailedRefunds)}
-ЗАРПЛАТЫ: ${JSON.stringify(salaryDetailed)}
-КАССА ОПЕРАЦИИ: ${JSON.stringify(cashOps.slice(0, 30).map((o) => ({ type: o.type, amount: o.amount, desc: o.description, date: o.created_at })))}
-СМЕНЫ (кто работал): ${JSON.stringify(shiftStaff)}
-ОТКРЫТЫЕ ЧЕКИ СЕЙЧАС: ${JSON.stringify(openChecksList)}
-ПОСЛЕДНИЕ 50 ЧЕКОВ С ПОЗИЦИЯМИ (кто что купил): ${JSON.stringify(checks.slice(0, 50).map((c) => ({
-        player: profileMap[c.player_id] || 'Гость',
-        total: c.total_amount,
-        method: c.payment_method,
-        bonus: c.bonus_used || 0,
-        discount: c.discount_total || 0,
-        note: c.note,
-        date: c.closed_at,
-        items: itemsByCheck[c.id] || [],
-        split: splitByCheck[c.id] || null,
-      })))}
-СЕРТИФИКАТЫ: ${JSON.stringify((certificates || []).map((c) => ({ code: c.code, nominal: c.amount, balance: c.balance, active: c.is_active, created: c.created_at })))}
-ТРАНЗАКЦИИ БАЛАНСОВ (последние 50): ${JSON.stringify(recentTransactions)}
-МЕНЮ (все ${inventory.length} позиций): ${JSON.stringify(inventory.map((i) => ({ name: i.name, cat: i.category, price: i.price, stock: i.stock_quantity, active: i.is_active })))}
-МЕРОПРИЯТИЯ (ПРЕДСТОЯЩИЕ И ОТМЕНЕННЫЕ): ${JSON.stringify(events.slice(0, 20).map((e) => ({ id: e.id, type: e.type, location: e.location, date: e.date, start_time: e.start_time, payment_type: e.payment_type, fixed_amount: e.fixed_amount, status: e.status, comment: e.comment })))}
+ПОСТАВКИ: ${supplies.length} шт, сумма: ${supplies.reduce((s, x) => s + (x.total_cost || 0), 0)}₽
+ВОЗВРАТЫ: ${refunds.length} шт, сумма: ${totalRefunded}₽
+ЗАРПЛАТЫ: формула — до 7к выручки → 700₽, каждые +1000₽ → +100₽. За неделю (${weekRevenue}₽) расчётная ЗП ≈ ${weekSalaryEstimate}₽. Фактически выплачено: ${salaryTotal}₽.
+ТИРЫ КЛИЕНТОВ: гости ${tierCounts.regular}, резиденты ${tierCounts.resident}, студенты ${tierCounts.student}.
+СЕРТИФИКАТЫ: ${certTotal} шт (использовано ${certUsed}), остаток номинала ${certBalance}₽.
+ПРОСТРАНСТВА: ${JSON.stringify((spaces || []).map((s) => ({ name: s.name, type: s.type, rate: s.hourly_rate })))}
+КАССА: ${JSON.stringify(cashOps.slice(0, 15).map((o) => ({ type: o.type, amount: o.amount })))}
+ПОСЛЕДНИЕ СМЕНЫ: ${JSON.stringify(shifts.slice(0, 10).map((s) => ({ status: s.status, cash_start: s.cash_start, cash_end: s.cash_end, opened: s.opened_at, closed: s.closed_at })))}
+МЕНЮ (остатки stock — актуальные, используй для предупреждений): ${JSON.stringify(inventory.map((i) => ({ name: i.name, cat: i.category, price: i.price, stock: i.stock_quantity ?? 0, active: i.is_active })))}
+МЕРОПРИЯТИЯ (предстоящие, с id для update_event): ${JSON.stringify(events.slice(0, 20).map((e) => ({ id: e.id, type: e.type, location: e.location, date: e.date, start_time: e.start_time, payment_type: e.payment_type, fixed_amount: e.fixed_amount, status: e.status, comment: e.comment })))}
 (ВНИМАНИЕ: Даты в списке могут быть старыми. ИСПОЛЬЗУЙ ТЕКУЩИЙ ГОД ИЗ СЕКЦИИ "СЕЙЧАС" ДЛЯ НОВЫХ ЗАПИСЕЙ!)
 ===`;
-    }
+        }
 
-    const now2 = new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', dateStyle: 'long', timeStyle: 'short' });
-    const systemPromptHeader = `СЕЙЧАС (МСК): ${now2}.
-ТЕКУЩИЙ ГОД: 2026.
-ИГНОРИРУЙ любые мысли о 2024 годе. Если ты создаешь мероприятие без указания года, ВСЕГДА используй 2026.
+        // --- Construct System Prompt ---
+        const now = new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', dateStyle: 'long', timeStyle: 'short' });
+        const systemPromptHeader = `СЕЙЧАС (МСК): ${now}. ТЕКУЩИЙ ГОД: 2026.
 
-Твоя роль: ИИ-Директор и умный ассистент POS-системы T-POS.
-BUILD_ID: 20260306_v10_SHIFT_CONTEXT
+ТЫ — TITAN AI, ИИ-ассистент для сотрудников клуба "Titan Mafia Club" (titanmafia.ru, @titankbr, Нальчик, ул. Кабардинская 189а). Интегрирован с T-POS. Используй данные T-POS в реальном времени — полный доступ к коммерческой информации: выручка, прибыль, расходы, зарплаты, должники, остатки, поставки, персонал.
 
-КОНТЕКСТ ВРЕМЕНИ (ВАЖНО):
-1. ПРИОРИТЕТ ТЕКУЩЕЙ СМЕНЫ: На любые общие вопросы про деньги, выручку, чеки или кассу (например, "сколько денег?", "что по выручке?") — всегда отвечай по ТЕКУЩЕЙ СМЕНЕ (секция "ДАННЫЕ ТЕКУЩЕЙ СМЕНЫ").
-2. ЗАДАННЫЙ ПЕРИОД: Если пользователь явно просит другой период (вчера, прошлая неделя, с такого-то по такое-то), тогда используй общую аналитику из БД.
-3. МЕРОПРИЯТИЯ: По умолчанию показывай ТОЛЬКО БЛИЖАЙШИЕ / ПРЕДСТОЯЩИЕ (статус planned/active). Не выводи отмененные или старые мероприятия, если тебя об этом специально не попросили. Если пользователь запрашивает "предстоящие мероприятия", используй инструмент list_events с параметром { upcoming: true }.
+ГЛУБОКОЕ ПОНИМАНИЕ:
+• Понимай произвольные запросы. Примеры: "кто что закупил" → supply_summary; "сколько должны" → list_debtors; "что по Ивану" → client_report; "когда выезд" → list_events; "как дела сегодня" → report_today; "открытые чеки" → open_checks; "что заказать" → stock_alert; "расчёт зарплаты при 15к" → salary_estimate; "расходы за неделю" → expense_summary.
+• Интерпретируй контекст: "а за неделю?", "подробнее", "и что с этим?" — уточняй с учётом предыдущих сообщений.
+• Анализируй данные: сравнивай периоды, замечай тренды, дефицит, риски. Делай выводы и предлагай действия.
+• Отвечай на основе актуальных данных из ДАННЫЕ T-POS. Никогда не угадывай.
 
-СТИЛЬ ОБЩЕНИЯ И ФОРМАТ ОТВЕТОВ (СТРОГИЕ ПРАВИЛА):
-1. КАТЕГОРИЧЕСКИ ЗАПРЕЩАЕТСЯ выводить Markdown-таблицы (со знаками |).
-2. ЗАПРЕЩАЕТСЯ выводить длинные текстовые списки-простыни.
-3. ЗАПРЕЩАЕТСЯ использовать знаки ** (двойные звездочки) для выделения списков. Используй HTML <b>текст</b>.
-4. ЛЮБОЙ вывод списка должен сопровождаться ИНТЕРАКТИВНЫМИ КНОПКАМИ \`reply_with_buttons\`.
+ФОРМАТ ОТВЕТОВ:
+• Коротко, по делу. Эмодзи: 📊 💰 📉 ✅ ⚠️ 🔥 📅 👤 — для акцентов.
+• Никаких таблиц, markdown, UUID. Цифры — в предложениях.
 
-ПЕРЕВОД ТЕРМИНОВ:
-- titan/titanium → <b>Титан</b>
-- exit → <b>Выезд</b>
-- planned → <b>Запланировано</b>
-- cancelled → <b>Отменено</b>
-- active → <b>В процессе</b>
+ЛОКАЦИИ/ФОРМАТЫ:
+• ТИТАН (клуб): Кабардинская 189а. Фикс 500₽/вечер или 200₽/час. type:"titan".
+• ВЫЕЗД: корпоративы/ДР. type:"exit", location.
+• Клиенты: regular (гость), resident (резидент), student (студент).
 
-ИНТЕРФЕЙС КНОПОК:
-Если пользователь нажал "Мероприятия", вызови \`reply_with_buttons\` со списком ближайших и кнопкой "Показать все".
-Если просит выручку, выведи по смене и добавь кнопки "За вчера", "За неделю".
+УМНЫЕ ДАТЫ:
+• "в субботу" / "следующая суббота" = ближайшая суббота. "завтра", "15 марта" → 2026-03-15.
 
-ИНСТРУМЕНТЫ (возвращай ТОЛЬКО JSON):
-1. create_event: { type, location, date, start_time, payment_type, fixed_amount, comment }
-2. list_events: { upcoming: boolean }
-3. update_event: { event_id: string, type?, location?, date?, start_time?, payment_type?, fixed_amount?, comment?, status? }
-4. create_check: { playerNickname: string, items?: [{ name: string, quantity: number }] }
-5. add_items: { checkId: string, items: [{ name: string, quantity: number }] }
-6. close_check: { checkId: string, payment_method: string, bonus_used?: number, discount_total?: number }
-7. add_expense: { category: string, amount: number, description: string }
-8. cash_operation: { type: string, amount: number, description: string }
-9. manage_shift: { action: string, cash: number }
-10. topup_balance: { playerNickname: string, amount: number, method: string }
-11. create_profile: { nickname: string, phone?: string }
-12. apply_discount: { checkId: string, type: string, value: number } — тип "percent" или "fixed"
-13. update_inventory: { itemName: string, stock?: number, price?: number }
-14. add_bonus: { playerNickname: string, points: number }
-15. list_open_checks: {} — показать открытые чеки
-16. pay_salary: { staffNickname: string, amount: number, method: string }
-17. refund_check: { checkId: string, refund_type: string }
-18. reply_with_buttons: { message: string, buttons: [[{ text: string, data: string }]] }
+ОШИБКИ:
+• Если данных нет или запрос неясен: "Данные T-POS не загружены" или уточни вопрос. Никогда не выдумывай цифры.
 
-ПРЯМОЕ ИСПОЛНЕНИЕ (БЕЗ ВОПРОСОВ):
-Если есть прямая команда ("Закрой чек Ивана оплата картой", "Добавь в чек Kai Сэндвич"), тебе не нужно генерировать \`reply_with_buttons\`. Тебе нужно СРАЗУ вызвать соответствующий инструмент (close_check, add_items).
-Если не хватает ID чека для добавления товара (add_items), найди его ID в ДОСТУПНЫХ ОТКРЫТЫХ ЧЕКАХ в секции "ДАННЫЕ T-POS". Используй самый свежий открытый чек этого пользователя.
-Не переспрашивай пользователя, если можешь найти ответ в контексте (например, открытые чеки).
+ИНСТРУМЕНТЫ (JSON только для действий):
+1. create_event — бронь/выезд. params: type, location, date, start_time, payment_type, fixed_amount, comment
+2. list_events — params: { upcoming: true }
+3. update_event — params: event_id + date, start_time, location, status:"cancelled"
+4. create_check — params: { playerNickname, items?: [{ name, quantity }] }
+5. add_items — params: { checkId, items: [{ name, quantity }] }
+6. client_report — params: { playerNickname } — клиент: тир, баланс, игр, любимое, долг
+7. list_menu — params: {} — меню с ценами и остатками
+8. list_players — params: {} — клиенты с балансом и бонусами
+9. report_today — params: {} — отчёт за сегодня: выручка, чеков, топ товары
+10. list_debtors — params: {} — должники с суммами, итого долг
+11. open_checks — params: {} — открытые чеки (не закрытые)
+12. stock_alert — params: { threshold?: 5 } — товары для дозаказа (остаток < threshold)
+13. salary_estimate — params: { revenue } — расчёт ЗП по выручке (до 7к→700₽, +100₽/1000₽)
+14. supply_summary — params: {} — последние поставки, сумма
+15. expense_summary — params: { period?: "month"|"week" } — расходы за период по категориям
 
-УМНЫЕ ДАТЫ: Все новые мероприятия автоматически на 2026 год.
-Всегда отвечай ТОЛЬКО JSON, когда нужно выполнить действие или вывести список кнопок \`reply_with_buttons\`. Текстом отвечай только на общие вопросы аналитики.`;
+СОЗДАНИЕ МЕРОПРИЯТИЙ:
+Титан → type:"titan". Выезд → type:"exit", location. Ответ ТОЛЬКО JSON: {"action":"create_event","params":{...}}
 
-    const draftHint = draft ? `\n\nЧЕРНОВИК ДЛЯ ИЗМЕНЕНИЯ: ${JSON.stringify(draft)}\nПользователь написал правки. Примени их и верни обновлённый create_event.` : '';
+РЕЖИМ ИЗМЕНЕНИЯ (draft передан):
+Примени правки к черновику, верни JSON create_event.`;
 
+        const draftHint = draft ? `\n\nЧЕРНОВИК ДЛЯ ИЗМЕНЕНИЯ: ${JSON.stringify(draft)}\nПользователь написал правки. Примени их и верни обновлённый create_event.` : '';
+        // Inject into messages
+        let systemMessageFound = false;
+        const enrichedMessages = messages.map((m) => {
+          if (m.role === 'system') {
+            systemMessageFound = true;
+            return { ...m, content: `${systemPromptHeader}\n\n${m.content}${draftHint}\n\n${dbContext}` };
+          }
+          return m;
+        });
 
-    let systemMessageFound = false;
-    const enrichedMessages = messages.map((m) => {
-      if (m.role === 'system') {
-        systemMessageFound = true;
-        return { ...m, content: `${systemPromptHeader}\n\n${m.content}${draftHint}\n\n${dbContext}` };
-      }
-      return m;
-    });
-
-    if (!systemMessageFound) {
-      enrichedMessages.unshift({
-        role: 'system',
-        content: `${systemPromptHeader}${draftHint}\n\n${dbContext}`,
-      });
-    }
-
-    return enrichedMessages;
-  }
-
-  // --- /api/ai (non-streaming, original) ---
-  if (url.pathname === '/api/ai' && req.method === 'POST') {
-    if (!checkAuth(req, res)) return;
-    readBody(req).then(async (body) => {
-      try {
-        const { messages, context, draft } = JSON.parse(body);
-        const POLZA_KEY = process.env.POLZA_AI_API_KEY;
-        const aiUrl = 'https://polza.ai/api/v1/chat/completions';
-
-        const enrichedMessages = await buildEnrichedMessages(messages, draft);
+        if (!systemMessageFound) {
+          enrichedMessages.unshift({
+            role: 'system',
+            content: `${systemPromptHeader}${draftHint}\n\n${dbContext}`,
+          });
+        }
 
         if (!POLZA_KEY) {
           json(res, {
@@ -629,7 +530,11 @@ BUILD_ID: 20260306_v10_SHIFT_CONTEXT
           return;
         }
 
-        const text = data?.choices?.[0]?.message?.content || 'Нет ответа';
+        let text = data?.choices?.[0]?.message?.content ?? data?.output_text ?? '';
+        if (Array.isArray(text)) {
+          text = text.map((p) => (p?.text ?? (typeof p === 'string' ? p : ''))).join('');
+        }
+        text = String(text || '').trim() || 'Нет ответа';
         json(res, { response: text });
       } catch (e) {
         console.error('AI Route Error:', e);
@@ -637,131 +542,6 @@ BUILD_ID: 20260306_v10_SHIFT_CONTEXT
       }
     }).catch((e) => {
       json(res, { error: String(e) }, 400);
-    });
-    return;
-  }
-
-  // --- /api/ai/stream (SSE streaming) ---
-  if (url.pathname === '/api/ai/stream' && req.method === 'POST') {
-    if (!checkAuth(req, res)) return;
-    readBody(req).then(async (body) => {
-      try {
-        const { messages, draft } = JSON.parse(body);
-        const POLZA_KEY = process.env.POLZA_AI_API_KEY;
-        const aiUrl = 'https://polza.ai/api/v1/chat/completions';
-
-        const enrichedMessages = await buildEnrichedMessages(messages, draft);
-
-        if (!POLZA_KEY) {
-          cors(res);
-          res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' });
-          res.write(`data: ${JSON.stringify({ error: 'Missing POLZA_AI_API_KEY' })}\n\n`);
-          res.end();
-          return;
-        }
-
-        const aiBody = {
-          model: 'google/gemini-2.5-flash-lite-preview-09-2025',
-          messages: enrichedMessages,
-          temperature: 0.7,
-          max_tokens: 4096,
-          stream: true,
-        };
-
-        let aiRes;
-        let attempts = 0;
-        const maxAttempts = 3;
-
-        while (attempts < maxAttempts) {
-          aiRes = await fetch(aiUrl, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${POLZA_KEY}`,
-            },
-            body: JSON.stringify(aiBody),
-          });
-
-          if (aiRes.status === 429 && attempts < maxAttempts - 1) {
-            attempts++;
-            const delay = Math.pow(2, attempts) * 1000;
-            await new Promise(r => setTimeout(r, delay));
-            continue;
-          }
-          break;
-        }
-
-        cors(res);
-        res.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-        });
-
-        if (!aiRes.ok) {
-          const errData = await aiRes.text();
-          res.write(`data: ${JSON.stringify({ error: `AI API ${aiRes.status}`, details: errData })}\n\n`);
-          res.end();
-          return;
-        }
-
-        // Parse SSE stream from Polza.ai using async iteration (Web ReadableStream)
-        let fullText = '';
-        let buffer = '';
-        const decoder = new TextDecoder();
-
-        try {
-          for await (const chunk of aiRes.body) {
-            buffer += decoder.decode(chunk, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed || !trimmed.startsWith('data: ')) continue;
-              const payload = trimmed.slice(6);
-              if (payload === '[DONE]') continue;
-              try {
-                const parsed = JSON.parse(payload);
-                const token = parsed.choices?.[0]?.delta?.content || '';
-                if (token) {
-                  fullText += token;
-                  res.write(`data: ${JSON.stringify({ token })}\n\n`);
-                }
-              } catch { /* skip unparseable lines */ }
-            }
-          }
-        } catch (streamErr) {
-          console.error('Stream read error:', streamErr);
-        }
-
-        // Process remaining buffer
-        if (buffer.trim()) {
-          const trimmed = buffer.trim();
-          if (trimmed.startsWith('data: ') && trimmed.slice(6) !== '[DONE]') {
-            try {
-              const parsed = JSON.parse(trimmed.slice(6));
-              const token = parsed.choices?.[0]?.delta?.content || '';
-              if (token) fullText += token;
-            } catch { }
-          }
-        }
-
-        res.write(`data: ${JSON.stringify({ done: true, full: fullText })}\n\n`);
-        res.end();
-
-      } catch (e) {
-        console.error('AI Stream Error:', e);
-        cors(res);
-        res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
-        res.write(`data: ${JSON.stringify({ error: String(e) })}\n\n`);
-        res.end();
-      }
-    }).catch((e) => {
-      cors(res);
-      res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
-      res.write(`data: ${JSON.stringify({ error: String(e) })}\n\n`);
-      res.end();
     });
     return;
   }
@@ -788,14 +568,18 @@ BUILD_ID: 20260306_v10_SHIFT_CONTEXT
         };
 
         if (action === 'create_check') {
-          // Find player by nickname
+          const { playerNickname, items } = params;
+          if (!playerNickname) {
+            json(res, { success: false, error: 'playerNickname обязателен' });
+            return;
+          }
           const playerRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/profiles?nickname=ilike.${encodeURIComponent(params.playerNickname)}&role=eq.client&limit=1`,
+            `${SUPABASE_URL}/rest/v1/profiles?nickname=ilike.${encodeURIComponent(playerNickname)}&role=eq.client&limit=1`,
             { headers: sbHeaders }
           );
           const players = await playerRes.json();
           if (!players.length) {
-            json(res, { success: false, error: `Игрок "${params.playerNickname}" не найден` });
+            json(res, { success: false, error: `Игрок "${playerNickname}" не найден` });
             return;
           }
 
@@ -812,53 +596,91 @@ BUILD_ID: 20260306_v10_SHIFT_CONTEXT
             }),
           });
           const check = await checkRes.json();
-          const checkInfo = check[0] || check;
+          const newCheck = check[0] || check;
+          const checkId = newCheck.id;
 
-          let addedText = '';
-          if (params.items && Array.isArray(params.items) && params.items.length > 0) {
-            const invRes = await fetch(
-              `${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=id,name,price`,
-              { headers: sbHeaders }
-            );
+          let totalAdded = 0;
+          const added = [];
+          if (Array.isArray(items) && items.length > 0) {
+            const invRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=id,name,price`, { headers: sbHeaders });
             const inventory = await invRes.json();
-            
-            let totalAdded = 0;
-            const added = [];
-
-            for (const item of params.items) {
+            for (const item of items) {
               const nameLower = (item.name || '').toLowerCase();
-              const found = inventory.find((inv) => inv.name.toLowerCase() === nameLower)
-                || inventory.find((inv) => inv.name.toLowerCase().includes(nameLower));
-              
+              const found = inventory.find((inv) => inv.name.toLowerCase() === nameLower) || inventory.find((inv) => inv.name.toLowerCase().includes(nameLower));
               if (found) {
                 const qty = Math.max(1, parseInt(item.quantity) || 1);
                 await fetch(`${SUPABASE_URL}/rest/v1/check_items`, {
                   method: 'POST',
                   headers: sbHeaders,
-                  body: JSON.stringify({
-                    check_id: checkInfo.id,
-                    item_id: found.id,
-                    quantity: qty,
-                    price_at_time: found.price,
-                  }),
+                  body: JSON.stringify({ check_id: checkId, item_id: found.id, quantity: qty, price_at_time: found.price }),
                 });
-                added.push(`${found.name} x${qty}`);
+                added.push({ name: found.name, qty, price: found.price });
                 totalAdded += found.price * qty;
               }
             }
-
             if (totalAdded > 0) {
-              await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkInfo.id)}`, {
+              await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkId)}`, {
                 method: 'PATCH',
                 headers: sbHeaders,
                 body: JSON.stringify({ total_amount: totalAdded }),
               });
-              checkInfo.total_amount = totalAdded;
-              addedText = ` (и добавлено: ${added.join(', ')} на ${totalAdded}₽)`;
             }
           }
 
-          json(res, { success: true, message: `Чек для ${players[0].nickname} открыт${addedText}`, check: checkInfo });
+          const msg = added.length > 0
+            ? `Чек для ${players[0].nickname} создан, добавлено ${added.length} позиций на ${totalAdded}₽`
+            : `Чек для ${players[0].nickname} создан`;
+          json(res, { success: true, message: msg, check: newCheck, added: added.length > 0 ? added : undefined });
+          return;
+        }
+
+        if (action === 'client_report') {
+          const { playerNickname } = params;
+          if (!playerNickname) {
+            json(res, { success: false, error: 'playerNickname обязателен' });
+            return;
+          }
+          const playerRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/profiles?nickname=ilike.${encodeURIComponent(playerNickname)}&role=eq.client&limit=1`,
+            { headers: sbHeaders }
+          );
+          const players = await playerRes.json();
+          if (!players.length) {
+            json(res, { success: false, error: `Клиент "${playerNickname}" не найден` });
+            return;
+          }
+          const player = players[0];
+          const clientChecks = await fetch(
+            `${SUPABASE_URL}/rest/v1/checks?player_id=eq.${player.id}&status=eq.closed&order=closed_at.desc&limit=100`,
+            { headers: sbHeaders }
+          ).then((r) => r.json());
+          const checkIds = clientChecks.slice(0, 30).map((c) => c.id);
+          let favoriteItem = null;
+          if (checkIds.length > 0) {
+            const itemsRes = await fetch(
+              `${SUPABASE_URL}/rest/v1/check_items?check_id=in.(${checkIds.join(',')})&select=item_id,quantity`,
+              { headers: sbHeaders }
+            );
+            const items = await itemsRes.json();
+            const invRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory?select=id,name`, { headers: sbHeaders });
+            const inv = await invRes.json();
+            const itemCount = {};
+            for (const ci of items) {
+              const name = inv.find((i) => i.id === ci.item_id)?.name || '?';
+              itemCount[name] = (itemCount[name] || 0) + (ci.quantity || 0);
+            }
+            const top = Object.entries(itemCount).sort((a, b) => b[1] - a[1])[0];
+            if (top) favoriteItem = top[0];
+          }
+          const totalSpent = clientChecks.reduce((s, c) => s + (c.total_amount || 0), 0);
+          const lastCheck = clientChecks[0];
+          const lastVisit = lastCheck?.closed_at ? new Date(lastCheck.closed_at).toLocaleDateString('ru-RU') : '—';
+          const tierLabel = { resident: 'Резидент', student: 'Студент', regular: 'Гость' };
+          const status = tierLabel[player.client_tier] || 'Гость';
+          const debt = (player.balance || 0) < 0 ? ` Долг: ${player.balance}₽` : '';
+          const fav = favoriteItem ? ` Любимое: ${favoriteItem}.` : '';
+          const msg = `👤 ${player.nickname} (${status}). Баланс: ${player.balance ?? 0}₽. Игр: ${clientChecks.length}.${fav} Бонусы: ${player.bonus_points ?? 0}. Последний визит: ${lastVisit}.${debt}`;
+          json(res, { success: true, message: msg });
           return;
         }
 
@@ -906,10 +728,10 @@ BUILD_ID: 20260306_v10_SHIFT_CONTEXT
           const lines = evList.length === 0
             ? ['📅 Нет запланированных мероприятий.']
             : evList.map((e, i) => {
-              const label = e.type === 'titan' ? 'Титан' : (e.location || 'Выезд');
-              const pay = e.payment_type === 'hourly' ? 'почасовая' : `фикс ${e.fixed_amount || 0}₽`;
-              return `${i + 1}. ${label} — ${e.date} в ${e.start_time || '18:00'}, ${pay}${e.comment ? ` (${e.comment})` : ''}`;
-            });
+                const label = e.type === 'titan' ? 'Титан' : (e.location || 'Выезд');
+                const pay = e.payment_type === 'hourly' ? 'почасовая' : `фикс ${e.fixed_amount || 0}₽`;
+                return `${i + 1}. ${label} — ${e.date} в ${e.start_time || '18:00'}, ${pay}${e.comment ? ` (${e.comment})` : ''}`;
+              });
           json(res, { success: true, events: evList, message: `📅 Мероприятия:\n\n${lines.join('\n')}` });
           return;
         }
@@ -995,246 +817,21 @@ BUILD_ID: 20260306_v10_SHIFT_CONTEXT
 
           json(res, { success: true, message: `Добавлено ${added.length} позиций на ${totalAdded}₽`, added });
 
-        } else if (action === 'close_check') {
-          const { checkId, payment_method, bonus_used = 0, discount_total = 0 } = params;
-          if (!checkId || !payment_method) {
-            json(res, { success: false, error: 'checkId и payment_method обязательны' });
-            return;
-          }
-          await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkId)}`, {
-            method: 'PATCH',
-            headers: sbHeaders,
-            body: JSON.stringify({ status: 'closed', closed_at: new Date().toISOString(), payment_method, bonus_used, discount_total }),
-          });
-          json(res, { success: true, message: `✅ Чек закрыт (Оплата: ${payment_method})` });
-
-        } else if (action === 'add_expense') {
-          const { category, amount, description } = params;
-          if (!category || !amount) {
-            json(res, { success: false, error: 'category и amount обязательны' });
-            return;
-          }
-          await fetch(`${SUPABASE_URL}/rest/v1/expenses`, {
-            method: 'POST',
-            headers: sbHeaders,
-            body: JSON.stringify({ category, amount, description, expense_date: new Date().toISOString().split('T')[0] }),
-          });
-          json(res, { success: true, message: `✅ Расход "${category}" на ${amount}₽ добавлен` });
-
-        } else if (action === 'cash_operation') {
-          const { type, amount, description } = params;
-          if (!type || !amount) {
-            json(res, { success: false, error: 'type (in/out) и amount обязательны' });
-            return;
-          }
-          await fetch(`${SUPABASE_URL}/rest/v1/cash_operations`, {
-            method: 'POST',
-            headers: sbHeaders,
-            body: JSON.stringify({ type, amount, description, created_by: staffId || null, created_at: new Date().toISOString() }),
-          });
-          json(res, { success: true, message: `✅ Операция по кассе (${type === 'in' ? 'внесение' : 'изъятие'} ${amount}₽) добавлена` });
-
-        } else if (action === 'manage_shift') {
-          const { action: shiftAction, cash } = params;
-          if (!shiftAction || cash === undefined) {
-             json(res, { success: false, error: 'action (open/close) и cash обязательны' });
-             return;
-          }
-          if (shiftAction === 'open') {
-             await fetch(`${SUPABASE_URL}/rest/v1/shifts`, {
-                method: 'POST',
-                headers: sbHeaders,
-                body: JSON.stringify({ status: 'open', cash_start: cash, opened_at: new Date().toISOString(), staff_id: staffId || null }),
-             });
-             json(res, { success: true, message: `✅ Смена открыта (В кассе: ${cash}₽)` });
-          } else {
-             const shiftRes = await fetch(`${SUPABASE_URL}/rest/v1/shifts?status=eq.open&select=id`, { headers: sbHeaders });
-             const shifts = await shiftRes.json();
-             if (!shifts.length) {
-                json(res, { success: false, error: 'Нет открытой смены' });
-                return;
-             }
-             await fetch(`${SUPABASE_URL}/rest/v1/shifts?id=eq.${encodeURIComponent(shifts[0].id)}`, {
-                method: 'PATCH',
-                headers: sbHeaders,
-                body: JSON.stringify({ status: 'closed', cash_end: cash, closed_at: new Date().toISOString() }),
-             });
-             json(res, { success: true, message: `✅ Смена закрыта (В кассе: ${cash}₽)` });
-          }
-
-        } else if (action === 'topup_balance') {
-          const { playerNickname, amount, method = 'card' } = params;
-          if (!playerNickname || !amount) {
-             json(res, { success: false, error: 'playerNickname и amount обязательны' });
-             return;
-          }
-          const plRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?nickname=ilike.${encodeURIComponent(playerNickname)}&role=eq.client&limit=1`, { headers: sbHeaders });
-          const players = await plRes.json();
-          if (!players.length) {
-             json(res, { success: false, error: `Игрок "${playerNickname}" не найден` });
-             return;
-          }
-          const p = players[0];
-          await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(p.id)}`, {
-            method: 'PATCH',
-            headers: sbHeaders,
-            body: JSON.stringify({ balance: (p.balance || 0) + amount }),
-          });
-          await fetch(`${SUPABASE_URL}/rest/v1/transactions`, {
-            method: 'POST',
-            headers: sbHeaders,
-            body: JSON.stringify({ profile_id: p.id, type: method === 'bonus' ? 'bonus' : 'deposit', amount, description: 'Пополнение через ИИ', created_at: new Date().toISOString() }),
-          });
-          json(res, { success: true, message: `✅ Баланс ${p.nickname} пополнен на ${amount}₽` });
-
-        } else if (action === 'create_profile') {
-          const { nickname, role = 'client', phone = '' } = params;
-          if (!nickname) {
-             json(res, { success: false, error: 'nickname обязателен' });
-             return;
-          }
-          await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
-            method: 'POST',
-            headers: sbHeaders,
-            body: JSON.stringify({ nickname, role, balance: 0, bonus_points: 0, client_tier: 'bronze', phone, created_at: new Date().toISOString() }),
-          });
-          json(res, { success: true, message: `✅ Новый профиль "${nickname}" создан` });
-
-        } else if (action === 'apply_discount') {
-          const { checkId, type, value } = params;
-          if (!checkId || !type || value === undefined) {
-             json(res, { success: false, error: 'checkId, type и value обязательны' });
-             return;
-          }
-          const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkId)}&select=total_amount`, { headers: sbHeaders });
-          const checks = await checkRes.json();
-          if (!checks.length) {
-             json(res, { success: false, error: 'Чек не найден' });
-             return;
-          }
-          const check = checks[0];
-          let discountAmt = type === 'percent' ? (check.total_amount * (value / 100)) : value;
-          await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkId)}`, {
-             method: 'PATCH',
-             headers: sbHeaders,
-             body: JSON.stringify({ discount_total: discountAmt }),
-          });
-          json(res, { success: true, message: `✅ Скидка (${type === 'percent' ? value + '%' : value + '₽'}) применена к чеку` });
-
-        } else if (action === 'update_inventory') {
-          const { itemName, stock, price } = params;
-          if (!itemName) {
-             json(res, { success: false, error: 'itemName обязателен' });
-             return;
-          }
-          const invRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory?name=ilike.${encodeURIComponent('%' + itemName + '%')}&limit=1`, { headers: sbHeaders });
-          const items = await invRes.json();
-          if (!items.length) {
-             json(res, { success: false, error: `Товар "${itemName}" не найден` });
-             return;
-          }
-          const item = items[0];
-          const payload = {};
-          if (stock !== undefined) payload.stock_quantity = (item.stock_quantity || 0) + stock; // adds to current stock
-          if (price !== undefined) payload.price = price;
-          
-          await fetch(`${SUPABASE_URL}/rest/v1/inventory?id=eq.${encodeURIComponent(item.id)}`, {
-             method: 'PATCH',
-             headers: sbHeaders,
-             body: JSON.stringify(payload),
-          });
-          json(res, { success: true, message: `✅ Склад для "${item.name}" обновлен` });
-
-        } else if (action === 'add_bonus') {
-          const { playerNickname, points } = params;
-          if (!playerNickname || points === undefined) {
-             json(res, { success: false, error: 'playerNickname и points обязательны' });
-             return;
-          }
-          const plRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?nickname=ilike.${encodeURIComponent(playerNickname)}&role=eq.client&limit=1`, { headers: sbHeaders });
-          const players = await plRes.json();
-          if (!players.length) {
-             json(res, { success: false, error: `Игрок "${playerNickname}" не найден` });
-             return;
-          }
-          const p = players[0];
-          await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(p.id)}`, {
-            method: 'PATCH',
-            headers: sbHeaders,
-            body: JSON.stringify({ bonus_points: (p.bonus_points || 0) + points }),
-          });
-          json(res, { success: true, message: `✅ Начислено ${points} бонусов для ${p.nickname}` });
-
-        } else if (action === 'list_open_checks') {
-          const checksRes = await fetch(`${SUPABASE_URL}/rest/v1/checks?status=eq.open&select=id,profiles!inner(nickname),total_amount`, { headers: sbHeaders });
-          const checks = await checksRes.json();
-          json(res, { success: true, checks: checks.map(c => ({ id: c.id, player: c.profiles.nickname, total: c.total_amount })) });
-
-        } else if (action === 'pay_salary') {
-          const { staffNickname, amount, method = 'cash' } = params;
-          if (!staffNickname || !amount) {
-             json(res, { success: false, error: 'staffNickname и amount обязательны' });
-             return;
-          }
-          const plRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?nickname=ilike.${encodeURIComponent(staffNickname)}&role=in.(staff,admin)&limit=1`, { headers: sbHeaders });
-          const staff = await plRes.json();
-          if (!staff.length) {
-             json(res, { success: false, error: `Сотрудник "${staffNickname}" не найден` });
-             return;
-          }
-          await fetch(`${SUPABASE_URL}/rest/v1/salary_payments`, {
-            method: 'POST',
-            headers: sbHeaders,
-            body: JSON.stringify({ staff_id: staff[0].id, amount, payment_method: method, payment_date: new Date().toISOString() }),
-          });
-          if (method === 'cash') {
-            await fetch(`${SUPABASE_URL}/rest/v1/cash_operations`, {
-              method: 'POST',
-              headers: sbHeaders,
-              body: JSON.stringify({ type: 'out', amount, description: `Зарплата для ${staff[0].nickname}`, created_at: new Date().toISOString() })
-            });
-          }
-          json(res, { success: true, message: `✅ Зарплата ${amount}₽ выплачена ${staff[0].nickname} (${method})` });
-
-        } else if (action === 'refund_check') {
-          const { checkId, refund_type = 'cash' } = params;
-          if (!checkId) {
-             json(res, { success: false, error: 'checkId обязателен' });
-             return;
-          }
-          const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkId)}`, { headers: sbHeaders });
-          const checks = await checkRes.json();
-          if (!checks.length || checks[0].status !== 'closed') {
-             json(res, { success: false, error: 'Чек не найден или не закрыт' });
-             return;
-          }
-          const check = checks[0];
-          await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkId)}`, {
-             method: 'PATCH',
-             headers: sbHeaders,
-             body: JSON.stringify({ status: 'refunded' }),
-          });
-          await fetch(`${SUPABASE_URL}/rest/v1/refunds`, {
-             method: 'POST',
-             headers: sbHeaders,
-             body: JSON.stringify({
-                original_check_id: checkId,
-                refund_amount: check.total_amount,
-                refund_method: refund_type,
-                reason: 'Возврат через бота',
-                processed_by: staffId || null,
-                created_at: new Date().toISOString()
-             })
-          });
-          json(res, { success: true, message: `✅ Чек (${check.total_amount}₽) успешно возвращен (${refund_type})` });
-
         } else if (action === 'list_menu') {
           const invRes = await fetch(
             `${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=name,category,price,stock_quantity&order=category,name`,
             { headers: sbHeaders }
           );
           const menu = await invRes.json();
-          json(res, { success: true, menu });
+          const byCat = {};
+          for (const m of menu) {
+            const cat = m.category || 'Прочее';
+            if (!byCat[cat]) byCat[cat] = [];
+            byCat[cat].push(`${m.name} — ${m.price}₽ (остаток: ${m.stock_quantity ?? 0})`);
+          }
+          const lines = Object.entries(byCat).map(([cat, items]) => `🍽 ${cat}:\n${items.slice(0, 15).join('\n')}${items.length > 15 ? `\n... и ещё ${items.length - 15}` : ''}`).join('\n\n');
+          const msg = `📋 Меню (${menu.length} позиций):\n\n${lines}`;
+          json(res, { success: true, menu, message: msg });
 
         } else if (action === 'list_players') {
           const plRes = await fetch(
@@ -1242,7 +839,131 @@ BUILD_ID: 20260306_v10_SHIFT_CONTEXT
             { headers: sbHeaders }
           );
           const players = await plRes.json();
-          json(res, { success: true, players });
+          const tierLabel = { regular: 'Гость', resident: 'Резидент', student: 'Студент' };
+          const lines = players.slice(0, 25).map((p) => {
+            const tier = tierLabel[p.client_tier] || 'Гость';
+            const bal = p.balance != null ? p.balance : 0;
+            const bonus = p.bonus_points != null ? p.bonus_points : 0;
+            return `${p.nickname} (${tier}) — баланс ${bal}₽, бонусы ${bonus}`;
+          });
+          const msg = `👥 Клиенты (${players.length}):\n\n${lines.join('\n')}${players.length > 25 ? `\n\n... и ещё ${players.length - 25}` : ''}`;
+          json(res, { success: true, players, message: msg });
+
+        } else if (action === 'report_today') {
+          const mskNow = new Date(Date.now() + 3 * 3600000);
+          const todayStr = mskNow.toISOString().split('T')[0];
+          const tomorrowStr = new Date(mskNow.getTime() + 86400000).toISOString().split('T')[0];
+          const [checksRes, invRes] = await Promise.all([
+            fetch(`${SUPABASE_URL}/rest/v1/checks?status=eq.closed&closed_at=gte.${todayStr}&closed_at=lt.${tomorrowStr}&select=id,total_amount,player_id`, { headers: sbHeaders }),
+            fetch(`${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=id,name`, { headers: sbHeaders }),
+          ]);
+          const checks = await checksRes.json();
+          const inventory = await invRes.json();
+          const checkIds = checks.map((c) => c.id);
+          let dayRevenue = 0, itemSales = {};
+          for (const c of checks) dayRevenue += c.total_amount || 0;
+          if (checkIds.length > 0) {
+            const itemsRes = await fetch(`${SUPABASE_URL}/rest/v1/check_items?check_id=in.(${checkIds.join(',')})&select=item_id,quantity,price_at_time`, { headers: sbHeaders });
+            const items = await itemsRes.json();
+            for (const ci of items) {
+              const name = inventory.find((i) => i.id === ci.item_id)?.name || '?';
+              itemSales[name] = (itemSales[name] || 0) + (ci.quantity || 0) * (ci.price_at_time || 0);
+            }
+          }
+          const topItems = Object.entries(itemSales).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n, r]) => `${n}: ${Math.round(r)}₽`);
+          const msg = `📊 Сегодня (${todayStr}): выручка ${dayRevenue}₽, чеков ${checks.length}. Топ: ${topItems.join('; ') || '—'}`;
+          json(res, { success: true, message: msg });
+
+        } else if (action === 'list_debtors') {
+          const plRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/profiles?role=eq.client&balance=lt.0&deleted_at=is.null&select=nickname,balance&order=balance&limit=50`,
+            { headers: sbHeaders }
+          );
+          const debtors = await plRes.json();
+          const totalDebt = debtors.reduce((s, p) => s + (p.balance || 0), 0);
+          const lines = debtors.map((p) => `${p.nickname}: ${p.balance}₽`);
+          const msg = `⚠️ Должники (${debtors.length}):\n\n${lines.join('\n') || 'Нет'}\n\nИтого долг: ${totalDebt}₽`;
+          json(res, { success: true, message: msg });
+
+        } else if (action === 'open_checks') {
+          const checksRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/checks?status=eq.open&select=id,total_amount,player_id&order=id.desc&limit=20`,
+            { headers: sbHeaders }
+          );
+          const checks = await checksRes.json();
+          const playerIds = [...new Set(checks.map((c) => c.player_id).filter(Boolean))];
+          let players = [];
+          if (playerIds.length > 0) {
+            const plRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=in.(${playerIds.join(',')})&select=id,nickname`, { headers: sbHeaders });
+            players = await plRes.json();
+          }
+          const plMap = Object.fromEntries(players.map((p) => [p.id, p.nickname]));
+          const lines = checks.map((c) => {
+            const name = plMap[c.player_id] || 'Без игрока';
+            return `${name}: ${c.total_amount || 0}₽`;
+          });
+          const msg = `📋 Открытые чеки (${checks.length}):\n\n${lines.join('\n') || 'Нет открытых чеков'}`;
+          json(res, { success: true, message: msg });
+
+        } else if (action === 'stock_alert') {
+          const threshold = params.threshold ?? 5;
+          const invRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=name,stock_quantity,category`,
+            { headers: sbHeaders }
+          );
+          const all = await invRes.json();
+          const low = all.filter((i) => (i.stock_quantity ?? 0) < threshold).sort((a, b) => (a.stock_quantity ?? 0) - (b.stock_quantity ?? 0));
+          const lines = low.map((i) => `${i.name}: ${i.stock_quantity ?? 0} шт`);
+          const msg = lines.length > 0
+            ? `⚠️ Для дозаказа (остаток < ${threshold}):\n\n${lines.join('\n')}`
+            : `✅ Все позиции в норме (остаток ≥ ${threshold})`;
+          json(res, { success: true, message: msg });
+
+        } else if (action === 'salary_estimate') {
+          const revenue = Number(params.revenue) || 0;
+          const salary = revenue <= 7000 ? 700 : 700 + Math.ceil((revenue - 7000) / 1000) * 100;
+          const msg = `💰 При выручке ${revenue}₽ расчётная ЗП: ${salary}₽ (формула: до 7к → 700₽, +100₽ за каждые 1000₽ сверх)`;
+          json(res, { success: true, message: msg });
+
+        } else if (action === 'supply_summary') {
+          const supRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/supplies?select=total_cost,created_at&order=created_at.desc&limit=15`,
+            { headers: sbHeaders }
+          );
+          const supplies = await supRes.json();
+          const total = supplies.reduce((s, x) => s + (x.total_cost || 0), 0);
+          const lines = supplies.map((s) => {
+            const d = s.created_at ? new Date(s.created_at).toLocaleDateString('ru-RU') : '—';
+            return `${d}: ${s.total_cost || 0}₽`;
+          });
+          const msg = `📦 Поставки (последние ${supplies.length}):\n\n${lines.join('\n')}\n\nСумма: ${total}₽`;
+          json(res, { success: true, message: msg });
+
+        } else if (action === 'expense_summary') {
+          const period = params.period || 'month';
+          const now = new Date();
+          let fromStr;
+          if (period === 'week') {
+            const d = new Date(now);
+            d.setDate(d.getDate() - 7);
+            fromStr = d.toISOString().split('T')[0];
+          } else {
+            fromStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+          }
+          const expRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/expenses?expense_date=gte.${fromStr}&select=category,amount&order=expense_date.desc`,
+            { headers: sbHeaders }
+          );
+          const expenses = await expRes.json();
+          const byCat = {};
+          for (const e of expenses) {
+            const c = e.category || 'Прочее';
+            byCat[c] = (byCat[c] || 0) + Number(e.amount || 0);
+          }
+          const total = Object.values(byCat).reduce((s, v) => s + v, 0);
+          const lines = Object.entries(byCat).map(([c, a]) => `${c}: ${Math.round(a)}₽`);
+          const msg = `📉 Расходы (${period === 'week' ? 'неделя' : 'месяц'}):\n\n${lines.join('\n')}\n\nИтого: ${Math.round(total)}₽`;
+          json(res, { success: true, message: msg });
 
         } else {
           json(res, { error: `Неизвестное действие: ${action}` }, 200);
@@ -1259,6 +980,7 @@ BUILD_ID: 20260306_v10_SHIFT_CONTEXT
 
   json(res, { error: 'Not found' }, 404);
 });
+
 // --- Event reminders (24h, 12h, 3h, 1h before) ---
 const REMINDER_INTERVALS = [
   { key: '24h', hours: 24, label: '24 часа' },

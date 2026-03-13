@@ -23,6 +23,7 @@ function loadEnv() {
 const env = loadEnv();
 const BOT_TOKEN = env.VITE_TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN;
 const API_SECRET = env.API_SECRET || process.env.API_SECRET || '';
+const API_BASE = env.API_URL || process.env.API_URL || 'http://127.0.0.1:3100';
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 const ALLOWED_CHAT_IDS = (env.OWNER_CHAT_IDS || process.env.OWNER_CHAT_IDS || '')
     .split(',')
@@ -38,19 +39,22 @@ async function tg(method, body) {
     return res.json();
 }
 
+const TG_MAX_LEN = 4096;
+
 async function sendMessage(chatId, text, extra = {}) {
     return tg('sendMessage', { chat_id: chatId, text, parse_mode: 'HTML', ...extra });
 }
 
-async function editMessageText(chatId, messageId, text) {
-    try {
-        return await tg('editMessageText', {
-            chat_id: chatId,
-            message_id: messageId,
-            text,
-            parse_mode: 'HTML',
-        });
-    } catch { return null; }
+async function sendPlainMessage(chatId, text) {
+    if (!text || !String(text).trim()) return;
+    const str = String(text).trim();
+    const parts = [];
+    for (let i = 0; i < str.length; i += TG_MAX_LEN) {
+        parts.push(str.slice(i, i + TG_MAX_LEN));
+    }
+    for (const part of parts) {
+        await tg('sendMessage', { chat_id: chatId, text: part });
+    }
 }
 
 function formatEventDraft(params) {
@@ -60,45 +64,28 @@ function formatEventDraft(params) {
     return `📅 <b>Всё верно?</b>\n\nТип: ${typeLabel}\nЛокация: ${loc}\nДата: ${params.date}\nВремя: ${params.start_time}\nОплата: ${pay}`;
 }
 
-// --- Conversation history with 1h TTL ---
-const chatHistory = new Map(); // chatId -> { messages: [], lastActivity: timestamp }
-const HISTORY_TTL_MS = 60 * 60 * 1000; // 1 hour
-const MAX_HISTORY_MESSAGES = 20;
-
-function getHistory(chatId) {
-    const entry = chatHistory.get(chatId);
-    if (!entry || Date.now() - entry.lastActivity > HISTORY_TTL_MS) {
-        chatHistory.set(chatId, { messages: [], lastActivity: Date.now() });
-        return [];
-    }
-    entry.lastActivity = Date.now();
-    return entry.messages;
-}
-
-function addToHistory(chatId, role, content) {
-    let entry = chatHistory.get(chatId);
-    if (!entry || Date.now() - entry.lastActivity > HISTORY_TTL_MS) {
-        entry = { messages: [], lastActivity: Date.now() };
-    }
-    entry.messages.push({ role, content });
-    if (entry.messages.length > MAX_HISTORY_MESSAGES) {
-        entry.messages = entry.messages.slice(-MAX_HISTORY_MESSAGES);
-    }
-    entry.lastActivity = Date.now();
-    chatHistory.set(chatId, entry);
-}
-
-// Cleanup expired entries every 10 minutes
-setInterval(() => {
-    const now = Date.now();
-    for (const [chatId, entry] of chatHistory) {
-        if (now - entry.lastActivity > HISTORY_TTL_MS) {
-            chatHistory.delete(chatId);
-        }
-    }
-}, 10 * 60 * 1000);
-
 const chatState = new Map(); // chatId -> { pendingEvent, mode }
+const chatHistory = new Map(); // chatId -> [{ role, content }]
+const MAX_HISTORY = 12; // последние 6 обменов для контекста
+
+function trimHistory(history) {
+    if (history.length <= MAX_HISTORY) return history;
+    return history.slice(-MAX_HISTORY);
+}
+
+function stripMarkdown(text) {
+    if (typeof text !== 'string') return String(text);
+    return text
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/\*(.+?)\*/g, '$1')
+        .replace(/__(.+?)__/g, '$1')
+        .replace(/_(.+?)_/g, '$1')
+        .replace(/`(.+?)`/g, '$1')
+        .replace(/^[-*]\s+/gm, '• ')
+        .replace(/^\d+\.\s+/gm, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+}
 
 const CONFIRM_KEYBOARD = {
     inline_keyboard: [
@@ -109,93 +96,105 @@ const CONFIRM_KEYBOARD = {
 
 const MAIN_MENU_KEYBOARD = {
     keyboard: [
-        [{ text: '🧾 Чеки' }, { text: '📅 Мероприятия' }],
-        [{ text: '📦 Склад' }, { text: '👥 Клиенты' }],
-        [{ text: '💼 Финансы' }, { text: '📊 Аналитика' }]
+        [{ text: '📊 Отчёт за день' }, { text: '⚠️ Должники' }, { text: '📋 Открытые чеки' }],
+        [{ text: '🛒 Что заказать' }, { text: '📅 Мероприятия' }, { text: '🍽 Меню' }],
+        [{ text: '📦 Поставки' }, { text: '📉 Расходы' }, { text: '👥 Клиенты' }],
+        [{ text: '🔄 Скрыть кнопки' }],
     ],
     resize_keyboard: true,
-    persistent: true
+    one_time_keyboard: false,
 };
 
-// --- Streaming AI call with editMessageText ---
-async function callAiStream(messages, chatId, thinkingMsgId, draft = null) {
+const QUICK_ACTIONS_INLINE = {
+    inline_keyboard: [
+        [
+            { text: '📊 Отчёт', callback_data: 'q_report_today' },
+            { text: '⚠️ Должники', callback_data: 'q_list_debtors' },
+            { text: '📋 Чеки', callback_data: 'q_open_checks' },
+        ],
+        [
+            { text: '🛒 Склад', callback_data: 'q_stock_alert' },
+            { text: '📅 События', callback_data: 'q_list_events' },
+            { text: '🍽 Меню', callback_data: 'q_list_menu' },
+        ],
+        [
+            { text: '📦 Поставки', callback_data: 'q_supply_summary' },
+            { text: '📉 Расходы (нед)', callback_data: 'q_expense_week' },
+            { text: '📉 Расходы (мес)', callback_data: 'q_expense_month' },
+        ],
+    ],
+};
+
+const QUICK_TEXT_MAP = {
+    '📊 отчёт за день': 'report_today',
+    'отчёт за день': 'report_today',
+    'отчет за день': 'report_today',
+    'отчёт сегодня': 'report_today',
+    'отчет сегодня': 'report_today',
+    '⚠️ должники': 'list_debtors',
+    'должники': 'list_debtors',
+    '📋 открытые чеки': 'open_checks',
+    'открытые чеки': 'open_checks',
+    'открытые': 'open_checks',
+    '🛒 что заказать': 'stock_alert',
+    'что заказать': 'stock_alert',
+    'склад': 'stock_alert',
+    'дефицит': 'stock_alert',
+    '📅 мероприятия': 'list_events',
+    'мероприятия': 'list_events',
+    'события': 'list_events',
+    '🍽 меню': 'list_menu',
+    'меню': 'list_menu',
+    '📦 поставки': 'supply_summary',
+    'поставки': 'supply_summary',
+    'закупки': 'supply_summary',
+    '📉 расходы': 'expense_summary',
+    'расходы': 'expense_summary',
+    '👥 клиенты': 'list_players',
+    'клиенты': 'list_players',
+};
+
+async function execQuickAction(chatId, action, params = {}) {
+    const actionHeaders = { 'Content-Type': 'application/json' };
+    if (API_SECRET) actionHeaders['Authorization'] = `Bearer ${API_SECRET}`;
+    try {
+        const res = await fetch(`${API_BASE}/api/ai/action`, {
+            method: 'POST',
+            headers: actionHeaders,
+            body: JSON.stringify({ action, params, staffId: null }),
+        });
+        const data = await res.json();
+        if (data.success && data.message) return data.message;
+        return data.error ? `❌ ${data.error}` : 'Готово!';
+    } catch (err) {
+        console.error('[AdminBot] Quick action error:', err);
+        return `❌ ${err.message}`;
+    }
+}
+
+function getQuickActionFromText(text) {
+    const normalized = text.toLowerCase().trim();
+    return QUICK_TEXT_MAP[normalized] || null;
+}
+
+async function callAi(messages, draft = null) {
     const headers = { 'Content-Type': 'application/json' };
     if (API_SECRET) headers['Authorization'] = `Bearer ${API_SECRET}`;
     const body = { messages };
     if (draft) body.draft = draft;
-
-    let fullText = '';
-
     try {
-        const res = await fetch('http://127.0.0.1:3100/api/ai/stream', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(body),
-        });
-
-        if (!res.ok) {
-            const errText = await res.text();
-            return { error: errText || `HTTP ${res.status}` };
-        }
-
-        // Parse SSE stream using async iteration (Web ReadableStream)
-        let buffer = '';
-        let lastEditTime = 0;
-        const EDIT_INTERVAL = 800; // ms between editMessageText calls
-        const decoder = new TextDecoder();
-
-        for await (const chunk of res.body) {
-            buffer += decoder.decode(chunk, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-                const trimmed = line.trim();
-                if (!trimmed || !trimmed.startsWith('data: ')) continue;
-                const payload = trimmed.slice(6);
-                try {
-                    const parsed = JSON.parse(payload);
-                    if (parsed.error) {
-                        return { error: parsed.error };
-                    }
-                    if (parsed.done) {
-                        fullText = parsed.full || fullText;
-                        continue;
-                    }
-                    if (parsed.token) {
-                        fullText += parsed.token;
-                        // Throttled edit
-                        const now = Date.now();
-                        if (now - lastEditTime >= EDIT_INTERVAL && fullText.length > 3) {
-                            lastEditTime = now;
-                            const editText = fullText + ' ✍️';
-                            editMessageText(chatId, thinkingMsgId, editText);
-                        }
-                    }
-                } catch { }
-            }
-        }
-
-        return { response: fullText };
-    } catch (err) {
-        // Fallback to non-streaming
-        console.warn('[AdminBot] Stream failed, falling back to non-streaming:', err.message);
+        const res = await fetch(`${API_BASE}/api/ai`, { method: 'POST', headers, body: JSON.stringify(body) });
+        let data;
         try {
-            const fallbackHeaders = { 'Content-Type': 'application/json' };
-            if (API_SECRET) fallbackHeaders['Authorization'] = `Bearer ${API_SECRET}`;
-            const fallbackBody = { messages };
-            if (draft) fallbackBody.draft = draft;
-            const res = await fetch('http://127.0.0.1:3100/api/ai', {
-                method: 'POST',
-                headers: fallbackHeaders,
-                body: JSON.stringify(fallbackBody),
-            });
-            const data = await res.json();
-            if (!res.ok) return { error: data.details || data.error || `HTTP ${res.status}` };
-            return data;
-        } catch (e2) {
-            return { error: String(e2) };
+            data = await res.json();
+        } catch {
+            return { error: res.ok ? 'Неверный ответ сервера' : `HTTP ${res.status}` };
         }
+        if (!res.ok) return { error: data.details || data.error || `HTTP ${res.status}` };
+        return data;
+    } catch (err) {
+        console.error('[AdminBot] API request failed:', err.message);
+        return { error: err.message || 'Сервер недоступен. Запущен ли update-server на порту 3100?' };
     }
 }
 
@@ -204,14 +203,52 @@ async function handleAiMessage(msg) {
     const text = msg.text?.trim() || '';
 
     try {
-        if (text === '/start' || text.toLowerCase() === 'меню') {
-            await sendMessage(chatId, '👋 Привет! Я твой ИИ-Директор T-POS. Выбирай раздел или пиши запрос текстом:', { reply_markup: MAIN_MENU_KEYBOARD });
+        // /start — приветствие и меню
+        if (/^\/start$/i.test(text)) {
+            await sendMessage(chatId,
+                '👋 <b>TITAN AI</b>\n\nБот для управления клубом. Пишите вопросы или нажимайте кнопки для быстрых действий.\n\nКоманды:\n/menu — показать кнопки\n/clear — сбросить контекст',
+                { reply_markup: MAIN_MENU_KEYBOARD }
+            );
+            await sendMessage(chatId, 'Быстрые действия:', { reply_markup: QUICK_ACTIONS_INLINE });
+            return;
+        }
+
+        // /menu — показать кнопки
+        if (/^\/menu$/i.test(text)) {
+            await sendMessage(chatId, '📌 Выберите действие:', { reply_markup: MAIN_MENU_KEYBOARD });
+            await sendMessage(chatId, 'Или нажмите кнопку ниже:', { reply_markup: QUICK_ACTIONS_INLINE });
+            return;
+        }
+
+        // Скрыть кнопки
+        if (/^(🔄 скрыть кнопки|скрыть кнопки|убрать кнопки)$/i.test(text)) {
+            await tg('sendMessage', { chat_id: chatId, text: 'Кнопки скрыты. /menu — показать снова.', reply_markup: { remove_keyboard: true } });
+            return;
+        }
+
+        // Быстрые действия по тексту кнопки
+        const quickAction = getQuickActionFromText(text);
+        if (quickAction) {
+            const usePlain = ['list_menu', 'list_players', 'list_debtors', 'open_checks', 'stock_alert', 'supply_summary', 'expense_summary'].includes(quickAction);
+            const params = quickAction === 'expense_summary' ? { period: 'week' } : {};
+            const result = await execQuickAction(chatId, quickAction, params);
+            const resultText = `✅ ${result}`;
+            if (usePlain || result.length > 4000) await sendPlainMessage(chatId, resultText);
+            else await sendMessage(chatId, resultText);
+            await sendMessage(chatId, 'Другие действия:', { reply_markup: QUICK_ACTIONS_INLINE });
+            return;
+        }
+
+        // Сброс контекста
+        if (/^(\/clear|сброс|сбросить|новый чат|забудь)$/i.test(text)) {
+            chatHistory.delete(chatId);
+            await sendMessage(chatId, '🔄 Контекст сброшен. Начинаем с чистого листа.');
             return;
         }
 
         const state = chatState.get(chatId);
-        let draft = null;
         let userContent = text;
+        let draft = null;
 
         if (state?.pendingEvent && state.mode === 'awaiting_changes') {
             const cancel = /^(отмена|отменить|cancel)$/i.test(text);
@@ -221,40 +258,23 @@ async function handleAiMessage(msg) {
                 return;
             }
             draft = state.pendingEvent;
-            userContent = `[Режим изменения] Пользователь: ${text}`;
+            userContent = `[Режим изменения] Пользователь хочет изменить: ${text}`;
             chatState.delete(chatId);
         }
 
-        // Add user message to history
-        addToHistory(chatId, 'user', userContent);
+        const history = chatHistory.get(chatId) || [];
+        const messages = [...history, { role: 'user', content: userContent }];
 
-        // Build messages array with history
-        const history = getHistory(chatId);
-        const messages = [...history]; // already includes the current user message
-
-        // Send "thinking" message immediately
-        const thinkingResult = await sendMessage(chatId, '🤔 Думаю...');
-        const thinkingMsgId = thinkingResult?.result?.message_id;
-
-        console.log(`[AdminBot] Sending to AI (${messages.length} messages): "${text}"${draft ? ' (edit mode)' : ''}`);
-        const data = await callAiStream(messages, chatId, thinkingMsgId, draft);
+        console.log(`[AdminBot] Sending to AI (history: ${history.length}): "${text}"${draft ? ' (edit mode)' : ''}`);
+        const data = await callAi(messages, draft);
 
         if (!data.response && data.error) {
-            const errText = `❌ Ошибка ИИ: ${data.error}`;
-            if (thinkingMsgId) {
-                await editMessageText(chatId, thinkingMsgId, errText);
-            } else {
-                await sendMessage(chatId, errText);
-            }
+            await sendMessage(chatId, `❌ Ошибка ИИ: ${data.error}`);
             return;
         }
 
         const aiResponse = data.response || '';
 
-        // Save AI response to history
-        addToHistory(chatId, 'assistant', aiResponse);
-
-        // Try to parse as JSON action
         try {
             let jsonStr = aiResponse.trim();
             const jsonMatch = jsonStr.match(/\{[\s\S]*"action"[\s\S]*\}/);
@@ -273,74 +293,45 @@ async function handleAiMessage(msg) {
                     comment: params.comment ?? null,
                 };
 
+                const draftText = formatEventDraft(normParams);
+                chatHistory.set(chatId, trimHistory([...messages, { role: 'assistant', content: draftText }]));
                 chatState.set(chatId, { pendingEvent: normParams, mode: 'awaiting_confirmation' });
-                // Replace thinking message with event draft
-                if (thinkingMsgId) {
-                    await editMessageText(chatId, thinkingMsgId, formatEventDraft(normParams));
-                    await tg('editMessageReplyMarkup', {
-                        chat_id: chatId,
-                        message_id: thinkingMsgId,
-                        reply_markup: CONFIRM_KEYBOARD,
-                    });
-                } else {
-                    await sendMessage(chatId, formatEventDraft(normParams), { reply_markup: CONFIRM_KEYBOARD });
-                }
+                await sendMessage(chatId, draftText, { reply_markup: CONFIRM_KEYBOARD });
                 return;
             }
 
-            if (parsed.action === 'reply_with_buttons') {
-                const message = parsed.message || (parsed.params && parsed.params.message);
-                const buttons = parsed.buttons || (parsed.params && parsed.params.buttons) || [];
-                
-                if (message) {
-                    const markup = {
-                        inline_keyboard: buttons.map((row) =>
-                            row.map((btn) => ({ text: btn.text, callback_data: btn.data }))
-                        ),
-                    };
-                    if (thinkingMsgId) {
-                        await editMessageText(chatId, thinkingMsgId, message);
-                        if (buttons.length > 0) {
-                            await tg('editMessageReplyMarkup', {
-                                chat_id: chatId,
-                                message_id: thinkingMsgId,
-                                reply_markup: markup,
-                            });
-                        }
-                    } else {
-                        await sendMessage(chatId, message, buttons.length > 0 ? { reply_markup: markup } : undefined);
-                    }
-                    return;
-                }
-            }
-
-            if (parsed.action && parsed.action !== 'create_event') {
+            const actionList = ['list_events', 'update_event', 'create_check', 'add_items', 'client_report', 'list_menu', 'list_players', 'report_today', 'list_debtors', 'open_checks', 'stock_alert', 'salary_estimate', 'supply_summary', 'expense_summary'];
+            if (actionList.includes(parsed.action)) {
                 const actionHeaders = { 'Content-Type': 'application/json' };
                 if (API_SECRET) actionHeaders['Authorization'] = `Bearer ${API_SECRET}`;
-                const actionRes = await fetch('http://127.0.0.1:3100/api/ai/action', {
-                    method: 'POST',
-                    headers: actionHeaders,
-                    body: JSON.stringify({ action: parsed.action, params: parsed.params, staffId: null }),
-                });
-                const actionData = await actionRes.json();
-                const resultText = actionData.success
-                    ? `✅ ${actionData.message || 'Готово!'}`
-                    : `❌ ${actionData.error}`;
-                if (thinkingMsgId) {
-                    await editMessageText(chatId, thinkingMsgId, resultText);
-                } else {
-                    await sendMessage(chatId, resultText);
+                try {
+                    const actionRes = await fetch(`${API_BASE}/api/ai/action`, {
+                        method: 'POST',
+                        headers: actionHeaders,
+                        body: JSON.stringify({ action: parsed.action, params: parsed.params || {}, staffId: null }),
+                    });
+                    const actionData = await actionRes.json();
+                    const resultText = actionData.success ? (actionData.message ? `✅ ${actionData.message}` : 'Готово!') : `❌ ${actionData.error || 'Ошибка выполнения'}`;
+                    chatHistory.set(chatId, trimHistory([...messages, { role: 'assistant', content: resultText }]));
+                    const usePlain = ['list_menu', 'list_players', 'list_debtors', 'open_checks', 'stock_alert', 'supply_summary', 'expense_summary'].includes(parsed.action) || resultText.length > 4000;
+                    if (usePlain) await sendPlainMessage(chatId, resultText);
+                    else await sendMessage(chatId, resultText);
+                } catch (actionErr) {
+                    console.error('[AdminBot] Action API error:', actionErr);
+                    await sendMessage(chatId, `❌ Ошибка сервера: ${actionErr.message}`);
                 }
                 return;
             }
         } catch { }
 
-        // Final edit with complete response
-        if (thinkingMsgId) {
-            await editMessageText(chatId, thinkingMsgId, aiResponse);
-        } else {
-            await sendMessage(chatId, aiResponse);
+        const trimmed = String(aiResponse || '').trim();
+        if (!trimmed) {
+            await sendMessage(chatId, '⚠️ ИИ не вернул ответ. Попробуйте переформулировать.');
+            return;
         }
+        const plainText = stripMarkdown(trimmed);
+        chatHistory.set(chatId, trimHistory([...messages, { role: 'assistant', content: plainText }]));
+        await sendPlainMessage(chatId, plainText);
     } catch (err) {
         console.error('Admin Bot AI Error:', err);
         await sendMessage(chatId, '⚠️ Не удалось связаться с сервером ИИ.');
@@ -360,17 +351,23 @@ async function handleCallback(callbackQuery) {
         }
         const actionHeaders = { 'Content-Type': 'application/json' };
         if (API_SECRET) actionHeaders['Authorization'] = `Bearer ${API_SECRET}`;
-        const actionRes = await fetch('http://127.0.0.1:3100/api/ai/action', {
-            method: 'POST',
-            headers: actionHeaders,
-            body: JSON.stringify({ action: 'create_event', params: state.pendingEvent, staffId: null }),
-        });
-        const actionData = await actionRes.json();
-        await tg('answerCallbackQuery', { callback_query_id: callbackQuery.id });
-        if (actionData.success) {
-            await sendMessage(chatId, `✅ ${actionData.message || 'Мероприятие создано!'}`);
-        } else {
-            await sendMessage(chatId, `❌ ${actionData.error}`);
+        try {
+            const actionRes = await fetch(`${API_BASE}/api/ai/action`, {
+                method: 'POST',
+                headers: actionHeaders,
+                body: JSON.stringify({ action: 'create_event', params: state.pendingEvent, staffId: null }),
+            });
+            const actionData = await actionRes.json();
+            await tg('answerCallbackQuery', { callback_query_id: callbackQuery.id });
+            if (actionData.success) {
+                await sendMessage(chatId, `✅ ${actionData.message || 'Мероприятие создано!'}`);
+            } else {
+                await sendMessage(chatId, `❌ ${actionData.error || 'Ошибка создания'}`);
+            }
+        } catch (actionErr) {
+            console.error('[AdminBot] create_event action error:', actionErr);
+            await tg('answerCallbackQuery', { callback_query_id: callbackQuery.id });
+            await sendMessage(chatId, `❌ Ошибка сервера: ${actionErr.message}`);
         }
         return;
     }
@@ -388,18 +385,35 @@ async function handleCallback(callbackQuery) {
         return;
     }
 
-    // Treat other callbacks as direct messages to AI
+    // Быстрые действия (inline-кнопки)
+    if (data.startsWith('q_')) {
+        const rest = data.slice(2);
+        const parts = rest.split('_');
+        const act = parts[0] === 'expense' && parts[1] ? `expense_${parts[1]}` : rest;
+        const validActions = ['report_today', 'list_debtors', 'open_checks', 'stock_alert', 'list_events', 'list_menu', 'supply_summary', 'expense_week', 'expense_month'];
+        if (validActions.includes(act)) {
+            await tg('answerCallbackQuery', { callback_query_id: callbackQuery.id, text: 'Загрузка...' });
+            const params = (act === 'expense_summary' || act === 'expense_week') ? { period: 'week' } : act === 'expense_month' ? { period: 'month' } : {};
+            const realAction = act.startsWith('expense_') ? 'expense_summary' : act;
+            const result = await execQuickAction(chatId, realAction, params);
+            const usePlain = ['list_menu', 'list_players', 'list_debtors', 'open_checks', 'stock_alert', 'supply_summary', 'expense_summary'].includes(realAction);
+            if (usePlain || result.length > 4000) await sendPlainMessage(chatId, `✅ ${result}`);
+            else await sendMessage(chatId, `✅ ${result}`);
+            await sendMessage(chatId, 'Другие действия:', { reply_markup: QUICK_ACTIONS_INLINE });
+            return;
+        }
+    }
+
     await tg('answerCallbackQuery', { callback_query_id: callbackQuery.id });
-    const mockMsg = {
-        chat: { id: chatId },
-        text: data,
-        from: callbackQuery.from,
-    };
-    await handleAiMessage(mockMsg);
 }
 
 async function main() {
     console.log('Admin Bot starting...');
+    if (!BOT_TOKEN) {
+        console.error('ERROR: VITE_TELEGRAM_BOT_TOKEN не задан в .env');
+        process.exit(1);
+    }
+    console.log(`API: ${API_BASE}`);
 
     // Clear any previous webhooks to enable polling
     await tg('deleteWebhook', { drop_pending_updates: true });
