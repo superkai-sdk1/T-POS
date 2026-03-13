@@ -354,6 +354,24 @@ const server = http.createServer((req, res) => {
 ПОСЛЕДНИЕ СМЕНЫ: ${JSON.stringify(shifts.slice(0, 10).map((s) => ({ status: s.status, cash_start: s.cash_start, cash_end: s.cash_end, opened: s.opened_at, closed: s.closed_at })))}
 МЕНЮ (все ${inventory.length} позиций): ${JSON.stringify(inventory.map((i) => ({ name: i.name, cat: i.category, price: i.price, stock: i.stock_quantity, active: i.is_active })))}
 МЕРОПРИЯТИЯ (предстоящие, с id для update_event): ${JSON.stringify(events.slice(0, 20).map((e) => ({ id: e.id, type: e.type, location: e.location, date: e.date, start_time: e.start_time, payment_type: e.payment_type, fixed_amount: e.fixed_amount, status: e.status, comment: e.comment })))}
+ПОСЛЕДНИЕ 50 ЧЕКОВ С ПОЗИЦИЯМИ (кто что купил): ${JSON.stringify((() => {
+        const profileMap = {};
+        for (const p of profiles) profileMap[p.id] = p.nickname;
+        const itemNameMap = {};
+        for (const i of inventory) itemNameMap[i.id] = i.name;
+        const itemsByCheck = {};
+        for (const ci of checkItems) {
+          if (!itemsByCheck[ci.check_id]) itemsByCheck[ci.check_id] = [];
+          itemsByCheck[ci.check_id].push({ name: itemNameMap[ci.item_id] || '?', qty: ci.quantity, price: ci.price_at_time });
+        }
+        return checks.slice(0, 50).map((c) => ({
+          player: profileMap[c.player_id] || 'Гость',
+          total: c.total_amount,
+          method: c.payment_method,
+          date: c.closed_at,
+          items: itemsByCheck[c.id] || [],
+        }));
+      })())}
 (ВНИМАНИЕ: Даты в списке могут быть старыми. ИСПОЛЬЗУЙ ТЕКУЩИЙ ГОД ИЗ СЕКЦИИ "СЕЙЧАС" ДЛЯ НОВЫХ ЗАПИСЕЙ!)
 ===`;
     }
