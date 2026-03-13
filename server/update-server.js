@@ -334,11 +334,22 @@ const server = http.createServer((req, res) => {
       const weekProductSales = {};
       for (const ci of checkItems) {
         if (!weekCheckIds.has(ci.check_id)) continue;
+        const pid = ci.item_id;
+        if (!weekProductSales[pid]) weekProductSales[pid] = { qty: 0, revenue: 0 };
+        weekProductSales[pid].qty += ci.quantity;
+        weekProductSales[pid].revenue += ci.quantity * ci.price_at_time;
+      }
       const weekTopProducts = inventory
         .map((i) => ({ name: i.name, revenue: weekProductSales[i.id]?.revenue || 0, qty: weekProductSales[i.id]?.qty || 0 }))
         .filter((p) => p.revenue > 0)
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 10);
+
+      // Build lookup maps
+      const profileMap = {};
+      for (const p of profiles) profileMap[p.id] = p.nickname;
+      const itemNameMap = {};
+      for (const i of inventory) itemNameMap[i.id] = i.name;
 
       // Current Shift Logic
       const currentShift = shifts.find(s => s.status === 'open');
@@ -346,14 +357,14 @@ const server = http.createServer((req, res) => {
       if (currentShift) {
         const start = new Date(currentShift.opened_at).getTime();
         const shiftChecks = checks.filter(c => new Date(c.closed_at).getTime() >= start);
-        const shiftExp = expenses.filter(e => new Date(e.expense_date).getTime() >= start); 
+        const shiftExp = expenses.filter(e => new Date(e.expense_date).getTime() >= start);
         const shiftCashOps = cashOps.filter(o => new Date(o.created_at).getTime() >= start);
-        
+
         const shiftRev = shiftChecks.reduce((s, c) => s + ((c.total_amount || 0) - (refundByCheck[c.id] || 0)), 0);
         const shiftExpAmt = shiftExp.reduce((s, e) => s + Number(e.amount || 0), 0);
         const shiftCashIn = shiftCashOps.filter(o => o.type === 'in').reduce((s, o) => s + (o.amount || 0), 0);
         const shiftCashOut = shiftCashOps.filter(o => o.type === 'out').reduce((s, o) => s + (o.amount || 0), 0);
-        
+
         shiftData = {
           opened: currentShift.opened_at,
           admin: profileMap[currentShift.staff_id] || '?',
@@ -367,17 +378,12 @@ const server = http.createServer((req, res) => {
         };
       }
 
-      // Build lookup maps
-      const profileMap = {};
-      for (const p of profiles) profileMap[p.id] = p.nickname;
-      const itemNameMap = {};
-      for (const i of inventory) itemNameMap[i.id] = i.name;
-
       const itemsByCheck = {};
       for (const ci of checkItems) {
         if (!itemsByCheck[ci.check_id]) itemsByCheck[ci.check_id] = [];
         itemsByCheck[ci.check_id].push({ name: itemNameMap[ci.item_id] || '?', qty: ci.quantity, price: ci.price_at_time });
       }
+
       const splitByCheck = {};
       for (const cp of checkPayments) {
         if (!splitByCheck[cp.check_id]) splitByCheck[cp.check_id] = [];
@@ -437,9 +443,9 @@ const server = http.createServer((req, res) => {
         date: sp.created_at,
       }));
 
-      const dbContext = `\n\n=== ДАННЫЕ T-POS (актуальные из БД) ===
+      dbContext = `\n\n=== ДАННЫЕ T-POS (актуальные из БД) ===
 ДАННЫЕ ТЕКУЩЕЙ СМЕНЫ: ${shiftData ? JSON.stringify(shiftData) : 'Смена закрыта'}
-АНАЛИТИКА ЗА НЕДЕЛЮ: выручка ${weekRevenue}₽, чеков ${weekChecks}, возвраты ${weekRefunded}₽, себестоимость ${Math.round(weekCogs)}₽, расходы ${Math.round(weekExpenses)}₽, прибыль ${weekProfit}₽, маржа ${weekMargin}%. Предыдущая неделя: ${prevWeekRevenue}₽. Динамика: ${weekDelta}%.
+АНАЛИТИКА ЗА НЕДЕЛЮ: выручка ${weekRevenue}₽, чеков ${weekChecks}, возвраты ${weekRefunded}₽, себестоимость ${Math.round(cogs)}₽, расходы ${Math.round(weekExpenses)}₽, прибыль ${weekProfit}₽, маржа ${weekMargin}%. Предыдущая неделя: ${prevWeekRevenue}₽. Динамика: ${weekDelta}%.
 ТОП ТОВАРОВ ЗА НЕДЕЛЮ: ${JSON.stringify(weekTopProducts)}.
 ПЕРСОНАЛ: ${JSON.stringify(staff.map((p) => ({ nickname: p.nickname, role: p.role })))}
 КЛИЕНТОВ: ${clients.length}, должников: ${debtors.length}
@@ -489,7 +495,7 @@ BUILD_ID: 20260306_v10_SHIFT_CONTEXT
 3. МЕРОПРИЯТИЯ: По умолчанию показывай ТОЛЬКО БЛИЖАЙШИЕ / ПРЕДСТОЯЩИЕ (статус planned/active). Не выводи отмененные или старые мероприятия, если тебя об этом специально не попросили. Если пользователь запрашивает "предстоящие мероприятия", используй инструмент list_events с параметром { upcoming: true }.
 
 СТИЛЬ ОБЩЕНИЯ И ФОРМАТ ОТВЕТОВ (СТРОГИЕ ПРАВИЛА):
-1. КАТЕГОРИЧЕСКИ ЗАПРЕЩАЕТСЯ выводить Markdown-таблицы (со знаками |). 
+1. КАТЕГОРИЧЕСКИ ЗАПРЕЩАЕТСЯ выводить Markdown-таблицы (со знаками |).
 2. ЗАПРЕЩАЕТСЯ выводить длинные текстовые списки-простыни.
 3. ЗАПРЕЩАЕТСЯ использовать знаки ** (двойные звездочки) для выделения списков. Используй HTML <b>текст</b>.
 4. ЛЮБОЙ вывод списка должен сопровождаться ИНТЕРАКТИВНЫМИ КНОПКАМИ \`reply_with_buttons\`.
@@ -1253,7 +1259,6 @@ BUILD_ID: 20260306_v10_SHIFT_CONTEXT
 
   json(res, { error: 'Not found' }, 404);
 });
-
 // --- Event reminders (24h, 12h, 3h, 1h before) ---
 const REMINDER_INTERVALS = [
   { key: '24h', hours: 24, label: '24 часа' },
