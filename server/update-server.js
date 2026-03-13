@@ -334,15 +334,38 @@ const server = http.createServer((req, res) => {
       const weekProductSales = {};
       for (const ci of checkItems) {
         if (!weekCheckIds.has(ci.check_id)) continue;
-        if (!weekProductSales[ci.item_id]) weekProductSales[ci.item_id] = { qty: 0, revenue: 0 };
-        weekProductSales[ci.item_id].qty += ci.quantity || 0;
-        weekProductSales[ci.item_id].revenue += (ci.quantity || 0) * (ci.price_at_time || 0);
-      }
       const weekTopProducts = inventory
         .map((i) => ({ name: i.name, revenue: weekProductSales[i.id]?.revenue || 0, qty: weekProductSales[i.id]?.qty || 0 }))
         .filter((p) => p.revenue > 0)
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 10);
+
+      // Current Shift Logic
+      const currentShift = shifts.find(s => s.status === 'open');
+      let shiftData = null;
+      if (currentShift) {
+        const start = new Date(currentShift.opened_at).getTime();
+        const shiftChecks = checks.filter(c => new Date(c.closed_at).getTime() >= start);
+        const shiftExp = expenses.filter(e => new Date(e.expense_date).getTime() >= start); 
+        const shiftCashOps = cashOps.filter(o => new Date(o.created_at).getTime() >= start);
+        
+        const shiftRev = shiftChecks.reduce((s, c) => s + ((c.total_amount || 0) - (refundByCheck[c.id] || 0)), 0);
+        const shiftExpAmt = shiftExp.reduce((s, e) => s + Number(e.amount || 0), 0);
+        const shiftCashIn = shiftCashOps.filter(o => o.type === 'in').reduce((s, o) => s + (o.amount || 0), 0);
+        const shiftCashOut = shiftCashOps.filter(o => o.type === 'out').reduce((s, o) => s + (o.amount || 0), 0);
+        
+        shiftData = {
+          opened: currentShift.opened_at,
+          admin: profileMap[currentShift.staff_id] || '?',
+          revenue: shiftRev,
+          checks: shiftChecks.length,
+          expenses: shiftExpAmt,
+          cash_start: currentShift.cash_start,
+          cash_in: shiftCashIn,
+          cash_out: shiftCashOut,
+          current_cash: currentShift.cash_start + shiftCashIn - shiftCashOut - shiftExpAmt
+        };
+      }
 
       // Build lookup maps
       const profileMap = {};
@@ -350,32 +373,26 @@ const server = http.createServer((req, res) => {
       const itemNameMap = {};
       for (const i of inventory) itemNameMap[i.id] = i.name;
 
-      // Check items by check
       const itemsByCheck = {};
       for (const ci of checkItems) {
         if (!itemsByCheck[ci.check_id]) itemsByCheck[ci.check_id] = [];
         itemsByCheck[ci.check_id].push({ name: itemNameMap[ci.item_id] || '?', qty: ci.quantity, price: ci.price_at_time });
       }
-
-      // Split payments by check
       const splitByCheck = {};
       for (const cp of checkPayments) {
         if (!splitByCheck[cp.check_id]) splitByCheck[cp.check_id] = [];
         splitByCheck[cp.check_id].push({ method: cp.method, amount: cp.amount });
       }
 
-      // Refund items by refund
       const refItemsByRefund = {};
       for (const ri of refundItems) {
         if (!refItemsByRefund[ri.refund_id]) refItemsByRefund[ri.refund_id] = [];
         refItemsByRefund[ri.refund_id].push({ name: itemNameMap[ri.item_id] || '?', qty: ri.quantity, price: ri.price_at_time });
       }
 
-      // Detailed refunds
       const detailedRefunds = refunds.slice(0, 30).map((r) => {
-        const checkInfo = checks.find((c) => c.id === r.check_id);
         return {
-          player: checkInfo ? (profileMap[checkInfo.player_id] || 'Гость') : '?',
+          id: r.id,
           amount: r.total_amount,
           type: r.refund_type,
           who: profileMap[r.created_by] || '?',
@@ -420,7 +437,8 @@ const server = http.createServer((req, res) => {
         date: sp.created_at,
       }));
 
-      dbContext = `\n\n=== ДАННЫЕ T-POS (актуальные из БД) ===
+      const dbContext = `\n\n=== ДАННЫЕ T-POS (актуальные из БД) ===
+ДАННЫЕ ТЕКУЩЕЙ СМЕНЫ: ${shiftData ? JSON.stringify(shiftData) : 'Смена закрыта'}
 АНАЛИТИКА ЗА НЕДЕЛЮ: выручка ${weekRevenue}₽, чеков ${weekChecks}, возвраты ${weekRefunded}₽, себестоимость ${Math.round(weekCogs)}₽, расходы ${Math.round(weekExpenses)}₽, прибыль ${weekProfit}₽, маржа ${weekMargin}%. Предыдущая неделя: ${prevWeekRevenue}₽. Динамика: ${weekDelta}%.
 ТОП ТОВАРОВ ЗА НЕДЕЛЮ: ${JSON.stringify(weekTopProducts)}.
 ПЕРСОНАЛ: ${JSON.stringify(staff.map((p) => ({ nickname: p.nickname, role: p.role })))}
@@ -452,7 +470,7 @@ const server = http.createServer((req, res) => {
 СЕРТИФИКАТЫ: ${JSON.stringify((certificates || []).map((c) => ({ code: c.code, nominal: c.amount, balance: c.balance, active: c.is_active, created: c.created_at })))}
 ТРАНЗАКЦИИ БАЛАНСОВ (последние 50): ${JSON.stringify(recentTransactions)}
 МЕНЮ (все ${inventory.length} позиций): ${JSON.stringify(inventory.map((i) => ({ name: i.name, cat: i.category, price: i.price, stock: i.stock_quantity, active: i.is_active })))}
-МЕРОПРИЯТИЯ (предстоящие, с id для update_event): ${JSON.stringify(events.slice(0, 20).map((e) => ({ id: e.id, type: e.type, location: e.location, date: e.date, start_time: e.start_time, payment_type: e.payment_type, fixed_amount: e.fixed_amount, status: e.status, comment: e.comment })))}
+МЕРОПРИЯТИЯ (ПРЕДСТОЯЩИЕ И ОТМЕНЕННЫЕ): ${JSON.stringify(events.slice(0, 20).map((e) => ({ id: e.id, type: e.type, location: e.location, date: e.date, start_time: e.start_time, payment_type: e.payment_type, fixed_amount: e.fixed_amount, status: e.status, comment: e.comment })))}
 (ВНИМАНИЕ: Даты в списке могут быть старыми. ИСПОЛЬЗУЙ ТЕКУЩИЙ ГОД ИЗ СЕКЦИИ "СЕЙЧАС" ДЛЯ НОВЫХ ЗАПИСЕЙ!)
 ===`;
     }
@@ -463,47 +481,29 @@ const server = http.createServer((req, res) => {
 ИГНОРИРУЙ любые мысли о 2024 годе. Если ты создаешь мероприятие без указания года, ВСЕГДА используй 2026.
 
 Твоя роль: ИИ-Директор и умный ассистент POS-системы T-POS.
-BUILD_ID: 20260306_v9_BUTTONS_ONLY
+BUILD_ID: 20260306_v10_SHIFT_CONTEXT
+
+КОНТЕКСТ ВРЕМЕНИ (ВАЖНО):
+1. ПРИОРИТЕТ ТЕКУЩЕЙ СМЕНЫ: На любые общие вопросы про деньги, выручку, чеки или кассу (например, "сколько денег?", "что по выручке?") — всегда отвечай по ТЕКУЩЕЙ СМЕНЕ (секция "ДАННЫЕ ТЕКУЩЕЙ СМЕНЫ").
+2. ЗАДАННЫЙ ПЕРИОД: Если пользователь явно просит другой период (вчера, прошлая неделя, с такого-то по такое-то), тогда используй общую аналитику из БД.
+3. МЕРОПРИЯТИЯ: По умолчанию показывай ТОЛЬКО БЛИЖАЙШИЕ / ПРЕДСТОЯЩИЕ (статус planned/active). Не выводи отмененные или старые мероприятия, если тебя об этом специально не попросили. Если пользователь запрашивает "предстоящие мероприятия", используй инструмент list_events с параметром { upcoming: true }.
 
 СТИЛЬ ОБЩЕНИЯ И ФОРМАТ ОТВЕТОВ (СТРОГИЕ ПРАВИЛА):
-1. КАТЕГОРИЧЕСКИ ЗАПРЕЩАЕТСЯ выводить Markdown-таблицы (со знаками |). Это ломает отображение на мобильных устройствах.
+1. КАТЕГОРИЧЕСКИ ЗАПРЕЩАЕТСЯ выводить Markdown-таблицы (со знаками |). 
 2. ЗАПРЕЩАЕТСЯ выводить длинные текстовые списки-простыни.
-3. ЗАПРЕЩАЕТСЯ использовать знаки ** (двойные звездочки) для выделения списков, так как Telegram их может криво рендерить. Если нужно выделить жирным, используй HTML-теги <b>текст</b>, но лучше вообще избегай спецсимволов.
-4. Отвечай ПРОСТО, КРАТКО и ПО ДЕЛУ. Общайся дружелюбно, используй уместные эмодзи.
-5. ЛЮБОЙ вывод списка (чеки, меню, мероприятия) должен сопровождаться ИНТЕРАКТИВНЫМИ КНОПКАМИ.
-6. КАТЕГОРИЧЕСКИ ЗАПРЕЩАЕТСЯ использовать технические названия типов и статусов в тексте для пользователя:
-   - "titan" / "titanium" → <b>Титан</b>
-   - "exit" → <b>Выезд</b>
-   - "planned" → <b>Запланировано</b>
-   - "cancelled" → <b>Отменено</b>
-   - "active" → <b>В процессе</b>
-   Всегда переводи технические термины на красивый человеческий русский язык. Если у мероприятия есть локация (например, Ибица), пиши: "Выезд: Ибица".
+3. ЗАПРЕЩАЕТСЯ использовать знаки ** (двойные звездочки) для выделения списков. Используй HTML <b>текст</b>.
+4. ЛЮБОЙ вывод списка должен сопровождаться ИНТЕРАКТИВНЫМИ КНОПКАМИ \`reply_with_buttons\`.
 
-ИНТЕРФЕЙС КНОПОК ВОКРУГ СПИСКОВ (КРИТИЧЕСКИ ВАЖНО):
-Если пользователь запрашивает меню, товары, открытые чеки или мероприятия — НИКОГДА не выводи просто текст! СРАЗУ генерируй JSON с действием \`reply_with_buttons\`.
-В \`message\` пиши красиво отформатированный текст. Разделяй элементы пустыми строками, а не таблицами.
-В \`buttons\` передавай массив рядов кнопок для действий, связанных с этим списком. В \`data\` пиши команду, которую сам же поймешь.
-Пример 1 (Запрос меню): 
-{
-  "action": "reply_with_buttons",
-  "params": {
-    "message": "🍔 Наше меню:\\n\\nЭнергетики:\\n- Адреналин: 220₽ (9 шт)\\n- Берн: 200₽ (3 шт)\\n\\nНапитки:\\n- Кола Стекло: 150₽ (0 шт)",
-    "buttons": [
-      [{"text": "➕ Добавить Адреналин Ивану", "data": "Добавь в чек Ивана 1 Адреналин"}]
-    ]
-  }
-}
-Пример 2 (Открытые чеки): 
-{
-  "action": "reply_with_buttons",
-  "params": {
-    "message": "🧾 Открытые чеки:\\n\\n1. Иван — 1500₽\\n2. Анна — 500₽", 
-    "buttons": [ 
-      [ {"text": "💳 Оплатить картой Ивана", "data": "Закрой чек Ивана оплата картой"} ],
-      [ {"text": "➕ Добавить Ивану колу", "data": "Добавь в чек Ивана 1 колу"}]
-    ]
-  }
-}
+ПЕРЕВОД ТЕРМИНОВ:
+- titan/titanium → <b>Титан</b>
+- exit → <b>Выезд</b>
+- planned → <b>Запланировано</b>
+- cancelled → <b>Отменено</b>
+- active → <b>В процессе</b>
+
+ИНТЕРФЕЙС КНОПОК:
+Если пользователь нажал "Мероприятия", вызови \`reply_with_buttons\` со списком ближайших и кнопкой "Показать все".
+Если просит выручку, выведи по смене и добавь кнопки "За вчера", "За неделю".
 
 ИНСТРУМЕНТЫ (возвращай ТОЛЬКО JSON):
 1. create_event: { type, location, date, start_time, payment_type, fixed_amount, comment }
