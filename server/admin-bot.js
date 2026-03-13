@@ -288,25 +288,30 @@ async function handleAiMessage(msg) {
                 return;
             }
 
-            if (parsed.action === 'reply_with_buttons' && parsed.message) {
-                const markup = {
-                    inline_keyboard: (parsed.buttons || []).map((row) =>
-                        row.map((btn) => ({ text: btn.text, callback_data: btn.data }))
-                    ),
-                };
-                if (thinkingMsgId) {
-                    await editMessageText(chatId, thinkingMsgId, parsed.message);
-                    if (parsed.buttons && parsed.buttons.length > 0) {
-                        await tg('editMessageReplyMarkup', {
-                            chat_id: chatId,
-                            message_id: thinkingMsgId,
-                            reply_markup: markup,
-                        });
+            if (parsed.action === 'reply_with_buttons') {
+                const message = parsed.message || (parsed.params && parsed.params.message);
+                const buttons = parsed.buttons || (parsed.params && parsed.params.buttons) || [];
+                
+                if (message) {
+                    const markup = {
+                        inline_keyboard: buttons.map((row) =>
+                            row.map((btn) => ({ text: btn.text, callback_data: btn.data }))
+                        ),
+                    };
+                    if (thinkingMsgId) {
+                        await editMessageText(chatId, thinkingMsgId, message);
+                        if (buttons.length > 0) {
+                            await tg('editMessageReplyMarkup', {
+                                chat_id: chatId,
+                                message_id: thinkingMsgId,
+                                reply_markup: markup,
+                            });
+                        }
+                    } else {
+                        await sendMessage(chatId, message, buttons.length > 0 ? { reply_markup: markup } : undefined);
                     }
-                } else {
-                    await sendMessage(chatId, parsed.message, parsed.buttons && parsed.buttons.length > 0 ? { reply_markup: markup } : undefined);
+                    return;
                 }
-                return;
             }
 
             if (parsed.action && parsed.action !== 'create_event') {
