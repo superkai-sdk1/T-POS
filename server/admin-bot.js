@@ -128,55 +128,43 @@ async function callAiStream(messages, chatId, thinkingMsgId, draft = null) {
             return { error: errText || `HTTP ${res.status}` };
         }
 
-        // Parse SSE stream
-        const reader = res.body;
+        // Parse SSE stream using async iteration (Web ReadableStream)
         let buffer = '';
         let lastEditTime = 0;
         const EDIT_INTERVAL = 800; // ms between editMessageText calls
-        let pendingEdit = null;
+        const decoder = new TextDecoder();
 
-        await new Promise((resolve, reject) => {
-            reader.on('data', (chunk) => {
-                buffer += chunk.toString();
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
+        for await (const chunk of res.body) {
+            buffer += decoder.decode(chunk, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
 
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (!trimmed || !trimmed.startsWith('data: ')) continue;
-                    const payload = trimmed.slice(6);
-                    try {
-                        const parsed = JSON.parse(payload);
-                        if (parsed.error) {
-                            fullText = '';
-                            reject(new Error(parsed.error));
-                            return;
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed || !trimmed.startsWith('data: ')) continue;
+                const payload = trimmed.slice(6);
+                try {
+                    const parsed = JSON.parse(payload);
+                    if (parsed.error) {
+                        return { error: parsed.error };
+                    }
+                    if (parsed.done) {
+                        fullText = parsed.full || fullText;
+                        continue;
+                    }
+                    if (parsed.token) {
+                        fullText += parsed.token;
+                        // Throttled edit
+                        const now = Date.now();
+                        if (now - lastEditTime >= EDIT_INTERVAL && fullText.length > 3) {
+                            lastEditTime = now;
+                            const editText = fullText + ' ✍️';
+                            editMessageText(chatId, thinkingMsgId, editText);
                         }
-                        if (parsed.done) {
-                            fullText = parsed.full || fullText;
-                            return;
-                        }
-                        if (parsed.token) {
-                            fullText += parsed.token;
-                            // Throttled edit
-                            const now = Date.now();
-                            if (now - lastEditTime >= EDIT_INTERVAL && fullText.length > 3) {
-                                lastEditTime = now;
-                                const editText = fullText + ' ✍️';
-                                if (pendingEdit) clearTimeout(pendingEdit);
-                                editMessageText(chatId, thinkingMsgId, editText);
-                            }
-                        }
-                    } catch { }
-                }
-            });
-
-            reader.on('end', () => {
-                if (pendingEdit) clearTimeout(pendingEdit);
-                resolve();
-            });
-            reader.on('error', reject);
-        });
+                    }
+                } catch { }
+            }
+        }
 
         return { response: fullText };
     } catch (err) {

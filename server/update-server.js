@@ -684,56 +684,50 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
           return;
         }
 
-        // Parse SSE stream from Polza.ai
+        // Parse SSE stream from Polza.ai using async iteration (Web ReadableStream)
         let fullText = '';
-        const reader = aiRes.body;
         let buffer = '';
+        const decoder = new TextDecoder();
 
-        reader.on('data', (chunk) => {
-          buffer += chunk.toString();
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+        try {
+          for await (const chunk of aiRes.body) {
+            buffer += decoder.decode(chunk, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
 
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || !trimmed.startsWith('data: ')) continue;
-            const payload = trimmed.slice(6);
-            if (payload === '[DONE]') {
-              res.write(`data: ${JSON.stringify({ done: true, full: fullText })}\n\n`);
-              return;
-            }
-            try {
-              const parsed = JSON.parse(payload);
-              const token = parsed.choices?.[0]?.delta?.content || '';
-              if (token) {
-                fullText += token;
-                res.write(`data: ${JSON.stringify({ token })}\n\n`);
-              }
-            } catch { /* skip unparseable lines */ }
-          }
-        });
-
-        reader.on('end', () => {
-          // Process any remaining buffer
-          if (buffer.trim()) {
-            const trimmed = buffer.trim();
-            if (trimmed.startsWith('data: ') && trimmed.slice(6) !== '[DONE]') {
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith('data: ')) continue;
+              const payload = trimmed.slice(6);
+              if (payload === '[DONE]') continue;
               try {
-                const parsed = JSON.parse(trimmed.slice(6));
+                const parsed = JSON.parse(payload);
                 const token = parsed.choices?.[0]?.delta?.content || '';
-                if (token) fullText += token;
-              } catch { }
+                if (token) {
+                  fullText += token;
+                  res.write(`data: ${JSON.stringify({ token })}\n\n`);
+                }
+              } catch { /* skip unparseable lines */ }
             }
           }
-          res.write(`data: ${JSON.stringify({ done: true, full: fullText })}\n\n`);
-          res.end();
-        });
+        } catch (streamErr) {
+          console.error('Stream read error:', streamErr);
+        }
 
-        reader.on('error', (err) => {
-          console.error('Stream error:', err);
-          res.write(`data: ${JSON.stringify({ error: String(err) })}\n\n`);
-          res.end();
-        });
+        // Process remaining buffer
+        if (buffer.trim()) {
+          const trimmed = buffer.trim();
+          if (trimmed.startsWith('data: ') && trimmed.slice(6) !== '[DONE]') {
+            try {
+              const parsed = JSON.parse(trimmed.slice(6));
+              const token = parsed.choices?.[0]?.delta?.content || '';
+              if (token) fullText += token;
+            } catch { }
+          }
+        }
+
+        res.write(`data: ${JSON.stringify({ done: true, full: fullText })}\n\n`);
+        res.end();
 
       } catch (e) {
         console.error('AI Stream Error:', e);
