@@ -220,8 +220,9 @@ async function handleAiMessage(msg) {
             return;
         }
 
-        // Скрыть кнопки
-        if (/^(🔄 скрыть кнопки|скрыть кнопки|убрать кнопки)$/i.test(text)) {
+        // Скрыть кнопки (нормализуем для кириллицы и пробелов)
+        const t = text.toLowerCase().replace(/\s+/g, ' ').trim();
+        if (t === '🔄 скрыть кнопки' || t === 'скрыть кнопки' || t === 'убрать кнопки') {
             await tg('sendMessage', { chat_id: chatId, text: 'Кнопки скрыты. /menu — показать снова.', reply_markup: { remove_keyboard: true } });
             return;
         }

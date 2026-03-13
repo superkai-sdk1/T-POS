@@ -596,17 +596,26 @@ const server = http.createServer((req, res) => {
             }),
           });
           const check = await checkRes.json();
-          const newCheck = check[0] || check;
-          const checkId = newCheck.id;
+          if (!checkRes.ok) {
+            json(res, { success: false, error: check?.message || 'Ошибка создания чека' });
+            return;
+          }
+          const newCheck = Array.isArray(check) ? check[0] : check;
+          const checkId = newCheck?.id;
+          if (!checkId) {
+            json(res, { success: false, error: 'Чек не создан' });
+            return;
+          }
 
           let totalAdded = 0;
           const added = [];
           if (Array.isArray(items) && items.length > 0) {
             const invRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=id,name,price`, { headers: sbHeaders });
-            const inventory = await invRes.json();
+            const invRaw = await invRes.json();
+            const inventory = Array.isArray(invRaw) ? invRaw : [];
             for (const item of items) {
               const nameLower = (item.name || '').toLowerCase();
-              const found = inventory.find((inv) => inv.name.toLowerCase() === nameLower) || inventory.find((inv) => inv.name.toLowerCase().includes(nameLower));
+              const found = inventory.find((inv) => inv.name?.toLowerCase() === nameLower) || inventory.find((inv) => inv.name?.toLowerCase()?.includes(nameLower));
               if (found) {
                 const qty = Math.max(1, parseInt(item.quantity) || 1);
                 await fetch(`${SUPABASE_URL}/rest/v1/check_items`, {
@@ -650,20 +659,24 @@ const server = http.createServer((req, res) => {
             return;
           }
           const player = players[0];
-          const clientChecks = await fetch(
-            `${SUPABASE_URL}/rest/v1/checks?player_id=eq.${player.id}&status=eq.closed&order=closed_at.desc&limit=100`,
+          const checksRes = await fetch(
+            `${SUPABASE_URL}/rest/v1/checks?player_id=eq.${encodeURIComponent(player.id)}&status=eq.closed&order=closed_at.desc&limit=100`,
             { headers: sbHeaders }
-          ).then((r) => r.json());
-          const checkIds = clientChecks.slice(0, 30).map((c) => c.id);
+          );
+          const clientChecksRaw = await checksRes.json();
+          const clientChecks = Array.isArray(clientChecksRaw) ? clientChecksRaw : [];
+          const checkIds = clientChecks.slice(0, 30).map((c) => c.id).filter(Boolean);
           let favoriteItem = null;
           if (checkIds.length > 0) {
             const itemsRes = await fetch(
               `${SUPABASE_URL}/rest/v1/check_items?check_id=in.(${checkIds.join(',')})&select=item_id,quantity`,
               { headers: sbHeaders }
             );
-            const items = await itemsRes.json();
+            const itemsRaw = await itemsRes.json();
+            const items = Array.isArray(itemsRaw) ? itemsRaw : [];
             const invRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory?select=id,name`, { headers: sbHeaders });
-            const inv = await invRes.json();
+            const invRaw = await invRes.json();
+            const inv = Array.isArray(invRaw) ? invRaw : [];
             const itemCount = {};
             for (const ci of items) {
               const name = inv.find((i) => i.id === ci.item_id)?.name || '?';
@@ -720,11 +733,11 @@ const server = http.createServer((req, res) => {
 
         if (action === 'list_events') {
           const today = new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0];
-          const query = params.upcoming !== false ? `status=in.(planned,active)&date=gte.${today}` : '';
-          const eventsRes = await fetch(`${SUPABASE_URL}/rest/v1/events?${query}&order=date.asc,start_time.asc&limit=30`, {
-            headers: sbHeaders
-          });
-          const evList = await eventsRes.json();
+          const filter = params.upcoming !== false ? `status=in.(planned,active)&date=gte.${today}` : '';
+          const url = `${SUPABASE_URL}/rest/v1/events?${filter ? filter + '&' : ''}order=date.asc,start_time.asc&limit=30`;
+          const eventsRes = await fetch(url, { headers: sbHeaders });
+          const evRaw = await eventsRes.json();
+          const evList = Array.isArray(evRaw) ? evRaw : [];
           const lines = evList.length === 0
             ? ['📅 Нет запланированных мероприятий.']
             : evList.map((e, i) => {
@@ -776,14 +789,15 @@ const server = http.createServer((req, res) => {
             `${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=id,name,price`,
             { headers: sbHeaders }
           );
-          const inventory = await invRes.json();
+          const invRaw = await invRes.json();
+          const inventory = Array.isArray(invRaw) ? invRaw : [];
           const added = [];
           let totalAdded = 0;
 
           for (const item of items) {
             const nameLower = (item.name || '').toLowerCase();
-            const found = inventory.find((inv) => inv.name.toLowerCase() === nameLower)
-              || inventory.find((inv) => inv.name.toLowerCase().includes(nameLower));
+            const found = inventory.find((inv) => inv.name?.toLowerCase() === nameLower)
+              || inventory.find((inv) => inv.name?.toLowerCase()?.includes(nameLower));
             if (found) {
               const qty = Math.max(1, parseInt(item.quantity) || 1);
               await fetch(`${SUPABASE_URL}/rest/v1/check_items`, {
@@ -822,7 +836,8 @@ const server = http.createServer((req, res) => {
             `${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=name,category,price,stock_quantity&order=category,name`,
             { headers: sbHeaders }
           );
-          const menu = await invRes.json();
+          const menuRaw = await invRes.json();
+          const menu = Array.isArray(menuRaw) ? menuRaw : [];
           const byCat = {};
           for (const m of menu) {
             const cat = m.category || 'Прочее';
@@ -838,7 +853,8 @@ const server = http.createServer((req, res) => {
             `${SUPABASE_URL}/rest/v1/profiles?role=eq.client&deleted_at=is.null&select=nickname,balance,bonus_points,client_tier&order=nickname&limit=50`,
             { headers: sbHeaders }
           );
-          const players = await plRes.json();
+          const playersRaw = await plRes.json();
+          const players = Array.isArray(playersRaw) ? playersRaw : [];
           const tierLabel = { regular: 'Гость', resident: 'Резидент', student: 'Студент' };
           const lines = players.slice(0, 25).map((p) => {
             const tier = tierLabel[p.client_tier] || 'Гость';
@@ -850,21 +866,29 @@ const server = http.createServer((req, res) => {
           json(res, { success: true, players, message: msg });
 
         } else if (action === 'report_today') {
-          const mskNow = new Date(Date.now() + 3 * 3600000);
-          const todayStr = mskNow.toISOString().split('T')[0];
-          const tomorrowStr = new Date(mskNow.getTime() + 86400000).toISOString().split('T')[0];
+          const mskOffset = 3 * 3600000;
+          const mskDate = new Date(Date.now() + mskOffset);
+          const todayStr = mskDate.toISOString().split('T')[0];
+          const dayStartMs = new Date(todayStr + 'T00:00:00+03:00').getTime();
+          const dayEndMs = dayStartMs + 86400000;
+          const dayStartIso = new Date(dayStartMs).toISOString();
+          const dayEndIso = new Date(dayEndMs).toISOString();
+          const andFilter = `and=(closed_at.gte.${encodeURIComponent(dayStartIso)},closed_at.lt.${encodeURIComponent(dayEndIso)})`;
           const [checksRes, invRes] = await Promise.all([
-            fetch(`${SUPABASE_URL}/rest/v1/checks?status=eq.closed&closed_at=gte.${todayStr}&closed_at=lt.${tomorrowStr}&select=id,total_amount,player_id`, { headers: sbHeaders }),
+            fetch(`${SUPABASE_URL}/rest/v1/checks?status=eq.closed&${andFilter}&select=id,total_amount,player_id`, { headers: sbHeaders }),
             fetch(`${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=id,name`, { headers: sbHeaders }),
           ]);
-          const checks = await checksRes.json();
-          const inventory = await invRes.json();
-          const checkIds = checks.map((c) => c.id);
+          const checksRaw = await checksRes.json();
+          const invRaw = await invRes.json();
+          const checks = Array.isArray(checksRaw) ? checksRaw : [];
+          const inventory = Array.isArray(invRaw) ? invRaw : [];
+          const checkIds = checks.map((c) => c.id).filter(Boolean);
           let dayRevenue = 0, itemSales = {};
           for (const c of checks) dayRevenue += c.total_amount || 0;
           if (checkIds.length > 0) {
             const itemsRes = await fetch(`${SUPABASE_URL}/rest/v1/check_items?check_id=in.(${checkIds.join(',')})&select=item_id,quantity,price_at_time`, { headers: sbHeaders });
-            const items = await itemsRes.json();
+            const itemsRaw = await itemsRes.json();
+            const items = Array.isArray(itemsRaw) ? itemsRaw : [];
             for (const ci of items) {
               const name = inventory.find((i) => i.id === ci.item_id)?.name || '?';
               itemSales[name] = (itemSales[name] || 0) + (ci.quantity || 0) * (ci.price_at_time || 0);
@@ -879,7 +903,8 @@ const server = http.createServer((req, res) => {
             `${SUPABASE_URL}/rest/v1/profiles?role=eq.client&balance=lt.0&deleted_at=is.null&select=nickname,balance&order=balance&limit=50`,
             { headers: sbHeaders }
           );
-          const debtors = await plRes.json();
+          const debtorsRaw = await plRes.json();
+          const debtors = Array.isArray(debtorsRaw) ? debtorsRaw : [];
           const totalDebt = debtors.reduce((s, p) => s + (p.balance || 0), 0);
           const lines = debtors.map((p) => `${p.nickname}: ${p.balance}₽`);
           const msg = `⚠️ Должники (${debtors.length}):\n\n${lines.join('\n') || 'Нет'}\n\nИтого долг: ${totalDebt}₽`;
@@ -890,12 +915,14 @@ const server = http.createServer((req, res) => {
             `${SUPABASE_URL}/rest/v1/checks?status=eq.open&select=id,total_amount,player_id&order=id.desc&limit=20`,
             { headers: sbHeaders }
           );
-          const checks = await checksRes.json();
+          const checksRaw = await checksRes.json();
+          const checks = Array.isArray(checksRaw) ? checksRaw : [];
           const playerIds = [...new Set(checks.map((c) => c.player_id).filter(Boolean))];
           let players = [];
           if (playerIds.length > 0) {
             const plRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=in.(${playerIds.join(',')})&select=id,nickname`, { headers: sbHeaders });
-            players = await plRes.json();
+            const plRaw = await plRes.json();
+            players = Array.isArray(plRaw) ? plRaw : [];
           }
           const plMap = Object.fromEntries(players.map((p) => [p.id, p.nickname]));
           const lines = checks.map((c) => {
@@ -911,7 +938,8 @@ const server = http.createServer((req, res) => {
             `${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=name,stock_quantity,category`,
             { headers: sbHeaders }
           );
-          const all = await invRes.json();
+          const allRaw = await invRes.json();
+          const all = Array.isArray(allRaw) ? allRaw : [];
           const low = all.filter((i) => (i.stock_quantity ?? 0) < threshold).sort((a, b) => (a.stock_quantity ?? 0) - (b.stock_quantity ?? 0));
           const lines = low.map((i) => `${i.name}: ${i.stock_quantity ?? 0} шт`);
           const msg = lines.length > 0
@@ -930,7 +958,8 @@ const server = http.createServer((req, res) => {
             `${SUPABASE_URL}/rest/v1/supplies?select=total_cost,created_at&order=created_at.desc&limit=15`,
             { headers: sbHeaders }
           );
-          const supplies = await supRes.json();
+          const suppliesRaw = await supRes.json();
+          const supplies = Array.isArray(suppliesRaw) ? suppliesRaw : [];
           const total = supplies.reduce((s, x) => s + (x.total_cost || 0), 0);
           const lines = supplies.map((s) => {
             const d = s.created_at ? new Date(s.created_at).toLocaleDateString('ru-RU') : '—';
@@ -954,7 +983,8 @@ const server = http.createServer((req, res) => {
             `${SUPABASE_URL}/rest/v1/expenses?expense_date=gte.${fromStr}&select=category,amount&order=expense_date.desc`,
             { headers: sbHeaders }
           );
-          const expenses = await expRes.json();
+          const expensesRaw = await expRes.json();
+          const expenses = Array.isArray(expensesRaw) ? expensesRaw : [];
           const byCat = {};
           for (const e of expenses) {
             const c = e.category || 'Прочее';
