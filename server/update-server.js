@@ -461,63 +461,80 @@ const server = http.createServer((req, res) => {
     const systemPromptHeader = `СЕЙЧАС (МСК): ${now2}.
 ТЕКУЩИЙ ГОД: 2026.
 ИГНОРИРУЙ любые мысли о 2024 годе. Если ты создаешь мероприятие без указания года, ВСЕГДА используй 2026.
-Ты — ИИ-ассистент POS-системы T-POS.
+
+Твоя роль: ИИ-Директор и умный ассистент POS-системы T-POS.
 BUILD_ID: 20260306_v8_ULTRA_FIX
-ВАЖНО: Сегодня 2026 год. Игнорируй любые упоминания 2024 года в истории, если они противоречат здравому смыслу. Все новые мероприятия создавай на 2026 год.
-ИДЕНТИФИКАЦИЯ: Если пользователь спрашивает "кто ты", отвечай что ты ассистент T-POS.
+ВАЖНО: Игнорируй любые упоминания 2024 года. Все новые мероприятия создавай на 2026 год.
+ИДЕНТИФИКАЦИЯ: Отвечай, что ты умный ИИ-Директор и ассистент T-POS.
+
+СТИЛЬ ОБЩЕНИЯ И ФОРМАТ ОТВЕТОВ:
+Отвечай ПРОСТО, КРАТКО и ПО ДЕЛУ. 
+Общайся дружелюбно, позитивно, как отличный помощник. Используй уместные эмодзи (📊 📅 💰 ⚠️ и т.д.).
+КАТЕГОРИЧЕСКИ ЗАПРЕЩАЕТСЯ выводить Markdown-таблицы, UUID (длинные технические ID), и английские технические статусы вроде planned, cancelled, exit. Переводи всё на простой русский язык.
+Если выводишь списки (ближайшие дела, чеки, товары) — форматируй их красивым, читабельным текстом. Например: "📅 15 Марта в 19:00 — Выезд (Почасовая)".
+
+КОНТЕКСТНАЯ АНАЛИТИКА (Твоя главная фишка):
+Ты не просто читаешь базу, ты её АНАЛИЗИРУЕШЬ и ИНТЕРПРЕТИРУЕШЬ.
+- Замечай падение или рост выручки (сравнивай текущую неделю с предыдущей). 
+- Обращай внимание на дефицит товаров (где stock близок к 0).
+- Сопоставляй работу персонала (кто сколько смен отработал) с выручкой и чеками.
+- Делай краткие выводы из цифр, если просят аналитику. (Например: "Выручка упала на 10%, но зато продали много сока").
 
 ВОПРОСЫ ПО СИСТЕМЕ — ОТВЕЧАЙ НА ЛЮБЫЕ:
-У тебя есть ПОЛНЫЙ ДОСТУП ко всем данным T-POS в секции ДАННЫЕ T-POS. Ты можешь и ДОЛЖЕН отвечать на ЛЮБЫЕ вопросы по системе:
-- Кто что покупал (ПОСЛЕДНИЕ 50 ЧЕКОВ С ПОЗИЦИЯМИ — там есть player, items, date)
-- Кто делал возвраты и каких товаров (ВОЗВРАТЫ ПОДРОБНО — player, items, who, type)
-- Кто работал на смене, когда, сколько в кассе (СМЕНЫ — admin, opened, closed, cash)
-- Открытые чеки прямо сейчас (ОТКРЫТЫЕ ЧЕКИ СЕЙЧАС)
-- Какие сертификаты есть, их баланс (СЕРТИФИКАТЫ)
-- История пополнений/списаний баланса клиентов (ТРАНЗАКЦИИ БАЛАНСОВ)
-- Зарплаты: кому, сколько, когда (ЗАРПЛАТЫ)
-- Расходы: детали каждого расхода (РАСХОДЫ ДЕТАЛЬНО)
-- Поставки: от кого, на сколько (ПОСТАВКИ)
-- Кассовые операции: внесения, изъятия с описанием (КАССА ОПЕРАЦИИ)
-- Сплит-оплаты: кто чем платил (split поле в чеках)
-- Скидки, бонусы (bonus, discount поля в чеках)
-- Аналитика за неделю, маржа, прибыль, динамика
-- Должники, топ клиентов, топ товаров
-Используй конкретные цифры и имена из данных. Не говори "у меня нет информации" — ИЩИ В ДАННЫХ.
-Не возвращай JSON для аналитических вопросов, отвечай текстом.
+У тебя есть ПОЛНЫЙ ДОСТУП ко всем данным T-POS в секции ДАННЫЕ T-POS. 
+- Аналитика и тренды (выручка, маржа, динамика, топ товаров и клиентов, должники).
+- Актуальные данные: чеки, возвраты, персонал на сменах, сертификаты, транзакции, зарплаты, расходы, касса.
 
 ИНСТРУМЕНТЫ (возвращай JSON только для действий):
 1. create_event: { type, location, date, start_time, payment_type, fixed_amount, comment }
-2. list_events: { upcoming: boolean } — показать мероприятия
-3. update_event: { event_id: string, type?, location?, date?, start_time?, payment_type?, fixed_amount?, comment?, status? } — изменить мероприятие по id
-4. create_check: { playerNickname: string }
+2. list_events: { upcoming: boolean }
+3. update_event: { event_id: string, type?, location?, date?, start_time?, payment_type?, fixed_amount?, comment?, status? }
+4. create_check: { playerNickname: string, items?: [{ name: string, quantity: number }] }
 5. add_items: { checkId: string, items: [{ name: string, quantity: number }] }
+6. close_check: { checkId: string, payment_method: string, bonus_used?: number, discount_total?: number }
+7. add_expense: { category: string, amount: number, description: string }
+8. cash_operation: { type: string, amount: number, description: string }
+9. manage_shift: { action: string, cash: number }
+10. topup_balance: { playerNickname: string, amount: number, method: string }
+11. create_profile: { nickname: string, phone?: string }
+12. apply_discount: { checkId: string, type: string, value: number } — тип "percent" или "fixed"
+13. update_inventory: { itemName: string, stock?: number, price?: number } — обновить склад
+14. add_bonus: { playerNickname: string, points: number } — начислить бонусные баллы
+15. list_open_checks: {} — показать открытые чеки
+16. pay_salary: { staffNickname: string, amount: number, method: string } — выдать зарплату (cash/card)
+17. refund_check: { checkId: string, refund_type: string } — полный возврат чека (cash/card/mixed)
+18. reply_with_buttons: { message: string, buttons: [[{ text: string, data: string }]] } — отправить сообщение с интерактивными кнопками
 
-СОЗДАНИЕ МЕРОПРИЯТИЙ (create_event):
-Когда пользователь пишет о мероприятии (выезд, титан, бронь и т.п.) — ВСЕГДА отвечай ТОЛЬКО JSON: {"action": "create_event", "params": {...}}.
-Парсинг из текста:
-- type: "титан"|"в титане"|"в клубе"|"клуб" → type: "titan", location: null
-- type: "выезд"|"выездное"|"на локации"|"на выезде" → type: "exit", location: из текста (адрес/место) или "Выезд"
-- date: "завтра" → завтрашняя дата, "15 марта"|"15.03" → 2026-03-15, "в субботу" → ближайшая суббота
-- start_time: "19:00"|"в 7"|"в 7 вечера" → "19:00", "14:30"|"в 2 дня"|"в 14:30" → "14:30"
-- payment_type: "почасовая"|"по часам"|"часовая" → "hourly", fixed_amount: 0
-- payment_type: "фиксированная"|"фикс"|"5000"|"5к" → "fixed", fixed_amount: число из текста (5000, 3000 и т.д.)
-Если оплата не указана → payment_type: "fixed", fixed_amount: 0
-Если дата не указана → сегодня или завтра по контексту
-Если время не указано → "18:00"
+ИНТЕРАКТИВНЫЙ ИНТЕРФЕЙС (КНОПКИ):
+Если пользователь открыл раздел, запросил список, чек или профиль — ИСПОЛЬЗУЙ \`reply_with_buttons\`, чтобы дать ему выбор действий.
+В \`data\` (callback) передавай готовую текстовую команду для себя, которую ты обработаешь при следующем клике.
+Массив \`buttons\` — это МАССИВ МАССИВОВ (ряды кнопок).
+Пример (Открытые чеки): 
+message: "🧾 Открытые чеки:\\n1. Иван — 1500₽", 
+buttons: [ 
+  [ { text: "💳 Оплатить картой Ивана", data: "Закрой чек Ивана оплата картой" },
+    { text: "💵 Оплатить наличными", data: "Закрой чек Ивана оплата наличными" } ],
+  [ { text: "➕ Добавить товар", data: "Добавь в чек Ивана 1 колу" },
+    { text: "🔻 Скидка 10%", data: "Сделай скидку 10% на чек Ивана" } ]
+]
+Пример (Главное меню):
+Если пользователь нажал кнопку меню "🧾 Чеки", вызови \`list_open_checks\` (или используй reply_with_buttons с предложением "Создать чек" / "Посмотреть открытые").
 
-Примеры: "Выезд 15 марта в 19:00 почасовая" → {"action":"create_event","params":{"type":"exit","location":"Выезд","date":"2026-03-15","start_time":"19:00","payment_type":"hourly","fixed_amount":0,"comment":null}}
-"Титан завтра в 18:00 фикс 5000" → вычисли date завтра от СЕЙЧАС, params: type:"titan", location:null, start_time:"18:00", payment_type:"fixed", fixed_amount:5000
+НОВЫЕ ИНСТРУМЕНТЫ (БИЗНЕС-ОПЕРАЦИИ И СКЛАД):
+- "Сделай скидку 10% на чек Ивана" → найди открытый чек, сделай apply_discount: { checkId: "...", type: "percent", value: 10 }
+- "Привезли 50 бутылок колы" → update_inventory: { itemName: "Кола", stock: 50 }
+- "Выдай Владу зарплату 5000 из кассы" → pay_salary: { staffNickname: "Влад", amount: 5000, method: "cash" }. (Из базы cash_operations вычтется эта сумма).
+- "Сделай возврат по чеку Ивана наличными" → найди закрытый чек, refund_check: { checkId: "...", refund_type: "cash" }.
 
-ЗАПРОСЫ ПО МЕРОПРИЯТИЯМ:
-- "какие мероприятия?", "что на этой неделе?", "планы на завтра?", "расскажи про мероприятия" → list_events: {"action":"list_events","params":{"upcoming":true}}
-- "перенеси на 20:00", "измени время/дату/локацию", "отмени" → update_event с event_id из МЕРОПРИЯТИЯ (id в списке). При отмене: status:"cancelled". При переносе: date и/или start_time.
+СОЗДАНИЕ МЕРОПРИЯТИЙ И УМНЫЕ ДАТЫ (create_event):
+При создании ВСЕГДА отвечай ТОЛЬКО JSON: {"action": "create_event", "params": {...}}.
+Год ВСЕГДА 2026.
 
-Для вопросов без действия (аналитика, отчёты) — отвечай текстом, не JSON.
+ЗАПРОСЫ ПО МЕРОПРИЯТИЯМ И ЧЕКАМ:
+Используй \`reply_with_buttons\` для предоставления кнопок управления (Перенести, Отменить, Оплатить и т.д.)
 
-РЕЖИМ ИЗМЕНЕНИЯ (когда передан draft):
-Если в запросе есть draft — это черновик мероприятия. Пользователь хочет что-то изменить. Примени его правки к draft и верни обновлённый JSON: {"action": "create_event", "params": {...}}.
-Примеры правок: "время на 20:00" → start_time: "20:00"; "локация Офис" → location: "Офис"; "фикс 7000" → payment_type: "fixed", fixed_amount: 7000; "почасовая" → payment_type: "hourly", fixed_amount: 0.
-Отвечай ТОЛЬКО JSON. (Год 2026!)`;
+Для вопросов без действия (аналитика) — отвечай текстом (или тоже с кнопками навигации).
+Отвечай ТОЛЬКО JSON, если выполняешь действие.`;
 
     const draftHint = draft ? `\n\nЧЕРНОВИК ДЛЯ ИЗМЕНЕНИЯ: ${JSON.stringify(draft)}\nПользователь написал правки. Примени их и верни обновлённый create_event.` : '';
 
@@ -791,7 +808,53 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
             }),
           });
           const check = await checkRes.json();
-          json(res, { success: true, message: `Чек для ${players[0].nickname} создан`, check: check[0] || check });
+          const checkInfo = check[0] || check;
+
+          let addedText = '';
+          if (params.items && Array.isArray(params.items) && params.items.length > 0) {
+            const invRes = await fetch(
+              `${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=id,name,price`,
+              { headers: sbHeaders }
+            );
+            const inventory = await invRes.json();
+            
+            let totalAdded = 0;
+            const added = [];
+
+            for (const item of params.items) {
+              const nameLower = (item.name || '').toLowerCase();
+              const found = inventory.find((inv) => inv.name.toLowerCase() === nameLower)
+                || inventory.find((inv) => inv.name.toLowerCase().includes(nameLower));
+              
+              if (found) {
+                const qty = Math.max(1, parseInt(item.quantity) || 1);
+                await fetch(`${SUPABASE_URL}/rest/v1/check_items`, {
+                  method: 'POST',
+                  headers: sbHeaders,
+                  body: JSON.stringify({
+                    check_id: checkInfo.id,
+                    item_id: found.id,
+                    quantity: qty,
+                    price_at_time: found.price,
+                  }),
+                });
+                added.push(`${found.name} x${qty}`);
+                totalAdded += found.price * qty;
+              }
+            }
+
+            if (totalAdded > 0) {
+              await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkInfo.id)}`, {
+                method: 'PATCH',
+                headers: sbHeaders,
+                body: JSON.stringify({ total_amount: totalAdded }),
+              });
+              checkInfo.total_amount = totalAdded;
+              addedText = ` (и добавлено: ${added.join(', ')} на ${totalAdded}₽)`;
+            }
+          }
+
+          json(res, { success: true, message: `Чек для ${players[0].nickname} открыт${addedText}`, check: checkInfo });
           return;
         }
 
@@ -927,6 +990,239 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
           }
 
           json(res, { success: true, message: `Добавлено ${added.length} позиций на ${totalAdded}₽`, added });
+
+        } else if (action === 'close_check') {
+          const { checkId, payment_method, bonus_used = 0, discount_total = 0 } = params;
+          if (!checkId || !payment_method) {
+            json(res, { success: false, error: 'checkId и payment_method обязательны' });
+            return;
+          }
+          await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkId)}`, {
+            method: 'PATCH',
+            headers: sbHeaders,
+            body: JSON.stringify({ status: 'closed', closed_at: new Date().toISOString(), payment_method, bonus_used, discount_total }),
+          });
+          json(res, { success: true, message: `✅ Чек закрыт (Оплата: ${payment_method})` });
+
+        } else if (action === 'add_expense') {
+          const { category, amount, description } = params;
+          if (!category || !amount) {
+            json(res, { success: false, error: 'category и amount обязательны' });
+            return;
+          }
+          await fetch(`${SUPABASE_URL}/rest/v1/expenses`, {
+            method: 'POST',
+            headers: sbHeaders,
+            body: JSON.stringify({ category, amount, description, expense_date: new Date().toISOString().split('T')[0] }),
+          });
+          json(res, { success: true, message: `✅ Расход "${category}" на ${amount}₽ добавлен` });
+
+        } else if (action === 'cash_operation') {
+          const { type, amount, description } = params;
+          if (!type || !amount) {
+            json(res, { success: false, error: 'type (in/out) и amount обязательны' });
+            return;
+          }
+          await fetch(`${SUPABASE_URL}/rest/v1/cash_operations`, {
+            method: 'POST',
+            headers: sbHeaders,
+            body: JSON.stringify({ type, amount, description, created_by: staffId || null, created_at: new Date().toISOString() }),
+          });
+          json(res, { success: true, message: `✅ Операция по кассе (${type === 'in' ? 'внесение' : 'изъятие'} ${amount}₽) добавлена` });
+
+        } else if (action === 'manage_shift') {
+          const { action: shiftAction, cash } = params;
+          if (!shiftAction || cash === undefined) {
+             json(res, { success: false, error: 'action (open/close) и cash обязательны' });
+             return;
+          }
+          if (shiftAction === 'open') {
+             await fetch(`${SUPABASE_URL}/rest/v1/shifts`, {
+                method: 'POST',
+                headers: sbHeaders,
+                body: JSON.stringify({ status: 'open', cash_start: cash, opened_at: new Date().toISOString(), staff_id: staffId || null }),
+             });
+             json(res, { success: true, message: `✅ Смена открыта (В кассе: ${cash}₽)` });
+          } else {
+             const shiftRes = await fetch(`${SUPABASE_URL}/rest/v1/shifts?status=eq.open&select=id`, { headers: sbHeaders });
+             const shifts = await shiftRes.json();
+             if (!shifts.length) {
+                json(res, { success: false, error: 'Нет открытой смены' });
+                return;
+             }
+             await fetch(`${SUPABASE_URL}/rest/v1/shifts?id=eq.${encodeURIComponent(shifts[0].id)}`, {
+                method: 'PATCH',
+                headers: sbHeaders,
+                body: JSON.stringify({ status: 'closed', cash_end: cash, closed_at: new Date().toISOString() }),
+             });
+             json(res, { success: true, message: `✅ Смена закрыта (В кассе: ${cash}₽)` });
+          }
+
+        } else if (action === 'topup_balance') {
+          const { playerNickname, amount, method = 'card' } = params;
+          if (!playerNickname || !amount) {
+             json(res, { success: false, error: 'playerNickname и amount обязательны' });
+             return;
+          }
+          const plRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?nickname=ilike.${encodeURIComponent(playerNickname)}&role=eq.client&limit=1`, { headers: sbHeaders });
+          const players = await plRes.json();
+          if (!players.length) {
+             json(res, { success: false, error: `Игрок "${playerNickname}" не найден` });
+             return;
+          }
+          const p = players[0];
+          await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(p.id)}`, {
+            method: 'PATCH',
+            headers: sbHeaders,
+            body: JSON.stringify({ balance: (p.balance || 0) + amount }),
+          });
+          await fetch(`${SUPABASE_URL}/rest/v1/transactions`, {
+            method: 'POST',
+            headers: sbHeaders,
+            body: JSON.stringify({ profile_id: p.id, type: method === 'bonus' ? 'bonus' : 'deposit', amount, description: 'Пополнение через ИИ', created_at: new Date().toISOString() }),
+          });
+          json(res, { success: true, message: `✅ Баланс ${p.nickname} пополнен на ${amount}₽` });
+
+        } else if (action === 'create_profile') {
+          const { nickname, role = 'client', phone = '' } = params;
+          if (!nickname) {
+             json(res, { success: false, error: 'nickname обязателен' });
+             return;
+          }
+          await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+            method: 'POST',
+            headers: sbHeaders,
+            body: JSON.stringify({ nickname, role, balance: 0, bonus_points: 0, client_tier: 'bronze', phone, created_at: new Date().toISOString() }),
+          });
+          json(res, { success: true, message: `✅ Новый профиль "${nickname}" создан` });
+
+        } else if (action === 'apply_discount') {
+          const { checkId, type, value } = params;
+          if (!checkId || !type || value === undefined) {
+             json(res, { success: false, error: 'checkId, type и value обязательны' });
+             return;
+          }
+          const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkId)}&select=total_amount`, { headers: sbHeaders });
+          const checks = await checkRes.json();
+          if (!checks.length) {
+             json(res, { success: false, error: 'Чек не найден' });
+             return;
+          }
+          const check = checks[0];
+          let discountAmt = type === 'percent' ? (check.total_amount * (value / 100)) : value;
+          await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkId)}`, {
+             method: 'PATCH',
+             headers: sbHeaders,
+             body: JSON.stringify({ discount_total: discountAmt }),
+          });
+          json(res, { success: true, message: `✅ Скидка (${type === 'percent' ? value + '%' : value + '₽'}) применена к чеку` });
+
+        } else if (action === 'update_inventory') {
+          const { itemName, stock, price } = params;
+          if (!itemName) {
+             json(res, { success: false, error: 'itemName обязателен' });
+             return;
+          }
+          const invRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory?name=ilike.${encodeURIComponent('%' + itemName + '%')}&limit=1`, { headers: sbHeaders });
+          const items = await invRes.json();
+          if (!items.length) {
+             json(res, { success: false, error: `Товар "${itemName}" не найден` });
+             return;
+          }
+          const item = items[0];
+          const payload = {};
+          if (stock !== undefined) payload.stock_quantity = (item.stock_quantity || 0) + stock; // adds to current stock
+          if (price !== undefined) payload.price = price;
+          
+          await fetch(`${SUPABASE_URL}/rest/v1/inventory?id=eq.${encodeURIComponent(item.id)}`, {
+             method: 'PATCH',
+             headers: sbHeaders,
+             body: JSON.stringify(payload),
+          });
+          json(res, { success: true, message: `✅ Склад для "${item.name}" обновлен` });
+
+        } else if (action === 'add_bonus') {
+          const { playerNickname, points } = params;
+          if (!playerNickname || points === undefined) {
+             json(res, { success: false, error: 'playerNickname и points обязательны' });
+             return;
+          }
+          const plRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?nickname=ilike.${encodeURIComponent(playerNickname)}&role=eq.client&limit=1`, { headers: sbHeaders });
+          const players = await plRes.json();
+          if (!players.length) {
+             json(res, { success: false, error: `Игрок "${playerNickname}" не найден` });
+             return;
+          }
+          const p = players[0];
+          await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(p.id)}`, {
+            method: 'PATCH',
+            headers: sbHeaders,
+            body: JSON.stringify({ bonus_points: (p.bonus_points || 0) + points }),
+          });
+          json(res, { success: true, message: `✅ Начислено ${points} бонусов для ${p.nickname}` });
+
+        } else if (action === 'list_open_checks') {
+          const checksRes = await fetch(`${SUPABASE_URL}/rest/v1/checks?status=eq.open&select=id,profiles!inner(nickname),total_amount`, { headers: sbHeaders });
+          const checks = await checksRes.json();
+          json(res, { success: true, checks: checks.map(c => ({ id: c.id, player: c.profiles.nickname, total: c.total_amount })) });
+
+        } else if (action === 'pay_salary') {
+          const { staffNickname, amount, method = 'cash' } = params;
+          if (!staffNickname || !amount) {
+             json(res, { success: false, error: 'staffNickname и amount обязательны' });
+             return;
+          }
+          const plRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?nickname=ilike.${encodeURIComponent(staffNickname)}&role=in.(staff,admin)&limit=1`, { headers: sbHeaders });
+          const staff = await plRes.json();
+          if (!staff.length) {
+             json(res, { success: false, error: `Сотрудник "${staffNickname}" не найден` });
+             return;
+          }
+          await fetch(`${SUPABASE_URL}/rest/v1/salary_payments`, {
+            method: 'POST',
+            headers: sbHeaders,
+            body: JSON.stringify({ staff_id: staff[0].id, amount, payment_method: method, payment_date: new Date().toISOString() }),
+          });
+          if (method === 'cash') {
+            await fetch(`${SUPABASE_URL}/rest/v1/cash_operations`, {
+              method: 'POST',
+              headers: sbHeaders,
+              body: JSON.stringify({ type: 'out', amount, description: `Зарплата для ${staff[0].nickname}`, created_at: new Date().toISOString() })
+            });
+          }
+          json(res, { success: true, message: `✅ Зарплата ${amount}₽ выплачена ${staff[0].nickname} (${method})` });
+
+        } else if (action === 'refund_check') {
+          const { checkId, refund_type = 'cash' } = params;
+          if (!checkId) {
+             json(res, { success: false, error: 'checkId обязателен' });
+             return;
+          }
+          const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkId)}`, { headers: sbHeaders });
+          const checks = await checkRes.json();
+          if (!checks.length || checks[0].status !== 'closed') {
+             json(res, { success: false, error: 'Чек не найден или не закрыт' });
+             return;
+          }
+          const check = checks[0];
+          await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkId)}`, {
+             method: 'PATCH',
+             headers: sbHeaders,
+             body: JSON.stringify({ status: 'refunded' }),
+          });
+          await fetch(`${SUPABASE_URL}/rest/v1/refunds`, {
+             method: 'POST',
+             headers: sbHeaders,
+             body: JSON.stringify({
+                original_check_id: checkId,
+                refund_amount: check.total_amount,
+                refund_method: refund_type,
+                reason: 'Возврат через бота',
+                processed_by: staffId || null,
+                created_at: new Date().toISOString()
+             })
+          });
+          json(res, { success: true, message: `✅ Чек (${check.total_amount}₽) успешно возвращен (${refund_type})` });
 
         } else if (action === 'list_menu') {
           const invRes = await fetch(

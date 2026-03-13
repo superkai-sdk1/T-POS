@@ -107,6 +107,16 @@ const CONFIRM_KEYBOARD = {
     ],
 };
 
+const MAIN_MENU_KEYBOARD = {
+    keyboard: [
+        [{ text: '🧾 Чеки' }, { text: '📅 Мероприятия' }],
+        [{ text: '📦 Склад' }, { text: '👥 Клиенты' }],
+        [{ text: '💼 Финансы' }, { text: '📊 Аналитика' }]
+    ],
+    resize_keyboard: true,
+    persistent: true
+};
+
 // --- Streaming AI call with editMessageText ---
 async function callAiStream(messages, chatId, thinkingMsgId, draft = null) {
     const headers = { 'Content-Type': 'application/json' };
@@ -194,6 +204,11 @@ async function handleAiMessage(msg) {
     const text = msg.text?.trim() || '';
 
     try {
+        if (text === '/start' || text.toLowerCase() === 'меню') {
+            await sendMessage(chatId, '👋 Привет! Я твой ИИ-Директор T-POS. Выбирай раздел или пиши запрос текстом:', { reply_markup: MAIN_MENU_KEYBOARD });
+            return;
+        }
+
         const state = chatState.get(chatId);
         let draft = null;
         let userContent = text;
@@ -273,7 +288,26 @@ async function handleAiMessage(msg) {
                 return;
             }
 
-            if (parsed.action === 'list_events' || parsed.action === 'update_event' || parsed.action === 'create_check' || parsed.action === 'add_items') {
+            if (parsed.action === 'reply_with_buttons' && parsed.message && parsed.buttons) {
+                const markup = {
+                    inline_keyboard: parsed.buttons.map((row) =>
+                        row.map((btn) => ({ text: btn.text, callback_data: btn.data }))
+                    ),
+                };
+                if (thinkingMsgId) {
+                    await editMessageText(chatId, thinkingMsgId, parsed.message);
+                    await tg('editMessageReplyMarkup', {
+                        chat_id: chatId,
+                        message_id: thinkingMsgId,
+                        reply_markup: markup,
+                    });
+                } else {
+                    await sendMessage(chatId, parsed.message, { reply_markup: markup });
+                }
+                return;
+            }
+
+            if (parsed.action && parsed.action !== 'create_event') {
                 const actionHeaders = { 'Content-Type': 'application/json' };
                 if (API_SECRET) actionHeaders['Authorization'] = `Bearer ${API_SECRET}`;
                 const actionRes = await fetch('http://127.0.0.1:3100/api/ai/action', {
@@ -347,7 +381,14 @@ async function handleCallback(callbackQuery) {
         return;
     }
 
+    // Treat other callbacks as direct messages to AI
     await tg('answerCallbackQuery', { callback_query_id: callbackQuery.id });
+    const mockMsg = {
+        chat: { id: chatId },
+        text: data,
+        from: callbackQuery.from,
+    };
+    await handleAiMessage(mockMsg);
 }
 
 async function main() {
