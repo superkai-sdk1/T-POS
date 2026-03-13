@@ -213,19 +213,27 @@ const server = http.createServer((req, res) => {
         profiles, checks, checkItems, inventory,
         expenses, supplies, cashOps, shifts, events,
         refunds, salaryPayments, supplyItems,
+        checkPayments, refundItems, checkDiscounts,
+        openChecks, certificates, transactions,
       ] = await Promise.all([
         sbFetch('profiles', 'select=id,nickname,role,balance,bonus_points,client_tier,is_resident,created_at,deleted_at&order=created_at.desc&limit=500'),
-        sbFetch('checks', 'select=id,player_id,total_amount,payment_method,bonus_used,closed_at,staff_id&status=eq.closed&order=closed_at.desc&limit=500'),
+        sbFetch('checks', 'select=id,player_id,total_amount,payment_method,bonus_used,closed_at,staff_id,discount_total,note&status=eq.closed&order=closed_at.desc&limit=500'),
         sbFetch('check_items', 'select=check_id,item_id,quantity,price_at_time&limit=3000'),
         sbFetch('inventory', 'select=id,name,category,price,stock_quantity,is_active&order=name'),
-        sbFetch('expenses', 'select=category,amount,expense_date&order=expense_date.desc&limit=200'),
-        sbFetch('supplies', 'select=total_cost,created_at&order=created_at.desc&limit=100'),
-        sbFetch('cash_operations', 'select=type,amount,created_at&order=created_at.desc&limit=100'),
-        sbFetch('shifts', 'select=status,cash_start,cash_end,opened_at,closed_at&order=opened_at.desc&limit=20'),
+        sbFetch('expenses', 'select=category,amount,expense_date,description&order=expense_date.desc&limit=200'),
+        sbFetch('supplies', 'select=total_cost,created_at,supplier&order=created_at.desc&limit=100'),
+        sbFetch('cash_operations', 'select=type,amount,created_at,description&order=created_at.desc&limit=100'),
+        sbFetch('shifts', 'select=id,status,cash_start,cash_end,opened_at,closed_at,staff_id&order=opened_at.desc&limit=20'),
         sbFetch('events', `status=neq.completed&date=gte.${new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0]}&order=date.asc&limit=20`),
-        sbFetch('refunds', 'select=check_id,total_amount,created_at&order=created_at.desc&limit=100'),
+        sbFetch('refunds', 'select=id,check_id,total_amount,refund_type,created_at,created_by&order=created_at.desc&limit=100'),
         sbFetch('salary_payments', 'select=amount,created_at,payment_method,profile_id&order=created_at.desc&limit=50'),
         sbFetch('supply_items', 'select=item_id,cost_per_unit,quantity&limit=500'),
+        sbFetch('check_payments', 'select=check_id,method,amount&limit=1000'),
+        sbFetch('refund_items', 'select=refund_id,item_id,quantity,price_at_time&limit=500'),
+        sbFetch('check_discounts', 'select=check_id,type,value,amount&limit=500'),
+        sbFetch('checks', 'select=id,player_id,total_amount,status,created_at,note&status=eq.open&order=created_at.desc&limit=20'),
+        sbFetch('certificates', 'select=id,code,amount,balance,is_active,created_at,used_by&order=created_at.desc&limit=50'),
+        sbFetch('transactions', 'select=profile_id,type,amount,description,created_at&order=created_at.desc&limit=200'),
       ]);
 
       const staff = profiles.filter((p) => p.role === 'owner' || p.role === 'staff');
@@ -336,6 +344,82 @@ const server = http.createServer((req, res) => {
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 10);
 
+      // Build lookup maps
+      const profileMap = {};
+      for (const p of profiles) profileMap[p.id] = p.nickname;
+      const itemNameMap = {};
+      for (const i of inventory) itemNameMap[i.id] = i.name;
+
+      // Check items by check
+      const itemsByCheck = {};
+      for (const ci of checkItems) {
+        if (!itemsByCheck[ci.check_id]) itemsByCheck[ci.check_id] = [];
+        itemsByCheck[ci.check_id].push({ name: itemNameMap[ci.item_id] || '?', qty: ci.quantity, price: ci.price_at_time });
+      }
+
+      // Split payments by check
+      const splitByCheck = {};
+      for (const cp of checkPayments) {
+        if (!splitByCheck[cp.check_id]) splitByCheck[cp.check_id] = [];
+        splitByCheck[cp.check_id].push({ method: cp.method, amount: cp.amount });
+      }
+
+      // Refund items by refund
+      const refItemsByRefund = {};
+      for (const ri of refundItems) {
+        if (!refItemsByRefund[ri.refund_id]) refItemsByRefund[ri.refund_id] = [];
+        refItemsByRefund[ri.refund_id].push({ name: itemNameMap[ri.item_id] || '?', qty: ri.quantity, price: ri.price_at_time });
+      }
+
+      // Detailed refunds
+      const detailedRefunds = refunds.slice(0, 30).map((r) => {
+        const checkInfo = checks.find((c) => c.id === r.check_id);
+        return {
+          player: checkInfo ? (profileMap[checkInfo.player_id] || 'Гость') : '?',
+          amount: r.total_amount,
+          type: r.refund_type,
+          who: profileMap[r.created_by] || '?',
+          date: r.created_at,
+          items: refItemsByRefund[r.id] || [],
+        };
+      });
+
+      // Staff on shifts
+      const shiftStaff = shifts.slice(0, 10).map((s) => ({
+        admin: profileMap[s.staff_id] || '?',
+        status: s.status,
+        cash_start: s.cash_start,
+        cash_end: s.cash_end,
+        opened: s.opened_at,
+        closed: s.closed_at,
+      }));
+
+      // Open checks
+      const openChecksList = (openChecks || []).map((c) => ({
+        player: profileMap[c.player_id] || 'Гость',
+        total: c.total_amount,
+        created: c.created_at,
+        note: c.note,
+        items: itemsByCheck[c.id] || [],
+      }));
+
+      // Recent transactions
+      const recentTransactions = (transactions || []).slice(0, 50).map((t) => ({
+        player: profileMap[t.profile_id] || '?',
+        type: t.type,
+        amount: t.amount,
+        desc: t.description,
+        date: t.created_at,
+      }));
+
+      // Salary with names
+      const salaryDetailed = salaryPayments.slice(0, 20).map((sp) => ({
+        who: profileMap[sp.profile_id] || '?',
+        amount: sp.amount,
+        method: sp.payment_method,
+        date: sp.created_at,
+      }));
+
       dbContext = `\n\n=== ДАННЫЕ T-POS (актуальные из БД) ===
 АНАЛИТИКА ЗА НЕДЕЛЮ: выручка ${weekRevenue}₽, чеков ${weekChecks}, возвраты ${weekRefunded}₽, себестоимость ${Math.round(weekCogs)}₽, расходы ${Math.round(weekExpenses)}₽, прибыль ${weekProfit}₽, маржа ${weekMargin}%. Предыдущая неделя: ${prevWeekRevenue}₽. Динамика: ${weekDelta}%.
 ТОП ТОВАРОВ ЗА НЕДЕЛЮ: ${JSON.stringify(weekTopProducts)}.
@@ -347,31 +431,28 @@ const server = http.createServer((req, res) => {
 ОПЛАТА: ${JSON.stringify(payments)}
 ТОП-20 ТОВАРОВ: ${JSON.stringify(productStats)}
 РАСХОДЫ ПО КАТЕГОРИЯМ: ${JSON.stringify(expByCategory)}
-ПОСТАВКИ: ${supplies.length} шт, сумма: ${supplies.reduce((s, x) => s + (x.total_cost || 0), 0)}₽
-ВОЗВРАТЫ: ${refunds.length} шт, сумма: ${totalRefunded}₽
-ЗАРПЛАТЫ (последние): ${salaryPayments.length} выплат, сумма: ${salaryTotal}₽
-КАССА: ${JSON.stringify(cashOps.slice(0, 15).map((o) => ({ type: o.type, amount: o.amount })))}
-ПОСЛЕДНИЕ СМЕНЫ: ${JSON.stringify(shifts.slice(0, 10).map((s) => ({ status: s.status, cash_start: s.cash_start, cash_end: s.cash_end, opened: s.opened_at, closed: s.closed_at })))}
+РАСХОДЫ ДЕТАЛЬНО (последние 30): ${JSON.stringify(expenses.slice(0, 30).map((e) => ({ cat: e.category, amount: e.amount, date: e.expense_date, desc: e.description })))}
+ПОСТАВКИ: ${supplies.length} шт, сумма: ${supplies.reduce((s, x) => s + (x.total_cost || 0), 0)}₽, последние: ${JSON.stringify(supplies.slice(0, 10).map((s) => ({ cost: s.total_cost, supplier: s.supplier, date: s.created_at })))}
+ВОЗВРАТЫ ПОДРОБНО (последние 30): ${JSON.stringify(detailedRefunds)}
+ЗАРПЛАТЫ: ${JSON.stringify(salaryDetailed)}
+КАССА ОПЕРАЦИИ: ${JSON.stringify(cashOps.slice(0, 30).map((o) => ({ type: o.type, amount: o.amount, desc: o.description, date: o.created_at })))}
+СМЕНЫ (кто работал): ${JSON.stringify(shiftStaff)}
+ОТКРЫТЫЕ ЧЕКИ СЕЙЧАС: ${JSON.stringify(openChecksList)}
+ПОСЛЕДНИЕ 50 ЧЕКОВ С ПОЗИЦИЯМИ (кто что купил): ${JSON.stringify(checks.slice(0, 50).map((c) => ({
+        player: profileMap[c.player_id] || 'Гость',
+        total: c.total_amount,
+        method: c.payment_method,
+        bonus: c.bonus_used || 0,
+        discount: c.discount_total || 0,
+        note: c.note,
+        date: c.closed_at,
+        items: itemsByCheck[c.id] || [],
+        split: splitByCheck[c.id] || null,
+      })))}
+СЕРТИФИКАТЫ: ${JSON.stringify((certificates || []).map((c) => ({ code: c.code, nominal: c.amount, balance: c.balance, active: c.is_active, created: c.created_at })))}
+ТРАНЗАКЦИИ БАЛАНСОВ (последние 50): ${JSON.stringify(recentTransactions)}
 МЕНЮ (все ${inventory.length} позиций): ${JSON.stringify(inventory.map((i) => ({ name: i.name, cat: i.category, price: i.price, stock: i.stock_quantity, active: i.is_active })))}
 МЕРОПРИЯТИЯ (предстоящие, с id для update_event): ${JSON.stringify(events.slice(0, 20).map((e) => ({ id: e.id, type: e.type, location: e.location, date: e.date, start_time: e.start_time, payment_type: e.payment_type, fixed_amount: e.fixed_amount, status: e.status, comment: e.comment })))}
-ПОСЛЕДНИЕ 50 ЧЕКОВ С ПОЗИЦИЯМИ (кто что купил): ${JSON.stringify((() => {
-        const profileMap = {};
-        for (const p of profiles) profileMap[p.id] = p.nickname;
-        const itemNameMap = {};
-        for (const i of inventory) itemNameMap[i.id] = i.name;
-        const itemsByCheck = {};
-        for (const ci of checkItems) {
-          if (!itemsByCheck[ci.check_id]) itemsByCheck[ci.check_id] = [];
-          itemsByCheck[ci.check_id].push({ name: itemNameMap[ci.item_id] || '?', qty: ci.quantity, price: ci.price_at_time });
-        }
-        return checks.slice(0, 50).map((c) => ({
-          player: profileMap[c.player_id] || 'Гость',
-          total: c.total_amount,
-          method: c.payment_method,
-          date: c.closed_at,
-          items: itemsByCheck[c.id] || [],
-        }));
-      })())}
 (ВНИМАНИЕ: Даты в списке могут быть старыми. ИСПОЛЬЗУЙ ТЕКУЩИЙ ГОД ИЗ СЕКЦИИ "СЕЙЧАС" ДЛЯ НОВЫХ ЗАПИСЕЙ!)
 ===`;
     }
@@ -385,9 +466,24 @@ BUILD_ID: 20260306_v8_ULTRA_FIX
 ВАЖНО: Сегодня 2026 год. Игнорируй любые упоминания 2024 года в истории, если они противоречат здравому смыслу. Все новые мероприятия создавай на 2026 год.
 ИДЕНТИФИКАЦИЯ: Если пользователь спрашивает "кто ты", отвечай что ты ассистент T-POS.
 
-ВОПРОСЫ ПО АНАЛИТИКЕ (выручка, прибыль, товары, должники, отчёты):
-Отвечай текстом на основе данных из ДАННЫЕ T-POS. Используй конкретные цифры. Не возвращай JSON для таких вопросов.
-Примеры: "какая выручка?" → текст с суммой; "топ товаров?" → перечисли; "сколько должников?" → число и список; "как дела за неделю?" → краткий отчёт.
+ВОПРОСЫ ПО СИСТЕМЕ — ОТВЕЧАЙ НА ЛЮБЫЕ:
+У тебя есть ПОЛНЫЙ ДОСТУП ко всем данным T-POS в секции ДАННЫЕ T-POS. Ты можешь и ДОЛЖЕН отвечать на ЛЮБЫЕ вопросы по системе:
+- Кто что покупал (ПОСЛЕДНИЕ 50 ЧЕКОВ С ПОЗИЦИЯМИ — там есть player, items, date)
+- Кто делал возвраты и каких товаров (ВОЗВРАТЫ ПОДРОБНО — player, items, who, type)
+- Кто работал на смене, когда, сколько в кассе (СМЕНЫ — admin, opened, closed, cash)
+- Открытые чеки прямо сейчас (ОТКРЫТЫЕ ЧЕКИ СЕЙЧАС)
+- Какие сертификаты есть, их баланс (СЕРТИФИКАТЫ)
+- История пополнений/списаний баланса клиентов (ТРАНЗАКЦИИ БАЛАНСОВ)
+- Зарплаты: кому, сколько, когда (ЗАРПЛАТЫ)
+- Расходы: детали каждого расхода (РАСХОДЫ ДЕТАЛЬНО)
+- Поставки: от кого, на сколько (ПОСТАВКИ)
+- Кассовые операции: внесения, изъятия с описанием (КАССА ОПЕРАЦИИ)
+- Сплит-оплаты: кто чем платил (split поле в чеках)
+- Скидки, бонусы (bonus, discount поля в чеках)
+- Аналитика за неделю, маржа, прибыль, динамика
+- Должники, топ клиентов, топ товаров
+Используй конкретные цифры и имена из данных. Не говори "у меня нет информации" — ИЩИ В ДАННЫХ.
+Не возвращай JSON для аналитических вопросов, отвечай текстом.
 
 ИНСТРУМЕНТЫ (возвращай JSON только для действий):
 1. create_event: { type, location, date, start_time, payment_type, fixed_amount, comment }
