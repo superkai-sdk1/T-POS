@@ -478,9 +478,9 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     }
   }, [activeShift]);
 
-  const showCloseShiftView = activeShift && openChecks.length === 0;
+  const noOpenChecks = openChecks.length === 0;
   useEffect(() => {
-    if (showCloseShiftView && activeShift) {
+    if (noOpenChecks && activeShift) {
       setCloseError('');
       setCloseAnalytics(null);
       setIsClosing(true);
@@ -490,7 +490,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
         setIsClosing(false);
       });
     }
-  }, [showCloseShiftView, activeShift?.id, getShiftAnalytics, cashInRegister]);
+  }, [noOpenChecks, activeShift?.id, getShiftAnalytics, cashInRegister]);
 
   const handleOpenShift = async () => {
     hapticFeedback('medium');
@@ -718,10 +718,13 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   };
 
   const activeCount = openChecks.length;
+  const expectedCash = cashInRegister ?? (closeAnalytics ? ((activeShift?.cash_start ?? 0) + (closeAnalytics.paymentBreakdown['cash']?.amount ?? 0)) : 0);
+  const revenue = closeAnalytics?.totalRevenue ?? 0;
+  const discrepancy = cashEnd ? (Number(cashEnd) || 0) - expectedCash : null;
 
-  if (!activeShift) {
-    return (
-      <div className="flex-1 flex flex-col min-h-0 lg:h-full relative bg-[#0d0d12] text-white">
+  return (
+    <div className="flex-1 flex flex-col min-h-0 lg:h-full relative bg-[#0d0d12] text-white">
+      {!activeShift ? (
         <OpenShiftView
           eveningType={eveningType}
           setEveningType={setEveningType}
@@ -730,17 +733,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           onOpen={handleOpenShift}
           isLoading={isOpening}
         />
-      </div>
-    );
-  }
-
-  if (showCloseShiftView && !showNewCheck) {
-    const expectedCash = cashInRegister ?? (closeAnalytics ? (activeShift.cash_start + (closeAnalytics.paymentBreakdown['cash']?.amount ?? 0)) : 0);
-    const revenue = closeAnalytics?.totalRevenue ?? 0;
-    const actual = Number(cashEnd) || 0;
-    const discrepancy = cashEnd ? actual - expectedCash : null;
-    return (
-      <div className="flex-1 flex flex-col min-h-0 lg:h-full relative bg-[#0d0d12] text-white">
+      ) : noOpenChecks ? (
         <CloseShiftView
           expectedCash={expectedCash}
           revenue={revenue}
@@ -753,12 +746,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           closeError={closeError}
           isLoading={isClosing}
         />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex-1 flex flex-col min-h-0 lg:h-full relative bg-[#0d0d12] text-white">
+      ) : (
       <div className="flex-1 flex flex-col min-h-0 lg:h-full overflow-hidden animate-fade-in">
         {/* Заголовок КАССА и Действия — компактно */}
         <div className="px-4 sm:px-6 lg:px-4 py-3 lg:py-2 shrink-0">
@@ -859,6 +847,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
 
         {/* FAB integrated into floating nav in Layout */}
       </div>
+      )}
 
       <Drawer open={showHistory} onClose={() => setShowHistory(false)} title="Закрытые чеки смены">
         <ShiftClosedChecks />
