@@ -932,7 +932,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
       const hasNonDebt = payments.some((p) => p.method !== 'debt');
       const shouldAccrue = bonusEnabled && total >= bonusMin && (hasNonDebt || bonusOnDebt);
-      const bonusAccrual = shouldAccrue ? Math.floor(total * bonusRate / 100) : 0;
+      const bonusAccrual = shouldAccrue ? Math.round(total * bonusRate / 100) : 0;
 
       const { data: player } = await supabase
         .from('profiles')
@@ -965,7 +965,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       }
 
       if (bonusUsed > 0) {
-        await supabase.from('transactions').insert({
+        const { error: bsErr } = await supabase.from('transactions').insert({
           type: 'bonus_spend',
           amount: bonusUsed,
           description: `Списание бонусов по чеку`,
@@ -973,6 +973,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
           player_id: activeCheck.player_id,
           created_by: user?.id,
         });
+        if (bsErr) console.error('closeCheck: bonus_spend transaction failed:', bsErr);
         if (player) {
           await supabase.from('bonus_history').insert({
             profile_id: activeCheck.player_id,
@@ -983,7 +984,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
         }
       }
       if (bonusAccrual > 0) {
-        await supabase.from('transactions').insert({
+        const { error: baErr } = await supabase.from('transactions').insert({
           type: 'bonus_accrual',
           amount: bonusAccrual,
           description: `Начисление бонусов (${bonusRate}% от ${total}₽)`,
@@ -991,6 +992,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
           player_id: activeCheck.player_id,
           created_by: user?.id,
         });
+        if (baErr) console.error('closeCheck: bonus_accrual transaction failed:', baErr);
         if (player) {
           const newPts = Math.max(0, player.bonus_points - bonusUsed) + bonusAccrual;
           await supabase.from('bonus_history').insert({
@@ -1004,7 +1006,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
       if (depositPayAmount > 0 && player) {
         const newBal = (player.balance - debtAmount) - depositPayAmount;
-        await supabase.from('transactions').insert({
+        const { error: daErr } = await supabase.from('transactions').insert({
           type: 'debt_adjustment',
           amount: -depositPayAmount,
           description: `Оплата с депозита по чеку (было ${player.balance}₽, стало ${newBal}₽)`,
@@ -1012,6 +1014,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
           player_id: activeCheck.player_id,
           created_by: user?.id,
         });
+        if (daErr) console.error('closeCheck: debt_adjustment transaction failed:', daErr);
       }
     }
 
@@ -1020,7 +1023,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       ? (payments.length > 0 ? `сертификат + ${isSplit ? 'разд. оплата' : (methodLabels[primaryMethod] || primaryMethod)}` : 'сертификат')
       : (isSplit ? 'разд. оплата' : (methodLabels[primaryMethod] || primaryMethod));
 
-    await supabase.from('transactions').insert({
+    const { error: saleErr } = await supabase.from('transactions').insert({
       type: 'sale',
       amount: finalAmount,
       description: `Закрытие чека (${methodDesc})`,
@@ -1028,6 +1031,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       player_id: activeCheck.player_id || null,
       created_by: user?.id,
     });
+    if (saleErr) console.error('closeCheck: sale transaction failed:', saleErr);
 
     if (certificateUsed > 0) {
       await supabase.from('transactions').insert({
