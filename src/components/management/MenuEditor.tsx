@@ -9,6 +9,7 @@ import {
   Eye, EyeOff, Search, Upload, X, Check,
   FolderPlus, ChevronRight, ArrowLeft,
   Package, MoreVertical, GripVertical,
+  ChevronUp, ChevronDown,
 } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import {
@@ -277,8 +278,11 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
     loadItems();
   };
 
-  const handleDragStart = (item: InventoryItem) => {
+  const handleDragStart = (e: React.DragEvent, item: InventoryItem) => {
     setDraggedItem(item);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', item.id);
+    e.dataTransfer.setData('application/json', JSON.stringify({ id: item.id }));
     hapticFeedback('light');
   };
 
@@ -288,13 +292,28 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
   };
 
   const handleDrop = (targetItem: InventoryItem) => {
     if (!draggedItem || draggedItem.id === targetItem.id || draggedItem.category !== targetItem.category) return;
     handleSwapItems(draggedItem, targetItem);
     setDraggedItem(null);
+  };
+
+  const handleMoveItem = (item: InventoryItem, direction: 'up' | 'down') => {
+    const idx = directItems.findIndex((i) => i.id === item.id);
+    if (idx < 0) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= directItems.length) return;
+    const target = directItems[targetIdx];
+    handleSwapItems(item, target);
   };
 
   // ============ CATEGORY EDITOR ============
@@ -484,7 +503,10 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
               onDragStart={() => {}}
               onDragEnd={() => {}}
               onDragOver={() => {}}
+              onDragEnter={() => {}}
               onDrop={() => {}}
+              canMoveUp={false}
+              canMoveDown={false}
             />
           ))}
           {directItems.length === 0 && (
@@ -592,10 +614,15 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
                     onToggle={toggleActive}
                     isReorderMode={!!currentCategory && isReorderMode}
                     isDragging={draggedItem?.id === item.id}
-                    onDragStart={() => handleDragStart(item)}
+                    onDragStart={(e) => handleDragStart(e, item)}
                     onDragEnd={handleDragEnd}
                     onDragOver={handleDragOver}
+                    onDragEnter={handleDragEnter}
                     onDrop={() => handleDrop(item)}
+                    onMoveUp={() => handleMoveItem(item, 'up')}
+                    onMoveDown={() => handleMoveItem(item, 'down')}
+                    canMoveUp={directItems.findIndex((i) => i.id === item.id) > 0}
+                    canMoveDown={directItems.findIndex((i) => i.id === item.id) < directItems.length - 1}
                   />
                 ))}
               </div>
@@ -911,7 +938,12 @@ function ItemCard({
   onDragStart,
   onDragEnd,
   onDragOver,
+  onDragEnter,
   onDrop,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp = false,
+  canMoveDown = false,
 }: {
   item: InventoryItem;
   categories: MenuCategory[];
@@ -919,10 +951,15 @@ function ItemCard({
   onToggle: (item: InventoryItem) => void;
   isReorderMode: boolean;
   isDragging: boolean;
-  onDragStart: () => void;
+  onDragStart: (e: React.DragEvent) => void;
   onDragEnd: () => void;
   onDragOver: (e: React.DragEvent) => void;
+  onDragEnter: (e: React.DragEvent) => void;
   onDrop: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 }) {
   const cat = categories.find((c) => c.slug === item.category);
   const CatIcon = getIconComponent(cat?.icon_name || 'Package');
@@ -935,7 +972,8 @@ function ItemCard({
       onDragStart={isReorderMode ? onDragStart : undefined}
       onDragEnd={isReorderMode ? onDragEnd : undefined}
       onDragOver={isReorderMode ? onDragOver : undefined}
-      onDrop={isReorderMode ? (e) => { e.preventDefault(); onDrop(); } : undefined}
+      onDragEnter={isReorderMode ? onDragEnter : undefined}
+      onDrop={isReorderMode ? (e) => { e.preventDefault(); e.stopPropagation(); onDrop(); } : undefined}
       className={`group rounded-[16px] sm:rounded-[22px] p-3 sm:p-5 flex flex-col justify-between transition-all duration-200 border border-[var(--c-border)] hover:border-[var(--c-accent)]/30 bg-[var(--c-surface)] ${!item.is_active ? 'opacity-50' : ''} ${
         isReorderMode ? 'cursor-grab active:cursor-grabbing' : ''
       } ${isDragging ? 'opacity-50 scale-95' : ''}`}
@@ -950,8 +988,26 @@ function ItemCard({
         </div>
         <div className="flex items-center gap-0.5">
           {isReorderMode && (
-            <div className="mr-0.5 p-1 rounded-lg text-[var(--c-muted)]">
-              <GripVertical className="w-4 h-4" />
+            <div className="flex items-center gap-0.5 mr-0.5">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }}
+                disabled={!canMoveUp}
+                className="p-1 rounded-lg text-[var(--c-muted)] hover:text-[var(--c-text)] disabled:opacity-30 disabled:pointer-events-none active:scale-90"
+              >
+                <ChevronUp className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
+                disabled={!canMoveDown}
+                className="p-1 rounded-lg text-[var(--c-muted)] hover:text-[var(--c-text)] disabled:opacity-30 disabled:pointer-events-none active:scale-90"
+              >
+                <ChevronDown className="w-4 h-4" />
+              </button>
+              <div className="p-1 rounded-lg text-[var(--c-muted)]">
+                <GripVertical className="w-4 h-4" />
+              </div>
             </div>
           )}
           <div className="relative">
