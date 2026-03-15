@@ -387,11 +387,16 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const hideNav = useHideNav();
   const openChecks = usePOSStore((s) => s.openChecks);
 
-  const [exitingCheck, setExitingCheck] = useState<Check | null>(() => {
-    const check = usePOSStore.getState().recentlyDeletedCheck;
-    if (check) usePOSStore.setState({ recentlyDeletedCheck: null });
-    return check;
-  });
+  const [exitingCheck, setExitingCheck] = useState<Check | null>(
+    () => usePOSStore.getState().recentlyDeletedCheck
+  );
+
+  useEffect(() => {
+    if (exitingCheck) {
+      usePOSStore.setState({ recentlyDeletedCheck: null });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (exitingCheck) {
