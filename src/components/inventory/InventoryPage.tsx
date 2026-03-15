@@ -42,7 +42,7 @@ const InventoryRow = React.memo(function InventoryRow({
         </div>
       </div>
       <div className="text-right shrink-0">
-        {item.track_stock !== false ? (
+        {!item.is_service && item.track_stock !== false ? (
           <>
             <p className={`text-base sm:text-lg font-bold ${isCritical ? 'text-[var(--c-danger)]' : 'text-[var(--c-text)]'}`}>
               {item.stock_quantity}
@@ -82,7 +82,7 @@ export function InventoryPage() {
   }, [loadItems]);
 
   const criticalItems = items.filter(
-    (i) => i.min_threshold > 0 && i.stock_quantity <= i.min_threshold
+    (i) => !i.is_service && i.track_stock !== false && i.min_threshold > 0 && i.stock_quantity <= i.min_threshold
   );
 
   const filtered = search
@@ -137,7 +137,7 @@ export function InventoryPage() {
         <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
             const item = filtered[virtualRow.index];
-            const isCritical = item.track_stock !== false && item.min_threshold > 0 && item.stock_quantity <= item.min_threshold;
+            const isCritical = !item.is_service && item.track_stock !== false && item.min_threshold > 0 && item.stock_quantity <= item.min_threshold;
             return (
               <div
                 key={item.id}

@@ -249,10 +249,10 @@ export function RefundsManager() {
       if (uniqueItemIds.length > 0) {
         const { data: freshItems } = await supabase
           .from('inventory')
-          .select('id, stock_quantity, track_stock')
+          .select('id, stock_quantity, track_stock, is_service')
           .in('id', uniqueItemIds);
         if (freshItems) {
-          const itemsToRestore = freshItems.filter((i) => i.track_stock !== false);
+          const itemsToRestore = freshItems.filter((i) => !i.is_service && i.track_stock !== false);
           if (itemsToRestore.length > 0) {
             const stockMap = new Map(itemsToRestore.map((i) => [i.id, i.stock_quantity as number]));
             await Promise.all(

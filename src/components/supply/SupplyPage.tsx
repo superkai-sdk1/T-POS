@@ -396,7 +396,7 @@ export function SupplyPage({ initialSupplyId }: SupplyPageProps) {
   const filteredInv = useMemo(() => {
     let list = inventory;
     if (itemSearch) list = list.filter((i) => i.name.toLowerCase().includes(itemSearch.toLowerCase()));
-    return list.filter((i) => i.track_stock !== false);
+    return list.filter((i) => !i.is_service && i.track_stock !== false);
   }, [inventory, itemSearch]);
   const alreadyAddedIds = new Set(draftItems.map((d) => d.item.id));
 

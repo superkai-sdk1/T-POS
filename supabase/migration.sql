@@ -53,6 +53,7 @@ create table inventory (
   name text not null,
   category text not null,
   price numeric not null default 0,
+  is_service boolean not null default false,
   track_stock boolean not null default true,
   stock_quantity numeric not null default 0,
   min_threshold numeric not null default 0,
@@ -938,15 +939,15 @@ insert into inventory (name, category, price, stock_quantity, min_threshold) val
   ('Кальян Soft', 'hookah', 700, 0, 0),
   ('Кальян без табака', 'hookah', 500, 0, 0);
 
--- Inventory: services
-insert into inventory (name, category, price, stock_quantity, min_threshold) values
-  ('Игровой вечер Резидент', 'services', 500, 0, 0),
-  ('Игровой вечер Студент', 'services', 300, 0, 0),
-  ('Игровой вечер Гость', 'services', 700, 0, 0),
-  ('Игровой вечер Одна игра', 'services', 150, 0, 0),
-  ('Кабинка', 'services', 200, 0, 0),
-  ('Ивент', 'services', 1000, 0, 0),
-  ('ШТРАФ', 'services', 100, 0, 0);
+-- Inventory: services (is_service=true, track_stock=false)
+insert into inventory (name, category, price, stock_quantity, min_threshold, is_service, track_stock) values
+  ('Игровой вечер Резидент', 'services', 500, 0, 0, true, false),
+  ('Игровой вечер Студент', 'services', 300, 0, 0, true, false),
+  ('Игровой вечер Гость', 'services', 700, 0, 0, true, false),
+  ('Игровой вечер Одна игра', 'services', 150, 0, 0, true, false),
+  ('Кабинка', 'services', 200, 0, 0, true, false),
+  ('Ивент', 'services', 1000, 0, 0, true, false),
+  ('ШТРАФ', 'services', 100, 0, 0, true, false);
 
 -- Staff PINs
 update profiles set pin = '0000' where nickname = 'Салим' and pin is null;

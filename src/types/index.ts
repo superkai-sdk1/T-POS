@@ -52,6 +52,7 @@ export interface InventoryItem {
   name: string;
   category: ItemCategory;
   price: number;
+  is_service?: boolean;
   track_stock: boolean;
   stock_quantity: number;
   min_threshold: number;

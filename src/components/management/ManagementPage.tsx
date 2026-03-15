@@ -276,7 +276,7 @@ function InventoryFull() {
   }, [loadItems]);
 
   const criticalItems = items.filter(
-    (i) => i.track_stock !== false && i.min_threshold > 0 && i.stock_quantity <= i.min_threshold
+    (i) => !i.is_service && i.track_stock !== false && i.min_threshold > 0 && i.stock_quantity <= i.min_threshold
   );
 
   const filteredItems = searchQuery.trim()
@@ -343,7 +343,7 @@ function InventoryFull() {
       ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
         {filteredItems.map((item) => {
-          const isService = item.track_stock === false;
+          const isService = item.is_service === true;
           const isLow = !isService && item.min_threshold > 0 && item.stock_quantity <= item.min_threshold;
           return (
             <div

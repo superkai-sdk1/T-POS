@@ -26,6 +26,7 @@ interface EditForm {
   name: string;
   price: string;
   category: string;
+  is_service: boolean;
   track_stock: boolean;
   min_threshold: string;
   is_active: boolean;
@@ -38,6 +39,7 @@ const emptyForm: EditForm = {
   name: '',
   price: '',
   category: '',
+  is_service: false,
   track_stock: true,
   min_threshold: '0',
   is_active: true,
@@ -156,11 +158,13 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
 
   const openEdit = (item: InventoryItem) => {
     setEditingItem(item);
+    const isService = item.is_service === true;
     setForm({
       name: item.name,
       price: String(item.price),
       category: item.category,
-      track_stock: item.track_stock !== false,
+      is_service: isService,
+      track_stock: isService ? false : (item.track_stock !== false),
       min_threshold: String(item.min_threshold),
       is_active: item.is_active,
       is_top: item.is_top ?? false,
@@ -203,8 +207,9 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
       name: form.name.trim(),
       price: Number(form.price),
       category: form.category,
-      track_stock: form.track_stock,
-      min_threshold: Number(form.min_threshold) || 0,
+      is_service: form.is_service,
+      track_stock: form.is_service ? false : form.track_stock,
+      min_threshold: form.is_service || !form.track_stock ? 0 : Number(form.min_threshold) || 0,
       is_active: form.is_active,
       is_top: form.is_top,
       image_url: form.image_url || null,
@@ -678,29 +683,58 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
               </div>
             </div>
 
-            {/* Учёт остатков (товар/услуга) */}
+            {/* Товар или услуга */}
             <div className="space-y-3">
               <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Тип позиции</label>
               <button
                 type="button"
-                onClick={() => updateField('track_stock', !form.track_stock)}
+                onClick={() => {
+                  const nextService = !form.is_service;
+                  setForm((prev) => ({ ...prev, is_service: nextService, track_stock: nextService ? false : true }));
+                }}
                 className={`w-full p-5 rounded-3xl flex items-center justify-between transition-all active:scale-[0.99] ${
-                  form.track_stock ? 'bg-sky-500/10 border border-sky-500/30' : 'bg-slate-900/30 border border-slate-800'
+                  !form.is_service ? 'bg-sky-500/10 border border-sky-500/30' : 'bg-slate-900/30 border border-slate-800'
                 }`}
               >
                 <div className="flex flex-col text-left">
-                  <span className={`text-sm font-bold ${form.track_stock ? 'text-sky-400' : 'text-white'}`}>
-                    {form.track_stock ? 'Товар (учёт остатков)' : 'Услуга (без остатков)'}
+                  <span className={`text-sm font-bold ${!form.is_service ? 'text-sky-400' : 'text-white'}`}>
+                    {form.is_service ? 'Услуга' : 'Товар'}
                   </span>
                   <span className="text-[10px] text-slate-500 font-medium">
-                    {form.track_stock ? 'Склад, поставки, ревизия' : 'Игровые вечера, аренда, мероприятия'}
+                    {form.is_service ? 'Игровые вечера, аренда, мероприятия — без остатков' : 'Склад, поставки, ревизия'}
                   </span>
                 </div>
-                <div className={`w-14 h-8 rounded-full relative transition-all duration-300 ${form.track_stock ? 'bg-sky-500' : 'bg-slate-800'}`}>
-                  <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${form.track_stock ? 'left-7' : 'left-1'}`} />
+                <div className={`w-14 h-8 rounded-full relative transition-all duration-300 ${!form.is_service ? 'bg-sky-500' : 'bg-slate-800'}`}>
+                  <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${!form.is_service ? 'left-7' : 'left-1'}`} />
                 </div>
               </button>
             </div>
+
+            {/* Учёт остатков (только для товаров) */}
+            {!form.is_service && (
+              <div className="space-y-3">
+                <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Учёт остатков на складе</label>
+                <button
+                  type="button"
+                  onClick={() => updateField('track_stock', !form.track_stock)}
+                  className={`w-full p-5 rounded-3xl flex items-center justify-between transition-all active:scale-[0.99] ${
+                    form.track_stock ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-slate-900/30 border border-slate-800'
+                  }`}
+                >
+                  <div className="flex flex-col text-left">
+                    <span className={`text-sm font-bold ${form.track_stock ? 'text-emerald-400' : 'text-white'}`}>
+                      {form.track_stock ? 'Включён' : 'Выключен'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-medium">
+                      {form.track_stock ? 'Списание при продаже, поставки, ревизия' : 'Напитки, кофе — без учёта остатков'}
+                    </span>
+                  </div>
+                  <div className={`w-14 h-8 rounded-full relative transition-all duration-300 ${form.track_stock ? 'bg-emerald-500' : 'bg-slate-800'}`}>
+                    <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${form.track_stock ? 'left-7' : 'left-1'}`} />
+                  </div>
+                </button>
+              </div>
+            )}
 
             {/* Мин. остаток и Теги */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -712,8 +746,8 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
                   onChange={(e) => updateField('min_threshold', e.target.value)}
                   placeholder="0 — не отслеживать"
                   min={0}
-                  disabled={!form.track_stock}
-                  className={`w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-3 px-5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all font-bold ${!form.track_stock ? 'opacity-50 cursor-not-allowed' : 'text-white'}`}
+                  disabled={form.is_service || !form.track_stock}
+                  className={`w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-3 px-5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all font-bold ${form.is_service || !form.track_stock ? 'opacity-50 cursor-not-allowed' : 'text-white'}`}
                 />
               </div>
               <div className="space-y-3">
@@ -971,7 +1005,11 @@ function ItemCard({
             <span className="text-[var(--c-muted)] text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">Цена</span>
             <span className="text-base sm:text-xl font-black text-[var(--c-accent)]">{item.price} ₽</span>
           </div>
-          {item.track_stock !== false ? (
+          {item.is_service ? (
+            <span className="text-[9px] sm:text-[10px] font-bold text-[var(--c-muted)] px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border border-[var(--c-border)]">
+              Услуга
+            </span>
+          ) : item.track_stock !== false ? (
             item.min_threshold > 0 ? (
               <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border ${
                 item.stock_quantity < item.min_threshold
@@ -987,7 +1025,7 @@ function ItemCard({
             )
           ) : (
             <span className="text-[9px] sm:text-[10px] font-bold text-[var(--c-muted)] px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border border-[var(--c-border)]">
-              Услуга
+              Без учёта
             </span>
           )}
         </div>

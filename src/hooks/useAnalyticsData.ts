@@ -20,7 +20,7 @@ interface CheckItemStat {
   check_id: string;
   quantity: number;
   price_at_time: number;
-  item: { name: string; category: string; price: number; track_stock?: boolean } | null;
+  item: { name: string; category: string; price: number; track_stock?: boolean; is_service?: boolean } | null;
 }
 
 export interface ProductStat {
@@ -28,6 +28,7 @@ export interface ProductStat {
   name: string;
   category: string;
   trackStock?: boolean;
+  isService?: boolean;
   qty: number;
   revenue: number;
   cost: number;
@@ -73,7 +74,7 @@ export function useAnalyticsData() {
     setIsLoading(true);
     const [checksRes, itemsRes, debtorsRes, suppliesRes, cashRes, costsRes, expensesRes, playersRes, adminsRes, refundsRes, refundItemsRes, salaryRes] = await Promise.all([
       supabase.from('checks').select('id, total_amount, payment_method, closed_at, player_id, staff_id, shift_id, player:profiles!checks_player_id_fkey(nickname), shift:shifts!checks_shift_id_fkey(evening_type)').eq('status', 'closed').order('closed_at', { ascending: false }),
-      supabase.from('check_items').select('item_id, check_id, quantity, price_at_time, item:inventory(name, category, price, track_stock)'),
+      supabase.from('check_items').select('item_id, check_id, quantity, price_at_time, item:inventory(name, category, price, track_stock, is_service)'),
       supabase.from('profiles').select('*').lt('balance', 0).order('balance', { ascending: true }),
       supabase.from('supplies').select('id, total_cost, created_at').order('created_at', { ascending: false }),
       supabase.from('cash_operations').select('id, type, amount, created_at').order('created_at', { ascending: false }),
@@ -306,6 +307,7 @@ export function useAnalyticsData() {
         map[ci.item_id] = {
           id: ci.item_id, name: ci.item.name, category: ci.item.category,
           trackStock: ci.item.track_stock !== false,
+          isService: ci.item.is_service === true,
           qty: 0, revenue: 0, cost: 0, profit: 0, abcGroup: 'C', buyers: new Set(),
         };
       }
