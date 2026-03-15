@@ -343,30 +343,33 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
       </div>
 
       {/* Header */}
-      <header className="sticky top-0 z-40 backdrop-blur-md bg-[var(--c-bg)]/80 border-b border-white/5 px-4 sm:px-5 pt-4 pb-4">
-        <div className="flex justify-between items-center mb-4">
+      <header className="sticky top-0 z-40 backdrop-blur-md bg-[var(--c-bg)]/80 border-b border-white/5 px-4 sm:px-5 pt-3 pb-3">
+        <div className="flex justify-between items-center mb-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-[var(--c-text)] flex items-center gap-2">
-              Отчёты <span className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.6)]" />
+            <h1 className="text-lg sm:text-xl font-black tracking-tight text-[var(--c-text)] flex items-center gap-1.5">
+              Отчёты <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
             </h1>
-            <p className="text-[9px] uppercase tracking-[0.2em] text-[var(--c-muted)] font-bold">Analytics</p>
+            <p className="text-[8px] uppercase tracking-[0.15em] text-[var(--c-muted)] font-bold">Analytics</p>
           </div>
           <button
             onClick={() => { hapticFeedback('light'); setReportMode(reportMode === 'period' ? 'shift' : 'period'); }}
-            className="w-11 h-11 flex items-center justify-center bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all active:scale-90 tap"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all active:scale-90 tap"
           >
-            <Layers className="w-4 h-4 text-[var(--c-muted)]" />
+            <Layers className="w-3.5 h-3.5 text-[var(--c-muted)] shrink-0" />
+            <span className="text-[10px] font-bold text-[var(--c-muted)] uppercase tracking-wider">
+              {reportMode === 'period' ? 'Период' : 'Смена'}
+            </span>
           </button>
         </div>
 
         {/* Time filter / Shift selector */}
         {reportMode === 'period' ? (
-          <div className="flex gap-2 overflow-x-auto scrollbar-none py-1">
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-none py-0.5">
             {(['today', 'yesterday', 'week', 'month', 'quarter'] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => { hapticFeedback('light'); setPreset(p); setShowFilters(false); }}
-                className={`px-4 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all shrink-0 border ${
+                className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all shrink-0 border ${
                   preset === p ? 'bg-white/15 border-white/20 text-[var(--c-text)] shadow-lg backdrop-blur-xl' : 'bg-white/5 border-transparent text-[var(--c-muted)] hover:text-[var(--c-hint)]'
                 }`}
               >
@@ -375,40 +378,40 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
             ))}
             <button
               onClick={() => { hapticFeedback('light'); setShowFilters(!showFilters); }}
-              className={`px-3 py-2.5 rounded-2xl shrink-0 border transition-all ${showFilters ? 'bg-white/15 border-white/20' : 'bg-white/5 border-white/10'}`}
+              className={`px-2.5 py-1.5 rounded-xl shrink-0 border transition-all ${showFilters ? 'bg-white/15 border-white/20' : 'bg-white/5 border-white/10'}`}
             >
-              <Filter className="w-4 h-4 text-[var(--c-muted)]" />
+              <Filter className="w-3.5 h-3.5 text-[var(--c-muted)]" />
             </button>
           </div>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => { hapticFeedback('light'); shiftIdx < shifts.length - 1 && setSelectedShiftId(shifts[shiftIdx + 1]?.id ?? null); }}
               disabled={shiftIdx >= shifts.length - 1}
-              className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-30 active:scale-95"
+              className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center disabled:opacity-30 active:scale-95"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3.5 h-3.5" />
             </button>
             <div className="flex-1 text-center min-w-0">
-              <p className="text-sm font-bold text-[var(--c-text)] truncate">
+              <p className="text-xs font-bold text-[var(--c-text)] truncate">
                 {selectedShift ? (selectedShift.evening_type ? EVENING_TYPE_LABELS[selectedShift.evening_type] : 'Без вечера') : '—'}
               </p>
-              <p className="text-[10px] text-[var(--c-muted)]">
+              <p className="text-[9px] text-[var(--c-muted)]">
                 {selectedShift ? new Date(selectedShift.opened_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : ''}
               </p>
             </div>
             <button
               onClick={() => { hapticFeedback('light'); shiftIdx > 0 && setSelectedShiftId(shifts[shiftIdx - 1]?.id ?? null); }}
               disabled={shiftIdx <= 0}
-              className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center disabled:opacity-30 active:scale-95"
+              className="w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center disabled:opacity-30 active:scale-95"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
 
         {showFilters && reportMode === 'period' && (
-          <div className="mt-3 p-3 rounded-2xl bg-white/5 border border-white/10 space-y-2 animate-fade-in">
+          <div className="mt-2 p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-2 animate-fade-in">
             <div className="flex gap-2">
               <input
                 type="date"
@@ -435,7 +438,7 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
         )}
 
         {/* Nav tabs */}
-        <div className="flex items-center gap-1 bg-black/40 p-1.5 rounded-2xl border border-white/5 mt-4 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-0.5 bg-black/40 p-1 rounded-xl border border-white/5 mt-3 overflow-x-auto scrollbar-none">
           {[
             { id: 'overview' as TabId, label: 'Обзор', icon: TrendingUp },
             { id: 'checks' as TabId, label: 'Чеки', icon: Receipt },
@@ -445,18 +448,18 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
             <button
               key={t.id}
               onClick={() => { hapticFeedback('light'); setTab(t.id); }}
-              className={`px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shrink-0 ${
+              className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all shrink-0 ${
                 tab === t.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' : 'text-[var(--c-muted)] hover:text-[var(--c-hint)]'
               }`}
             >
-              <t.icon size={14} />
+              <t.icon size={12} />
               {t.label}
             </button>
           ))}
         </div>
       </header>
 
-      <main className="px-4 sm:px-5 py-6 max-w-2xl mx-auto relative z-10">
+      <main className="px-4 sm:px-5 py-4 pb-28 lg:pb-6 max-w-2xl mx-auto relative z-10">
         {tab === 'overview' && (
           <OverviewTab
             revenue={currentRevenue}
@@ -560,26 +563,26 @@ function OverviewTab({
   ].filter((p) => (paymentBreakdown[p.key]?.amount ?? 0) > 0);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 animate-fade-in">
       {/* Revenue hero */}
       <div className="relative">
-        <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-[2.5rem] blur opacity-20" />
-        <div className="relative p-6 sm:p-7 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] overflow-hidden">
-          <div className="flex justify-between items-start mb-6">
+        <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-violet-600 rounded-2xl blur opacity-20" />
+        <div className="relative p-4 sm:p-5 bg-white/5 backdrop-blur-3xl border border-white/10 rounded-2xl overflow-hidden">
+          <div className="flex justify-between items-start mb-4">
             <div>
-              <p className="text-[var(--c-muted)] text-[10px] font-black uppercase tracking-widest mb-1">Выручка за {activeTimeframe}</p>
-              <h2 className="text-4xl sm:text-5xl font-black text-[var(--c-text)] tracking-tighter tabular-nums">{fmtCur(revenue)}</h2>
+              <p className="text-[var(--c-muted)] text-[9px] font-black uppercase tracking-widest mb-0.5">Выручка за {activeTimeframe}</p>
+              <h2 className="text-3xl sm:text-4xl font-black text-[var(--c-text)] tracking-tighter tabular-nums">{fmtCur(revenue)}</h2>
             </div>
             {revenueDelta !== undefined && revenueDelta !== 0 && (
-              <div className="bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-2xl">
-                <div className="text-emerald-400 font-black text-sm flex items-center gap-1">
-                  <ArrowUpRight size={14} /> {revenueDelta > 0 ? '+' : ''}{revenueDelta}%
+              <div className="bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-xl">
+                <div className="text-emerald-400 font-black text-xs flex items-center gap-0.5">
+                  <ArrowUpRight size={12} /> {revenueDelta > 0 ? '+' : ''}{revenueDelta}%
                 </div>
               </div>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-6 mb-6">
+          <div className="grid grid-cols-2 gap-3 border-t border-white/5 pt-4 mb-4">
             {forecastRevenue != null && (
               <div className="space-y-1">
                 <div className="flex items-center gap-1 text-[var(--c-muted)]">
@@ -598,60 +601,60 @@ function OverviewTab({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-black/30 p-3 rounded-2xl border border-white/5 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Receipt size={14} className="text-[var(--c-muted)]" />
-                <span className="text-[var(--c-muted)] text-[10px] font-black uppercase tracking-widest">Чеков</span>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-black/30 p-2.5 rounded-xl border border-white/5 flex justify-between items-center">
+              <div className="flex items-center gap-1.5">
+                <Receipt size={12} className="text-[var(--c-muted)]" />
+                <span className="text-[var(--c-muted)] text-[9px] font-black uppercase tracking-widest">Чеков</span>
               </div>
-              <span className="text-sm font-bold text-[var(--c-text)]">{checks.length}</span>
+              <span className="text-xs font-bold text-[var(--c-text)]">{checks.length}</span>
             </div>
-            <div className="bg-black/30 p-3 rounded-2xl border border-white/5 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Activity size={14} className="text-[var(--c-muted)]" />
-                <span className="text-[var(--c-muted)] text-[10px] font-black uppercase tracking-widest">Средний</span>
+            <div className="bg-black/30 p-2.5 rounded-xl border border-white/5 flex justify-between items-center">
+              <div className="flex items-center gap-1.5">
+                <Activity size={12} className="text-[var(--c-muted)]" />
+                <span className="text-[var(--c-muted)] text-[9px] font-black uppercase tracking-widest">Средний</span>
               </div>
-              <span className="text-sm font-bold text-[var(--c-text)]">{fmtCur(avgCheck)}</span>
+              <span className="text-xs font-bold text-[var(--c-text)]">{fmtCur(avgCheck)}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Debt & LTV */}
-      <div className="flex gap-3">
+      <div className="flex gap-2">
         {(totalDebt ?? 0) > 0 && (
           <button
             onClick={() => onNavigate('management:debtors')}
-            className="flex-1 p-5 bg-rose-500/5 backdrop-blur-xl border border-rose-500/10 rounded-3xl flex flex-col justify-center text-left tap"
+            className="flex-1 p-4 bg-rose-500/5 backdrop-blur-xl border border-rose-500/10 rounded-2xl flex flex-col justify-center text-left tap"
           >
-            <p className="text-[var(--c-muted)] text-[9px] font-black uppercase mb-1 tracking-wider">Общий долг</p>
-            <p className="text-xl font-black text-rose-500 tabular-nums">{fmtCur(totalDebt ?? 0)}</p>
+            <p className="text-[var(--c-muted)] text-[8px] font-black uppercase mb-0.5 tracking-wider">Общий долг</p>
+            <p className="text-lg font-black text-rose-500 tabular-nums">{fmtCur(totalDebt ?? 0)}</p>
           </button>
         )}
-        <div className="flex-1 p-5 bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl flex flex-col justify-center">
-          <p className="text-[var(--c-muted)] text-[9px] font-black uppercase mb-1 tracking-wider">Всего LTV</p>
-          <p className="text-xl font-black text-indigo-400 tabular-nums">{fmtCur(totalLTV ?? 0)}</p>
+        <div className="flex-1 p-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl flex flex-col justify-center">
+          <p className="text-[var(--c-muted)] text-[8px] font-black uppercase mb-0.5 tracking-wider">Всего LTV</p>
+          <p className="text-lg font-black text-indigo-400 tabular-nums">{fmtCur(totalLTV ?? 0)}</p>
         </div>
       </div>
 
       {/* Payment methods */}
-      <section className="space-y-3">
-        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--c-muted)] flex items-center gap-2 px-2">
-          <PieChart size={14} className="text-indigo-400" /> Способы оплаты
+      <section className="space-y-2">
+        <h3 className="text-[9px] font-black uppercase tracking-[0.15em] text-[var(--c-muted)] flex items-center gap-1.5 px-1">
+          <PieChart size={12} className="text-indigo-400" /> Способы оплаты
         </h3>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           {payments.map((p) => {
             const amt = paymentBreakdown[p.key]?.amount ?? 0;
             const Icon = p.icon;
             return (
-              <div key={p.key} className="p-4 bg-white/[0.03] backdrop-blur-md border border-white/5 rounded-2xl flex flex-col gap-2">
+              <div key={p.key} className="p-3 bg-white/[0.03] backdrop-blur-md border border-white/5 rounded-xl flex flex-col gap-1.5">
                 <div className="flex justify-between items-center">
-                  <div className={`p-1.5 rounded-lg bg-white/5 ${p.color}`}>
-                    <Icon size={14} />
+                  <div className={`p-1 rounded-lg bg-white/5 ${p.color}`}>
+                    <Icon size={12} />
                   </div>
-                  <span className={`text-sm font-black tabular-nums ${p.color}`}>{fmtCur(amt)}</span>
+                  <span className={`text-xs font-black tabular-nums ${p.color}`}>{fmtCur(amt)}</span>
                 </div>
-                <p className="text-[10px] font-bold text-[var(--c-muted)] uppercase tracking-widest">{p.label}</p>
+                <p className="text-[9px] font-bold text-[var(--c-muted)] uppercase tracking-widest">{p.label}</p>
               </div>
             );
           })}
@@ -659,16 +662,16 @@ function OverviewTab({
       </section>
 
       {/* Recent checks */}
-      <section className="space-y-4">
-        <div className="flex justify-between items-end px-2">
-          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--c-muted)] flex items-center gap-2">
-            <Clock size={14} className="text-indigo-400" /> Последние операции
+      <section className="space-y-2">
+        <div className="flex justify-between items-end px-1">
+          <h3 className="text-[9px] font-black uppercase tracking-[0.15em] text-[var(--c-muted)] flex items-center gap-1.5">
+            <Clock size={12} className="text-indigo-400" /> Последние операции
           </h3>
-          <button onClick={onShowAllChecks} className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest hover:underline tap">
+          <button onClick={onShowAllChecks} className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest hover:underline tap">
             Смотреть все
           </button>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {checks.slice(0, 5).map((c) => {
             const refundAmt = refundsByCheckId?.get(c.id) ?? 0;
             const nick = (c as { player_nickname?: string }).player_nickname || (c as { player?: { nickname: string } }).player?.nickname || 'Гость';
@@ -678,20 +681,20 @@ function OverviewTab({
               <button
                 key={c.id}
                 onClick={() => onCheckClick(c.id)}
-                className="w-full p-4 bg-white/[0.02] hover:bg-white/[0.05] backdrop-blur-md border border-white/5 rounded-2xl flex justify-between items-center transition-all tap"
+                className="w-full p-3 bg-white/[0.02] hover:bg-white/[0.05] backdrop-blur-md border border-white/5 rounded-xl flex justify-between items-center transition-all tap"
               >
-                <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center ${pm === 'debt' ? 'text-rose-400' : 'text-[var(--c-muted)]'}`}>
-                    <Receipt size={18} />
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-lg bg-white/5 flex items-center justify-center ${pm === 'debt' ? 'text-rose-400' : 'text-[var(--c-muted)]'}`}>
+                    <Receipt size={16} />
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-bold text-[var(--c-text)]">{nick}</p>
-                    <p className="text-[9px] text-[var(--c-muted)] font-bold uppercase tracking-wider">
+                    <p className="text-xs font-bold text-[var(--c-text)]">{nick}</p>
+                    <p className="text-[8px] text-[var(--c-muted)] font-bold uppercase tracking-wider">
                       {new Date(c.closed_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} • {statusLabel}
                     </p>
                   </div>
                 </div>
-                <p className="text-base font-black text-[var(--c-text)] tabular-nums">{fmtCur(refundAmt > 0 ? c.total_amount - refundAmt : c.total_amount)}</p>
+                <p className="text-sm font-black text-[var(--c-text)] tabular-nums">{fmtCur(refundAmt > 0 ? c.total_amount - refundAmt : c.total_amount)}</p>
               </button>
             );
           })}
