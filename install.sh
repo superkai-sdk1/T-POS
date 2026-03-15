@@ -474,6 +474,9 @@ if [ "$MODE" = "update" ]; then
   echo -e "${BOLD}${YELLOW}▸ Обновление T-POS${NC}"
   echo ""
 
+  DOMAIN=""
+  WALLET_DOMAIN=""
+
   cd "$INSTALL_DIR"
 
   # ── Save hash of current script before pull ──
