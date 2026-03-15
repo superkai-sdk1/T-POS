@@ -734,7 +734,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     );
   }
 
-  if (showCloseShiftView) {
+  if (showCloseShiftView && !showNewCheck) {
     const expectedCash = cashInRegister ?? (closeAnalytics ? (activeShift.cash_start + (closeAnalytics.paymentBreakdown['cash']?.amount ?? 0)) : 0);
     const revenue = closeAnalytics?.totalRevenue ?? 0;
     const actual = Number(cashEnd) || 0;

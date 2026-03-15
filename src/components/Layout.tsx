@@ -212,6 +212,8 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
   const [analytics, setAnalytics] = useState<Awaited<ReturnType<typeof getShiftAnalytics>>>(null);
   const [showAnalytics, setShowAnalytics] = useState(false);
 
+  const openChecks = usePOSStore((s) => s.openChecks);
+
   // Pull-to-refresh global state needed in Layout
   const [isRefreshing, setIsRefreshing] = useState(false);
   const scrollRef = useRef<HTMLElement>(null);
@@ -551,7 +553,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
           const showBack = storeHeader?.showBack ?? false;
           const onBack = storeHeader?.onBack;
           const rightContent = storeHeader?.rightContent;
-          const shiftStatus = activeTab === 'pos' && !storeHeader?.subtitle ? posShiftStatus : undefined;
+          const shiftStatus = activeTab === 'pos' && !storeHeader?.subtitle && openChecks.length === 0 ? posShiftStatus : undefined;
           return (
             <AppHeader
               title={title}
