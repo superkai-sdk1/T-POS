@@ -3,6 +3,7 @@ import {
   Receipt, ShoppingBag, Users, CreditCard,
   TrendingUp, RotateCcw,
 } from 'lucide-react';
+import { EVENING_TYPE_LABELS } from '@/types';
 import { useState, useMemo } from 'react';
 import { useSwipe } from '@/hooks/useSwipe';
 import type { ShiftAnalytics as SA } from '@/store/shift';
@@ -58,8 +59,12 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
   const maxItemRev = analytics.itemsSold.length > 0 ? analytics.itemsSold[0].revenue : 1;
   const maxPlayerTotal = analytics.playerBreakdown.length > 0 ? analytics.playerBreakdown[0].total : 1;
 
+  const eveningLabel = analytics.shift.evening_type && analytics.shift.evening_type in EVENING_TYPE_LABELS
+    ? EVENING_TYPE_LABELS[analytics.shift.evening_type as keyof typeof EVENING_TYPE_LABELS]
+    : 'Без вечера';
+
   return (
-    <Drawer open={open} onClose={onClose} title="Итоги смены">
+    <Drawer open={open} onClose={onClose} title={eveningLabel}>
       <div className="space-y-3" {...swipe}>
         {/* Tab nav */}
         <div className="flex gap-1 p-0.5 rounded-lg bg-[var(--c-surface)]">
@@ -86,7 +91,7 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                 <p className="text-[10px] text-[var(--c-muted)] font-semibold mb-0.5">Выручка</p>
                 <p className="text-2xl font-black text-[var(--c-text)] tabular-nums">{fmtCur(analytics.totalRevenue)}</p>
                 <p className="text-[10px] text-[var(--c-muted)] mt-0.5">
-                  {new Date(analytics.shift.opened_at).toLocaleDateString('ru-RU')} · {shiftDuration}
+                  {eveningLabel} · {new Date(analytics.shift.opened_at).toLocaleDateString('ru-RU')} · {shiftDuration}
                 </p>
               </div>
 

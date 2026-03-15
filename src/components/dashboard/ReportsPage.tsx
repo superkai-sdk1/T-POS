@@ -13,6 +13,7 @@ import {
   Crown, Search, Filter, X, RotateCcw,
 } from 'lucide-react';
 import type { Shift } from '@/types';
+import { EVENING_TYPE_LABELS } from '@/types';
 
 type TabId = 'overview' | 'checks' | 'tops' | 'ai';
 
@@ -153,6 +154,15 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
   const shiftIdx = useMemo(() => shifts.findIndex((s) => s.id === selectedShiftId), [shifts, selectedShiftId]);
   const selectedShift = shiftIdx >= 0 ? shifts[shiftIdx] : null;
 
+  const eveningTypeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const s of shifts) {
+      const key = s.evening_type || 'no_event';
+      counts[key] = (counts[key] || 0) + 1;
+    }
+    return counts;
+  }, [shifts]);
+
   const authUser = useAuthStore((s) => s.user);
   const preset = useAnalyticsStore((s) => s.preset);
   const avgCheck = currentChecks.length > 0 ? Math.round(currentRevenue / currentChecks.length) : 0;
@@ -262,8 +272,9 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
           </button>
         </div>
 
-        {reportMode === 'shift' && selectedShift && (
-          <div className="flex-1 flex items-center gap-2">
+        {reportMode === 'shift' && shifts.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <div className="flex-1 flex items-center gap-2">
             <button
               onClick={() => shiftIdx < shifts.length - 1 && setSelectedShiftId(shifts[shiftIdx + 1]?.id ?? null)}
               disabled={shiftIdx >= shifts.length - 1}
@@ -273,10 +284,19 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
             </button>
             <div className="flex-1 text-center min-w-0">
               <p className="text-sm font-bold text-[var(--c-text)] truncate">
-                {new Date(selectedShift.opened_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
-                {selectedShift.closed_at && ` — ${new Date(selectedShift.closed_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}`}
+                {selectedShift ? (selectedShift.evening_type ? EVENING_TYPE_LABELS[selectedShift.evening_type] : 'Без вечера') : '—'}
               </p>
-              <p className="text-[10px] text-[var(--c-hint)]">{shifts.length} смен</p>
+              <p className="text-[10px] text-[var(--c-hint)]">
+                {selectedShift ? (
+                  <>
+                    {new Date(selectedShift.opened_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                    {selectedShift.closed_at && ` — ${new Date(selectedShift.closed_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}`}
+                    {' · '}{shifts.length} смен
+                  </>
+                ) : (
+                  `${shifts.length} смен`
+                )}
+              </p>
             </div>
             <button
               onClick={() => shiftIdx > 0 && setSelectedShiftId(shifts[shiftIdx - 1]?.id ?? null)}
@@ -285,6 +305,25 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
             >
               <ChevronRight className="w-4 h-4" />
             </button>
+          </div>
+            <div className="flex flex-wrap gap-1.5 justify-center">
+              {(Object.keys(EVENING_TYPE_LABELS) as (keyof typeof EVENING_TYPE_LABELS)[]).map((key) => {
+                const count = eveningTypeCounts[key] ?? 0;
+                if (count === 0) return null;
+                return (
+                  <span
+                    key={key}
+                    className={`text-[10px] px-2 py-0.5 rounded-lg font-semibold ${
+                      selectedShift?.evening_type === key
+                        ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)]'
+                        : 'bg-[var(--c-surface)] text-[var(--c-hint)]'
+                    }`}
+                  >
+                    {EVENING_TYPE_LABELS[key]}: {count}
+                  </span>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

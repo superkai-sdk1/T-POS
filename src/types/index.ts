@@ -123,11 +123,21 @@ export interface Transaction {
 
 export type ShiftStatus = 'open' | 'closed';
 
+export type EveningType = 'sport_mafia' | 'city_mafia' | 'kids_mafia' | 'no_event';
+
+export const EVENING_TYPE_LABELS: Record<EveningType, string> = {
+  sport_mafia: 'Спортивная мафия',
+  city_mafia: 'Городская мафия',
+  kids_mafia: 'Детская мафия',
+  no_event: 'Без вечера',
+};
+
 export interface Shift {
   id: string;
   opened_by: string;
   closed_by: string | null;
   status: ShiftStatus;
+  evening_type: EveningType | null;
   cash_start: number;
   cash_end: number | null;
   note: string | null;

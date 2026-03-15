@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { Shift, ShiftCheckDetail } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from './auth';
-import { notifyShiftOpen, notifyShiftClose, notifyBirthday, type CloseReportCheck, type CloseReportRefund } from '@/lib/notifications';
+import { notifyShiftOpen, notifyShiftClose, notifyBirthday, type CloseReportCheck } from '@/lib/notifications';
 
 interface ShiftState {
   activeShift: Shift | null;
@@ -13,7 +13,7 @@ interface ShiftState {
 
   loadActiveShift: () => Promise<void>;
   loadCashBalance: () => Promise<void>;
-  openShift: (cashStart: number) => Promise<Shift | null>;
+  openShift: (cashStart: number, eveningType: import('@/types').EveningType) => Promise<Shift | null>;
   closeShift: (cashEnd: number, note?: string) => Promise<boolean>;
   getShiftAnalytics: (shiftId: string) => Promise<ShiftAnalytics | null>;
   dismissBirthdays: () => void;
@@ -136,13 +136,13 @@ export const useShiftStore = create<ShiftState>()(
       },
 
 
-      openShift: async (cashStart: number) => {
+      openShift: async (cashStart: number, eveningType: import('@/types').EveningType) => {
         const user = useAuthStore.getState().user;
         if (!user) return null;
 
         const { data, error } = await supabase
           .from('shifts')
-          .insert({ opened_by: user.id, cash_start: cashStart })
+          .insert({ opened_by: user.id, cash_start: cashStart, evening_type: eveningType })
           .select()
           .single();
 
@@ -150,7 +150,7 @@ export const useShiftStore = create<ShiftState>()(
         const shift = data as Shift;
         set({ activeShift: shift });
 
-        notifyShiftOpen(user.nickname, cashStart);
+        notifyShiftOpen(user.nickname, cashStart, eveningType);
 
         const now = new Date();
         const month = now.getMonth() + 1;
@@ -206,80 +206,24 @@ export const useShiftStore = create<ShiftState>()(
 
         const { data: closedChecks } = await supabase
           .from('checks')
-          .select('id, total_amount, payment_method, player:profiles!checks_player_id_fkey(nickname)')
+          .select('total_amount, payment_method, player:profiles!checks_player_id_fkey(nickname)')
           .eq('shift_id', activeShift.id)
           .eq('status', 'closed')
           .order('closed_at');
 
-        const checkById = new Map<string, CloseReportCheck>();
         const checks: CloseReportCheck[] = (closedChecks || []).map((c) => {
           const player = Array.isArray(c.player) ? c.player[0] : c.player;
-          const check: CloseReportCheck = {
+          return {
             playerNickname: (player as { nickname: string } | null)?.nickname || 'Гость',
             totalAmount: c.total_amount as number,
             paymentMethod: c.payment_method as string | null,
           };
-          checkById.set(c.id, check);
-          return check;
         });
-
-        // Fetch split payment details for split-paid checks
-        const splitCheckIds = (closedChecks || [])
-          .filter((c) => c.payment_method === 'split')
-          .map((c) => c.id);
-        if (splitCheckIds.length > 0) {
-          const { data: splitPaymentsData } = await supabase
-            .from('check_payments')
-            .select('check_id, method, amount')
-            .in('check_id', splitCheckIds);
-          if (splitPaymentsData) {
-            const paymentsByCheck = new Map<string, { method: string; amount: number }[]>();
-            for (const sp of splitPaymentsData) {
-              const list = paymentsByCheck.get(sp.check_id) || [];
-              list.push({ method: sp.method, amount: sp.amount });
-              paymentsByCheck.set(sp.check_id, list);
-            }
-            for (const [checkId, payments] of paymentsByCheck) {
-              const check = checkById.get(checkId);
-              if (check) {
-                check.splitPayments = payments;
-              }
-            }
-          }
-        }
-
-        // Fetch refund details
         const { data: shiftRefunds } = await supabase
           .from('refunds')
-          .select('total_amount, refund_type, check_id, created_by, creator:profiles!refunds_created_by_fkey(nickname)')
+          .select('total_amount')
           .eq('shift_id', activeShift.id);
         const totalRefunded = (shiftRefunds || []).reduce((s, r) => s + (r.total_amount || 0), 0);
-
-        // Build refund entries with player nicknames
-        const refunds: CloseReportRefund[] = [];
-        if (shiftRefunds && shiftRefunds.length > 0) {
-          const refundCheckIds = [...new Set(shiftRefunds.map((r) => r.check_id))];
-          const { data: refundChecks } = await supabase
-            .from('checks')
-            .select('id, player:profiles!checks_player_id_fkey(nickname), guest_names')
-            .in('id', refundCheckIds);
-          const checkMap = new Map(
-            (refundChecks || []).map((c) => {
-              const p = Array.isArray(c.player) ? c.player[0] : c.player;
-              return [c.id, (p as { nickname: string } | null)?.nickname || c.guest_names || 'Гость'];
-            })
-          );
-          for (const r of shiftRefunds) {
-            const creator = Array.isArray(r.creator) ? r.creator[0] : r.creator;
-            refunds.push({
-              playerNickname: checkMap.get(r.check_id) || 'Гость',
-              amount: r.total_amount,
-              refundType: r.refund_type as 'full' | 'partial',
-              creatorNickname: (creator as { nickname: string } | null)?.nickname,
-            });
-          }
-        }
-
         const totalRevenue = checks.reduce((s, c) => s + c.totalAmount, 0) - totalRefunded;
 
         notifyShiftClose({
@@ -288,9 +232,7 @@ export const useShiftStore = create<ShiftState>()(
           closedAt,
           cashEnd,
           totalRevenue,
-          totalRefunded,
           checks,
-          refunds,
         });
 
         set({ activeShift: null });
@@ -325,9 +267,9 @@ export const useShiftStore = create<ShiftState>()(
         const checkIds = (checksData || []).map((c) => c.id);
         const { data: allItemsData } = checkIds.length > 0
           ? await supabase
-            .from('check_items')
-            .select('check_id, item_id, quantity, price_at_time, item:inventory(name, category)')
-            .in('check_id', checkIds)
+              .from('check_items')
+              .select('check_id, item_id, quantity, price_at_time, item:inventory(name, category)')
+              .in('check_id', checkIds)
           : { data: [] };
 
         const itemsByCheckId = new Map<string, typeof allItemsData>();

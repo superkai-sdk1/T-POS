@@ -16,6 +16,7 @@ import {
   PlayCircle, StopCircle, AlertTriangle, X, Plus,
   PanelLeftClose, PanelLeftOpen, RefreshCw, CreditCard, UserPlus,
 } from 'lucide-react';
+import { EVENING_TYPE_LABELS, type EveningType } from '@/types';
 
 const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
 
@@ -102,6 +103,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
   const [showOpen, setShowOpen] = useState(false);
   const [showClose, setShowClose] = useState(false);
   const [cashStart, setCashStart] = useState('');
+  const [eveningType, setEveningType] = useState<EveningType>('no_event');
   const [cashEnd, setCashEnd] = useState('');
   const [closeNote, setCloseNote] = useState('');
   const [closeError, setCloseError] = useState('');
@@ -166,7 +168,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
 
   const handleOpen = async () => {
     hapticFeedback('medium');
-    const shift = await openShift(Number(cashStart) || 0);
+    const shift = await openShift(Number(cashStart) || 0, eveningType);
     if (shift) {
       hapticNotification('success');
       setShowOpen(false);
@@ -334,6 +336,12 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
                   <div className={`space-y-2 ${isSidebarCollapsed ? 'flex flex-col items-center' : ''}`}>
                     {!isSidebarCollapsed && (
                       <>
+                        {activeShift.evening_type && (
+                          <div className="flex justify-between items-center text-[13px]">
+                            <span className="text-white/40">Вечер</span>
+                            <span className="text-white font-semibold">{EVENING_TYPE_LABELS[activeShift.evening_type]}</span>
+                          </div>
+                        )}
                         <div className="flex justify-between items-center text-[13px]">
                           <span className="text-white/40">Статус</span>
                           <span className="text-[var(--c-success)] font-semibold flex items-center gap-1">
@@ -595,6 +603,25 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
       {/* ── Shift Modals ── */}
       <Drawer open={showOpen} onClose={() => setShowOpen(false)} title="Открыть смену" size="sm">
         <div className="space-y-3">
+          <div>
+            <label className="block text-[11px] font-semibold text-[var(--c-muted)] uppercase tracking-wider mb-1.5">Тип вечера</label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {(Object.keys(EVENING_TYPE_LABELS) as EveningType[]).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => { hapticFeedback('light'); setEveningType(key); }}
+                  className={`px-3 py-2.5 rounded-xl text-left text-[12px] font-semibold transition-all border ${
+                    eveningType === key
+                      ? 'bg-[var(--c-accent)]/15 border-[var(--c-accent)]/40 text-[var(--c-accent)]'
+                      : 'bg-[var(--c-surface)] border-[var(--c-border)] text-[var(--c-hint)] hover:border-[var(--c-border-hover)]'
+                  }`}
+                >
+                  {EVENING_TYPE_LABELS[key]}
+                </button>
+              ))}
+            </div>
+          </div>
           <Input
             type="number"
             label="Наличные в кассе"
