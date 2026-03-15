@@ -1,4 +1,20 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  rectSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -95,7 +111,6 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
   const [catForm, setCatForm] = useState<CategoryForm>(emptyCategoryForm);
   const [deleteCatTarget, setDeleteCatTarget] = useState<MenuCategory | null>(null);
   const [isReorderMode, setIsReorderMode] = useState(false);
-  const [draggedItem, setDraggedItem] = useState<InventoryItem | null>(null);
 
   const loadItems = useCallback(async () => {
     const { data } = await supabase
@@ -278,43 +293,41 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
     loadItems();
   };
 
-  const handleDragStart = (e: React.DragEvent, item: InventoryItem) => {
-    setDraggedItem(item);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', item.id);
-    e.dataTransfer.setData('application/json', JSON.stringify({ id: item.id }));
-    hapticFeedback('light');
-  };
-
-  const handleDragEnd = () => {
-    setDraggedItem(null);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
-  const handleDrop = (targetItem: InventoryItem) => {
-    if (!draggedItem || draggedItem.id === targetItem.id || draggedItem.category !== targetItem.category) return;
-    handleSwapItems(draggedItem, targetItem);
-    setDraggedItem(null);
-  };
-
   const handleMoveItem = (item: InventoryItem, direction: 'up' | 'down') => {
     const idx = directItems.findIndex((i) => i.id === item.id);
     if (idx < 0) return;
     const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
     if (targetIdx < 0 || targetIdx >= directItems.length) return;
     const target = directItems[targetIdx];
+    hapticFeedback('light');
     handleSwapItems(item, target);
   };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    })
+  );
+
+  const handleDndDragEnd = useCallback(
+    async (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      const oldIndex = directItems.findIndex((i) => i.id === active.id);
+      const newIndex = directItems.findIndex((i) => i.id === over.id);
+      if (oldIndex < 0 || newIndex < 0) return;
+      hapticFeedback('light');
+      const reordered = arrayMove(directItems, oldIndex, newIndex);
+      await Promise.all(
+        reordered.map((item, idx) =>
+          supabase.from('inventory').update({ sort_order: idx * 10 }).eq('id', item.id)
+        )
+      );
+      loadItems();
+    },
+    [directItems, loadItems]
+  );
 
   // ============ CATEGORY EDITOR ============
 
@@ -590,7 +603,7 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
                 </div>
               )}
               {currentCategory && (
-                <div className="flex items-center justify-end mt-2 mb-1">
+                <div className="flex flex-col items-end gap-1 mt-2 mb-1">
                   <button
                     onClick={() => { setIsReorderMode((v) => !v); hapticFeedback('light'); }}
                     className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 border ${
@@ -602,29 +615,59 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
                     <Pencil className="w-3.5 h-3.5" />
                     {isReorderMode ? 'Готово' : 'Порядок'}
                   </button>
+                  {isReorderMode && (
+                    <span className="text-[10px] text-[var(--c-muted)]">Удерживайте карточку и перетаскивайте</span>
+                  )}
                 </div>
               )}
               <div className="grid gap-2.5 sm:gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {directItems.map((item) => (
-                  <ItemCard
-                    key={item.id}
-                    item={item}
-                    categories={categories}
-                    onEdit={openEdit}
-                    onToggle={toggleActive}
-                    isReorderMode={!!currentCategory && isReorderMode}
-                    isDragging={draggedItem?.id === item.id}
-                    onDragStart={(e) => handleDragStart(e, item)}
-                    onDragEnd={handleDragEnd}
-                    onDragOver={handleDragOver}
-                    onDragEnter={handleDragEnter}
-                    onDrop={() => handleDrop(item)}
-                    onMoveUp={() => handleMoveItem(item, 'up')}
-                    onMoveDown={() => handleMoveItem(item, 'down')}
-                    canMoveUp={directItems.findIndex((i) => i.id === item.id) > 0}
-                    canMoveDown={directItems.findIndex((i) => i.id === item.id) < directItems.length - 1}
-                  />
-                ))}
+                {!!currentCategory && isReorderMode ? (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDndDragEnd}
+                  >
+                    <SortableContext
+                      items={directItems.map((i) => i.id)}
+                      strategy={rectSortingStrategy}
+                    >
+                      {directItems.map((item) => (
+                        <SortableItemCard
+                          key={item.id}
+                          item={item}
+                          categories={categories}
+                          onEdit={openEdit}
+                          onToggle={toggleActive}
+                          onMoveUp={() => handleMoveItem(item, 'up')}
+                          onMoveDown={() => handleMoveItem(item, 'down')}
+                          canMoveUp={directItems.findIndex((i) => i.id === item.id) > 0}
+                          canMoveDown={directItems.findIndex((i) => i.id === item.id) < directItems.length - 1}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                ) : (
+                  directItems.map((item) => (
+                    <ItemCard
+                      key={item.id}
+                      item={item}
+                      categories={categories}
+                      onEdit={openEdit}
+                      onToggle={toggleActive}
+                      isReorderMode={false}
+                      isDragging={false}
+                      onDragStart={() => {}}
+                      onDragEnd={() => {}}
+                      onDragOver={() => {}}
+                      onDragEnter={() => {}}
+                      onDrop={() => {}}
+                      onMoveUp={() => {}}
+                      onMoveDown={() => {}}
+                      canMoveUp={false}
+                      canMoveDown={false}
+                    />
+                  ))
+                )}
               </div>
             </>
           )}
@@ -926,6 +969,59 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
   );
 }
 
+// ============ SORTABLE ITEM CARD (touch + mouse drag on iOS/desktop) ============
+
+function SortableItemCard({
+  item,
+  categories,
+  onEdit,
+  onToggle,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
+}: {
+  item: InventoryItem;
+  categories: MenuCategory[];
+  onEdit: (item: InventoryItem) => void;
+  onToggle: (item: InventoryItem) => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: item.id,
+  });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    touchAction: 'manipulation' as const,
+    WebkitTouchCallout: 'none' as const,
+  };
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-manipulation cursor-grab active:cursor-grabbing select-none">
+      <ItemCard
+        item={item}
+        categories={categories}
+        onEdit={onEdit}
+        onToggle={onToggle}
+        isReorderMode={true}
+        isDragging={isDragging}
+        onDragStart={() => {}}
+        onDragEnd={() => {}}
+        onDragOver={() => {}}
+        onDragEnter={() => {}}
+        onDrop={() => {}}
+        onMoveUp={onMoveUp}
+        onMoveDown={onMoveDown}
+        canMoveUp={canMoveUp}
+        canMoveDown={canMoveDown}
+      />
+    </div>
+  );
+}
+
 // ============ ITEM CARD ============
 
 function ItemCard({
@@ -988,24 +1084,24 @@ function ItemCard({
         </div>
         <div className="flex items-center gap-0.5">
           {isReorderMode && (
-            <div className="flex items-center gap-0.5 mr-0.5">
+            <div className="flex items-center gap-1 sm:gap-0.5 mr-0.5">
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }}
+                onClick={(e) => { e.stopPropagation(); e.preventDefault(); onMoveUp?.(); }}
                 disabled={!canMoveUp}
-                className="p-1 rounded-lg text-[var(--c-muted)] hover:text-[var(--c-text)] disabled:opacity-30 disabled:pointer-events-none active:scale-90"
+                className="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 p-2 sm:p-1 flex items-center justify-center rounded-xl sm:rounded-lg text-[var(--c-muted)] hover:text-[var(--c-text)] active:bg-[var(--c-surface)] disabled:opacity-30 disabled:pointer-events-none active:scale-95 touch-manipulation"
               >
-                <ChevronUp className="w-4 h-4" />
+                <ChevronUp className="w-5 h-5 sm:w-4 sm:h-4" />
               </button>
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
+                onClick={(e) => { e.stopPropagation(); e.preventDefault(); onMoveDown?.(); }}
                 disabled={!canMoveDown}
-                className="p-1 rounded-lg text-[var(--c-muted)] hover:text-[var(--c-text)] disabled:opacity-30 disabled:pointer-events-none active:scale-90"
+                className="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 p-2 sm:p-1 flex items-center justify-center rounded-xl sm:rounded-lg text-[var(--c-muted)] hover:text-[var(--c-text)] active:bg-[var(--c-surface)] disabled:opacity-30 disabled:pointer-events-none active:scale-95 touch-manipulation"
               >
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="w-5 h-5 sm:w-4 sm:h-4" />
               </button>
-              <div className="p-1 rounded-lg text-[var(--c-muted)]">
+              <div className="hidden sm:block p-1 rounded-lg text-[var(--c-muted)]" title="Перетащите на десктопе">
                 <GripVertical className="w-4 h-4" />
               </div>
             </div>
