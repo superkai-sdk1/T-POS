@@ -53,9 +53,10 @@ const tierColor: Record<string, string> = {
 };
 
 const EVENING_LABELS: Record<string, string> = {
-  sport_mafia: 'Спортивная мафия',
-  city_mafia: 'Городская мафия',
-  kids_mafia: 'Детская мафия',
+  sport_mafia: 'Спортивная',
+  city_mafia: 'Городская',
+  kids_mafia: 'Детская',
+  board_games: 'Настолки',
   no_event: 'Без вечера',
 };
 

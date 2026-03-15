@@ -682,7 +682,7 @@ const server = http.createServer((req, res) => {
             const shifts = Array.isArray(shiftsRaw) ? shiftsRaw : [];
             shiftMap = Object.fromEntries(shifts.map((s) => [s.id, s.evening_type || 'no_event']));
           }
-          const eveningLabels = { sport_mafia: 'Спортивная мафия', city_mafia: 'Городская мафия', kids_mafia: 'Детская мафия', no_event: 'Без вечера' };
+          const eveningLabels = { sport_mafia: 'Спортивная', city_mafia: 'Городская', kids_mafia: 'Детская', board_games: 'Настолки', no_event: 'Без вечера' };
           const eveningCounts = {};
           for (const c of clientChecks) {
             const et = shiftMap[c.shift_id] || 'no_event';

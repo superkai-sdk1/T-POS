@@ -124,12 +124,13 @@ export interface Transaction {
 
 export type ShiftStatus = 'open' | 'closed';
 
-export type EveningType = 'sport_mafia' | 'city_mafia' | 'kids_mafia' | 'no_event';
+export type EveningType = 'sport_mafia' | 'city_mafia' | 'kids_mafia' | 'board_games' | 'no_event';
 
 export const EVENING_TYPE_LABELS: Record<EveningType, string> = {
-  sport_mafia: 'Спортивная мафия',
-  city_mafia: 'Городская мафия',
-  kids_mafia: 'Детская мафия',
+  sport_mafia: 'Спортивная',
+  city_mafia: 'Городская',
+  kids_mafia: 'Детская',
+  board_games: 'Настолки',
   no_event: 'Без вечера',
 };
 

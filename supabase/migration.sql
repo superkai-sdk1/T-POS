@@ -73,7 +73,7 @@ create table shifts (
   opened_by uuid not null references profiles(id),
   closed_by uuid references profiles(id),
   status text not null default 'open' check (status in ('open', 'closed')),
-  evening_type text check (evening_type is null or evening_type in ('sport_mafia', 'city_mafia', 'kids_mafia', 'no_event')),
+  evening_type text check (evening_type is null or evening_type in ('sport_mafia', 'city_mafia', 'kids_mafia', 'board_games', 'no_event')),
   cash_start numeric not null default 0,
   cash_end numeric,
   note text,
