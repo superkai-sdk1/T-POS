@@ -103,7 +103,7 @@ export function RevisionPage({ initialRevisionId }: RevisionPageProps) {
     return () => removeHideReason('revision-creating');
   }, [isCreating, addHideReason, removeHideReason]);
 
-  const physicalItems = items.filter((i) => i.min_threshold > 0 || i.stock_quantity > 0);
+  const physicalItems = items.filter((i) => i.track_stock !== false && (i.min_threshold > 0 || i.stock_quantity > 0));
 
   const filteredPhysical = createSearch
     ? physicalItems.filter((i) => i.name.toLowerCase().includes(createSearch.toLowerCase()))

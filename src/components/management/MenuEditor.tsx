@@ -26,6 +26,7 @@ interface EditForm {
   name: string;
   price: string;
   category: string;
+  track_stock: boolean;
   min_threshold: string;
   is_active: boolean;
   is_top: boolean;
@@ -37,6 +38,7 @@ const emptyForm: EditForm = {
   name: '',
   price: '',
   category: '',
+  track_stock: true,
   min_threshold: '0',
   is_active: true,
   is_top: false,
@@ -158,6 +160,7 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
       name: item.name,
       price: String(item.price),
       category: item.category,
+      track_stock: item.track_stock !== false,
       min_threshold: String(item.min_threshold),
       is_active: item.is_active,
       is_top: item.is_top ?? false,
@@ -200,6 +203,7 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
       name: form.name.trim(),
       price: Number(form.price),
       category: form.category,
+      track_stock: form.track_stock,
       min_threshold: Number(form.min_threshold) || 0,
       is_active: form.is_active,
       is_top: form.is_top,
@@ -674,6 +678,30 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
               </div>
             </div>
 
+            {/* Учёт остатков (товар/услуга) */}
+            <div className="space-y-3">
+              <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Тип позиции</label>
+              <button
+                type="button"
+                onClick={() => updateField('track_stock', !form.track_stock)}
+                className={`w-full p-5 rounded-3xl flex items-center justify-between transition-all active:scale-[0.99] ${
+                  form.track_stock ? 'bg-sky-500/10 border border-sky-500/30' : 'bg-slate-900/30 border border-slate-800'
+                }`}
+              >
+                <div className="flex flex-col text-left">
+                  <span className={`text-sm font-bold ${form.track_stock ? 'text-sky-400' : 'text-white'}`}>
+                    {form.track_stock ? 'Товар (учёт остатков)' : 'Услуга (без остатков)'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-medium">
+                    {form.track_stock ? 'Склад, поставки, ревизия' : 'Игровые вечера, аренда, мероприятия'}
+                  </span>
+                </div>
+                <div className={`w-14 h-8 rounded-full relative transition-all duration-300 ${form.track_stock ? 'bg-sky-500' : 'bg-slate-800'}`}>
+                  <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${form.track_stock ? 'left-7' : 'left-1'}`} />
+                </div>
+              </button>
+            </div>
+
             {/* Мин. остаток и Теги */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-3">
@@ -684,7 +712,8 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
                   onChange={(e) => updateField('min_threshold', e.target.value)}
                   placeholder="0 — не отслеживать"
                   min={0}
-                  className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-3 px-5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all text-white font-bold"
+                  disabled={!form.track_stock}
+                  className={`w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-3 px-5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all font-bold ${!form.track_stock ? 'opacity-50 cursor-not-allowed' : 'text-white'}`}
                 />
               </div>
               <div className="space-y-3">
@@ -942,13 +971,23 @@ function ItemCard({
             <span className="text-[var(--c-muted)] text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">Цена</span>
             <span className="text-base sm:text-xl font-black text-[var(--c-accent)]">{item.price} ₽</span>
           </div>
-          {item.min_threshold > 0 && (
-            <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border ${
-              item.stock_quantity < item.min_threshold
-                ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-            }`}>
-              {item.stock_quantity} шт.
+          {item.track_stock !== false ? (
+            item.min_threshold > 0 ? (
+              <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-widest px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border ${
+                item.stock_quantity < item.min_threshold
+                  ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+              }`}>
+                {item.stock_quantity} шт.
+              </span>
+            ) : (
+              <span className="text-[9px] sm:text-[10px] font-bold text-[var(--c-muted)] px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border border-[var(--c-border)]">
+                {item.stock_quantity} шт.
+              </span>
+            )
+          ) : (
+            <span className="text-[9px] sm:text-[10px] font-bold text-[var(--c-muted)] px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl border border-[var(--c-border)]">
+              Услуга
             </span>
           )}
         </div>

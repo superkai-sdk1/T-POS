@@ -18,13 +18,14 @@ interface CheckItemStat {
   check_id: string;
   quantity: number;
   price_at_time: number;
-  item: { name: string; category: string; price: number } | null;
+  item: { name: string; category: string; price: number; track_stock?: boolean } | null;
 }
 
 export interface ProductStat {
   id: string;
   name: string;
   category: string;
+  trackStock?: boolean;
   qty: number;
   revenue: number;
   cost: number;
@@ -69,7 +70,7 @@ export function useAnalyticsData() {
     setIsLoading(true);
     const [checksRes, itemsRes, debtorsRes, suppliesRes, cashRes, costsRes, expensesRes, playersRes, adminsRes, refundsRes, refundItemsRes, salaryRes] = await Promise.all([
       supabase.from('checks').select('id, total_amount, payment_method, closed_at, player_id, staff_id, player:profiles!checks_player_id_fkey(nickname)').eq('status', 'closed').order('closed_at', { ascending: false }),
-      supabase.from('check_items').select('item_id, check_id, quantity, price_at_time, item:inventory(name, category, price)'),
+      supabase.from('check_items').select('item_id, check_id, quantity, price_at_time, item:inventory(name, category, price, track_stock)'),
       supabase.from('profiles').select('*').lt('balance', 0).order('balance', { ascending: true }),
       supabase.from('supplies').select('id, total_cost, created_at').order('created_at', { ascending: false }),
       supabase.from('cash_operations').select('id, type, amount, created_at').order('created_at', { ascending: false }),
@@ -300,6 +301,7 @@ export function useAnalyticsData() {
       if (!map[ci.item_id]) {
         map[ci.item_id] = {
           id: ci.item_id, name: ci.item.name, category: ci.item.category,
+          trackStock: ci.item.track_stock !== false,
           qty: 0, revenue: 0, cost: 0, profit: 0, abcGroup: 'C', buyers: new Set(),
         };
       }

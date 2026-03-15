@@ -249,20 +249,23 @@ export function RefundsManager() {
       if (uniqueItemIds.length > 0) {
         const { data: freshItems } = await supabase
           .from('inventory')
-          .select('id, stock_quantity')
+          .select('id, stock_quantity, track_stock')
           .in('id', uniqueItemIds);
         if (freshItems) {
-          const stockMap = new Map(freshItems.map((i) => [i.id, i.stock_quantity as number]));
-          await Promise.all(
-            uniqueItemIds.map((itemId) => {
-              const current = stockMap.get(itemId) ?? 0;
-              const returnQty = qtyByItemId.get(itemId) ?? 0;
-              return supabase
-                .from('inventory')
-                .update({ stock_quantity: current + returnQty })
-                .eq('id', itemId);
-            })
-          );
+          const itemsToRestore = freshItems.filter((i) => i.track_stock !== false);
+          if (itemsToRestore.length > 0) {
+            const stockMap = new Map(itemsToRestore.map((i) => [i.id, i.stock_quantity as number]));
+            await Promise.all(
+              itemsToRestore.map((item) => {
+                const current = stockMap.get(item.id) ?? 0;
+                const returnQty = qtyByItemId.get(item.id) ?? 0;
+                return supabase
+                  .from('inventory')
+                  .update({ stock_quantity: current + returnQty })
+                  .eq('id', item.id);
+              })
+            );
+          }
         }
       }
 

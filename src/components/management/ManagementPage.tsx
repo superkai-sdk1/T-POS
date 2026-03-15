@@ -276,7 +276,7 @@ function InventoryFull() {
   }, [loadItems]);
 
   const criticalItems = items.filter(
-    (i) => i.min_threshold > 0 && i.stock_quantity <= i.min_threshold
+    (i) => i.track_stock !== false && i.min_threshold > 0 && i.stock_quantity <= i.min_threshold
   );
 
   const filteredItems = searchQuery.trim()
@@ -343,7 +343,8 @@ function InventoryFull() {
       ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
         {filteredItems.map((item) => {
-          const isLow = item.min_threshold > 0 && item.stock_quantity <= item.min_threshold;
+          const isService = item.track_stock === false;
+          const isLow = !isService && item.min_threshold > 0 && item.stock_quantity <= item.min_threshold;
           return (
             <div
               key={item.id}
@@ -367,16 +368,22 @@ function InventoryFull() {
               </div>
 
               <div className="flex flex-col items-end shrink-0">
-                <div className="flex items-baseline gap-0.5">
-                  <span className={`text-xl sm:text-2xl font-black ${isLow ? 'text-rose-500' : 'text-[var(--c-text)]'}`}>
-                    {item.stock_quantity}
-                  </span>
-                  <span className="text-slate-500 text-[10px] font-bold uppercase">шт</span>
-                </div>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-[9px] text-slate-500 font-bold uppercase">Мин:</span>
-                  <span className="text-[9px] text-slate-400 font-black bg-slate-800 px-1 py-0.5 rounded">{item.min_threshold}</span>
-                </div>
+                {isService ? (
+                  <span className="text-[10px] text-slate-500 font-bold uppercase">—</span>
+                ) : (
+                  <>
+                    <div className="flex items-baseline gap-0.5">
+                      <span className={`text-xl sm:text-2xl font-black ${isLow ? 'text-rose-500' : 'text-[var(--c-text)]'}`}>
+                        {item.stock_quantity}
+                      </span>
+                      <span className="text-slate-500 text-[10px] font-bold uppercase">шт</span>
+                    </div>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[9px] text-slate-500 font-bold uppercase">Мин:</span>
+                      <span className="text-[9px] text-slate-400 font-black bg-slate-800 px-1 py-0.5 rounded">{item.min_threshold}</span>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">

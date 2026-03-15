@@ -42,13 +42,19 @@ const InventoryRow = React.memo(function InventoryRow({
         </div>
       </div>
       <div className="text-right shrink-0">
-        <p className={`text-base sm:text-lg font-bold ${isCritical ? 'text-[var(--c-danger)]' : 'text-[var(--c-text)]'}`}>
-          {item.stock_quantity}
-        </p>
-        {item.min_threshold > 0 && (
-          <p className="text-[10px] sm:text-xs text-[var(--c-hint)]">
-            мин: {item.min_threshold}
-          </p>
+        {item.track_stock !== false ? (
+          <>
+            <p className={`text-base sm:text-lg font-bold ${isCritical ? 'text-[var(--c-danger)]' : 'text-[var(--c-text)]'}`}>
+              {item.stock_quantity}
+            </p>
+            {item.min_threshold > 0 && (
+              <p className="text-[10px] sm:text-xs text-[var(--c-hint)]">
+                мин: {item.min_threshold}
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-[10px] sm:text-xs text-[var(--c-muted)] font-medium">—</p>
         )}
       </div>
     </div>
@@ -131,7 +137,7 @@ export function InventoryPage() {
         <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative', width: '100%' }}>
           {rowVirtualizer.getVirtualItems().map((virtualRow) => {
             const item = filtered[virtualRow.index];
-            const isCritical = item.min_threshold > 0 && item.stock_quantity <= item.min_threshold;
+            const isCritical = item.track_stock !== false && item.min_threshold > 0 && item.stock_quantity <= item.min_threshold;
             return (
               <div
                 key={item.id}

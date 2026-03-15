@@ -53,6 +53,7 @@ create table inventory (
   name text not null,
   category text not null,
   price numeric not null default 0,
+  track_stock boolean not null default true,
   stock_quantity numeric not null default 0,
   min_threshold numeric not null default 0,
   is_active boolean not null default true,
@@ -520,14 +521,14 @@ returns void as $$
 begin
   update inventory
   set stock_quantity = stock_quantity - p_qty
-  where id = p_item_id;
+  where id = p_item_id and track_stock = true;
 end;
 $$ language plpgsql;
 
 create or replace function increment_stock(p_item_id uuid, p_qty numeric)
 returns void as $$
 begin
-  update inventory set stock_quantity = stock_quantity + p_qty where id = p_item_id;
+  update inventory set stock_quantity = stock_quantity + p_qty where id = p_item_id and track_stock = true;
 end;
 $$ language plpgsql;
 

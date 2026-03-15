@@ -28,6 +28,7 @@ const categoryLabels: Record<string, string> = {
 export const ProductsModule = memo(function ProductsModule({ products, allCheckItems, checks, refundQtyByCheckItem }: Props) {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
   const [abcFilter, setAbcFilter] = useState<'all' | 'A' | 'B' | 'C'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'products' | 'services'>('all');
   const addHideReason = useLayoutStore((s) => s.addHideReason);
   const removeHideReason = useLayoutStore((s) => s.removeHideReason);
   useEffect(() => {
@@ -41,10 +42,12 @@ export const ProductsModule = memo(function ProductsModule({ products, allCheckI
 
   const filtered = useMemo(() => {
     let list = products;
+    if (typeFilter === 'products') list = list.filter((p) => p.trackStock !== false);
+    if (typeFilter === 'services') list = list.filter((p) => p.trackStock === false);
     if (abcFilter !== 'all') list = list.filter((p) => p.abcGroup === abcFilter);
     if (search) list = list.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
     return list;
-  }, [products, abcFilter, search]);
+  }, [products, typeFilter, abcFilter, search]);
 
   const totalRevenue = products.reduce((s, p) => s + p.revenue, 0);
   const abcGroups = useMemo(() => ({
@@ -59,8 +62,39 @@ export const ProductsModule = memo(function ProductsModule({ products, allCheckI
     return <ProductDrilldown product={product} allCheckItems={allCheckItems} checks={checks} refundQtyByCheckItem={refundQtyByCheckItem} onBack={() => setSelectedProduct(null)} />;
   }
 
+  const productsCount = products.filter((p) => p.trackStock !== false).length;
+  const servicesCount = products.filter((p) => p.trackStock === false).length;
+
   return (
     <div className="space-y-4">
+      {/* Type filter: Товары / Услуги */}
+      <div className="flex gap-1.5 p-1 rounded-xl bg-[var(--c-surface)]">
+        <button
+          onClick={() => setTypeFilter('all')}
+          className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+            typeFilter === 'all' ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)]' : 'text-[var(--c-hint)]'
+          }`}
+        >
+          Все ({products.length})
+        </button>
+        <button
+          onClick={() => setTypeFilter('products')}
+          className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+            typeFilter === 'products' ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)]' : 'text-[var(--c-hint)]'
+          }`}
+        >
+          Товары ({productsCount})
+        </button>
+        <button
+          onClick={() => setTypeFilter('services')}
+          className={`flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-all ${
+            typeFilter === 'services' ? 'bg-[var(--c-accent)] text-[var(--c-accent-text)]' : 'text-[var(--c-hint)]'
+          }`}
+        >
+          Услуги ({servicesCount})
+        </button>
+      </div>
+
       {/* ABC summary */}
       <div className="grid grid-cols-3 gap-2">
         {(['A', 'B', 'C'] as const).map((g) => {
@@ -135,7 +169,7 @@ export const ProductsModule = memo(function ProductsModule({ products, allCheckI
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-sm font-bold text-[var(--c-text)] tabular-nums">{fmtCur(item.revenue)}</p>
-                  <p className="text-[10px] text-[var(--c-hint)]">{item.qty} шт</p>
+                  <p className="text-[10px] text-[var(--c-hint)]">{item.qty} {item.trackStock === false ? 'раз' : 'шт'}</p>
                 </div>
                 <ChevronRight className="w-3 h-3 text-[var(--c-muted)] shrink-0" />
               </button>
@@ -213,7 +247,7 @@ function ProductDrilldown({ product, allCheckItems, checks, refundQtyByCheckItem
         {[
           { label: 'Выручка', value: fmtCur(product.revenue), color: 'text-[var(--c-success)]' },
           { label: 'Прибыль', value: fmtCur(product.profit), color: product.profit >= 0 ? 'text-[var(--c-success)]' : 'text-[var(--c-danger)]' },
-          { label: 'Продано', value: `${product.qty} шт`, color: 'text-[var(--c-info)]' },
+          { label: 'Продано', value: `${product.qty} ${product.trackStock === false ? 'раз' : 'шт'}`, color: 'text-[var(--c-info)]' },
           { label: 'Покупателей', value: `${product.buyers.size}`, color: 'text-[var(--c-accent)]' },
         ].map((s) => (
           <div key={s.label} className="p-2.5 rounded-xl card text-center">

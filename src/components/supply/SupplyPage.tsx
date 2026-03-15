@@ -393,9 +393,11 @@ export function SupplyPage({ initialSupplyId }: SupplyPageProps) {
 
   // --- RENDERING HELPERS ---
 
-  const filteredInv = itemSearch
-    ? inventory.filter((i) => i.name.toLowerCase().includes(itemSearch.toLowerCase()))
-    : inventory;
+  const filteredInv = useMemo(() => {
+    let list = inventory;
+    if (itemSearch) list = list.filter((i) => i.name.toLowerCase().includes(itemSearch.toLowerCase()));
+    return list.filter((i) => i.track_stock !== false);
+  }, [inventory, itemSearch]);
   const alreadyAddedIds = new Set(draftItems.map((d) => d.item.id));
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
