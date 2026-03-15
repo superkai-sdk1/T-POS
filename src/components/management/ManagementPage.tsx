@@ -24,7 +24,7 @@ import { SalaryManager } from './SalaryManager';
 import { NotificationsManager } from './NotificationsManager';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
 import { hapticFeedback } from '@/lib/telegram';
-import { useLayoutStore, useHideNav, useHasHideReason } from '@/store/layout';
+import { useLayoutStore, useHideNav, useHasHideReason, useSetHeader } from '@/store/layout';
 import { TabSwitcher } from '@/components/ui/TabSwitcher';
 
 type Screen = 'menu' | 'inventory' | 'supplies' | 'revision' | 'debtors' | 'staff' | 'bonus' | 'cash' | 'menuEditor' | 'clients' | 'discounts' | 'refunds' | 'modifiers' | 'certificates' | 'expenses' | 'salary' | 'notifications' | 'about';
@@ -107,17 +107,7 @@ export function ManagementPage({ initialScreen, initialSupplyId, initialRevision
   const goToMenu = useCallback(() => startTransition(() => setScreen('menu')), []);
   const addHideReason = useLayoutStore((s) => s.addHideReason);
   const removeHideReason = useLayoutStore((s) => s.removeHideReason);
-
-  useEffect(() => {
-    if (screen !== 'menu') addHideReason('management-deep');
-    else removeHideReason('management-deep');
-    return () => removeHideReason('management-deep');
-  }, [screen, addHideReason, removeHideReason]);
-
-  const { swipeIndicatorStyle, overlayStyle } = useSwipeBack({
-    onBack: goToMenu,
-    enabled: screen !== 'menu' && isActive,
-  });
+  const setHeader = useSetHeader();
 
   const screenLabel =
     screen === 'menuEditor' && menuSubTab === 'modifiers' ? 'Модификаторы' :
@@ -125,6 +115,39 @@ export function ManagementPage({ initialScreen, initialSupplyId, initialRevision
     menuItems.find((m) => m.id === screen)?.label || 'Управление';
 
   const screenMeta = menuItems.find((m) => m.id === screen);
+
+  useEffect(() => {
+    if (screen !== 'menu') addHideReason('management-deep');
+    else removeHideReason('management-deep');
+    return () => removeHideReason('management-deep');
+  }, [screen, addHideReason, removeHideReason]);
+
+  useEffect(() => {
+    if (screen === 'menu') {
+      setHeader(null);
+      return;
+    }
+    setHeader({
+      title: screenLabel,
+      subtitle: screenMeta?.desc,
+      showBack: true,
+      onBack: goToMenu,
+      rightContent: screen === 'inventory' ? (
+        <button
+          onClick={() => { hapticFeedback('light'); setInventorySubTab('revision'); }}
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-white/40 hover:text-white/70 active:scale-90 tap"
+        >
+          <History className="w-4 h-4" />
+        </button>
+      ) : undefined,
+    });
+    return () => setHeader(null);
+  }, [screen, screenLabel, screenMeta?.desc, goToMenu, setHeader, inventorySubTab]);
+
+  const { swipeIndicatorStyle, overlayStyle } = useSwipeBack({
+    onBack: goToMenu,
+    enabled: screen !== 'menu' && isActive,
+  });
 
   const hideNav = useHideNav();
   const supplyCreating = useHasHideReason('supply-creating');
@@ -166,33 +189,6 @@ export function ManagementPage({ initialScreen, initialSupplyId, initialRevision
     <div className="space-y-4 sm:space-y-6">
       {swipeIndicatorStyle && <div style={swipeIndicatorStyle} />}
       {overlayStyle && <div style={overlayStyle} />}
-      {showManagementHeader && (
-        <div className="flex items-center justify-between gap-2.5 sm:gap-3">
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <button
-              onClick={() => setScreen('menu')}
-              className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] flex items-center justify-center active:scale-95 transition-all shrink-0"
-            >
-              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--c-hint)]" />
-            </button>
-            <div className="min-w-0">
-              <h1 className="text-lg sm:text-2xl font-extrabold tracking-tight text-[var(--c-text)] leading-tight truncate">{screenLabel}</h1>
-              {screenMeta && (
-                <p className="text-[var(--c-muted)] text-[11px] sm:text-sm mt-0.5 font-medium truncate">{screenMeta.desc}</p>
-              )}
-            </div>
-          </div>
-          {screen === 'inventory' && (
-            <button
-              onClick={() => { hapticFeedback('light'); setInventorySubTab('revision'); }}
-              className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[var(--c-surface)] border border-[var(--c-border)] flex items-center justify-center active:scale-95 transition-all shrink-0 text-[var(--c-hint)] hover:text-[var(--c-text)]"
-            >
-              <History className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
-          )}
-        </div>
-      )}
-
       {screen === 'menuEditor' && (
         <div className="space-y-4">
           {menuSubTab === 'positions' && (

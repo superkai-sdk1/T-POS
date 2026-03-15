@@ -1,8 +1,8 @@
 import { memo, useState, useEffect } from 'react';
-import { useLayoutStore } from '@/store/layout';
+import { useLayoutStore, useSetHeader } from '@/store/layout';
 import {
   ArrowUpRight, ArrowDownRight, Wallet, PieChart, AlertCircle,
-  TrendingUp, ChevronRight, ArrowLeft, Receipt,
+  TrendingUp, ChevronRight, Receipt,
 } from 'lucide-react';
 import type { Profile } from '@/types';
 
@@ -50,12 +50,30 @@ export const FinanceModule = memo(function FinanceModule(props: Props) {
   const [detail, setDetail] = useState<DetailView>(null);
   const addHideReason = useLayoutStore((s) => s.addHideReason);
   const removeHideReason = useLayoutStore((s) => s.removeHideReason);
+  const setHeader = useSetHeader();
   useEffect(() => {
     if (detail) {
       addHideReason('dashboard-detail');
       return () => removeHideReason('dashboard-detail');
     }
   }, [detail, addHideReason, removeHideReason]);
+  const detailTitles: Record<NonNullable<DetailView>, string> = {
+    pnl: 'P&L Отчёт',
+    expenses: 'Детализация расходов',
+    revenue: 'Доход за период',
+    payments: 'Оплаты',
+    debtors: `Дебиторка · ${fmtCur(totalDebt)}`,
+  };
+  useEffect(() => {
+    if (detail) {
+      setHeader({
+        title: detailTitles[detail],
+        showBack: true,
+        onBack: () => setDetail(null),
+      });
+      return () => setHeader(null);
+    }
+  }, [detail, setHeader, totalDebt]);
   const revDelta = delta(revenue, prevRevenue);
   const totalPayments = paymentBreakdown.cash + paymentBreakdown.card + paymentBreakdown.debt + paymentBreakdown.bonus + paymentBreakdown.deposit;
 
@@ -225,19 +243,9 @@ function DetailScreen(props: Props & { detail: DetailView; onBack: () => void })
     </div>
   );
 
-  const header = (title: string) => (
-    <div className="flex items-center gap-2 mb-4">
-      <button onClick={onBack} className="w-9 h-9 rounded-xl bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform shrink-0">
-        <ArrowLeft className="w-4 h-4 text-[var(--c-text)]" />
-      </button>
-      <h2 className="text-lg font-bold text-[var(--c-text)]">{title}</h2>
-    </div>
-  );
-
   if (detail === 'pnl') {
     return (
       <div className="space-y-4 animate-fade-in-up">
-        {header('P&L Отчёт')}
         <div className={`p-4 rounded-xl text-center ${netProfit >= 0 ? 'bg-[var(--c-success-bg)] border border-[var(--c-success-border)]' : 'bg-[var(--c-danger-bg)] border border-[var(--c-danger-border)]'}`}>
           <p className="text-[11px] text-[var(--c-hint)] mb-1">Чистая прибыль</p>
           <p className={`text-3xl font-black tabular-nums ${netProfit >= 0 ? 'text-[var(--c-success)]' : 'text-[var(--c-danger)]'}`}>{fmtCur(netProfit)}</p>
@@ -266,7 +274,6 @@ function DetailScreen(props: Props & { detail: DetailView; onBack: () => void })
   if (detail === 'expenses') {
     return (
       <div className="space-y-4 animate-fade-in-up">
-        {header('Детализация расходов')}
         <div className="p-4 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-danger-border)] text-center">
           <p className="text-3xl font-black text-[var(--c-danger)] tabular-nums">{fmtCur(totalExpenses)}</p>
           <p className="text-[11px] text-[var(--c-hint)] mt-1">расходы за период</p>
@@ -292,7 +299,6 @@ function DetailScreen(props: Props & { detail: DetailView; onBack: () => void })
   if (detail === 'revenue') {
     return (
       <div className="space-y-4 animate-fade-in-up">
-        {header('Доход за период')}
         <div className="p-4 rounded-xl bg-gradient-to-br from-[rgba(var(--c-accent-rgb),0.12)] to-transparent card text-center">
           <p className="text-3xl font-black text-[var(--c-text)] tabular-nums">{fmtCur(revenue)}</p>
           <p className="text-[11px] text-[var(--c-hint)] mt-1">{checkCount} чеков · ср. {fmtCur(checkCount > 0 ? Math.round(revenue / checkCount) : 0)}</p>
@@ -314,7 +320,6 @@ function DetailScreen(props: Props & { detail: DetailView; onBack: () => void })
     const sorted = [...debtors].sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance));
     return (
       <div className="space-y-4 animate-fade-in-up">
-        {header(`Дебиторка · ${fmtCur(totalDebt)}`)}
         <div className="grid grid-cols-2 gap-2">
           <div className="p-3 rounded-xl card text-center">
             <p className="text-lg font-black text-[var(--c-danger)] tabular-nums">{debtors.length}</p>

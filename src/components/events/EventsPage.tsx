@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useOnTableChange } from '@/hooks/useRealtimeSync';
 import { useAuthStore } from '@/store/auth';
 import { usePOSStore } from '@/store/pos';
-import { useHideNav } from '@/store/layout';
+import { useHideNav, useSetHeader } from '@/store/layout';
 import {
     Calendar, Clock, Plus, Play,
     CheckCircle2, Timer, CreditCard,
@@ -85,6 +85,20 @@ export function EventsPage() {
 
     useEffect(() => { loadEvents(); }, [loadEvents]);
     useOnTableChange(['events'], loadEvents);
+
+    const setHeader = useSetHeader();
+    useEffect(() => {
+        setHeader({
+            title: 'Мероприятия',
+            rightContent: (
+                <Button onClick={() => { hapticFeedback('light'); setShowAdd(true); }} size="sm">
+                    <Plus className="w-4 h-4" />
+                    Новое
+                </Button>
+            ),
+        });
+        return () => setHeader(null);
+    }, [setHeader]);
 
     const filteredEvents = useMemo(() => {
         const today = new Date().toISOString().split('T')[0];
@@ -190,15 +204,6 @@ export function EventsPage() {
 
     return (
         <div className="flex flex-col h-full min-h-0">
-            {/* Header */}
-            <div className="shrink-0 flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-[var(--c-text)]">Мероприятия</h2>
-                <Button onClick={() => { hapticFeedback('light'); setShowAdd(true); }} size="sm">
-                    <Plus className="w-4 h-4" />
-                    Новое
-                </Button>
-            </div>
-
             {/* Tabs */}
             <div className="shrink-0 mb-4">
                 <TabSwitcher

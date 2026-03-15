@@ -16,7 +16,7 @@ import { hapticFeedback } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase';
 import { useMenuCategories, getIconComponent, getCategoryColorConfig } from '@/hooks/useMenuCategories';
 import { useSwipeBack } from '@/hooks/useSwipeBack';
-import { useHideNav } from '@/store/layout';
+import { useHideNav, useSetHeader } from '@/store/layout';
 import { Input } from '@/components/ui/Input';
 import { ClientAvatar } from '@/components/ui/ClientAvatar';
 import { Button } from '@/components/ui/Button';
@@ -609,6 +609,42 @@ export function CheckView({ onBack }: CheckViewProps) {
   const mountedRef = useRef(true);
   useEffect(() => () => { mountedRef.current = false; }, []);
 
+  const setHeader = useSetHeader();
+  const checkTitle = linkedEvent
+    ? (linkedEvent.type === 'titan' ? 'Мероприятие · Титан' : `Мероприятие · ${linkedEvent.location || 'Выездное'}`)
+    : activeCheck?.space?.name ?? (() => {
+      const names: string[] = [];
+      if (activeCheck?.player?.nickname) names.push(activeCheck.player.nickname);
+      if (activeCheck?.guest_names) names.push(...activeCheck.guest_names.split(', '));
+      return names.length > 0 ? names.join(', ') : getAnonymousClientName(activeCheck?.id ?? '');
+    })();
+  const checkSubtitle = linkedEvent
+    ? `${new Date(linkedEvent.date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} · ${linkedEvent.start_time?.slice(0, 5)}`
+    : activeCheck ? `${new Date(activeCheck.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}${cartCount > 0 ? ` · ${cartCount} поз.` : ''}` : '';
+  useEffect(() => {
+    if (!activeCheck) return;
+    setHeader({
+      title: checkTitle,
+      subtitle: checkSubtitle,
+      showBack: true,
+      onBack: handleBack,
+      rightContent: (
+        <div className="flex items-center gap-1">
+          <button onClick={() => { loadDiscountsList(); setShowDiscounts(true); }} className={`w-9 h-9 rounded-xl flex items-center justify-center tap ${appliedDiscounts.length > 0 ? 'bg-pink-500/10 text-pink-400' : 'text-white/40'}`}>
+            <Percent className="w-4 h-4" />
+          </button>
+          <button onClick={() => setShowNote((v) => !v)} className={`w-9 h-9 rounded-xl flex items-center justify-center tap ${(note || showNote) ? 'bg-amber-500/10 text-amber-400' : 'text-white/40'}`}>
+            <MessageSquare className="w-4 h-4" />
+          </button>
+          <button onClick={() => setShowCancelConfirm(true)} className="w-9 h-9 rounded-xl flex items-center justify-center text-rose-400 tap">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      ),
+    });
+    return () => setHeader(null);
+  }, [activeCheck, checkTitle, checkSubtitle, handleBack, setHeader, appliedDiscounts.length, note, showNote, loadDiscountsList]);
+
   const searchPlayersForAdd = useCallback((query: string) => {
     setPlayerSearch(query);
     if (playerSearchTimer.current) clearTimeout(playerSearchTimer.current);
@@ -766,8 +802,8 @@ export function CheckView({ onBack }: CheckViewProps) {
     >
       {swipeIndicatorStyle && <div style={swipeIndicatorStyle} />}
       {overlayStyle && <div style={overlayStyle} />}
-      {/* Glass header */}
-      <div className="sticky top-0 z-20 -mx-1 lg:mx-0 px-1 lg:px-4 py-2 lg:py-3 mb-3 lg:mb-4" style={{ transform: 'translateZ(0)' }}>
+      {/* Glass header — desktop only; mobile uses unified Layout header */}
+      <div className="hidden lg:block sticky top-0 z-20 -mx-1 lg:mx-0 px-1 lg:px-4 py-2 lg:py-3 mb-3 lg:mb-4" style={{ transform: 'translateZ(0)' }}>
         <div className="flex items-center justify-between bg-white/5 backdrop-blur-xl p-3 lg:p-4 rounded-[2rem] border border-white/10 shadow-xl">
           <div className="flex items-center gap-2.5 min-w-0">
             <button

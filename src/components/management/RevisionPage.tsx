@@ -1,10 +1,10 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
-import { useLayoutStore } from '@/store/layout';
+import { useLayoutStore, useSetHeader } from '@/store/layout';
 import { ListSkeleton } from '@/components/ui/Skeleton';
 import {
-  Plus, ClipboardList, ArrowLeft, ChevronRight,
+  Plus, ClipboardList, ChevronRight,
   Search, FileText, Save, AlertCircle, CalendarDays, User,
 } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
@@ -97,6 +97,7 @@ export function RevisionPage({ initialRevisionId }: RevisionPageProps) {
     }
   }, [initialRevisionId, revisions]);
 
+  const setHeader = useSetHeader();
   // Hide nav when creating revision
   useEffect(() => {
     if (isCreating) addHideReason('revision-creating');
@@ -124,9 +125,21 @@ export function RevisionPage({ initialRevisionId }: RevisionPageProps) {
 
   const changes = getChanges();
 
-  const handleTryExit = () => {
+  const handleTryExit = useCallback(() => {
     setShowExitConfirmation(true);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (isCreating) {
+      setHeader({
+        title: 'Новая ревизия',
+        subtitle: 'Ввод фактических остатков',
+        showBack: true,
+        onBack: handleTryExit,
+      });
+      return () => setHeader(null);
+    }
+  }, [isCreating, setHeader, handleTryExit]);
 
   const confirmExit = () => {
     setShowExitConfirmation(false);
@@ -245,22 +258,6 @@ export function RevisionPage({ initialRevisionId }: RevisionPageProps) {
         {/* Scrollable content */}
         <div className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden scroll-area">
           <div className="max-w-4xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-4 sm:space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <button
-                  onClick={handleTryExit}
-                  className="p-2 sm:p-2.5 bg-slate-800/50 hover:bg-slate-800 rounded-xl sm:rounded-2xl border border-slate-700 transition-all text-slate-400 active:scale-95 shrink-0"
-                >
-                  <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-                </button>
-                <div className="min-w-0">
-                  <h1 className="text-lg sm:text-xl lg:text-2xl font-black tracking-tight text-white leading-tight uppercase italic truncate">Новая ревизия</h1>
-                  <p className="text-slate-500 text-xs sm:text-sm font-medium">Ввод фактических остатков</p>
-                </div>
-              </div>
-            </div>
-
             <div className="space-y-3 sm:space-y-4">
               <div className="flex flex-col">
                 <label className="text-slate-500 text-[9px] sm:text-[10px] font-black uppercase tracking-widest mb-1 ml-1">Примечание</label>

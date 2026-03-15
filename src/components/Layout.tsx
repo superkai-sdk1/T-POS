@@ -2,7 +2,7 @@ import { useMemo, useState, useRef, useEffect, useCallback, type ReactNode } fro
 import { createPortal } from 'react-dom';
 import { useAuthStore } from '@/store/auth';
 import { useShiftStore } from '@/store/shift';
-import { useHideNav } from '@/store/layout';
+import { useHideNav, useLayoutStore, useHeader } from '@/store/layout';
 import { usePOSStore } from '@/store/pos';
 import { supabase } from '@/lib/supabase';
 import { Drawer } from '@/components/ui/Drawer';
@@ -14,11 +14,95 @@ import { ShiftAnalytics as ShiftAnalyticsModal } from '@/components/shift/ShiftA
 import {
   Receipt, BarChart3, LogOut, Settings, Calendar,
   PlayCircle, StopCircle, AlertTriangle, X, Plus,
-  PanelLeftClose, PanelLeftOpen, RefreshCw, CreditCard, UserPlus,
+  PanelLeftClose, PanelLeftOpen, RefreshCw, CreditCard, UserPlus, ArrowLeft,
 } from 'lucide-react';
 import { EVENING_TYPE_LABELS, type EveningType } from '@/types';
 
 const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
+
+function AppHeader({
+  title,
+  subtitle,
+  showBack,
+  onBack,
+  rightContent,
+  onRefresh,
+  isRefreshing,
+  cashInRegister,
+  shiftStatus,
+  onLogout,
+}: {
+  title: string;
+  subtitle?: string;
+  showBack?: boolean;
+  onBack?: () => void;
+  rightContent?: ReactNode;
+  onRefresh: () => void;
+  isRefreshing: boolean;
+  cashInRegister: number | null;
+  shiftStatus?: ReactNode;
+  onLogout: () => void;
+}) {
+  return (
+    <header
+      className="lg:hidden shrink-0 z-40 select-none bg-[#0d0d12] border-b border-white/5"
+      style={{
+        paddingTop: 'var(--safe-top)',
+        paddingBottom: '10px',
+        paddingLeft: 'var(--safe-left)',
+        paddingRight: 'var(--safe-right)',
+      }}
+    >
+      <div className="flex items-center justify-between gap-2 min-h-[40px]">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {showBack && onBack ? (
+            <button
+              type="button"
+              onClick={() => { hapticFeedback('light'); onBack(); }}
+              className="p-2 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 active:scale-90 tap"
+          >
+              <ArrowLeft className="w-4 h-4 text-white" />
+            </button>
+          ) : null}
+          <div className="min-w-0 flex-1">
+            <h1 className="text-[14px] font-bold text-white truncate">{title}</h1>
+            {subtitle ? (
+              <p className="text-[10px] text-white/30 truncate mt-0.5">{subtitle}</p>
+            ) : shiftStatus ? (
+              <div className="mt-0.5">{shiftStatus}</div>
+            ) : null}
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {rightContent}
+          <button
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-white/40 hover:text-white/70 active:scale-90 transition-all shrink-0 disabled:opacity-50 tap"
+            aria-label="Обновить"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
+          {cashInRegister !== null && !rightContent ? (
+            <div className="flex flex-col items-end">
+              <span className="text-[8px] text-white/40 uppercase tracking-widest">В кассе</span>
+              <span className="text-base font-black tracking-tight text-white italic tabular-nums">
+                {cashInRegister.toLocaleString('ru-RU')} ₽
+              </span>
+            </div>
+          ) : null}
+          <button
+            onClick={onLogout}
+            className="w-9 h-9 rounded-xl flex items-center justify-center text-white/40 hover:text-rose-400 active:scale-90 transition-all shrink-0 tap"
+            aria-label="Выйти"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
 
 function CheckPaymentPanel({ sidebarCollapsed }: { sidebarCollapsed: boolean }) {
   const cart = usePOSStore((s) => s.cart);
@@ -150,6 +234,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
   };
 
   const handleOpenDrawer = () => {
+    if (activeTab === 'pos') return;
     setShowOpen(true);
     // Pre-fill cash from last closed shift (non-blocking)
     supabase
@@ -177,7 +262,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
   };
 
   const handleStartClose = () => {
-    if (!activeShift) return;
+    if (!activeShift || activeTab === 'pos') return;
     hapticFeedback('medium');
     setCloseError('');
     setAnalytics(null);
@@ -248,6 +333,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
   };
 
   const triggerShiftAction = () => {
+    if (activeTab === 'pos') return;
     hapticFeedback('heavy');
     if (activeShift) {
       handleStartClose();
@@ -262,6 +348,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
   };
 
   const hideNav = useHideNav();
+  const storeHeader = useHeader();
 
   return (
     <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden relative lg:h-full" style={{ backgroundColor: 'var(--c-bg)' }}>
@@ -427,93 +514,48 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
       <div
         className={`flex-1 flex flex-col min-h-0 overflow-hidden transition-all duration-300 lg:fixed lg:inset-y-4 lg:right-4 lg:h-[calc(100dvh-2rem)] ${isSidebarCollapsed ? 'lg:left-[88px]' : 'lg:left-[276px]'}`}
       >
-        {/* ── Mobile header: POS — статус смены + в кассе; остальные вкладки — заголовок ── */}
-        {activeTab === 'pos' ? (
-          <header
-            className="lg:hidden shrink-0 z-40 select-none bg-[#0d0d12] border-b border-white/5"
-            style={{
-              paddingTop: 'var(--safe-top)',
-              paddingBottom: '8px',
-              paddingLeft: 'var(--safe-left)',
-              paddingRight: 'var(--safe-right)',
-            }}
-          >
-              <div className="flex items-center justify-between px-3">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={triggerShiftAction}
-                  className="active:scale-[0.98] transition-transform touch-manipulation"
-                >
-                  {activeShift ? (
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#12231c] border border-[#1b3a2e] rounded-full text-[#10b981] font-bold uppercase tracking-widest text-[9px]">
-                      <div className="w-1.5 h-1.5 bg-[#10b981] rounded-full shadow-[0_0_6px_#10b981]" />
-                      Смена открыта
-                    </div>
-                  ) : (
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-white/30">Смена закрыта</span>
-                  )}
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    if (!isRefreshing) {
-                      hapticFeedback('medium');
-                      setIsRefreshing(true);
-                      setTimeout(() => window.location.reload(), 200);
-                    }
-                  }}
-                  disabled={isRefreshing}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-white/70 active:scale-90 transition-all shrink-0 disabled:opacity-50"
-                  aria-label="Обновить"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-                </button>
-                <div className="flex flex-col items-end">
-                  <span className="text-[8px] text-white/40 uppercase tracking-widest">В кассе</span>
-                  <span className="text-lg font-black tracking-tight text-white italic tabular-nums">
-                    {cashInRegister != null ? `${cashInRegister.toLocaleString('ru-RU')} ₽` : '—'}
-                  </span>
+        {/* ── Unified mobile header ── */}
+        {(() => {
+          const defaultTitle = tabs.find((t) => t.id === activeTab)?.label ?? '';
+          const posShiftStatus = activeTab === 'pos' && (
+            <button type="button" onClick={triggerShiftAction} className="active:scale-[0.98] transition-transform tap">
+              {activeShift ? (
+                <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-[#12231c] border border-[#1b3a2e] rounded-full text-[#10b981] font-bold uppercase tracking-widest text-[9px]">
+                  <div className="w-1.5 h-1.5 bg-[#10b981] rounded-full shadow-[0_0_6px_#10b981]" />
+                  Смена активна{activeShift.evening_type ? ` · ${EVENING_TYPE_LABELS[activeShift.evening_type]}` : ''}
                 </div>
-                <button
-                  onClick={() => useAuthStore.getState().logout()}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white/40 hover:text-rose-400 active:scale-90 transition-all shrink-0"
-                  aria-label="Выйти"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          </header>
-        ) : !hideNav ? (
-          <header
-            className="lg:hidden shrink-0 z-40 select-none relative"
-            style={{
-              paddingTop: `var(--safe-top)`,
-              height: 'calc(var(--safe-top) + 40px)',
-              background: 'rgba(10, 14, 26, 0.85)',
-              backdropFilter: 'blur(40px) saturate(1.8)',
-              WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-            }}
-          >
-            <div className="absolute inset-0 flex items-center justify-between px-3 pt-[var(--safe-top)]">
-              <h1 className="text-[14px] font-bold text-white">
-                {tabs.find(t => t.id === activeTab)?.label ?? ''}
-              </h1>
-              <button
-                onClick={() => useAuthStore.getState().logout()}
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--c-hint)] active:scale-90 transition-all"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </header>
-        ) : (
-          /* Deep screen: header hidden, add safe-top spacer so content doesn't go under notch */
-          <div className="lg:hidden shrink-0" style={{ height: 'var(--safe-top)', minHeight: 'var(--safe-top)' }} aria-hidden />
-        )}
+              ) : (
+                <span className="text-[9px] font-bold uppercase tracking-widest text-white/30">Смена закрыта</span>
+              )}
+            </button>
+          );
+          const title = storeHeader?.title ?? (activeTab === 'pos' ? 'Касса' : defaultTitle);
+          const subtitle = storeHeader?.subtitle;
+          const showBack = storeHeader?.showBack ?? false;
+          const onBack = storeHeader?.onBack;
+          const rightContent = storeHeader?.rightContent;
+          const shiftStatus = activeTab === 'pos' && !storeHeader?.subtitle ? posShiftStatus : undefined;
+          return (
+            <AppHeader
+              title={title}
+              subtitle={subtitle}
+              showBack={showBack}
+              onBack={onBack}
+              rightContent={rightContent}
+              onRefresh={() => {
+                if (!isRefreshing) {
+                  hapticFeedback('medium');
+                  setIsRefreshing(true);
+                  setTimeout(() => window.location.reload(), 200);
+                }
+              }}
+              isRefreshing={isRefreshing}
+              cashInRegister={activeTab === 'pos' ? cashInRegister : null}
+              shiftStatus={shiftStatus}
+              onLogout={() => useAuthStore.getState().logout()}
+            />
+          );
+        })()}
 
         <PullToRefreshContainer
           activeTab={activeTab}

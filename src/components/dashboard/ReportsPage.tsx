@@ -17,6 +17,7 @@ import { PlayersModule, type CheckWithShift } from './PlayersModule';
 import type { Shift } from '@/types';
 import { EVENING_TYPE_LABELS } from '@/types';
 import { hapticFeedback } from '@/lib/telegram';
+import { useSetHeader } from '@/store/layout';
 
 type TabId = 'overview' | 'checks' | 'players' | 'ai';
 
@@ -72,6 +73,12 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const authUser = useAuthStore((s) => s.user);
+  const setHeader = useSetHeader();
+
+  useEffect(() => {
+    setHeader({ title: 'Отчёты', subtitle: 'Analytics' });
+    return () => setHeader(null);
+  }, [setHeader]);
 
   const loadShifts = useCallback(async () => {
     const { data: d } = await supabase
@@ -342,15 +349,9 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
         <div className="absolute bottom-[5%] right-[-5%] w-[40%] h-[40%] bg-rose-600/8 blur-[110px] rounded-full" />
       </div>
 
-      {/* Header */}
-      <header className="sticky top-0 z-40 backdrop-blur-md bg-[var(--c-bg)]/80 border-b border-white/5 px-4 sm:px-5 pt-3 pb-3">
-        <div className="flex justify-between items-center mb-3">
-          <div>
-            <h1 className="text-lg sm:text-xl font-black tracking-tight text-[var(--c-text)] flex items-center gap-1.5">
-              Отчёты <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
-            </h1>
-            <p className="text-[8px] uppercase tracking-[0.15em] text-[var(--c-muted)] font-bold">Analytics</p>
-          </div>
+      {/* Filters & Tabs (header title comes from Layout) */}
+      <div className="sticky top-0 z-30 backdrop-blur-md bg-[var(--c-bg)]/80 border-b border-white/5 px-4 sm:px-5 pt-2 pb-3 -mt-1">
+        <div className="flex justify-end mb-3">
           <button
             onClick={() => { hapticFeedback('light'); setReportMode(reportMode === 'period' ? 'shift' : 'period'); }}
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all active:scale-90 tap"
@@ -457,7 +458,7 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
             </button>
           ))}
         </div>
-      </header>
+      </div>
 
       <main className="px-4 sm:px-5 py-4 pb-28 lg:pb-6 max-w-2xl mx-auto relative z-10">
         {tab === 'overview' && (

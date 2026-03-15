@@ -6,9 +6,10 @@ import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/ui/Drawer';
 import { Input } from '@/components/ui/Input';
 import { ShiftClosedChecks } from '@/components/shift/ShiftClosedChecks';
-import { Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen, Home, Building2, Warehouse, Star, GraduationCap, Gamepad2, RotateCcw } from 'lucide-react';
+import { Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen, Home, Building2, Warehouse, Star, GraduationCap, Gamepad2, RotateCcw, Play, Power, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Profile, Space, VisitTariff, ClientTier, Check } from '@/types';
+import { EVENING_TYPE_LABELS, type EveningType } from '@/types';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { RefundsManager } from '@/components/management/RefundsManager';
 import { useHideNav } from '@/store/layout';
@@ -16,6 +17,177 @@ import { ClientAvatar } from '@/components/ui/ClientAvatar';
 
 interface OpenChecksProps {
   onSelectCheck: () => void;
+}
+
+function OpenShiftView({
+  eveningType,
+  setEveningType,
+  cashStart,
+  setCashStart,
+  onOpen,
+  isLoading,
+}: {
+  eveningType: EveningType;
+  setEveningType: (v: EveningType) => void;
+  cashStart: string;
+  setCashStart: (v: string) => void;
+  onOpen: () => void;
+  isLoading: boolean;
+}) {
+  return (
+    <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-6 animate-fade-in">
+      <div className="text-center space-y-2">
+        <div className="w-14 h-14 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-center mx-auto text-indigo-400 mb-3 shadow-xl">
+          <Play size={24} fill="currentColor" />
+        </div>
+        <h2 className="text-xl font-black text-white italic tracking-tight uppercase">Открыть смену</h2>
+        <p className="text-[9px] text-white/40 font-black uppercase tracking-[0.15em]">Выберите параметры для начала работы</p>
+      </div>
+
+      <div className="space-y-5 bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-2xl p-6">
+        <div className="space-y-3">
+          <p className="text-[9px] text-white/40 font-black uppercase tracking-widest px-1 italic">Тип вечера</p>
+          <div className="grid grid-cols-3 gap-2">
+            {(Object.keys(EVENING_TYPE_LABELS) as EveningType[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => { hapticFeedback('light'); setEveningType(key); }}
+                className={`p-2.5 rounded-xl text-[9px] font-black uppercase transition-all border flex flex-col items-center gap-1 tap ${
+                  eveningType === key
+                    ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-600/20'
+                    : 'bg-white/5 border-transparent text-white/50 hover:bg-white/10'
+                }`}
+              >
+                <span className="text-lg">{EVENING_ICONS[key]}</span>
+                <span className="truncate w-full text-center tracking-tighter">{EVENING_TYPE_LABELS[key]}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <p className="text-[9px] text-white/40 font-black uppercase tracking-widest px-1 italic">Стартовая наличность</p>
+          <div className="relative">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400 font-black text-base italic">₽</div>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={cashStart}
+              onChange={(e) => setCashStart(e.target.value)}
+              className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-12 pr-5 text-lg font-black text-white focus:outline-none focus:border-indigo-500/50 transition-all"
+            />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onOpen}
+          disabled={isLoading}
+          className="w-full py-5 bg-gradient-to-r from-indigo-600 to-violet-700 rounded-xl text-[11px] font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-indigo-600/40 hover:scale-[1.01] active:scale-95 transition-all italic flex items-center justify-center gap-2 tap disabled:opacity-50"
+        >
+          {isLoading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+          Подтвердить и начать
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CloseShiftView({
+  expectedCash,
+  revenue,
+  cashEnd,
+  setCashEnd,
+  closeNote,
+  setCloseNote,
+  discrepancy,
+  onClose,
+  closeError,
+  isLoading,
+}: {
+  expectedCash: number;
+  revenue: number;
+  cashEnd: string;
+  setCashEnd: (v: string) => void;
+  closeNote: string;
+  setCloseNote: (v: string) => void;
+  discrepancy: number | null;
+  onClose: () => void;
+  closeError: string;
+  isLoading: boolean;
+}) {
+  return (
+    <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-6 animate-fade-in pb-28 lg:pb-8">
+      <div className="text-center space-y-2">
+        <div className="w-14 h-14 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto text-rose-400 mb-3 shadow-xl">
+          <Power size={24} />
+        </div>
+        <h2 className="text-xl font-black text-white italic tracking-tight uppercase">Сдача смены</h2>
+        <p className="text-[9px] text-white/40 font-black uppercase tracking-[0.15em]">Все чеки закрыты. Можно завершать работу</p>
+      </div>
+
+      <div className="space-y-5 bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-2xl p-6">
+        <div className="bg-black/40 rounded-xl p-5 border border-white/5 space-y-3 italic">
+          <div className="flex justify-between items-center text-[10px]">
+            <span className="text-white/40 font-black uppercase tracking-widest">Ожидаемо по системе</span>
+            <span className="text-white font-black tabular-nums">{fmtCur(expectedCash)}</span>
+          </div>
+          <div className="flex justify-between items-center text-[10px] border-t border-white/5 pt-3">
+            <span className="text-white/40 font-black uppercase tracking-widest">Итоговая выручка</span>
+            <span className="text-emerald-400 font-black tabular-nums">+{fmtCur(revenue)}</span>
+          </div>
+        </div>
+
+        <div className="space-y-3 italic">
+          <p className="text-[9px] text-white/40 font-black uppercase tracking-widest px-1">Фактическая сумма в кассе</p>
+          <div className="relative">
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-rose-400 font-black text-base">₽</div>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={cashEnd}
+              onChange={(e) => setCashEnd(e.target.value)}
+              placeholder="Введите сумму..."
+              className="w-full bg-black/40 border border-white/10 rounded-xl py-4 pl-12 pr-5 text-lg font-black text-white placeholder:text-white/30 focus:outline-none focus:border-rose-500/50 transition-all"
+            />
+          </div>
+          {discrepancy !== null && discrepancy !== 0 && (
+            <div className="flex items-center gap-2 px-1 text-rose-500/80 text-[10px] font-black uppercase tracking-wider">
+              <AlertCircle size={12} /> Расхождение: {discrepancy > 0 ? '+' : ''}{fmtCur(discrepancy)}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-3 italic">
+          <p className="text-[9px] text-white/40 font-black uppercase tracking-widest px-1">Комментарий</p>
+          <textarea
+            placeholder="Опишите события смены..."
+            value={closeNote}
+            onChange={(e) => setCloseNote(e.target.value)}
+            className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-[13px] text-white h-20 resize-none focus:outline-none focus:border-white/20 transition-all"
+          />
+        </div>
+
+        {closeError && (
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <p className="text-[11px] text-rose-400 flex-1">{closeError}</p>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={isLoading}
+          className="w-full py-5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-xl text-rose-400 font-black uppercase tracking-[0.2em] italic text-[11px] shadow-xl shadow-rose-900/10 transition-all flex items-center justify-center gap-2 tap disabled:opacity-50 active:scale-95"
+        >
+          {isLoading ? <span className="w-4 h-4 border-2 border-rose-400/30 border-t-rose-400 rounded-full animate-spin" /> : <Power size={18} strokeWidth={2.5} />}
+          Закрыть и сдать кассу
+        </button>
+      </div>
+    </div>
+  );
 }
 
 const VISIT_ITEMS_STATIC: Record<VisitTariff, { name: string; label: string; fallbackPrice: number; dbName: string }> = {
@@ -117,7 +289,15 @@ const spaceIconMap: Record<string, typeof Home> = {
 };
 
 const fmtCur = (n: number) =>
-  new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
+  new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + ' ₽';
+
+const EVENING_ICONS: Record<EveningType, string> = {
+  sport_mafia: '⚽',
+  city_mafia: '🏙️',
+  kids_mafia: '🧸',
+  board_games: '🎲',
+  no_event: '🌙',
+};
 
 const CheckTile = memo(({ check, onSelect, listMode, exiting, isEvent }: { check: Check; onSelect: (check: Check) => void; listMode?: boolean; exiting?: boolean; isEvent?: boolean }) => {
   const hasSpace = !!check.space;
@@ -247,7 +427,20 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const checksLoaded = usePOSStore((s) => s.checksLoaded);
   const activeCheck = usePOSStore((s) => s.activeCheck);
   const activeShift = useShiftStore((s) => s.activeShift);
+  const openShift = useShiftStore((s) => s.openShift);
+  const closeShift = useShiftStore((s) => s.closeShift);
+  const getShiftAnalytics = useShiftStore((s) => s.getShiftAnalytics);
+  const cashInRegister = useShiftStore((s) => s.cashInRegister);
+
   const [showNewCheck, setShowNewCheck] = useState(false);
+  const [cashStart, setCashStart] = useState('');
+  const [eveningType, setEveningType] = useState<EveningType>('no_event');
+  const [isOpening, setIsOpening] = useState(false);
+  const [cashEnd, setCashEnd] = useState('');
+  const [closeNote, setCloseNote] = useState('');
+  const [closeError, setCloseError] = useState('');
+  const [isClosing, setIsClosing] = useState(false);
+  const [closeAnalytics, setCloseAnalytics] = useState<Awaited<ReturnType<typeof getShiftAnalytics>> | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [showRefunds, setShowRefunds] = useState(false);
   const [showCreateClient, setShowCreateClient] = useState(false);
@@ -269,6 +462,65 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   useEffect(() => {
     loadOpenChecks();
   }, [loadOpenChecks]);
+
+  useEffect(() => {
+    if (!activeShift) {
+      supabase
+        .from('shifts')
+        .select('cash_end')
+        .eq('status', 'closed')
+        .order('closed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data: lastShift }) => {
+          if (lastShift?.cash_end != null) setCashStart(String(lastShift.cash_end));
+        });
+    }
+  }, [activeShift]);
+
+  const showCloseShiftView = activeShift && openChecks.length === 0;
+  useEffect(() => {
+    if (showCloseShiftView && activeShift) {
+      setCloseError('');
+      setCloseAnalytics(null);
+      setIsClosing(true);
+      if (cashInRegister !== null) setCashEnd(String(cashInRegister));
+      getShiftAnalytics(activeShift.id).then((a) => {
+        setCloseAnalytics(a);
+        setIsClosing(false);
+      });
+    }
+  }, [showCloseShiftView, activeShift?.id, getShiftAnalytics, cashInRegister]);
+
+  const handleOpenShift = async () => {
+    hapticFeedback('medium');
+    setIsOpening(true);
+    const shift = await openShift(Number(cashStart) || 0, eveningType);
+    if (shift) {
+      hapticNotification('success');
+      setCashStart('');
+    } else {
+      hapticNotification('error');
+    }
+    setIsOpening(false);
+  };
+
+  const handleCloseShift = async () => {
+    hapticFeedback('heavy');
+    setCloseError('');
+    setIsClosing(true);
+    const ok = await closeShift(Number(cashEnd) || 0, closeNote);
+    if (ok) {
+      hapticNotification('success');
+      setCashEnd('');
+      setCloseNote('');
+      setCloseAnalytics(null);
+    } else {
+      setCloseError('Не удалось закрыть смену. Проверьте открытые чеки.');
+      hapticNotification('error');
+    }
+    setIsClosing(false);
+  };
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -458,6 +710,44 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   };
 
   const activeCount = openChecks.length;
+
+  if (!activeShift) {
+    return (
+      <div className="flex-1 flex flex-col min-h-0 lg:h-full relative bg-[#0d0d12] text-white">
+        <OpenShiftView
+          eveningType={eveningType}
+          setEveningType={setEveningType}
+          cashStart={cashStart}
+          setCashStart={setCashStart}
+          onOpen={handleOpenShift}
+          isLoading={isOpening}
+        />
+      </div>
+    );
+  }
+
+  if (showCloseShiftView) {
+    const expectedCash = cashInRegister ?? (closeAnalytics ? (activeShift.cash_start + (closeAnalytics.paymentBreakdown['cash']?.amount ?? 0)) : 0);
+    const revenue = closeAnalytics?.totalRevenue ?? 0;
+    const actual = Number(cashEnd) || 0;
+    const discrepancy = cashEnd ? actual - expectedCash : null;
+    return (
+      <div className="flex-1 flex flex-col min-h-0 lg:h-full relative bg-[#0d0d12] text-white">
+        <CloseShiftView
+          expectedCash={expectedCash}
+          revenue={revenue}
+          cashEnd={cashEnd}
+          setCashEnd={setCashEnd}
+          closeNote={closeNote}
+          setCloseNote={setCloseNote}
+          discrepancy={discrepancy}
+          onClose={handleCloseShift}
+          closeError={closeError}
+          isLoading={isClosing}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col min-h-0 lg:h-full relative bg-[#0d0d12] text-white">

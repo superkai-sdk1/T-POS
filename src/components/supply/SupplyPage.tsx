@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { useLayoutStore } from '@/store/layout';
+import { useLayoutStore, useSetHeader } from '@/store/layout';
 import { supabase } from '@/lib/supabase';
 import { notifySupply } from '@/lib/notifications';
 import { useAuthStore } from '@/store/auth';
@@ -59,6 +59,7 @@ export function SupplyPage({ initialSupplyId }: SupplyPageProps) {
   const user = useAuthStore((s) => s.user);
   const addHideReason = useLayoutStore((s) => s.addHideReason);
   const removeHideReason = useLayoutStore((s) => s.removeHideReason);
+  const setHeader = useSetHeader();
   useEffect(() => {
     if (isCreating) {
       addHideReason('supply-creating');
@@ -108,13 +109,13 @@ export function SupplyPage({ initialSupplyId }: SupplyPageProps) {
 
   const hasDraftChanges = draftItems.length > 0 || draftNote.trim().length > 0;
 
-  const handleTryExit = () => {
+  const handleTryExit = useCallback(() => {
     if (hasDraftChanges) {
       setShowExitWarning(true);
     } else {
       setIsCreating(false);
     }
-  };
+  }, [hasDraftChanges]);
 
   const confirmExit = () => {
     setShowExitWarning(false);
@@ -180,6 +181,19 @@ export function SupplyPage({ initialSupplyId }: SupplyPageProps) {
   };
 
   const draftTotal = draftItems.reduce((s, d) => s + (Number(d.totalCost) || 0), 0);
+
+  useEffect(() => {
+    if (isCreating) {
+      const subtitle = draftItems.length > 0 ? `${draftItems.length} поз. · ${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(draftTotal)}₽` : undefined;
+      setHeader({
+        title: 'Новая поставка',
+        subtitle,
+        showBack: true,
+        onBack: handleTryExit,
+      });
+      return () => setHeader(null);
+    }
+  }, [isCreating, setHeader, draftItems.length, draftTotal, handleTryExit]);
 
   // --- CREATE SUPPLY ---
 
@@ -416,21 +430,6 @@ export function SupplyPage({ initialSupplyId }: SupplyPageProps) {
       <div className="space-y-4">
         {createIndicator && <div style={createIndicator} />}
         {createOverlay && <div style={createOverlay} />}
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleTryExit}
-            className="w-10 h-10 rounded-xl bg-[var(--c-surface)] flex items-center justify-center hover:bg-[var(--c-surface-hover)] transition-colors active:scale-95 shrink-0"
-          >
-            <ArrowLeft className="w-5 h-5 text-[var(--c-text)]" />
-          </button>
-          <div className="flex-1">
-            <h2 className="text-lg font-bold text-[var(--c-text)]">Новая поставка</h2>
-            {draftItems.length > 0 && (
-              <p className="text-xs text-[var(--c-hint)]">{draftItems.length} поз. · {fmtCur(draftTotal)}</p>
-            )}
-          </div>
-        </div>
 
         <Input
           label="Примечание"
