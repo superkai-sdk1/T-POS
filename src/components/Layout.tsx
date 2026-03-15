@@ -45,12 +45,16 @@ function AppHeader({
 }) {
   return (
     <header
-      className="lg:hidden shrink-0 z-40 select-none bg-[#0d0d12] border-b border-white/5"
+      className="lg:hidden shrink-0 z-40 select-none rounded-b-[1.5rem] mx-2 mb-2 border border-white/10"
       style={{
+        background: 'rgba(255, 255, 255, 0.04)',
+        backdropFilter: 'blur(24px) saturate(1.5)',
+        WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
+        boxShadow: '0 4px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
         paddingTop: 'var(--safe-top)',
         paddingBottom: '10px',
-        paddingLeft: 'var(--safe-left)',
-        paddingRight: 'var(--safe-right)',
+        paddingLeft: 'calc(var(--safe-left) + 12px)',
+        paddingRight: 'calc(var(--safe-right) + 12px)',
       }}
     >
       <div className="flex items-center justify-between gap-2 min-h-[40px]">
@@ -104,10 +108,11 @@ function AppHeader({
   );
 }
 
-function CheckPaymentPanel({ sidebarCollapsed }: { sidebarCollapsed: boolean }) {
+function CheckPaymentPanel({ sidebarCollapsed, onNewCheck }: { sidebarCollapsed: boolean; onNewCheck?: () => void }) {
   const cart = usePOSStore((s) => s.cart);
   const getCartTotal = usePOSStore((s) => s.getCartTotal);
   const activeCheck = usePOSStore((s) => s.activeCheck);
+  const activeShift = useShiftStore((s) => s.activeShift);
   const [hasEvent, setHasEvent] = useState(false);
   const [eventAmount, setEventAmount] = useState(0);
 
@@ -137,9 +142,20 @@ function CheckPaymentPanel({ sidebarCollapsed }: { sidebarCollapsed: boolean }) 
           <button
             onClick={() => { hapticFeedback('light'); window.dispatchEvent(new CustomEvent('tpos:open-menu')); }}
             className="w-11 h-11 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 text-white/40 hover:text-white active:scale-90 transition-all"
+            title="Меню"
           >
             <Plus className="w-5 h-5" />
           </button>
+          {onNewCheck && activeShift && (
+            <button
+              onClick={() => { hapticFeedback('medium'); onNewCheck(); }}
+              className="w-11 h-11 flex items-center justify-center rounded-2xl border border-white/10 active:scale-90 transition-all"
+              style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(109, 40, 217, 0.15))', color: '#a78bfa' }}
+              title="Новый чек"
+            >
+              <Receipt className="w-5 h-5" />
+            </button>
+          )}
           <button
             onClick={() => { hapticFeedback('light'); window.dispatchEvent(new CustomEvent('tpos:open-add-player')); }}
             className="w-11 h-11 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 text-[#10b981] active:scale-90 transition-all"
@@ -172,9 +188,10 @@ interface LayoutProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   showCheckView?: boolean;
+  onNewCheckFromCheckView?: () => void;
 }
 
-export function Layout({ children, activeTab, onTabChange, showCheckView }: LayoutProps) {
+export function Layout({ children, activeTab, onTabChange, showCheckView, onNewCheckFromCheckView }: LayoutProps) {
   const user = useAuthStore((s) => s.user);
   const isOwner = useAuthStore((s) => s.isOwner);
 
@@ -581,7 +598,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView }: Layo
         {typeof document !== 'undefined' && (showCheckView || !hideNav) && createPortal(
           showCheckView ? (
             <div className="lg:hidden">
-              <CheckPaymentPanel sidebarCollapsed={isSidebarCollapsed} />
+              <CheckPaymentPanel sidebarCollapsed={isSidebarCollapsed} onNewCheck={onNewCheckFromCheckView} />
             </div>
           ) : (
           <div className="lg:hidden fixed bottom-3 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-[60]">

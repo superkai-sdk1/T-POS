@@ -117,10 +117,14 @@ export function ManagementPage({ initialScreen, initialSupplyId, initialRevision
   const screenMeta = menuItems.find((m) => m.id === screen);
 
   useEffect(() => {
+    if (!isActive) {
+      removeHideReason('management-deep');
+      return;
+    }
     if (screen !== 'menu') addHideReason('management-deep');
     else removeHideReason('management-deep');
     return () => removeHideReason('management-deep');
-  }, [screen, addHideReason, removeHideReason]);
+  }, [screen, isActive, addHideReason, removeHideReason]);
 
   useEffect(() => {
     if (screen === 'menu') {

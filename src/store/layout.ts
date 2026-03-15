@@ -14,6 +14,7 @@ interface LayoutState {
   header: HeaderConfig | null;
   addHideReason: (id: string) => void;
   removeHideReason: (id: string) => void;
+  clearAllHideReasons: () => void;
   setHeader: (config: HeaderConfig | null) => void;
 }
 
@@ -30,6 +31,7 @@ export const useLayoutStore = create<LayoutState>((set) => ({
     next.delete(id);
     return { hideReasons: next };
   }),
+  clearAllHideReasons: () => set({ hideReasons: new Set() }),
   setHeader: (config) => set({ header: config }),
 }));
 

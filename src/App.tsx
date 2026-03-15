@@ -15,6 +15,7 @@ function useIsMobile() {
 import { useAuthStore } from '@/store/auth';
 import { usePOSStore } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
+import { useLayoutStore } from '@/store/layout';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { initTelegramApp } from '@/lib/telegram';
 import { LoginPage } from '@/components/auth/LoginPage';
@@ -132,7 +133,9 @@ export default function App() {
     };
   }, [isResizing, handleSplitResize]);
 
+  const clearAllHideReasons = useLayoutStore((s) => s.clearAllHideReasons);
   const handleTabChange = useCallback((tab: string) => {
+    clearAllHideReasons();
     if (showCheckView) {
       setShowCheckView(false);
       setTimeout(() => leaveCheck(), 0);
@@ -158,7 +161,7 @@ export default function App() {
     setPrevTab(activeTab);
     setActiveTab(tab);
     setVisitedTabs((prev) => new Set(prev).add(tab));
-  }, [showCheckView, activeCheck, leaveCheck, activeTab]);
+  }, [showCheckView, activeCheck, leaveCheck, activeTab, clearAllHideReasons]);
 
   const handleDashboardNavigate = useCallback((target: string, params?: { supplyId?: string; revisionId?: string }) => {
     if (target.startsWith('management:')) {
@@ -190,8 +193,16 @@ export default function App() {
     return <LoginPage />;
   }
 
+  const handleNewCheckFromCheckView = useCallback(() => {
+    setShowCheckView(false);
+    setTimeout(() => {
+      leaveCheck();
+      setTimeout(() => window.dispatchEvent(new CustomEvent('tpos:new-check', { cancelable: true })), 100);
+    }, 0);
+  }, [leaveCheck]);
+
   return (
-    <Layout activeTab={activeTab} onTabChange={handleTabChange} showCheckView={showCheckView}>
+    <Layout activeTab={activeTab} onTabChange={handleTabChange} showCheckView={showCheckView} onNewCheckFromCheckView={handleNewCheckFromCheckView}>
       <TabPanel id="pos" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
         {/* Mobile: swap between list and check view. CheckView only when isMobile to avoid duplicate menus. */}
         <div className="lg:hidden flex-1 flex flex-col min-h-0">
