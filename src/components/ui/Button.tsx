@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { hapticFeedback } from '@/lib/telegram';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
@@ -34,12 +35,20 @@ export function Button({
   children,
   className = '',
   disabled,
+  onClick,
   ...props
 }: ButtonProps) {
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    hapticFeedback('light');
+    onClick?.(e);
+  };
+
   return (
     <button
+      {...props}
+      onClick={handleClick}
       className={`
-        font-semibold transition-all duration-200 flex items-center justify-center
+        font-semibold transition-all duration-150 flex items-center justify-center
         active:scale-[0.96]
         ${variantStyles[variant]}
         ${sizeStyles[size]}
@@ -48,7 +57,6 @@ export function Button({
         ${className}
       `}
       disabled={disabled || loading}
-      {...props}
     >
       {loading ? (
         <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />

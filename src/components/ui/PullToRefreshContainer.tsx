@@ -29,7 +29,7 @@ export function PullToRefreshContainer({
         if (isRefreshingState) {
             spinnerRef.current.style.top = `${Math.min(PULL_THRESHOLD, PULL_MAX) - 40}px`;
             spinnerRef.current.style.opacity = '1';
-            spinnerRef.current.style.transition = 'top 300ms cubic-bezier(.2,1,.3,1), opacity 200ms ease';
+            spinnerRef.current.style.transition = 'top 200ms cubic-bezier(.2,1,.3,1), opacity 120ms ease';
 
             iconRef.current.style.transform = '';
             iconRef.current.style.animation = 'spin 0.6s linear infinite';
@@ -40,7 +40,7 @@ export function PullToRefreshContainer({
         } else {
             spinnerRef.current.style.top = '-40px';
             spinnerRef.current.style.opacity = '0';
-            spinnerRef.current.style.transition = 'top 300ms cubic-bezier(.2,1,.3,1), opacity 200ms ease';
+            spinnerRef.current.style.transition = 'top 200ms cubic-bezier(.2,1,.3,1), opacity 120ms ease';
 
             iconRef.current.style.transform = '';
             iconRef.current.style.animation = 'none';
@@ -67,7 +67,7 @@ export function PullToRefreshContainer({
                     style={{
                         top: '-40px',
                         opacity: 0,
-                        transition: 'top 300ms cubic-bezier(.2,1,.3,1), opacity 200ms ease',
+                        transition: 'top 200ms cubic-bezier(.2,1,.3,1), opacity 120ms ease',
                     }}
                 >
                     <div className="px-4 py-2 rounded-full bg-white/[0.08] backdrop-blur-2xl border border-white/10 flex items-center gap-2.5 shadow-lg">
