@@ -12,7 +12,7 @@ import type { Profile, Space, VisitTariff, ClientTier, Check } from '@/types';
 import { EVENING_TYPE_LABELS, type EveningType } from '@/types';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { RefundsManager } from '@/components/management/RefundsManager';
-import { useHideNav } from '@/store/layout';
+import { useHideNav, useLayoutStore, useTriggerNewCheck } from '@/store/layout';
 import { ClientAvatar } from '@/components/ui/ClientAvatar';
 
 interface OpenChecksProps {
@@ -522,15 +522,23 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     setIsClosing(false);
   };
 
+  const triggerNewCheck = useTriggerNewCheck();
+  useEffect(() => {
+    if (triggerNewCheck > 0 && activeShift && !activeCheck) {
+      setShowNewCheck(true);
+      useLayoutStore.setState({ triggerNewCheck: 0 });
+    }
+  }, [triggerNewCheck, activeShift, activeCheck]);
+
   useEffect(() => {
     const handler = (e: Event) => {
       if (e.defaultPrevented) return;
       e.preventDefault();
-      if (activeShift && !activeCheck) setShowNewCheck(true);
+      useLayoutStore.getState().requestNewCheck();
     };
     window.addEventListener('tpos:new-check', handler);
     return () => window.removeEventListener('tpos:new-check', handler);
-  }, [activeShift, activeCheck]);
+  }, []);
 
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);

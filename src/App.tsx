@@ -195,10 +195,9 @@ export default function App() {
 
   const handleNewCheckFromCheckView = useCallback(() => {
     setShowCheckView(false);
-    setTimeout(() => {
-      leaveCheck();
-      setTimeout(() => window.dispatchEvent(new CustomEvent('tpos:new-check', { cancelable: true })), 100);
-    }, 0);
+    leaveCheck().then(() => {
+      setTimeout(() => useLayoutStore.getState().requestNewCheck(), 150);
+    });
   }, [leaveCheck]);
 
   return (

@@ -366,6 +366,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
 
   const hideNav = useHideNav();
   const storeHeader = useHeader();
+  const requestNewCheck = useLayoutStore((s) => s.requestNewCheck);
 
   return (
     <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden relative lg:h-full" style={{ backgroundColor: 'var(--c-bg)' }}>
@@ -419,9 +420,8 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
             <button
               onClick={() => {
                 hapticFeedback('medium');
-                const fire = () => window.dispatchEvent(new CustomEvent('tpos:new-check', { cancelable: true }));
-                if (activeTab !== 'pos') { onTabChange('pos'); setTimeout(fire, 80); }
-                else fire();
+                if (activeTab !== 'pos') { onTabChange('pos'); setTimeout(requestNewCheck, 150); }
+                else requestNewCheck();
               }}
               disabled={!activeShift}
               className={`relative w-full mt-3 rounded-2xl flex items-center transition-all tap disabled:opacity-30 text-white overflow-hidden ${isSidebarCollapsed ? 'h-11 justify-center px-0' : 'h-12 gap-3 px-4'}`}
@@ -623,9 +623,8 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
                 <button
                   onClick={() => {
                     hapticFeedback('medium');
-                    const fire = () => window.dispatchEvent(new CustomEvent('tpos:new-check', { cancelable: true }));
-                    if (activeTab !== 'pos') { onTabChange('pos'); setTimeout(fire, 80); }
-                    else fire();
+                    if (activeTab !== 'pos') { onTabChange('pos'); setTimeout(requestNewCheck, 150); }
+                    else requestNewCheck();
                   }}
                   disabled={!activeShift}
                   className="relative group flex items-center justify-center disabled:opacity-30"
