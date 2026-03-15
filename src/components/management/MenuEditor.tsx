@@ -24,8 +24,7 @@ import {
   Plus, Pencil, Trash2,
   Eye, EyeOff, Search, Upload, X, Check,
   FolderPlus, ChevronRight, ArrowLeft,
-  Package, MoreVertical, GripVertical,
-  ChevronUp, ChevronDown,
+  Package, MoreVertical,
 } from 'lucide-react';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import {
@@ -283,26 +282,6 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
     loadItems();
   };
 
-  const handleSwapItems = async (dragged: InventoryItem, target: InventoryItem) => {
-    if (dragged.id === target.id) return;
-    hapticFeedback('light');
-    await Promise.all([
-      supabase.from('inventory').update({ sort_order: target.sort_order }).eq('id', dragged.id),
-      supabase.from('inventory').update({ sort_order: dragged.sort_order }).eq('id', target.id),
-    ]);
-    loadItems();
-  };
-
-  const handleMoveItem = (item: InventoryItem, direction: 'up' | 'down') => {
-    const idx = directItems.findIndex((i) => i.id === item.id);
-    if (idx < 0) return;
-    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (targetIdx < 0 || targetIdx >= directItems.length) return;
-    const target = directItems[targetIdx];
-    hapticFeedback('light');
-    handleSwapItems(item, target);
-  };
-
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
@@ -518,8 +497,6 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
               onDragOver={() => {}}
               onDragEnter={() => {}}
               onDrop={() => {}}
-              canMoveUp={false}
-              canMoveDown={false}
             />
           ))}
           {directItems.length === 0 && (
@@ -638,10 +615,6 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
                           categories={categories}
                           onEdit={openEdit}
                           onToggle={toggleActive}
-                          onMoveUp={() => handleMoveItem(item, 'up')}
-                          onMoveDown={() => handleMoveItem(item, 'down')}
-                          canMoveUp={directItems.findIndex((i) => i.id === item.id) > 0}
-                          canMoveDown={directItems.findIndex((i) => i.id === item.id) < directItems.length - 1}
                         />
                       ))}
                     </SortableContext>
@@ -661,10 +634,6 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
                       onDragOver={() => {}}
                       onDragEnter={() => {}}
                       onDrop={() => {}}
-                      onMoveUp={() => {}}
-                      onMoveDown={() => {}}
-                      canMoveUp={false}
-                      canMoveDown={false}
                     />
                   ))
                 )}
@@ -976,19 +945,11 @@ function SortableItemCard({
   categories,
   onEdit,
   onToggle,
-  onMoveUp,
-  onMoveDown,
-  canMoveUp,
-  canMoveDown,
 }: {
   item: InventoryItem;
   categories: MenuCategory[];
   onEdit: (item: InventoryItem) => void;
   onToggle: (item: InventoryItem) => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
@@ -1013,10 +974,6 @@ function SortableItemCard({
         onDragOver={() => {}}
         onDragEnter={() => {}}
         onDrop={() => {}}
-        onMoveUp={onMoveUp}
-        onMoveDown={onMoveDown}
-        canMoveUp={canMoveUp}
-        canMoveDown={canMoveDown}
       />
     </div>
   );
@@ -1036,10 +993,6 @@ function ItemCard({
   onDragOver,
   onDragEnter,
   onDrop,
-  onMoveUp,
-  onMoveDown,
-  canMoveUp = false,
-  canMoveDown = false,
 }: {
   item: InventoryItem;
   categories: MenuCategory[];
@@ -1052,10 +1005,6 @@ function ItemCard({
   onDragOver: (e: React.DragEvent) => void;
   onDragEnter: (e: React.DragEvent) => void;
   onDrop: () => void;
-  onMoveUp?: () => void;
-  onMoveDown?: () => void;
-  canMoveUp?: boolean;
-  canMoveDown?: boolean;
 }) {
   const cat = categories.find((c) => c.slug === item.category);
   const CatIcon = getIconComponent(cat?.icon_name || 'Package');
@@ -1083,29 +1032,7 @@ function ItemCard({
           )}
         </div>
         <div className="flex items-center gap-0.5">
-          {isReorderMode && (
-            <div className="flex items-center gap-1 sm:gap-0.5 mr-0.5">
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); e.preventDefault(); onMoveUp?.(); }}
-                disabled={!canMoveUp}
-                className="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 p-2 sm:p-1 flex items-center justify-center rounded-xl sm:rounded-lg text-[var(--c-muted)] hover:text-[var(--c-text)] active:bg-[var(--c-surface)] disabled:opacity-30 disabled:pointer-events-none active:scale-95 touch-manipulation"
-              >
-                <ChevronUp className="w-5 h-5 sm:w-4 sm:h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); e.preventDefault(); onMoveDown?.(); }}
-                disabled={!canMoveDown}
-                className="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 p-2 sm:p-1 flex items-center justify-center rounded-xl sm:rounded-lg text-[var(--c-muted)] hover:text-[var(--c-text)] active:bg-[var(--c-surface)] disabled:opacity-30 disabled:pointer-events-none active:scale-95 touch-manipulation"
-              >
-                <ChevronDown className="w-5 h-5 sm:w-4 sm:h-4" />
-              </button>
-              <div className="hidden sm:block p-1 rounded-lg text-[var(--c-muted)]" title="Перетащите на десктопе">
-                <GripVertical className="w-4 h-4" />
-              </div>
-            </div>
-          )}
+          {!isReorderMode && (
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
@@ -1137,6 +1064,7 @@ function ItemCard({
               </>
             )}
           </div>
+          )}
         </div>
       </div>
 
