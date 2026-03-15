@@ -488,12 +488,18 @@ if [ "$MODE" = "update" ]; then
   git fetch origin
   git reset --hard origin/main
 
-  # ── Re-exec if install.sh itself was updated ──
+  # ── Re-exec if install.sh itself was updated OR running from outside INSTALL_DIR ──
 
   SCRIPT_HASH_AFTER=$(md5sum "$INSTALL_DIR/install.sh" 2>/dev/null | awk '{print $1}') || true
+  _RUNNING=$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")
+  _INSTALLED=$(realpath "$INSTALL_DIR/install.sh" 2>/dev/null || echo "$INSTALL_DIR/install.sh")
   if [ -n "$SCRIPT_HASH_BEFORE" ] && [ -n "$SCRIPT_HASH_AFTER" ] && [ "$SCRIPT_HASH_BEFORE" != "$SCRIPT_HASH_AFTER" ]; then
     echo ""
     info "Скрипт обновления изменился — перезапуск с новой версией..."
+    exec bash "$INSTALL_DIR/install.sh"
+  elif [ "$_RUNNING" != "$_INSTALLED" ]; then
+    echo ""
+    info "Перезапуск из установленной версии скрипта..."
     exec bash "$INSTALL_DIR/install.sh"
   fi
 
