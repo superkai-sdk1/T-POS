@@ -187,6 +187,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
               players={data.playerStats}
               retentionRate={data.retentionRate}
               checks={data.checks as Parameters<typeof PlayersModule>[0]['checks']}
+              allCheckItems={data.allCheckItems as Parameters<typeof PlayersModule>[0]['allCheckItems']}
             />
           )}
         </>

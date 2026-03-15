@@ -12,10 +12,11 @@ import {
   ChevronLeft, ChevronRight, CalendarDays, Layers,
   Crown, Search, Filter, X, RotateCcw,
 } from 'lucide-react';
+import { PlayersModule, type CheckWithShift } from './PlayersModule';
 import type { Shift } from '@/types';
 import { EVENING_TYPE_LABELS } from '@/types';
 
-type TabId = 'overview' | 'checks' | 'tops' | 'ai';
+type TabId = 'overview' | 'checks' | 'tops' | 'players' | 'ai';
 
 const pmLabels: Record<string, string> = {
   cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы', deposit: 'Депозит', split: 'Разделённая',
@@ -133,6 +134,47 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
     const list = reportMode === 'shift' && shiftAnalytics ? shiftAnalytics.checks : data.checks;
     return list.map((c) => ({ ...c, closed_at: c.closed_at ?? '' }));
   }, [reportMode, shiftAnalytics, data.checks]);
+
+  const currentChecksWithShift = useMemo((): CheckWithShift[] => {
+    const list = reportMode === 'shift' && shiftAnalytics ? shiftAnalytics.checks : data.checks;
+    return list.map((c) => {
+      const base = { ...c, closed_at: c.closed_at ?? '' };
+      if (reportMode === 'shift' && shiftAnalytics) {
+        const sc = c as { player_nickname?: string; player_id?: string; shift?: { evening_type: string | null } };
+        return {
+          ...base,
+          player_id: sc.player_id ?? '',
+          player: { nickname: sc.player_nickname || 'Гость' },
+          shift: sc.shift ?? (shiftAnalytics.shift ? { evening_type: shiftAnalytics.shift.evening_type } : null),
+        } as CheckWithShift;
+      }
+      return base as CheckWithShift;
+    });
+  }, [reportMode, shiftAnalytics, data.checks]);
+
+  const playersForModule = useMemo(() => {
+    if (reportMode === 'shift' && shiftAnalytics) {
+      const eveningType = shiftAnalytics.shift?.evening_type || 'no_event';
+      return shiftAnalytics.playerBreakdown.map((p) => {
+        const profile = data.allPlayers.find((pl) => pl.nickname === p.nickname);
+        return {
+          id: profile?.id || p.nickname,
+          nickname: p.nickname,
+          photo_url: profile?.photo_url || null,
+          total: p.total,
+          count: p.checks,
+          avgCheck: p.checks > 0 ? Math.round(p.total / p.checks) : 0,
+          lastVisit: new Date(),
+          firstVisit: new Date(),
+          segment: 'active' as const,
+          bonusBalance: profile?.bonus_points || 0,
+          tier: profile?.client_tier || 'regular',
+          eveningTypeCounts: { [eveningType]: p.checks },
+        };
+      });
+    }
+    return data.playerStats;
+  }, [reportMode, shiftAnalytics, data.playerStats, data.allPlayers]);
   const currentPaymentBreakdown = useMemo((): Record<string, { count?: number; amount: number }> => {
     if (reportMode === 'shift' && shiftAnalytics) return shiftAnalytics.paymentBreakdown;
     const pb = data.paymentBreakdown;
@@ -338,6 +380,7 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
           { id: 'overview' as TabId, label: 'Обзор', icon: BarChart3 },
           { id: 'checks' as TabId, label: 'Чеки', icon: Receipt },
           { id: 'tops' as TabId, label: 'Топы', icon: Crown },
+          { id: 'players' as TabId, label: 'Игроки', icon: Users },
           { id: 'ai' as TabId, label: 'ИИ', icon: Sparkles },
         ].map((t) => (
           <button
@@ -389,6 +432,23 @@ export function ReportsPage({ onNavigate }: ReportsPageProps) {
           onCheckClick={openCheckDetail}
           checks={data.checks}
           allCheckItems={data.allCheckItems}
+        />
+      )}
+
+      {tab === 'players' && (
+        <PlayersModule
+          players={playersForModule}
+          retentionRate={reportMode === 'shift' ? 0 : data.retentionRate}
+          checks={currentChecksWithShift}
+          allCheckItems={reportMode === 'shift' && shiftAnalytics
+            ? shiftAnalytics.checks.flatMap((c) => (c.items || []).map((it, idx) => ({
+                check_id: c.id,
+                item_id: '',
+                quantity: it.quantity,
+                price_at_time: it.price,
+                item: { name: it.name },
+              })))
+            : data.allCheckItems}
         />
       )}
 

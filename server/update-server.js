@@ -644,7 +644,7 @@ const server = http.createServer((req, res) => {
         }
 
         if (action === 'client_report') {
-          const { playerNickname } = params;
+          const { playerNickname, period } = params;
           if (!playerNickname) {
             json(res, { success: false, error: 'playerNickname обязателен' });
             return;
@@ -659,17 +659,44 @@ const server = http.createServer((req, res) => {
             return;
           }
           const player = players[0];
-          const checksRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/checks?player_id=eq.${encodeURIComponent(player.id)}&status=eq.closed&order=closed_at.desc&limit=100`,
-            { headers: sbHeaders }
-          );
+          let checksUrl = `${SUPABASE_URL}/rest/v1/checks?player_id=eq.${encodeURIComponent(player.id)}&status=eq.closed&select=id,total_amount,closed_at,shift_id&order=closed_at.desc&limit=100`;
+          if (period === 'month' || period === 'week') {
+            const now = new Date();
+            const from = period === 'week'
+              ? new Date(now.getTime() - 7 * 86400000).toISOString()
+              : new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+            checksUrl += `&closed_at=gte.${encodeURIComponent(from)}`;
+          }
+          const checksRes = await fetch(checksUrl, { headers: sbHeaders });
           const clientChecksRaw = await checksRes.json();
           const clientChecks = Array.isArray(clientChecksRaw) ? clientChecksRaw : [];
-          const checkIds = clientChecks.slice(0, 30).map((c) => c.id).filter(Boolean);
+          const checkIds = clientChecks.slice(0, 50).map((c) => c.id).filter(Boolean);
+          const shiftIds = [...new Set(clientChecks.map((c) => c.shift_id).filter(Boolean))];
+          let shiftMap = {};
+          if (shiftIds.length > 0) {
+            const shiftRes = await fetch(
+              `${SUPABASE_URL}/rest/v1/shifts?id=in.(${shiftIds.join(',')})&select=id,evening_type`,
+              { headers: sbHeaders }
+            );
+            const shiftsRaw = await shiftRes.json();
+            const shifts = Array.isArray(shiftsRaw) ? shiftsRaw : [];
+            shiftMap = Object.fromEntries(shifts.map((s) => [s.id, s.evening_type || 'no_event']));
+          }
+          const eveningLabels = { sport_mafia: 'Спортивная мафия', city_mafia: 'Городская мафия', kids_mafia: 'Детская мафия', no_event: 'Без вечера' };
+          const eveningCounts = {};
+          for (const c of clientChecks) {
+            const et = shiftMap[c.shift_id] || 'no_event';
+            eveningCounts[et] = (eveningCounts[et] || 0) + 1;
+          }
+          const eveningLines = Object.entries(eveningCounts)
+            .filter(([, n]) => n > 0)
+            .map(([k, n]) => `${eveningLabels[k] || k}: ${n}`)
+            .join(', ');
           let favoriteItem = null;
+          let checkItems = [];
           if (checkIds.length > 0) {
             const itemsRes = await fetch(
-              `${SUPABASE_URL}/rest/v1/check_items?check_id=in.(${checkIds.join(',')})&select=item_id,quantity`,
+              `${SUPABASE_URL}/rest/v1/check_items?check_id=in.(${checkIds.join(',')})&select=check_id,item_id,quantity,price_at_time`,
               { headers: sbHeaders }
             );
             const itemsRaw = await itemsRes.json();
@@ -681,6 +708,7 @@ const server = http.createServer((req, res) => {
             for (const ci of items) {
               const name = inv.find((i) => i.id === ci.item_id)?.name || '?';
               itemCount[name] = (itemCount[name] || 0) + (ci.quantity || 0);
+              checkItems.push({ ...ci, name });
             }
             const top = Object.entries(itemCount).sort((a, b) => b[1] - a[1])[0];
             if (top) favoriteItem = top[0];
@@ -692,8 +720,24 @@ const server = http.createServer((req, res) => {
           const status = tierLabel[player.client_tier] || 'Гость';
           const debt = (player.balance || 0) < 0 ? ` Долг: ${player.balance}₽` : '';
           const fav = favoriteItem ? ` Любимое: ${favoriteItem}.` : '';
-          const msg = `👤 ${player.nickname} (${status}). Баланс: ${player.balance ?? 0}₽. Игр: ${clientChecks.length}.${fav} Бонусы: ${player.bonus_points ?? 0}. Последний визит: ${lastVisit}.${debt}`;
-          json(res, { success: true, message: msg });
+          let msg = `👤 <b>${player.nickname}</b> (${status})\n`;
+          msg += `Баланс: ${player.balance ?? 0}₽ · Бонусы: ${player.bonus_points ?? 0}${debt}\n`;
+          msg += `Визитов: ${clientChecks.length} · LTV: ${Math.round(totalSpent)}₽\n`;
+          if (eveningLines) msg += `Вечера: ${eveningLines}\n`;
+          msg += `Последний визит: ${lastVisit}${fav ? `\n${fav}` : ''}`;
+          const itemsByCheck = {};
+          for (const ci of checkItems) {
+            if (!itemsByCheck[ci.check_id]) itemsByCheck[ci.check_id] = [];
+            itemsByCheck[ci.check_id].push(ci);
+          }
+          const checkHistory = clientChecks.slice(0, 10).map((c) => ({
+            id: c.id,
+            total: c.total_amount,
+            closed_at: c.closed_at,
+            evening_type: shiftMap[c.shift_id] || 'no_event',
+            items: (itemsByCheck[c.id] || []).map((i) => ({ name: i.name, quantity: i.quantity, price: i.price_at_time })),
+          }));
+          json(res, { success: true, message: msg, eveningCounts, checkHistory, totalSpent });
           return;
         }
 

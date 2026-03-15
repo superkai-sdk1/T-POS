@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { getTelegramWebApp, initTelegramApp } from '@/lib/telegram';
 import { ClientAvatar } from '@/components/ui/ClientAvatar';
+import { BarChart3, ChevronDown, ChevronUp, Receipt } from 'lucide-react';
 
 const supabaseUrl = import.meta.env.PROD
   ? `${window.location.origin}/sb`
@@ -49,6 +50,13 @@ const tierColor: Record<string, string> = {
   regular: 'text-white/50',
   resident: 'text-emerald-400',
   student: 'text-violet-400',
+};
+
+const EVENING_LABELS: Record<string, string> = {
+  sport_mafia: 'Спортивная мафия',
+  city_mafia: 'Городская мафия',
+  kids_mafia: 'Детская мафия',
+  no_event: 'Без вечера',
 };
 
 type AppScreen = 'loading' | 'wallet' | 'picker' | 'pending' | 'error';
@@ -419,6 +427,9 @@ export function WalletApp() {
       />
       <div className="w-full max-w-[380px] px-6 pt-16 pb-8 flex flex-col gap-8">
         <WalletCard profile={profile} />
+        {/* MyStatsSection отключено — показываем только бонусы
+        <MyStatsSection profileId={profile.id} />
+        */}
         <TransactionList transactions={transactions} />
       </div>
     </div>
@@ -614,6 +625,153 @@ function WalletCard({ profile }: { profile: Profile }) {
         </div>
       </div>
     </>
+  );
+}
+
+function MyStatsSection({ profileId }: { profileId: string }) {
+  const [checks, setChecks] = useState<{ id: string; total_amount: number; closed_at: string; shift_id: string | null }[]>([]);
+  const [shifts, setShifts] = useState<Record<string, string>>({});
+  const [items, setItems] = useState<{ check_id: string; name: string; quantity: number; price: number }[]>([]);
+  const [expandedCheckId, setExpandedCheckId] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: checksData } = await supabase
+        .from('checks')
+        .select('id, total_amount, closed_at, shift_id')
+        .eq('player_id', profileId)
+        .eq('status', 'closed')
+        .order('closed_at', { ascending: false })
+        .limit(50);
+      if (cancelled) return;
+      if (!checksData?.length) {
+        setLoaded(true);
+        return;
+      }
+      setChecks(checksData);
+      const shiftIds = [...new Set(checksData.map((c) => c.shift_id).filter(Boolean))];
+      if (shiftIds.length > 0) {
+        const { data: shiftsData } = await supabase
+          .from('shifts')
+          .select('id, evening_type')
+          .in('id', shiftIds);
+        const map: Record<string, string> = {};
+        for (const s of shiftsData || []) {
+          map[s.id] = s.evening_type || 'no_event';
+        }
+        if (!cancelled) setShifts(map);
+      }
+      const checkIds = checksData.map((c) => c.id);
+      const { data: itemsData } = await supabase
+        .from('check_items')
+        .select('check_id, quantity, price_at_time, item:inventory(name)')
+        .in('check_id', checkIds);
+      const inv = (itemsData || []).map((ci: Record<string, unknown>) => {
+        const item = Array.isArray(ci.item) ? ci.item[0] : ci.item;
+        return {
+          check_id: ci.check_id as string,
+          name: (item as { name?: string })?.name || '?',
+          quantity: ci.quantity as number,
+          price: ci.price_at_time as number,
+        };
+      });
+      if (!cancelled) setItems(inv);
+      setLoaded(true);
+    })();
+    return () => { cancelled = true; };
+  }, [profileId]);
+
+  const eveningCounts: Record<string, number> = {};
+  for (const c of checks) {
+    const et = shifts[c.shift_id || ''] || 'no_event';
+    (eveningCounts as Record<string, number>)[et] = ((eveningCounts as Record<string, number>)[et] || 0) + 1;
+  }
+  const totalSpent = checks.reduce((s, c) => s + (c.total_amount || 0), 0);
+  const itemsByCheck = items.reduce((acc, i) => {
+    if (!acc[i.check_id]) acc[i.check_id] = [];
+    acc[i.check_id].push(i);
+    return acc;
+  }, {} as Record<string, typeof items>);
+
+  if (!loaded || checks.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-4 animate-fade-in-up" style={{ animationDelay: '50ms' }}>
+      <h3 className="text-[10px] font-extrabold uppercase tracking-[3px] text-white/40 pl-3 flex items-center gap-2">
+        <BarChart3 className="w-3.5 h-3.5" /> Моя статистика
+      </h3>
+      <div
+        className="rounded-[28px] p-5"
+        style={{ background: 'rgba(34, 21, 98, 0.4)', border: '1px solid rgba(125, 84, 237, 0.1)' }}
+      >
+        <div className="flex justify-between text-sm mb-3">
+          <span className="text-white/60">Визитов</span>
+          <span className="font-bold text-white">{checks.length}</span>
+        </div>
+        <div className="flex justify-between text-sm mb-3">
+          <span className="text-white/60">Всего потрачено</span>
+          <span className="font-bold text-emerald-400">{fmt(totalSpent)}₽</span>
+        </div>
+        {Object.keys(eveningCounts as Record<string, number>).length > 0 && (
+          <div className="pt-3 border-t border-white/10">
+            <div className="text-[10px] text-white/40 uppercase tracking-wider mb-2">По типам вечеров</div>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(eveningCounts as Record<string, number>).map(([k, n]) => (
+                <span key={k} className="px-2 py-1 rounded-lg bg-white/5 text-[11px]">
+                  {EVENING_LABELS[k] || k}: {n}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="space-y-2">
+        <div className="text-[10px] font-extrabold uppercase tracking-[3px] text-white/40 pl-3 flex items-center gap-2">
+          <Receipt className="w-3.5 h-3.5" /> История чеков
+        </div>
+        {checks.slice(0, 15).map((c) => {
+          const isExpanded = expandedCheckId === c.id;
+          const checkItems = itemsByCheck[c.id] || [];
+          const eveningLabel = c.shift_id ? EVENING_LABELS[shifts[c.shift_id] || 'no_event'] : null;
+          return (
+            <div
+              key={c.id}
+              className="rounded-[20px] overflow-hidden"
+              style={{ background: 'rgba(34, 21, 98, 0.3)', border: '1px solid rgba(125, 84, 237, 0.08)' }}
+            >
+              <button
+                type="button"
+                onClick={() => setExpandedCheckId(isExpanded ? null : c.id)}
+                className="w-full flex items-center justify-between p-4 text-left"
+              >
+                <div>
+                  <div className="text-xs text-white/50">
+                    {new Date(c.closed_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                  {eveningLabel && <div className="text-[10px] text-[#a29bfe] mt-0.5">{eveningLabel}</div>}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-white">{fmt(c.total_amount)}₽</span>
+                  {checkItems.length > 0 && (isExpanded ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />)}
+                </div>
+              </button>
+              {isExpanded && checkItems.length > 0 && (
+                <div className="px-4 pb-4 pt-0 border-t border-white/5 space-y-1">
+                  {checkItems.map((i, idx) => (
+                    <div key={idx} className="flex justify-between text-[11px] text-white/60">
+                      <span>{i.name} × {i.quantity}</span>
+                      <span>{fmt(i.quantity * i.price)}₽</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

@@ -10,7 +10,9 @@ interface ClosedCheck {
   closed_at: string;
   player_id: string;
   staff_id: string | null;
+  shift_id: string | null;
   player: { nickname: string } | null;
+  shift?: { evening_type: string | null } | null;
 }
 
 interface CheckItemStat {
@@ -46,6 +48,7 @@ export interface PlayerStat {
   segment: 'new' | 'active' | 'sleeping';
   bonusBalance: number;
   tier: string;
+  eveningTypeCounts: Record<string, number>;
 }
 
 export function useAnalyticsData() {
@@ -69,7 +72,7 @@ export function useAnalyticsData() {
   const loadAll = useCallback(async () => {
     setIsLoading(true);
     const [checksRes, itemsRes, debtorsRes, suppliesRes, cashRes, costsRes, expensesRes, playersRes, adminsRes, refundsRes, refundItemsRes, salaryRes] = await Promise.all([
-      supabase.from('checks').select('id, total_amount, payment_method, closed_at, player_id, staff_id, player:profiles!checks_player_id_fkey(nickname)').eq('status', 'closed').order('closed_at', { ascending: false }),
+      supabase.from('checks').select('id, total_amount, payment_method, closed_at, player_id, staff_id, shift_id, player:profiles!checks_player_id_fkey(nickname), shift:shifts!checks_shift_id_fkey(evening_type)').eq('status', 'closed').order('closed_at', { ascending: false }),
       supabase.from('check_items').select('item_id, check_id, quantity, price_at_time, item:inventory(name, category, price, track_stock)'),
       supabase.from('profiles').select('*').lt('balance', 0).order('balance', { ascending: true }),
       supabase.from('supplies').select('id, total_cost, created_at').order('created_at', { ascending: false }),
@@ -87,6 +90,7 @@ export function useAnalyticsData() {
       const mapped = checksRes.data.map((c: Record<string, unknown>) => ({
         ...c,
         player: Array.isArray(c.player) ? (c.player as Record<string, unknown>[])[0] : c.player,
+        shift: Array.isArray(c.shift) ? (c.shift as Record<string, unknown>[])[0] : c.shift,
       })) as ClosedCheck[];
       setAllChecks(mapped);
 
@@ -344,17 +348,20 @@ export function useAnalyticsData() {
       if (effectiveTotal <= 0) continue;
 
       const nick = c.player?.nickname || 'Гость';
+      const eveningType = (c.shift as { evening_type?: string } | null)?.evening_type || 'no_event';
       if (!map[c.player_id]) {
         const profile = allPlayers.find((p) => p.id === c.player_id);
         map[c.player_id] = {
           id: c.player_id, nickname: nick, photo_url: profile?.photo_url || null, total: 0, count: 0,
           avgCheck: 0, lastVisit: new Date(c.closed_at), firstVisit: new Date(c.closed_at),
           segment: 'new', bonusBalance: profile?.bonus_points || 0, tier: profile?.client_tier || 'regular',
+          eveningTypeCounts: {},
         };
       }
       const s = map[c.player_id];
       s.total += effectiveTotal;
       s.count++;
+      s.eveningTypeCounts[eveningType] = (s.eveningTypeCounts[eveningType] || 0) + 1;
       const d = new Date(c.closed_at);
       if (d > s.lastVisit) s.lastVisit = d;
       if (d < s.firstVisit) s.firstVisit = d;

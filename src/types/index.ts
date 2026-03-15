@@ -150,6 +150,7 @@ export interface Shift {
 
 export interface ShiftCheckDetail {
   id: string;
+  player_id?: string | null;
   player_nickname: string;
   total_amount: number;
   payment_method: PaymentMethod | null;
@@ -157,6 +158,7 @@ export interface ShiftCheckDetail {
   certificate_used: number;
   closed_at: string | null;
   items: { name: string; quantity: number; price: number }[];
+  shift?: { evening_type: string | null } | null;
 }
 
 export interface CartItem {

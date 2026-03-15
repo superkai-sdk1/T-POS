@@ -298,6 +298,7 @@ export const useShiftStore = create<ShiftState>()(
 
           checks.push({
             id: c.id,
+            player_id: c.player_id,
             player_nickname: nickname,
             total_amount: c.total_amount,
             payment_method: c.payment_method,
@@ -305,6 +306,7 @@ export const useShiftStore = create<ShiftState>()(
             certificate_used: c.certificate_used || 0,
             closed_at: c.closed_at,
             items: checkItems.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price })),
+            shift: { evening_type: shift.evening_type },
           });
 
           totalRevenue += c.total_amount;

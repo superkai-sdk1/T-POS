@@ -1,15 +1,34 @@
 import { memo, useMemo, useState, useEffect } from 'react';
 import { useLayoutStore } from '@/store/layout';
-import { ArrowLeft, Users, Crown, Search, Activity, UserPlus, Moon, ChevronRight, Star } from 'lucide-react';
+import { ArrowLeft, Users, Crown, Search, Activity, UserPlus, Moon, ChevronRight, Star, ChevronDown, ChevronUp, Receipt } from 'lucide-react';
 import { ClientAvatar } from '@/components/ui/ClientAvatar';
 import { Badge } from '@/components/ui/Badge';
 import type { PlayerStat } from '@/hooks/useAnalyticsData';
 import { useAnalyticsStore } from '@/store/analytics';
+import { EVENING_TYPE_LABELS } from '@/types';
+
+export interface CheckWithShift {
+  id: string;
+  player_id: string;
+  total_amount: number;
+  closed_at: string;
+  player: { nickname: string } | null;
+  shift?: { evening_type: string | null } | null;
+}
+
+interface CheckItemWithName {
+  check_id: string;
+  item_id: string;
+  quantity: number;
+  price_at_time: number;
+  item: { name: string } | null;
+}
 
 interface Props {
   players: PlayerStat[];
   retentionRate: number;
-  checks: { id: string; player_id: string; total_amount: number; closed_at: string; player: { nickname: string } | null }[];
+  checks: CheckWithShift[];
+  allCheckItems?: CheckItemWithName[];
 }
 
 const fmt = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n);
@@ -25,7 +44,7 @@ const tierLabels: Record<string, string> = {
   regular: 'Гость', resident: 'Резидент', student: 'Студент',
 };
 
-export const PlayersModule = memo(function PlayersModule({ players, retentionRate, checks }: Props) {
+export const PlayersModule = memo(function PlayersModule({ players, retentionRate, checks, allCheckItems }: Props) {
   const [segFilter, setSegFilter] = useState<'all' | 'active' | 'new' | 'sleeping'>('all');
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const addHideReason = useLayoutStore((s) => s.addHideReason);
@@ -57,7 +76,7 @@ export const PlayersModule = memo(function PlayersModule({ players, retentionRat
   const player = selectedPlayer ? players.find((p) => p.id === selectedPlayer) : null;
 
   if (player) {
-    return <PlayerDrilldown player={player} checks={checks} onBack={() => setSelectedPlayer(null)} />;
+    return <PlayerDrilldown player={player} checks={checks} allCheckItems={allCheckItems || []} onBack={() => setSelectedPlayer(null)} />;
   }
 
   return (
@@ -173,17 +192,39 @@ export const PlayersModule = memo(function PlayersModule({ players, retentionRat
   );
 });
 
-function PlayerDrilldown({ player, checks, onBack }: {
+function PlayerDrilldown({ player, checks, allCheckItems, onBack }: {
   player: PlayerStat;
   checks: Props['checks'];
+  allCheckItems: CheckItemWithName[];
   onBack: () => void;
 }) {
+  const [expandedCheckId, setExpandedCheckId] = useState<string | null>(null);
+
   const playerChecks = useMemo(() =>
     checks.filter((c) => c.player_id === player.id).sort((a, b) =>
       new Date(b.closed_at).getTime() - new Date(a.closed_at).getTime()),
   [checks, player.id]);
 
+  const itemsByCheckId = useMemo(() => {
+    const map = new Map<string, CheckItemWithName[]>();
+    for (const ci of allCheckItems) {
+      const list = map.get(ci.check_id) || [];
+      list.push(ci);
+      map.set(ci.check_id, list);
+    }
+    return map;
+  }, [allCheckItems]);
+
   const seg = segmentConfig[player.segment];
+
+  const eveningLabels = EVENING_TYPE_LABELS as Record<string, string>;
+  const eveningStats = useMemo(() => {
+    const counts = player.eveningTypeCounts || {};
+    return Object.entries(counts)
+      .filter(([, n]) => n > 0)
+      .map(([key, n]) => ({ key, label: eveningLabels[key] || key, count: n }))
+      .sort((a, b) => b.count - a.count);
+  }, [player.eveningTypeCounts, eveningLabels]);
 
   return (
     <div className="space-y-4 animate-fade-in-up">
@@ -215,20 +256,63 @@ function PlayerDrilldown({ player, checks, onBack }: {
         ))}
       </div>
 
-      <div>
-        <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">История визитов</h3>
-        <div className="space-y-1.5">
-          {playerChecks.slice(0, 20).map((c) => (
-            <div key={c.id} className="flex items-center justify-between p-2.5 rounded-xl card">
-              <span className="text-xs text-[var(--c-hint)]">
-                {new Date(c.closed_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+      {eveningStats.length > 0 && (
+        <div>
+          <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">По типам вечеров</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {eveningStats.map(({ key, label, count }) => (
+              <span key={key} className="px-2.5 py-1 rounded-lg bg-[var(--c-surface)] text-[12px] font-semibold">
+                {label}: {count}
               </span>
-              <span className="text-sm font-bold text-[var(--c-text)] tabular-nums">{fmtCur(c.total_amount)}</span>
-            </div>
-          ))}
-          {playerChecks.length > 20 && (
-            <p className="text-[10px] text-[var(--c-muted)] text-center pt-1">и ещё {playerChecks.length - 20}...</p>
-          )}
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <h3 className="text-[11px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2 flex items-center gap-1">
+          <Receipt className="w-3 h-3" /> История чеков
+        </h3>
+        <div className="space-y-1.5">
+          {playerChecks.map((c) => {
+            const isExpanded = expandedCheckId === c.id;
+            const items = itemsByCheckId.get(c.id) || [];
+            const eveningType = (c.shift as { evening_type?: string } | null)?.evening_type;
+            const eveningLabel = eveningType ? eveningLabels[eveningType] : null;
+            return (
+              <div key={c.id} className="rounded-xl card overflow-hidden">
+                <button
+                  onClick={() => setExpandedCheckId(isExpanded ? null : c.id)}
+                  className="w-full flex items-center justify-between p-2.5 text-left"
+                >
+                  <div className="flex flex-col items-start gap-0.5">
+                    <span className="text-xs text-[var(--c-hint)]">
+                      {new Date(c.closed_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    {eveningLabel && (
+                      <span className="text-[10px] text-[var(--c-accent)]">{eveningLabel}</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-[var(--c-text)] tabular-nums">{fmtCur(c.total_amount)}</span>
+                    {items.length > 0 && (isExpanded ? <ChevronUp className="w-4 h-4 text-[var(--c-muted)]" /> : <ChevronDown className="w-4 h-4 text-[var(--c-muted)]" />)}
+                  </div>
+                </button>
+                {isExpanded && items.length > 0 && (
+                  <div className="px-2.5 pb-2.5 pt-0 border-t border-[var(--c-border)]">
+                    <div className="space-y-1 mt-2">
+                      {items.map((ci, idx) => (
+                        <div key={idx} className="flex justify-between text-[11px] text-[var(--c-hint)]">
+                          <span>{(ci.item as { name?: string })?.name || '?'} × {ci.quantity}</span>
+                          <span className="tabular-nums">{fmtCur(ci.quantity * (ci.price_at_time || 0))}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
