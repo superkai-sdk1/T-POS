@@ -72,7 +72,7 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 ${
                 tab === t.id
                   ? 'bg-[var(--c-accent)] text-white shadow-sm'
                   : 'text-[var(--c-hint)]'
@@ -86,36 +86,36 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
 
         <div key={tab} className="tab-content-enter">
           {tab === 'overview' && (
-            <div className="space-y-2.5 stagger-children">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-[var(--c-accent)]/10 to-[var(--c-success-bg)] card">
-                <p className="text-[10px] text-[var(--c-muted)] font-semibold mb-0.5">Выручка</p>
+            <div className="space-y-3 stagger-children">
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-[var(--c-accent)]/10 to-[var(--c-success-bg)] card">
+                <p className="text-xs text-[var(--c-muted)] font-semibold mb-0.5">Выручка</p>
                 <p className="text-2xl font-black text-[var(--c-text)] tabular-nums">{fmtCur(analytics.totalRevenue)}</p>
-                <p className="text-[10px] text-[var(--c-muted)] mt-0.5">
+                <p className="text-xs text-[var(--c-muted)] mt-0.5">
                   {eveningLabel} · {new Date(analytics.shift.opened_at).toLocaleDateString('ru-RU')} · {shiftDuration}
                 </p>
               </div>
 
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="grid grid-cols-3 gap-2">
                 {[
                   { value: analytics.totalChecks, label: 'Чеков', color: 'text-[var(--c-accent)]' },
                   { value: fmtCur(analytics.avgCheck), label: 'Ср. чек', color: 'text-[var(--c-warning)]' },
                   { value: analytics.itemsSold.length, label: 'Позиций', color: 'text-[var(--c-success)]' },
                 ].map((s) => (
-                  <div key={s.label} className="p-2 rounded-xl card text-center">
+                  <div key={s.label} className="p-3 rounded-2xl card text-center">
                     <p className={`text-lg font-black tabular-nums ${s.color}`}>{s.value}</p>
-                    <p className="text-[9px] text-[var(--c-muted)] font-semibold">{s.label}</p>
+                    <p className="text-xs text-[var(--c-muted)] font-semibold">{s.label}</p>
                   </div>
                 ))}
               </div>
 
               {Object.keys(analytics.paymentBreakdown).length > 0 && (
-                <div className="p-2.5 rounded-xl card space-y-1.5">
-                  <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider flex items-center gap-1"><CreditCard className="w-3 h-3" /> Оплата</p>
+                <div className="p-4 rounded-2xl card space-y-2">
+                  <p className="text-xs font-semibold text-[var(--c-muted)] uppercase tracking-wider flex items-center gap-1"><CreditCard className="w-3 h-3" /> Оплата</p>
                   {Object.entries(analytics.paymentBreakdown).map(([method, val]) => {
                     const pct = analytics.totalRevenue > 0 ? (val.amount / analytics.totalRevenue) * 100 : 0;
                     return (
                       <div key={method}>
-                        <div className="flex justify-between text-[12px] mb-0.5">
+                        <div className="flex justify-between text-sm mb-0.5">
                           <span className="text-[var(--c-hint)]">{pmLabels[method] || method} · {val.count}</span>
                           <span className="font-bold text-[var(--c-text)] tabular-nums">{fmtCur(val.amount)}</span>
                         </div>
@@ -132,20 +132,20 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
               )}
 
               {analytics.shift.cash_start > 0 && (
-                <div className="p-2.5 rounded-xl card space-y-1">
-                  <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">Касса</p>
-                  <div className="flex justify-between text-[12px]">
+                <div className="p-4 rounded-2xl card space-y-2">
+                  <p className="text-xs font-semibold text-[var(--c-muted)] uppercase tracking-wider">Касса</p>
+                  <div className="flex justify-between text-sm">
                     <span className="text-[var(--c-hint)]">Начало</span>
                     <span className="text-[var(--c-text)] tabular-nums">{fmtCur(analytics.shift.cash_start)}</span>
                   </div>
                   {analytics.shift.cash_end !== null && (
-                    <div className="flex justify-between text-[12px]">
+                    <div className="flex justify-between text-sm">
                       <span className="text-[var(--c-hint)]">Конец</span>
                       <span className="text-[var(--c-text)] tabular-nums">{fmtCur(analytics.shift.cash_end)}</span>
                     </div>
                   )}
                   {analytics.paymentBreakdown['cash'] && (
-                    <div className="flex justify-between text-[12px] border-t border-[var(--c-border)] pt-1">
+                    <div className="flex justify-between text-sm border-t border-[var(--c-border)] pt-1">
                       <span className="text-[var(--c-hint)]">Ожидаемо</span>
                       <span className="font-bold text-[var(--c-success)] tabular-nums">
                         {fmtCur(analytics.shift.cash_start + analytics.paymentBreakdown['cash'].amount)}
@@ -156,7 +156,7 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                     const expected = analytics.shift.cash_start + analytics.paymentBreakdown['cash'].amount;
                     const diff = analytics.shift.cash_end - expected;
                     return diff !== 0 ? (
-                      <div className="flex justify-between text-[12px]">
+                      <div className="flex justify-between text-sm">
                         <span className="text-[var(--c-hint)]">Расхождение</span>
                         <span className={`font-black tabular-nums ${diff < 0 ? 'text-[var(--c-danger)]' : 'text-[var(--c-success)]'}`}>
                           {diff > 0 ? '+' : ''}{fmtCur(diff)}
@@ -170,7 +170,7 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
           )}
 
           {tab === 'checks' && (
-            <div className="space-y-1.5 max-h-[55vh] overflow-y-auto stagger-children">
+            <div className="space-y-2 max-h-[55vh] overflow-y-auto stagger-children">
               {analytics.checks.length === 0 && (
                 <p className="text-center text-xs text-[var(--c-muted)] py-8">Нет закрытых чеков</p>
               )}
@@ -179,20 +179,20 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                 const hasRefund = refundAmt > 0;
                 const displayTotal = (c.total_amount + (c.bonus_used || 0) + (c.certificate_used || 0)) - refundAmt;
                 return (
-                <div key={c.id} className="p-2.5 rounded-xl card space-y-1.5">
+                <div key={c.id} className="p-4 rounded-2xl card space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="font-semibold text-[13px] text-[var(--c-text)]">{c.player_nickname}</span>
+                      <span className="font-semibold text-sm text-[var(--c-text)]">{c.player_nickname}</span>
                       {hasRefund && (
-                        <span className="inline-flex items-center gap-0.5 ml-1.5 text-[9px] px-1.5 py-0.5 rounded-md bg-[var(--c-warning-bg)] text-[var(--c-warning)] font-medium">
+                        <span className="inline-flex items-center gap-0.5 ml-1.5 text-xs px-2 py-0.5 rounded-md bg-[var(--c-warning-bg)] text-[var(--c-warning)] font-medium">
                           <RotateCcw className="w-2.5 h-2.5" /> Возврат
                         </span>
                       )}
-                      <span className="text-[10px] text-[var(--c-muted)] ml-1.5">{fmtTime(c.closed_at)}</span>
+                      <span className="text-xs text-[var(--c-muted)] ml-1.5">{fmtTime(c.closed_at)}</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       {c.payment_method && (
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-md font-semibold ${
+                        <span className={`text-xs px-2 py-0.5 rounded-md font-semibold ${
                           c.payment_method === 'cash' ? 'bg-[var(--c-success-bg)] text-[var(--c-success)]' :
                           c.payment_method === 'card' ? 'bg-[var(--c-info-bg)] text-[var(--c-info)]' :
                           c.payment_method === 'debt' ? 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' :
@@ -201,13 +201,13 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                           {pmLabels[c.payment_method] || c.payment_method}
                         </span>
                       )}
-                      <span className="font-black text-[13px] text-[var(--c-accent)] tabular-nums">{fmtCur(displayTotal)}</span>
+                      <span className="font-black text-sm text-[var(--c-accent)] tabular-nums">{fmtCur(displayTotal)}</span>
                     </div>
                   </div>
                   {c.items.length > 0 && (
                     <div className="space-y-0.5 pl-2 border-l-2 border-[var(--c-border)]">
                       {c.items.map((item, idx) => (
-                        <div key={idx} className="flex justify-between text-[11px] text-[var(--c-hint)]">
+                        <div key={idx} className="flex justify-between text-xs text-[var(--c-hint)]">
                           <span>{item.name} × {item.quantity}</span>
                           <span className="tabular-nums">{fmtCur(item.quantity * item.price)}</span>
                         </div>
@@ -215,19 +215,19 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                     </div>
                   )}
                   {(c.bonus_used || 0) > 0 && (
-                    <div className="flex justify-between text-[11px] pt-1 border-t border-[var(--c-border)]">
+                    <div className="flex justify-between text-xs pt-1 border-t border-[var(--c-border)]">
                       <span className="text-[var(--c-hint)]">Бонусы</span>
                       <span className="font-bold text-[var(--c-warning)] tabular-nums">-{fmtCur(c.bonus_used)}</span>
                     </div>
                   )}
                   {(c.certificate_used || 0) > 0 && (
-                    <div className="flex justify-between text-[11px] pt-1 border-t border-[var(--c-border)]">
+                    <div className="flex justify-between text-xs pt-1 border-t border-[var(--c-border)]">
                       <span className="text-[var(--c-hint)]">Сертификат</span>
                       <span className="font-bold text-[#8b5cf6] tabular-nums">-{fmtCur(c.certificate_used)}</span>
                     </div>
                   )}
                   {hasRefund && (
-                    <div className="flex justify-between text-[11px] pt-1 border-t border-[var(--c-border)]">
+                    <div className="flex justify-between text-xs pt-1 border-t border-[var(--c-border)]">
                       <span className="text-[var(--c-warning)]">Возврат</span>
                       <span className="font-bold text-[var(--c-warning)] tabular-nums">−{fmtCur(refundAmt)}</span>
                     </div>
@@ -244,10 +244,10 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                 <p className="text-center text-xs text-[var(--c-muted)] py-8">Нет продаж</p>
               )}
               {analytics.itemsSold.map((item, idx) => (
-                <div key={item.name} className="flex items-center gap-2.5 p-2 rounded-xl card">
-                  <span className="text-[10px] font-black text-[var(--c-muted)] w-4 text-right tabular-nums shrink-0">{idx + 1}</span>
+                <div key={item.name} className="flex items-center gap-3 p-3 rounded-2xl card">
+                  <span className="text-xs font-black text-[var(--c-muted)] w-4 text-right tabular-nums shrink-0">{idx + 1}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-medium text-[var(--c-text)] truncate">{item.name}</p>
+                    <p className="text-sm font-medium text-[var(--c-text)] truncate">{item.name}</p>
                     <div className="h-1 rounded-full bg-[var(--c-surface)] overflow-hidden mt-1">
                       <div
                         className="h-full rounded-full bg-[var(--c-accent)] transition-all duration-500"
@@ -256,8 +256,8 @@ export function ShiftAnalytics({ open, onClose, analytics }: Props) {
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[12px] font-bold text-[var(--c-accent)] tabular-nums">{fmtCur(item.revenue)}</p>
-                    <p className="text-[9px] text-[var(--c-muted)]">{item.quantity} шт</p>
+                    <p className="text-sm font-bold text-[var(--c-accent)] tabular-nums">{fmtCur(item.revenue)}</p>
+                    <p className="text-xs text-[var(--c-muted)]">{item.quantity} шт</p>
                   </div>
                 </div>
               ))}

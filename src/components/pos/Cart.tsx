@@ -25,7 +25,7 @@ export function Cart() {
 
   return (
     <div className="space-y-2">
-      <div className="space-y-2">
+      <div className="space-y-3">
         {cart.filter((cartItem) => cartItem?.item).map((cartItem) => {
           const modKey = (cartItem.modifiers || []).map((m) => m.id).sort().join(',');
           const cartKey = cartItem.item.id + (modKey ? ':' + modKey : '');
@@ -39,7 +39,7 @@ export function Cart() {
             onDecrement={() => updateCartQuantity(cartItem.item.id, Math.max(1, cartItem.quantity - 1), modKey)}
             onRemove={() => removeFromCart(cartItem.item.id, modKey)}
           >
-            <div className="flex items-center gap-3 p-3 bg-[var(--c-surface)]">
+            <div className="flex items-center gap-3 p-4 bg-[var(--c-surface)]">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[var(--c-text)] truncate">
                   {cartItem.item.name}
@@ -48,9 +48,9 @@ export function Cart() {
                   {fmtCur(unitPrice)} × {cartItem.quantity}
                 </p>
                 {cartItem.modifiers && cartItem.modifiers.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-0.5">
+                  <div className="flex flex-wrap gap-1.5 mt-0.5">
                     {cartItem.modifiers.map((m, idx) => (
-                      <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400">
+                      <span key={idx} className="text-xs px-1.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400">
                         {m.name}{m.price > 0 ? ` +${m.price}₽` : ''}
                       </span>
                     ))}
@@ -58,13 +58,13 @@ export function Cart() {
                 )}
               </div>
 
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   onClick={() => {
                     hapticFeedback('light');
                     updateCartQuantity(cartItem.item.id, cartItem.quantity - 1, modKey);
                   }}
-                  className="w-9 h-9 rounded-lg bg-[var(--c-bg)] flex items-center justify-center hover:bg-[var(--c-surface-hover)] transition-colors active:scale-90 shrink-0"
+                  className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-[var(--c-bg)] flex items-center justify-center hover:bg-[var(--c-surface-hover)] transition-colors active:scale-90 shrink-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                 >
                   <Minus className="w-4 h-4 text-[var(--c-text)]" />
                 </button>
@@ -76,7 +76,7 @@ export function Cart() {
                     hapticFeedback('light');
                     updateCartQuantity(cartItem.item.id, cartItem.quantity + 1, modKey);
                   }}
-                  className="w-9 h-9 rounded-lg bg-[var(--c-bg)] flex items-center justify-center hover:bg-[var(--c-surface-hover)] transition-colors active:scale-90 shrink-0"
+                  className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-xl bg-[var(--c-bg)] flex items-center justify-center hover:bg-[var(--c-surface-hover)] transition-colors active:scale-90 shrink-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                 >
                   <Plus className="w-4 h-4 text-[var(--c-text)]" />
                 </button>

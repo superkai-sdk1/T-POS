@@ -61,11 +61,11 @@ export function ShiftHistory() {
             <button
               key={s.id}
               onClick={() => openAnalytics(s)}
-              className="w-full text-left p-4 rounded-2xl bg-[var(--c-surface)] hover:bg-[var(--c-surface-hover)] border border-[var(--c-border)] transition-all active:scale-[0.98]"
+              className="w-full text-left p-4 rounded-2xl bg-[var(--c-surface)] hover:bg-[var(--c-surface-hover)] border border-[var(--c-border)] transition-all active:scale-[0.98] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-10 h-10 rounded-xl bg-[var(--c-accent)]/15 flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-2xl bg-[var(--c-accent)]/15 flex items-center justify-center shrink-0">
                     <Truck className="w-5 h-5 text-[var(--c-accent)]" />
                   </div>
                   <div className="min-w-0 flex-1">

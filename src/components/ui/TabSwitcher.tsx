@@ -25,7 +25,7 @@ const variantStyles = {
 export function TabSwitcher({ tabs, activeId, onChange, variant = 'accent' }: TabSwitcherProps) {
   return (
     <div className="flex justify-center w-full">
-      <div className="inline-flex p-1 rounded-full bg-white/[0.05] border border-white/[0.06]">
+      <div className="inline-flex p-1 rounded-full bg-white/[0.05] border border-white/[0.08]" style={{ backfaceVisibility: 'hidden' }}>
         {tabs.map((tab) => {
           const isActive = activeId === tab.id;
           return (
@@ -33,9 +33,14 @@ export function TabSwitcher({ tabs, activeId, onChange, variant = 'accent' }: Ta
               key={tab.id}
               onClick={() => onChange(tab.id)}
               className={`
-                flex items-center justify-center gap-2 px-4 py-2 rounded-full text-[13px] font-semibold
+                flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-semibold
+                min-h-[44px] min-w-[44px]
                 transition-all duration-200 ease-[var(--ease-out-expo)]
-                active:scale-[0.98]
+                active:scale-[0.96]
+                will-change-colors
+                backface-hidden
+                cursor-pointer
+                focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20
                 ${isActive
                   ? variantStyles[variant]
                   : 'text-[var(--c-muted)] hover:text-[var(--c-hint)] hover:bg-white/[0.04]'

@@ -87,7 +87,7 @@ body {
   flex-direction: column;
 }
 
-/* ── Animated Background Mesh ── */
+/* ── Animated Background Mesh (optimized) ── */
 body::before {
   content: '';
   position: fixed;
@@ -99,6 +99,8 @@ body::before {
   animation: bg-float-1 20s ease-in-out infinite;
   pointer-events: none;
   z-index: 0;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 body::after {
@@ -112,6 +114,15 @@ body::after {
   animation: bg-float-2 25s ease-in-out infinite;
   pointer-events: none;
   z-index: 0;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  body::after {
+    animation: none;
+  }
 }
 
 @keyframes bg-float-1 {
@@ -185,6 +196,8 @@ input[type="number"] {
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
   contain: layout style;
+  scroll-behavior: smooth;
+  scroll-snap-type: y proximity;
 }
 
 /* Flex задаёт высоту — max-height не ограничивает, чтобы не было пустой области при скрытом навбаре */
@@ -197,7 +210,7 @@ input[type="number"] {
   display: none;
 }
 
-/* ── Core Animations ── */
+/* ── Core Animations (GPU-accelerated) ── */
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -212,17 +225,20 @@ input[type="number"] {
   from {
     opacity: 0;
     transform: translateY(10px);
+    backface-visibility: hidden;
   }
 
   to {
     opacity: 1;
     transform: translateY(0);
+    backface-visibility: hidden;
   }
 }
 
 @keyframes slide-up {
   0% {
     transform: translateY(100%);
+    backface-visibility: hidden;
   }
 
   70% {
@@ -231,6 +247,7 @@ input[type="number"] {
 
   100% {
     transform: translateY(0);
+    backface-visibility: hidden;
   }
 }
 
@@ -238,11 +255,13 @@ input[type="number"] {
   from {
     transform: translateY(0);
     opacity: 1;
+    backface-visibility: hidden;
   }
 
   to {
     transform: translateY(100%);
     opacity: 0;
+    backface-visibility: hidden;
   }
 }
 
@@ -250,11 +269,13 @@ input[type="number"] {
   from {
     opacity: 0;
     transform: translateX(24px);
+    backface-visibility: hidden;
   }
 
   to {
     opacity: 1;
     transform: translateX(0);
+    backface-visibility: hidden;
   }
 }
 
@@ -262,11 +283,13 @@ input[type="number"] {
   from {
     opacity: 0;
     transform: translateX(-24px);
+    backface-visibility: hidden;
   }
 
   to {
     opacity: 1;
     transform: translateX(0);
+    backface-visibility: hidden;
   }
 }
 
@@ -274,11 +297,13 @@ input[type="number"] {
   0% {
     transform: scale(0.92);
     opacity: 0;
+    backface-visibility: hidden;
   }
 
   100% {
     transform: scale(1);
     opacity: 1;
+    backface-visibility: hidden;
   }
 }
 
@@ -502,15 +527,16 @@ input[type="number"] {
   border-radius: var(--radius-md);
 }
 
-/* ── Card System ── */
+/* ── Card System (optimized) ── */
 .card {
   background: var(--c-card-bg);
   border: 1px solid var(--c-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  backdrop-filter: blur(20px) saturate(1.3);
-  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  backdrop-filter: blur(12px) saturate(1.3);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
   transition: background 0.12s, transform 0.08s, box-shadow 0.12s, border-color 0.12s;
+  backface-visibility: hidden;
 }
 
 .card-interactive {
@@ -518,11 +544,12 @@ input[type="number"] {
   border: 1px solid var(--c-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
-  backdrop-filter: blur(20px) saturate(1.3);
-  -webkit-backdrop-filter: blur(20px) saturate(1.3);
+  backdrop-filter: blur(12px) saturate(1.3);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
   transition: all 0.1s var(--ease-spring);
   will-change: transform;
   transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .card-interactive:active {
@@ -532,37 +559,41 @@ input[type="number"] {
   box-shadow: var(--shadow-card-hover);
 }
 
-/* ── Tap micro-interaction ── */
+/* ── Tap micro-interaction (instant feedback) ── */
 .tap {
   transition: transform 0.06s ease-out;
   will-change: transform;
   transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .tap:active {
   transform: scale(0.96) translateZ(0);
 }
 
-/* ── Glass ── */
+/* ── Glass (optimized blur) ── */
 .glass {
   background: var(--c-glass-bg);
-  backdrop-filter: blur(var(--c-glass-blur)) saturate(1.5);
-  -webkit-backdrop-filter: blur(var(--c-glass-blur)) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
   border: 1px solid var(--c-border);
+  backface-visibility: hidden;
 }
 
 .glass-strong {
   background: var(--c-glass-strong-bg);
-  backdrop-filter: blur(var(--c-glass-strong-blur)) saturate(1.6);
-  -webkit-backdrop-filter: blur(var(--c-glass-strong-blur)) saturate(1.6);
+  backdrop-filter: blur(32px) saturate(1.6);
+  -webkit-backdrop-filter: blur(32px) saturate(1.6);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: var(--shadow-nav);
+  backface-visibility: hidden;
 }
 
-/* ── Staggered children ── */
+/* ── Staggered children (optimized delays) ── */
 .stagger-children>* {
   animation: fade-in-up 0.2s var(--ease-spring) backwards;
   content-visibility: auto;
+  backface-visibility: hidden;
 }
 
 .stagger-children>*:nth-child(1) {
@@ -570,31 +601,31 @@ input[type="number"] {
 }
 
 .stagger-children>*:nth-child(2) {
-  animation-delay: 30ms;
+  animation-delay: 20ms;
 }
 
 .stagger-children>*:nth-child(3) {
-  animation-delay: 60ms;
+  animation-delay: 40ms;
 }
 
 .stagger-children>*:nth-child(4) {
-  animation-delay: 90ms;
+  animation-delay: 60ms;
 }
 
 .stagger-children>*:nth-child(5) {
-  animation-delay: 120ms;
+  animation-delay: 80ms;
 }
 
 .stagger-children>*:nth-child(6) {
-  animation-delay: 150ms;
+  animation-delay: 100ms;
 }
 
 .stagger-children>*:nth-child(7) {
-  animation-delay: 180ms;
+  animation-delay: 120ms;
 }
 
 .stagger-children>*:nth-child(8) {
-  animation-delay: 210ms;
+  animation-delay: 140ms;
 }
 
 /* ── Layout ── */

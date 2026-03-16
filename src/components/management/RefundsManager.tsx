@@ -359,8 +359,8 @@ export function RefundsManager() {
     return (
       <div className="space-y-3">
         <button
-          onClick={() => setScreen('list')}
-          className="flex items-center gap-1.5 text-[11px] text-[var(--c-hint)] font-semibold active:scale-95 transition-transform"
+          onClick={() => { setScreen('list'); }}
+          className="flex items-center gap-1.5 text-xs text-[var(--c-hint)] font-semibold active:scale-95 transition-transform cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Назад к возвратам
         </button>
@@ -385,16 +385,16 @@ export function RefundsManager() {
               <button
                 key={check.id}
                 onClick={() => handleSelectCheck(check)}
-                className="w-full flex items-center gap-2.5 p-3 rounded-xl card-interactive"
+                className="w-full flex items-center gap-2.5 p-4 rounded-2xl card-interactive cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
               >
                 <div className="w-9 h-9 rounded-lg bg-[var(--c-surface)] flex items-center justify-center shrink-0">
                   <Receipt className="w-4 h-4 text-[var(--c-hint)]" />
                 </div>
                 <div className="flex-1 text-left min-w-0">
-                  <p className="font-semibold text-[13px] text-[var(--c-text)] truncate">
+                  <p className="font-semibold text-sm text-[var(--c-text)] truncate">
                     {check.player?.nickname || check.guest_names || 'Гость'}
                   </p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
+                  <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-[10px] text-[var(--c-muted)]">
                       {check.checkItems.length} поз.
                     </span>
@@ -421,18 +421,18 @@ export function RefundsManager() {
       <div className="space-y-3">
         <button
           onClick={() => { setScreen('selectCheck'); setSelectedCheck(null); }}
-          className="flex items-center gap-1.5 text-[11px] text-[var(--c-hint)] font-semibold active:scale-95 transition-transform"
+          className="flex items-center gap-1.5 text-xs text-[var(--c-hint)] font-semibold active:scale-95 transition-transform cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Назад к выбору чека
         </button>
 
-        <div className="p-3 rounded-xl card space-y-2">
+        <div className="p-4 rounded-2xl card space-y-2">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-bold text-sm text-[var(--c-text)]">
                 {selectedCheck.player?.nickname || selectedCheck.guest_names || 'Гость'}
               </p>
-              <p className="text-[10px] text-[var(--c-muted)]">
+              <p className="text-xs text-[var(--c-muted)]">
                 Чек на {fmtCur(selectedCheck.total_amount)}
                 {selectedCheck.bonus_used > 0 && ` (бонусов: ${fmtCur(selectedCheck.bonus_used)})`}
               </p>
@@ -453,8 +453,8 @@ export function RefundsManager() {
           variant={refundType === 'full' ? 'danger' : 'warning'}
         />
 
-        <div className="space-y-1">
-          <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider">
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-[var(--c-muted)] uppercase tracking-wider">
             Позиции для возврата
           </p>
           {selectedCheck.checkItems.map((ci) => {
@@ -463,7 +463,7 @@ export function RefundsManager() {
             return (
               <div
                 key={ci.id}
-                className={`flex items-center gap-2 p-2.5 rounded-xl transition-all ${
+                className={`flex items-center gap-2 p-4 rounded-2xl transition-all ${
                   qty > 0 ? 'bg-[var(--c-danger-bg)] border border-[var(--c-danger-border)]' : 'card'
                 }`}
               >
@@ -471,30 +471,30 @@ export function RefundsManager() {
                   <Package className="w-3.5 h-3.5 text-[var(--c-muted)]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-medium text-[var(--c-text)] truncate">
+                  <p className="text-sm font-medium text-[var(--c-text)] truncate">
                     {ci.item?.name || '?'}
                   </p>
-                  <p className="text-[10px] text-[var(--c-muted)]">
+                  <p className="text-xs text-[var(--c-muted)]">
                     {fmtCur(ci.price_at_time)} × {ci.quantity}
                   </p>
                 </div>
 
                 {isPartial ? (
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => updateItemQty(ci.id, -1)}
-                      className="w-7 h-7 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform"
+                      className="w-7 h-7 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                     >
                       <Minus className="w-3 h-3 text-[var(--c-hint)]" />
                     </button>
-                    <span className={`w-6 text-center text-[13px] font-bold tabular-nums ${
+                    <span className={`w-6 text-center text-sm font-bold tabular-nums ${
                       qty > 0 ? 'text-[var(--c-danger)]' : 'text-[var(--c-muted)]'
                     }`}>
                       {qty}
                     </span>
                     <button
                       onClick={() => updateItemQty(ci.id, 1)}
-                      className="w-7 h-7 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform"
+                      className="w-7 h-7 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                     >
                       <Plus className="w-3 h-3 text-[var(--c-hint)]" />
                     </button>
@@ -523,13 +523,13 @@ export function RefundsManager() {
           </div>
         )}
 
-        <div className="p-3 rounded-xl bg-[var(--c-danger-bg)] border border-[var(--c-danger-border)] space-y-1">
-          <div className="flex justify-between text-[12px]">
+        <div className="p-4 rounded-2xl bg-[var(--c-danger-bg)] border border-[var(--c-danger-border)] space-y-2">
+          <div className="flex justify-between text-sm">
             <span className="text-[var(--c-hint)]">Сумма возврата</span>
             <span className="font-bold text-[var(--c-danger)] tabular-nums">{fmtCur(getAdjustedRefundTotal())}</span>
           </div>
           {(selectedCheck.discount_total || 0) > 0 && (
-            <div className="flex justify-between text-[11px]">
+            <div className="flex justify-between text-xs">
               <span className="text-[var(--c-muted)]">Скидка учтена</span>
               <span className="text-[var(--c-muted)] tabular-nums">−{fmtCur(refundTotal - getAdjustedRefundTotal())}</span>
             </div>
@@ -548,13 +548,13 @@ export function RefundsManager() {
                 return (
                   <>
                     {bonusDeduct > 0 && (
-                      <div className="flex justify-between text-[11px]">
+                      <div className="flex justify-between text-xs">
                         <span className="text-[var(--c-muted)]">Списание начисленных бонусов</span>
                         <span className="text-[var(--c-warning)] font-semibold tabular-nums">−{bonusDeduct}</span>
                       </div>
                     )}
                     {bonusReturn > 0 && (
-                      <div className="flex justify-between text-[11px]">
+                      <div className="flex justify-between text-xs">
                         <span className="text-[var(--c-muted)]">Возврат использованных бонусов</span>
                         <span className="text-[var(--c-success)] font-semibold tabular-nums">+{bonusReturn}</span>
                       </div>
@@ -632,18 +632,18 @@ export function RefundsManager() {
                 }`} />
               </div>
               <div className="flex-1 text-left min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <p className="font-semibold text-[13px] text-[var(--c-text)]">
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-sm text-[var(--c-text)]">
                     {fmtCur(r.total_amount)}
                   </p>
                   <Badge size="sm" variant={r.refund_type === 'full' ? 'danger' : 'warning'}>
                     {r.refund_type === 'full' ? 'Полный' : 'Частичный'}
                   </Badge>
                 </div>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-[10px] text-[var(--c-muted)]">{r.creator?.nickname || '?'}</span>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs text-[var(--c-muted)]">{r.creator?.nickname || '?'}</span>
                   <span className="text-[var(--c-muted)]">·</span>
-                  <span className="text-[10px] text-[var(--c-muted)]">{fmtDate(r.created_at)}</span>
+                  <span className="text-xs text-[var(--c-muted)]">{fmtDate(r.created_at)}</span>
                 </div>
               </div>
               <ChevronRight className="w-3.5 h-3.5 text-[var(--c-muted)] shrink-0" />
@@ -660,31 +660,31 @@ export function RefundsManager() {
       >
         {detailRefund && (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2">
-              <div className="p-2.5 rounded-xl card text-center">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-4 rounded-2xl card text-center">
                 <p className="text-base font-black text-[var(--c-danger)] tabular-nums">
                   {fmtCur(detailRefund.total_amount)}
                 </p>
-                <p className="text-[9px] text-[var(--c-muted)]">Сумма</p>
+                <p className="text-xs text-[var(--c-muted)]">Сумма</p>
               </div>
-              <div className="p-2.5 rounded-xl card text-center">
+              <div className="p-4 rounded-2xl card text-center">
                 <Badge variant={detailRefund.refund_type === 'full' ? 'danger' : 'warning'}>
                   {detailRefund.refund_type === 'full' ? 'Полный' : 'Частичный'}
                 </Badge>
-                <p className="text-[9px] text-[var(--c-muted)] mt-1">Тип</p>
+                <p className="text-xs text-[var(--c-muted)] mt-1">Тип</p>
               </div>
             </div>
 
             {(detailRefund.bonus_deducted > 0 || detailRefund.bonus_returned > 0) && (
-              <div className="p-2.5 rounded-xl bg-[var(--c-warning-bg)] border border-[var(--c-warning-border)] space-y-1">
+              <div className="p-4 rounded-2xl bg-[var(--c-warning-bg)] border border-[var(--c-warning-border)] space-y-2">
                 {detailRefund.bonus_deducted > 0 && (
-                  <div className="flex justify-between text-[11px]">
+                  <div className="flex justify-between text-xs">
                     <span className="text-[var(--c-hint)]">Бонусов списано</span>
                     <span className="text-[var(--c-danger)] font-semibold">−{detailRefund.bonus_deducted}</span>
                   </div>
                 )}
                 {detailRefund.bonus_returned > 0 && (
-                  <div className="flex justify-between text-[11px]">
+                  <div className="flex justify-between text-xs">
                     <span className="text-[var(--c-hint)]">Бонусов возвращено</span>
                     <span className="text-[var(--c-success)] font-semibold">+{detailRefund.bonus_returned}</span>
                   </div>

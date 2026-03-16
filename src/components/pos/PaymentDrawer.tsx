@@ -360,33 +360,34 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full bg-[#0e0e12]/95 backdrop-blur-3xl border border-white/10 rounded-t-[3rem] sm:rounded-[3rem] p-7 shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden overflow-y-auto"
+          className="relative w-full bg-[#0e0e12]/95 backdrop-blur-[24px] border border-white/12 rounded-t-[3rem] sm:rounded-[3rem] p-7 shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden overflow-y-auto"
           style={{
             maxHeight: maxH,
-            WebkitBackdropFilter: 'blur(30px)',
+            WebkitBackdropFilter: 'blur(24px)',
+            backfaceVisibility: 'hidden',
           }}
         >
         <div className="absolute top-0 right-0 w-32 h-32 bg-[#8b5cf6] blur-[80px] opacity-20 pointer-events-none" />
 
         <div className="flex justify-between items-center mb-6 relative z-10">
           <h2 className="text-3xl font-black italic tracking-tighter uppercase text-white">Оплата</h2>
-          <button onClick={handleClose} className="p-3 bg-white/5 rounded-full border border-white/10 text-white/40 hover:text-white transition-colors">
+          <button onClick={handleClose} className="p-4 bg-white/6 rounded-full border border-white/12 text-white/40 hover:text-white transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20">
             <X size={20} />
           </button>
         </div>
 
         <div className="space-y-6 relative z-10">
           {playerInfo && (
-            <div className="bg-white/5 border border-white/10 rounded-3xl p-4 flex items-center gap-4">
+            <div className="bg-white/6 border border-white/12 rounded-3xl p-4 flex items-center gap-4">
               <ClientAvatar photoUrl={playerInfo.photo_url} id={playerInfo.id} size="xl" rounded="xl" className="!rounded-2xl shrink-0" />
               <div>
                 <h4 className="font-bold text-white">{playerInfo.nickname}</h4>
-                <div className="flex gap-2 mt-1 flex-wrap">
-                  <span className={`px-2 py-0.5 rounded-lg text-[9px] font-bold border uppercase tracking-tighter ${playerInfo.balance < 0 ? 'bg-[#f43f5e]/10 text-[#f43f5e] border-[#f43f5e]/20' : playerInfo.balance > 0 ? 'bg-[#06b6d4]/10 text-[#06b6d4] border-[#06b6d4]/20' : 'bg-white/5 text-white/40 border-white/5'}`}>
+                <div className="flex gap-3 mt-1 flex-wrap">
+                  <span className={`px-2 py-0.5 rounded-xl text-xs font-bold border uppercase tracking-tighter ${playerInfo.balance < 0 ? 'bg-[#f43f5e]/10 text-[#f43f5e] border-[#f43f5e]/20' : playerInfo.balance > 0 ? 'bg-[#06b6d4]/10 text-[#06b6d4] border-[#06b6d4]/20' : 'bg-white/6 text-white/40 border-white/5'}`}>
                     {playerInfo.balance > 0 ? `Депозит: ${playerInfo.balance}₽` : `${playerInfo.balance}₽`}
                   </span>
                   {playerInfo.bonus_points > 0 && (
-                    <span className="px-2 py-0.5 bg-[#10b981]/10 rounded-lg text-[9px] font-bold text-[#10b981] border border-[#10b981]/20 uppercase flex items-center gap-1">
+                    <span className="px-2 py-0.5 bg-[#10b981]/10 rounded-xl text-xs font-bold text-[#10b981] border border-[#10b981]/20 uppercase flex items-center gap-1">
                       <Star size={8} fill="currentColor" /> {playerInfo.bonus_points} бонусов
                     </span>
                   )}
@@ -396,7 +397,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
           )}
 
           <div className="text-center">
-            <p className="text-[10px] text-white/30 font-bold uppercase tracking-[0.3em] mb-2">Итоговая сумма</p>
+            <p className="text-xs text-white/30 font-bold uppercase tracking-[0.3em] mb-2">Итоговая сумма</p>
             <h3 className="text-5xl font-black italic tracking-tighter text-white drop-shadow-[0_10px_20px_rgba(255,255,255,0.1)] tabular-nums">
               {fmtCur(total)}
             </h3>
@@ -410,50 +411,50 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                 const extraCols = (hasBonus ? 1 : 0) + (hasDeposit ? 1 : 0);
                 const cols = 2 + Math.min(extraCols, 1);
                 return (
-                  <div className={`grid gap-3 ${cols === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                  <div className={`grid gap-4 ${cols === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                     <button
                       onClick={() => handleSimplePay('cash')}
                       disabled={isProcessing}
-                      className="flex flex-col items-center gap-3 p-5 bg-[#10b981]/5 border border-[#10b981]/20 rounded-[2rem] hover:bg-[#10b981]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30"
+                      className="flex flex-col items-center gap-4 p-5 bg-[#10b981]/5 border border-[#10b981]/20 rounded-[2rem] hover:bg-[#10b981]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                     >
-                      <div className="p-3 bg-[#10b981]/10 rounded-2xl text-[#10b981] group-hover:scale-110 transition-transform">
+                      <div className="p-4 bg-[#10b981]/10 rounded-2xl text-[#10b981] group-hover:scale-110 transition-transform">
                         <Banknote size={24} />
                       </div>
-                      <span className="text-[10px] font-black uppercase text-[#10b981] tracking-widest">Наличные</span>
+                      <span className="text-xs font-black uppercase text-[#10b981] tracking-widest">Наличные</span>
                     </button>
                     <button
                       onClick={() => handleSimplePay('card')}
                       disabled={isProcessing}
-                      className="flex flex-col items-center gap-3 p-5 bg-[#3b82f6]/5 border border-[#3b82f6]/20 rounded-[2rem] hover:bg-[#3b82f6]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30"
+                      className="flex flex-col items-center gap-4 p-5 bg-[#3b82f6]/5 border border-[#3b82f6]/20 rounded-[2rem] hover:bg-[#3b82f6]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                     >
-                      <div className="p-3 bg-[#3b82f6]/10 rounded-2xl text-[#3b82f6] group-hover:scale-110 transition-transform">
+                      <div className="p-4 bg-[#3b82f6]/10 rounded-2xl text-[#3b82f6] group-hover:scale-110 transition-transform">
                         <CreditCard size={24} />
                       </div>
-                      <span className="text-[10px] font-black uppercase text-[#3b82f6] tracking-widest">Карта</span>
+                      <span className="text-xs font-black uppercase text-[#3b82f6] tracking-widest">Карта</span>
                     </button>
                     {hasDeposit && (
                       <button
                         onClick={openDepositScreen}
                         disabled={isProcessing}
-                        className="flex flex-col items-center gap-3 p-5 bg-[#06b6d4]/5 border border-[#06b6d4]/20 rounded-[2rem] hover:bg-[#06b6d4]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30"
+                        className="flex flex-col items-center gap-4 p-5 bg-[#06b6d4]/5 border border-[#06b6d4]/20 rounded-[2rem] hover:bg-[#06b6d4]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                       >
-                        <div className="p-3 bg-[#06b6d4]/10 rounded-2xl text-[#06b6d4] group-hover:scale-110 transition-transform">
+                        <div className="p-4 bg-[#06b6d4]/10 rounded-2xl text-[#06b6d4] group-hover:scale-110 transition-transform">
                           <PiggyBank size={24} />
                         </div>
-                        <span className="text-[10px] font-black uppercase text-[#06b6d4] tracking-widest">Депозит</span>
-                        <span className="text-[9px] text-white/30 -mt-2">{fmtCur(playerDeposit)}</span>
+                        <span className="text-xs font-black uppercase text-[#06b6d4] tracking-widest">Депозит</span>
+                        <span className="text-xs text-white/30 -mt-2">{fmtCur(playerDeposit)}</span>
                       </button>
                     )}
                     {hasBonus && !hasDeposit && (
                       <button
                         onClick={openBonusScreen}
                         disabled={isProcessing}
-                        className="flex flex-col items-center gap-3 p-5 bg-[#f59e0b]/5 border border-[#f59e0b]/20 rounded-[2rem] hover:bg-[#f59e0b]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30"
+                        className="flex flex-col items-center gap-4 p-5 bg-[#f59e0b]/5 border border-[#f59e0b]/20 rounded-[2rem] hover:bg-[#f59e0b]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                       >
-                        <div className="p-3 bg-[#f59e0b]/10 rounded-2xl text-[#f59e0b] group-hover:scale-110 transition-transform">
+                        <div className="p-4 bg-[#f59e0b]/10 rounded-2xl text-[#f59e0b] group-hover:scale-110 transition-transform">
                           <Star size={24} />
                         </div>
-                        <span className="text-[10px] font-black uppercase text-[#f59e0b] tracking-widest">Бонусы</span>
+                        <span className="text-xs font-black uppercase text-[#f59e0b] tracking-widest">Бонусы</span>
                       </button>
                     )}
                   </div>
@@ -465,13 +466,13 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                 <button
                   onClick={openBonusScreen}
                   disabled={isProcessing}
-                  className="w-full flex items-center justify-between p-4 bg-[#f59e0b]/5 border border-[#f59e0b]/10 rounded-2xl group hover:bg-[#f59e0b]/10 transition-all active:scale-[0.97] disabled:opacity-30"
+                  className="w-full flex items-center justify-between p-4 bg-[#f59e0b]/5 border border-[#f59e0b]/10 rounded-2xl group hover:bg-[#f59e0b]/10 transition-all active:scale-[0.97] disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                 >
-                  <div className="flex items-center gap-3 text-[#f59e0b]">
+                  <div className="flex items-center gap-4 text-[#f59e0b]">
                     <Star size={20} />
-                    <span className="font-bold uppercase text-[11px] tracking-widest">Оплатить бонусами</span>
+                    <span className="font-bold uppercase text-sm tracking-widest">Оплатить бонусами</span>
                   </div>
-                  <span className="text-[10px] font-bold text-white/30 tracking-widest uppercase">{fmtCur(playerInfo?.bonus_points || 0)} доступно</span>
+                  <span className="text-xs font-bold text-white/30 tracking-widest uppercase">{fmtCur(playerInfo?.bonus_points || 0)} доступно</span>
                 </button>
               )}
 
@@ -479,32 +480,32 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                 <button
                   onClick={() => handleSimplePay('debt')}
                   disabled={isProcessing}
-                  className="w-full flex items-center justify-between p-5 bg-[#f43f5e]/5 border border-[#f43f5e]/10 rounded-2xl group hover:bg-[#f43f5e]/10 transition-all active:scale-[0.97] disabled:opacity-30"
+                  className="w-full flex items-center justify-between p-5 bg-[#f43f5e]/5 border border-[#f43f5e]/10 rounded-2xl group hover:bg-[#f43f5e]/10 transition-all active:scale-[0.97] disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                 >
-                  <div className="flex items-center gap-3 text-[#f43f5e]">
+                  <div className="flex items-center gap-4 text-[#f43f5e]">
                     <Clock size={20} />
-                    <span className="font-bold uppercase text-[11px] tracking-widest">Записать в долг</span>
+                    <span className="font-bold uppercase text-sm tracking-widest">Записать в долг</span>
                   </div>
-                  <span className="text-[10px] font-bold text-white/30 tracking-widest uppercase">{fmtCur(total)} на баланс</span>
+                  <span className="text-xs font-bold text-white/30 tracking-widest uppercase">{fmtCur(total)} на баланс</span>
                 </button>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <button
                   onClick={() => { hapticFeedback('light'); setScreen('split'); setSplitPayments([]); setSplitAmount(''); }}
-                  className="flex items-center justify-center gap-2 py-4 bg-white/5 border border-white/5 rounded-2xl text-white/60 hover:text-white transition-all uppercase font-black text-[10px] tracking-widest active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2 py-4 bg-white/6 border border-white/5 rounded-2xl text-white/60 hover:text-white transition-all uppercase font-black text-xs tracking-widest active:scale-[0.98] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                 >
                   <Split size={14} /> Разделить
                 </button>
                 <button
                   onClick={() => { hapticFeedback('light'); setScreen('certificate'); setCertCode(''); setCertError(''); setAppliedCert(null); }}
-                  className="flex items-center justify-center gap-2 py-4 bg-white/5 border border-white/5 rounded-2xl text-white/60 hover:text-white transition-all uppercase font-black text-[10px] tracking-widest active:scale-[0.98]"
+                  className="flex items-center justify-center gap-2 py-4 bg-white/6 border border-white/5 rounded-2xl text-white/60 hover:text-white transition-all uppercase font-black text-xs tracking-widest active:scale-[0.98] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                 >
                   <Ticket size={14} /> Сертификат
                 </button>
               </div>
 
-              <p className="text-center text-[9px] font-bold text-white/20 uppercase tracking-widest">
+              <p className="text-center text-xs font-bold text-white/20 uppercase tracking-widest">
                 Транзакция защищена{activeCheck?.player_id ? ' · Бонусы начислятся автоматически' : ''}
               </p>
             </>
@@ -522,15 +523,15 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
 
               <div className="p-5 rounded-[2rem] bg-[#f59e0b]/5 border border-[#f59e0b]/20 space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-white/40 uppercase tracking-widest">Списать бонусы</span>
-                  <span className="text-[11px] text-white/30">Доступно: {fmtCur(playerInfo?.bonus_points || 0)}</span>
+                  <span className="text-sm font-bold text-white/40 uppercase tracking-widest">Списать бонусы</span>
+                  <span className="text-sm text-white/30">Доступно: {fmtCur(playerInfo?.bonus_points || 0)}</span>
                 </div>
 
-                <div className="flex items-center justify-center gap-3">
+                <div className="flex items-center justify-center gap-4">
                   <button
                     onClick={() => adjustBonus(-1)}
                     disabled={bonusAmount <= 0}
-                    className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20"
+                    className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl bg-white/6 border border-white/12 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                   >
                     <Minus className="w-4 h-4 text-[#f59e0b]" />
                   </button>
@@ -543,12 +544,12 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                       min={0}
                       max={maxBonus}
                     />
-                    <p className="text-[10px] text-white/25 -mt-0.5">макс. 50% = {fmtCur(maxBonus)}</p>
+                    <p className="text-xs text-white/25 -mt-0.5">макс. 50% = {fmtCur(maxBonus)}</p>
                   </div>
                   <button
                     onClick={() => adjustBonus(1)}
                     disabled={bonusAmount >= maxBonus}
-                    className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20"
+                    className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl bg-white/6 border border-white/12 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                   >
                     <Plus className="w-4 h-4 text-[#f59e0b]" />
                   </button>
@@ -559,10 +560,10 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                     <button
                       key={p}
                       onClick={() => { hapticFeedback('light'); setBonusAmount(p); }}
-                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all active:scale-95 ${
+                      className={`px-3 py-1.5 rounded-xl text-sm font-bold transition-all active:scale-95 ${
                         bonusAmount === p
                           ? 'bg-[#f59e0b]/15 text-[#f59e0b] border border-[#f59e0b]/30'
-                          : 'bg-white/5 text-white/30 border border-white/5'
+                          : 'bg-white/6 text-white/30 border border-white/5'
                       }`}
                     >
                       {fmtCur(p)}
@@ -573,33 +574,31 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
 
               {bonusAmount > 0 && bonusRemainder > 0 && (
                 <div className="text-center">
-                  <p className="text-[11px] text-white/40">Остаток к оплате: <span className="font-bold text-white">{fmtCur(bonusRemainder)}</span></p>
+                  <p className="text-sm text-white/40">Остаток к оплате: <span className="font-bold text-white">{fmtCur(bonusRemainder)}</span></p>
                 </div>
               )}
 
               {bonusAmount > 0 && (
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => handleBonusConfirm('cash')}
+                <div className="grid grid-cols-2 gap-4">
                     disabled={isProcessing}
-                    className="flex flex-col items-center gap-2 p-4 bg-[#10b981]/5 border border-[#10b981]/20 rounded-[2rem] active:scale-[0.96] transition-all disabled:opacity-30"
+                    className="flex flex-col items-center gap-2 p-4 bg-[#10b981]/5 border border-[#10b981]/20 rounded-[2rem] active:scale-[0.96] transition-all disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                   >
                     <Banknote className="w-5 h-5 text-[#10b981]" />
-                    <span className="text-[10px] font-black uppercase text-[#10b981] tracking-widest">
+                    <span className="text-xs font-black uppercase text-[#10b981] tracking-widest">
                       {bonusRemainder > 0 ? 'Остаток нал.' : 'Подтвердить'}
                     </span>
-                    {bonusRemainder > 0 && <span className="text-[10px] text-white/30 tabular-nums">{fmtCur(bonusRemainder)}</span>}
+                    {bonusRemainder > 0 && <span className="text-xs text-white/30 tabular-nums">{fmtCur(bonusRemainder)}</span>}
                   </button>
                   <button
                     onClick={() => handleBonusConfirm('card')}
                     disabled={isProcessing}
-                    className="flex flex-col items-center gap-2 p-4 bg-[#3b82f6]/5 border border-[#3b82f6]/20 rounded-[2rem] active:scale-[0.96] transition-all disabled:opacity-30"
+                    className="flex flex-col items-center gap-2 p-4 bg-[#3b82f6]/5 border border-[#3b82f6]/20 rounded-[2rem] active:scale-[0.96] transition-all disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                   >
                     <CreditCard className="w-5 h-5 text-[#3b82f6]" />
-                    <span className="text-[10px] font-black uppercase text-[#3b82f6] tracking-widest">
+                    <span className="text-xs font-black uppercase text-[#3b82f6] tracking-widest">
                       {bonusRemainder > 0 ? 'Остаток карт.' : 'Подтвердить'}
                     </span>
-                    {bonusRemainder > 0 && <span className="text-[10px] text-white/30 tabular-nums">{fmtCur(bonusRemainder)}</span>}
+                    {bonusRemainder > 0 && <span className="text-xs text-white/30 tabular-nums">{fmtCur(bonusRemainder)}</span>}
                   </button>
                 </div>
               )}
@@ -618,15 +617,15 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
 
               <div className="p-5 rounded-[2rem] bg-[#06b6d4]/5 border border-[#06b6d4]/20 space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-white/40 uppercase tracking-widest">Списать с депозита</span>
-                  <span className="text-[11px] text-white/30">Доступно: {fmtCur(playerDeposit)}</span>
+                  <span className="text-sm font-bold text-white/40 uppercase tracking-widest">Списать с депозита</span>
+                  <span className="text-sm text-white/30">Доступно: {fmtCur(playerDeposit)}</span>
                 </div>
 
-                <div className="flex items-center justify-center gap-3">
+                <div className="flex items-center justify-center gap-4">
                   <button
                     onClick={() => adjustDeposit(-1)}
                     disabled={depositAmount <= 0}
-                    className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20"
+                    className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl bg-white/6 border border-white/12 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                   >
                     <Minus className="w-4 h-4 text-[#06b6d4]" />
                   </button>
@@ -639,12 +638,12 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                       min={0}
                       max={maxDeposit}
                     />
-                    <p className="text-[10px] text-white/25 -mt-0.5">макс. {fmtCur(maxDeposit)}</p>
+                    <p className="text-xs text-white/25 -mt-0.5">макс. {fmtCur(maxDeposit)}</p>
                   </div>
                   <button
                     onClick={() => adjustDeposit(1)}
                     disabled={depositAmount >= maxDeposit}
-                    className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20"
+                    className="w-11 h-11 min-w-[44px] min-h-[44px] rounded-2xl bg-white/6 border border-white/12 flex items-center justify-center active:scale-90 transition-transform disabled:opacity-20 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                   >
                     <Plus className="w-4 h-4 text-[#06b6d4]" />
                   </button>
@@ -655,10 +654,10 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                     <button
                       key={p}
                       onClick={() => { hapticFeedback('light'); setDepositAmount(p); }}
-                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all active:scale-95 ${
+                      className={`px-3 py-1.5 rounded-xl text-sm font-bold transition-all active:scale-95 ${
                         depositAmount === p
                           ? 'bg-[#06b6d4]/15 text-[#06b6d4] border border-[#06b6d4]/30'
-                          : 'bg-white/5 text-white/30 border border-white/5'
+                          : 'bg-white/6 text-white/30 border border-white/5'
                       }`}
                     >
                       {fmtCur(p)}
@@ -669,7 +668,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
 
               {depositAmount > 0 && depositRemainder > 0 && (
                 <div className="text-center">
-                  <p className="text-[11px] text-white/40">Остаток к оплате: <span className="font-bold text-white">{fmtCur(depositRemainder)}</span></p>
+                  <p className="text-sm text-white/40">Остаток к оплате: <span className="font-bold text-white">{fmtCur(depositRemainder)}</span></p>
                 </div>
               )}
 
@@ -678,29 +677,29 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                   <button
                     onClick={() => handleDepositConfirm('cash')}
                     disabled={isProcessing}
-                    className="w-full py-3.5 rounded-2xl text-[13px] font-black uppercase tracking-widest text-white active:scale-[0.97] transition-transform disabled:opacity-30 bg-gradient-to-br from-[#06b6d4] to-[#0891b2] shadow-xl shadow-[#06b6d4]/30"
+                    className="w-full py-3.5 rounded-2xl text-sm font-black uppercase tracking-widest text-white active:scale-[0.97] transition-transform disabled:opacity-30 bg-gradient-to-br from-[#06b6d4] to-[#0891b2] shadow-xl shadow-[#06b6d4]/30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                   >
                     {isProcessing ? 'Обработка...' : 'Оплатить с депозита'}
                   </button>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <button
                       onClick={() => handleDepositConfirm('cash')}
                       disabled={isProcessing}
-                      className="flex flex-col items-center gap-2 p-4 bg-[#10b981]/5 border border-[#10b981]/20 rounded-[2rem] active:scale-[0.96] transition-all disabled:opacity-30"
+                      className="flex flex-col items-center gap-2 p-4 bg-[#10b981]/5 border border-[#10b981]/20 rounded-[2rem] active:scale-[0.96] transition-all disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                     >
                       <Banknote className="w-5 h-5 text-[#10b981]" />
-                      <span className="text-[10px] font-black uppercase text-[#10b981] tracking-widest">Остаток нал.</span>
-                      <span className="text-[10px] text-white/30 tabular-nums">{fmtCur(depositRemainder)}</span>
+                      <span className="text-xs font-black uppercase text-[#10b981] tracking-widest">Остаток нал.</span>
+                      <span className="text-xs text-white/30 tabular-nums">{fmtCur(depositRemainder)}</span>
                     </button>
                     <button
                       onClick={() => handleDepositConfirm('card')}
                       disabled={isProcessing}
-                      className="flex flex-col items-center gap-2 p-4 bg-[#3b82f6]/5 border border-[#3b82f6]/20 rounded-[2rem] active:scale-[0.96] transition-all disabled:opacity-30"
+                      className="flex flex-col items-center gap-2 p-4 bg-[#3b82f6]/5 border border-[#3b82f6]/20 rounded-[2rem] active:scale-[0.96] transition-all disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                     >
                       <CreditCard className="w-5 h-5 text-[#3b82f6]" />
-                      <span className="text-[10px] font-black uppercase text-[#3b82f6] tracking-widest">Остаток карт.</span>
-                      <span className="text-[10px] text-white/30 tabular-nums">{fmtCur(depositRemainder)}</span>
+                      <span className="text-xs font-black uppercase text-[#3b82f6] tracking-widest">Остаток карт.</span>
+                      <span className="text-xs text-white/30 tabular-nums">{fmtCur(depositRemainder)}</span>
                     </button>
                   </div>
                 )
@@ -721,12 +720,12 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
               <div className="p-5 rounded-[2rem] bg-[#8b5cf6]/5 border border-[#8b5cf6]/20 space-y-4">
                 <div className="flex items-center gap-2">
                   <Ticket className="w-5 h-5 text-[#8b5cf6]" />
-                  <span className="text-[13px] font-bold text-[#8b5cf6]">Оплата сертификатом</span>
+                  <span className="text-sm font-bold text-[#8b5cf6]">Оплата сертификатом</span>
                 </div>
 
                 {!appliedCert ? (
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
+                  <div className="space-y-4">
+                    <div className="flex gap-3">
                       <Input
                         compact
                         placeholder="Введите код сертификата"
@@ -739,22 +738,22 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                       </Button>
                     </div>
                     {certError && (
-                      <p className="text-[11px] text-[#f43f5e] font-medium">{certError}</p>
+                      <p className="text-sm text-[#f43f5e] font-medium">{certError}</p>
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-white/30">Код</span>
-                      <span className="text-[13px] font-bold text-[#8b5cf6]">{appliedCert.code}</span>
+                      <span className="text-sm text-white/30">Код</span>
+                      <span className="text-sm font-bold text-[#8b5cf6]">{appliedCert.code}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-white/30">Номинал</span>
-                      <span className="text-[13px] font-semibold text-white">{fmtCur(appliedCert.nominal)}</span>
+                      <span className="text-sm text-white/30">Номинал</span>
+                      <span className="text-sm font-semibold text-white">{fmtCur(appliedCert.nominal)}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-white/30">Баланс</span>
-                      <span className="text-[13px] font-bold text-[#10b981]">{fmtCur(appliedCert.balance ?? appliedCert.nominal)}</span>
+                      <span className="text-sm text-white/30">Баланс</span>
+                      <span className="text-sm font-bold text-[#10b981]">{fmtCur(appliedCert.balance ?? appliedCert.nominal)}</span>
                     </div>
                     {(() => {
                       const certBal = appliedCert.balance ?? appliedCert.nominal;
@@ -764,42 +763,42 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                       return (
                         <>
                           <div className="flex items-center justify-between pt-1 border-t border-white/5">
-                            <span className="text-[11px] text-white/30">Списание с сертификата</span>
-                            <span className="text-[13px] font-bold text-[#f43f5e]">−{fmtCur(certDeduction)}</span>
+                            <span className="text-sm text-white/30">Списание с сертификата</span>
+                            <span className="text-sm font-bold text-[#f43f5e]">−{fmtCur(certDeduction)}</span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-[11px] text-white/30 font-bold">К оплате</span>
+                            <span className="text-sm text-white/30 font-bold">К оплате</span>
                             <span className="text-[15px] font-black text-white tabular-nums">{fmtCur(remainder)}</span>
                           </div>
                           {covers ? (
                             <button
                               onClick={() => handleCertPay('cash')}
                               disabled={isProcessing}
-                              className="w-full py-3.5 rounded-2xl text-[13px] font-black uppercase tracking-widest text-white active:scale-[0.97] transition-transform disabled:opacity-30 bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] shadow-xl shadow-[#8b5cf6]/30"
+                              className="w-full py-3.5 rounded-2xl text-sm font-black uppercase tracking-widest text-white active:scale-[0.97] transition-transform disabled:opacity-30 bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] shadow-xl shadow-[#8b5cf6]/30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                             >
                               Закрыть по сертификату
                             </button>
                           ) : (
-                            <div className="space-y-3 pt-1">
-                              <p className="text-[11px] text-center text-white/30">
+                            <div className="space-y-4 pt-1">
+                              <p className="text-sm text-center text-white/30">
                                 Способ оплаты остатка {fmtCur(remainder)}:
                               </p>
-                              <div className="grid grid-cols-2 gap-3">
+                              <div className="grid grid-cols-2 gap-4">
                                 <button
                                   onClick={() => handleCertPay('cash')}
                                   disabled={isProcessing}
-                                  className="flex flex-col items-center gap-2 p-3 bg-[#10b981]/5 border border-[#10b981]/20 rounded-[2rem] active:scale-[0.96] transition-all disabled:opacity-30"
+                                  className="flex flex-col items-center gap-2 p-4 bg-[#10b981]/5 border border-[#10b981]/20 rounded-[2rem] active:scale-[0.96] transition-all disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                                 >
                                   <Banknote className="w-5 h-5 text-[#10b981]" />
-                                  <span className="text-[10px] font-black uppercase text-[#10b981] tracking-widest">Наличные</span>
+                                  <span className="text-xs font-black uppercase text-[#10b981] tracking-widest">Наличные</span>
                                 </button>
                                 <button
                                   onClick={() => handleCertPay('card')}
                                   disabled={isProcessing}
-                                  className="flex flex-col items-center gap-2 p-3 bg-[#3b82f6]/5 border border-[#3b82f6]/20 rounded-[2rem] active:scale-[0.96] transition-all disabled:opacity-30"
+                                  className="flex flex-col items-center gap-2 p-4 bg-[#3b82f6]/5 border border-[#3b82f6]/20 rounded-[2rem] active:scale-[0.96] transition-all disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                                 >
                                   <CreditCard className="w-5 h-5 text-[#3b82f6]" />
-                                  <span className="text-[10px] font-black uppercase text-[#3b82f6] tracking-widest">Карта</span>
+                                  <span className="text-xs font-black uppercase text-[#3b82f6] tracking-widest">Карта</span>
                                 </button>
                               </div>
                             </div>
@@ -823,9 +822,9 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                 Назад к способам
               </button>
 
-              <div className="p-4 rounded-[2rem] bg-white/5 border border-white/10">
+              <div className="p-4 rounded-[2rem] bg-white/6 border border-white/12">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest">Осталось</span>
+                  <span className="text-xs text-white/30 font-bold uppercase tracking-widest">Осталось</span>
                   <span className={`text-lg font-black italic tabular-nums ${splitRemaining === 0 ? 'text-[#10b981]' : 'text-white'}`}>
                     {fmtCur(splitRemaining)}
                   </span>
@@ -847,15 +846,15 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
               </div>
 
               {splitPayments.length > 0 && (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {splitPayments.map((sp, idx) => {
                     const conf = getMethodConf(sp.method);
                     return (
                       <SwipeableRow key={idx} onDelete={() => { hapticFeedback('light'); setSplitPayments(splitPayments.filter((_, i) => i !== idx)); }}>
-                        <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/10">
+                        <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/6 border border-white/12">
                           <conf.icon className={`w-4 h-4 shrink-0 ${conf.color}`} />
-                          <span className={`flex-1 text-[13px] font-bold ${conf.color}`}>{conf.label}</span>
-                          <span className={`font-black text-[13px] tabular-nums ${conf.color}`}>{fmtCur(sp.amount)}</span>
+                          <span className={`flex-1 text-sm font-bold ${conf.color}`}>{conf.label}</span>
+                          <span className={`font-black text-sm tabular-nums ${conf.color}`}>{fmtCur(sp.amount)}</span>
                         </div>
                       </SwipeableRow>
                     );
@@ -865,7 +864,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
 
               {splitRemaining > 0 && (
                 <div className="space-y-3">
-                  <div className="flex gap-1.5 flex-wrap">
+                  <div className="flex gap-3 flex-wrap">
                     {methodConfig
                       .filter((mc) => {
                         if (mc.method === 'debt' && !activeCheck?.player_id) return false;
@@ -877,21 +876,21 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                       <button
                         key={mc.method}
                         onClick={() => setSplitMethod(mc.method)}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-[11px] font-bold transition-all active:scale-95 ${
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-xl border text-sm font-bold transition-all active:scale-95 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 ${
                           splitMethod === mc.method
                             ? 'bg-[#8b5cf6]/10 border-[#8b5cf6]/30 text-[#8b5cf6]'
-                            : 'bg-white/5 border-white/10 text-white/40'
+                            : 'bg-white/6 border-white/12 text-white/40'
                         }`}
                       >
                         <mc.icon className="w-3 h-3" />
                         {mc.label}
-                        {mc.method === 'bonus' && <span className="text-[9px] opacity-60">до {fmtCur(splitBonusAvailable)}</span>}
-                        {mc.method === 'deposit' && <span className="text-[9px] opacity-60">до {fmtCur(splitDepositAvailable)}</span>}
+                        {mc.method === 'bonus' && <span className="text-xs opacity-60">до {fmtCur(splitBonusAvailable)}</span>}
+                        {mc.method === 'deposit' && <span className="text-xs opacity-60">до {fmtCur(splitDepositAvailable)}</span>}
                       </button>
                     ))}
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <Input
                       type="number"
                       compact
@@ -907,7 +906,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                     </Button>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     {methodConfig
                       .filter((mc) => {
                         if (mc.method === 'debt' && !activeCheck?.player_id) return false;
@@ -919,7 +918,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                       <button
                         key={mc.method}
                         onClick={() => addSplitRemainder(mc.method)}
-                        className="flex-1 py-2 rounded-xl bg-white/5 border border-white/5 text-[10px] font-bold text-white/40 active:scale-95 transition-transform uppercase tracking-widest"
+                        className="flex-1 py-2 rounded-xl bg-white/6 border border-white/5 text-xs font-bold text-white/40 active:scale-95 transition-transform uppercase tracking-widest cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                       >
                         Всё {mc.label.toLowerCase()}
                       </button>
@@ -931,7 +930,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
               <button
                 onClick={handleSplitConfirm}
                 disabled={isProcessing || splitRemaining > 0}
-                className="w-full py-3.5 rounded-2xl text-[13px] font-black uppercase tracking-widest text-white active:scale-[0.97] transition-transform disabled:opacity-30 bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] shadow-xl shadow-[#8b5cf6]/30"
+                className="w-full py-3.5 rounded-2xl text-sm font-black uppercase tracking-widest text-white active:scale-[0.97] transition-transform disabled:opacity-30 bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] shadow-xl shadow-[#8b5cf6]/30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
               >
                 {isProcessing ? 'Обработка...' : 'Подтвердить'}
               </button>

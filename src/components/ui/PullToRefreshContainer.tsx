@@ -33,10 +33,10 @@ export function PullToRefreshContainer({
 
             iconRef.current.style.transform = '';
             iconRef.current.style.animation = 'spin 0.6s linear infinite';
-            iconRef.current.className = 'w-5 h-5 rounded-full border-2 border-white/15 border-t-violet-400';
+            iconRef.current.className = 'w-6 h-6 rounded-full border-2 border-white/15 border-t-violet-400';
 
             textRef.current.textContent = 'Обновление…';
-            textRef.current.className = 'text-[10px] font-black uppercase tracking-widest transition-colors text-white/70';
+            textRef.current.className = 'text-xs font-black uppercase tracking-widest transition-colors text-white/70';
         } else {
             spinnerRef.current.style.top = '-40px';
             spinnerRef.current.style.opacity = '0';
@@ -45,7 +45,7 @@ export function PullToRefreshContainer({
             iconRef.current.style.transform = '';
             iconRef.current.style.animation = 'none';
             textRef.current.textContent = 'Потяните вниз';
-            textRef.current.className = 'text-[10px] font-black uppercase tracking-widest transition-colors text-white/30';
+            textRef.current.className = 'text-xs font-black uppercase tracking-widest transition-colors text-white/30';
         }
     };
 

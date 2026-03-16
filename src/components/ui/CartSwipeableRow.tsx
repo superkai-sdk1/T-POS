@@ -97,12 +97,12 @@ export function CartSwipeableRow({ children, quantity, onIncrement, onDecrement,
     const isRemovingOrSubs = offsetX < 0;
 
     return (
-        <div className={`relative overflow-hidden rounded-xl ${removing ? 'animate-swipe-out' : ''}`}>
+        <div className={`relative overflow-hidden rounded-2xl ${removing ? 'animate-swipe-out' : ''}`}>
             {/* Background container that reveals the icon based on direction */}
             <div className="absolute inset-0 flex">
                 {/* Left side (Revealed when swiping right -> Add) */}
                 {isAdding && (
-                    <div className="flex-1 bg-emerald-500/15 flex items-center justify-start pl-6 rounded-l-xl">
+                    <div className="flex-1 bg-emerald-500/15 flex items-center justify-start pl-6 rounded-l-2xl">
                         <Plus className="w-5 h-5 text-emerald-500" />
                     </div>
                 )}
@@ -110,11 +110,11 @@ export function CartSwipeableRow({ children, quantity, onIncrement, onDecrement,
                 {/* Right side (Revealed when swiping left -> Subtract or Trash) */}
                 {isRemovingOrSubs && (
                     <div className="flex-1 right-0 flex justify-end">
-                        <div className={`w-20 flex items-center justify-center rounded-r-xl ${quantity > 1 ? 'bg-[var(--c-warning-bg)]' : 'bg-[var(--c-danger-bg)]'}`}>
+                        <div className={`w-20 flex items-center justify-center rounded-r-2xl ${quantity > 1 ? 'bg-[var(--c-warning-bg)]' : 'bg-[var(--c-danger-bg)]'}`}>
                             {quantity > 1 ? (
                                 <Minus className="w-5 h-5 text-[var(--c-warning)]" />
                             ) : (
-                                <Trash2 className="w-4 h-4 text-[var(--c-danger)]" />
+                                <Trash2 className="w-5 h-5 text-[var(--c-danger)]" />
                             )}
                         </div>
                     </div>

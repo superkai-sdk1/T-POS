@@ -53,11 +53,11 @@ export function CheckDetailDrawer({ check, open, onClose }: Props) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium text-[var(--c-text)]">{check.player_nickname}</span>
           {check.refund_amount != null && check.refund_amount > 0 && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--c-warning-bg)] text-[var(--c-warning)]">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[var(--c-warning-bg)] text-[var(--c-warning)] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20">
               <RotateCcw className="w-3 h-3" /> Возврат −{fmtCur(check.refund_amount)}
             </span>
           )}
-          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 ${
             paymentMethod === 'cash' ? 'bg-[var(--c-success-bg)] text-[var(--c-success)]' :
             paymentMethod === 'card' ? 'bg-[var(--c-info-bg)] text-[var(--c-info)]' :
             paymentMethod === 'debt' ? 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' :
@@ -69,7 +69,7 @@ export function CheckDetailDrawer({ check, open, onClose }: Props) {
         </div>
 
         <div className="border-t border-[var(--c-border)] pt-3">
-          <p className="text-[10px] font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Позиции</p>
+          <p className="text-xs font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Позиции</p>
           <div className="space-y-2">
             {check.items.map((item, idx) => (
               <div key={idx} className="flex justify-between text-sm">
@@ -97,7 +97,7 @@ export function CheckDetailDrawer({ check, open, onClose }: Props) {
           )}
           {check.payments && check.payments.length > 0 ? (
             <div className="space-y-1">
-              <p className="text-[10px] text-[var(--c-hint)]">Разделённая оплата</p>
+              <p className="text-xs text-[var(--c-hint)]">Разделённая оплата</p>
               {check.payments.map((p, i) => (
                 <div key={i} className="flex justify-between text-xs">
                   <span className="text-[var(--c-hint)]">{pmLabels[p.method] || p.method}</span>

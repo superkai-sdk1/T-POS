@@ -36,24 +36,24 @@ function OpenShiftView({
 }) {
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-6 animate-fade-in">
-      <div className="text-center space-y-2">
-        <div className="w-14 h-14 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-center mx-auto text-indigo-400 mb-3 shadow-xl">
-          <Play size={24} fill="currentColor" />
+      <div className="text-center space-y-3">
+        <div className="w-16 h-16 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-center mx-auto text-indigo-400 mb-4 shadow-xl">
+          <Play size={28} fill="currentColor" />
         </div>
-        <h2 className="text-xl font-black text-white italic tracking-tight uppercase">Открыть смену</h2>
-        <p className="text-[9px] text-white/40 font-black uppercase tracking-[0.15em]">Выберите параметры для начала работы</p>
+        <h2 className="text-2xl font-black text-white italic tracking-tight uppercase">Открыть смену</h2>
+        <p className="text-xs text-white/40 font-black uppercase tracking-wider">Выберите параметры для начала работы</p>
       </div>
 
-      <div className="space-y-5 bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-2xl p-6">
-        <div className="space-y-3">
-          <p className="text-[9px] text-white/40 font-black uppercase tracking-widest px-1 italic">Тип вечера</p>
+      <div className="space-y-5 bg-white/[0.03] backdrop-blur-[24px] border border-white/12 rounded-2xl p-6" style={{ WebkitBackdropFilter: 'blur(24px)', backfaceVisibility: 'hidden' }}>
+        <div className="space-y-4">
+          <p className="text-xs text-white/40 font-black uppercase tracking-wider px-1 italic">Тип вечера</p>
           <div className="grid grid-cols-3 gap-2">
             {(Object.keys(EVENING_TYPE_LABELS) as EveningType[]).map((key) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => { hapticFeedback('light'); setEveningType(key); }}
-                className={`p-2.5 rounded-xl text-[9px] font-black uppercase transition-all border flex flex-col items-center gap-1 tap ${
+                className={`p-3 rounded-xl text-xs font-black uppercase transition-all border flex flex-col items-center gap-1.5 tap cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 min-h-[44px] ${
                   eveningType === key
                     ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-600/20'
                     : 'bg-white/5 border-transparent text-white/50 hover:bg-white/10'
@@ -127,7 +127,7 @@ function CloseShiftView({
         <p className="text-[9px] text-white/40 font-black uppercase tracking-[0.15em]">Все чеки закрыты. Можно завершать работу</p>
       </div>
 
-      <div className="space-y-5 bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-2xl p-6">
+      <div className="space-y-5 bg-white/[0.03] backdrop-blur-[24px] border border-white/10 rounded-2xl p-6" style={{ WebkitBackdropFilter: 'blur(24px)', backfaceVisibility: 'hidden' }}>
         <div className="bg-black/40 rounded-xl p-5 border border-white/5 space-y-3 italic">
           <div className="flex justify-between items-center text-[10px]">
             <span className="text-white/40 font-black uppercase tracking-widest">Ожидаемо по системе</span>

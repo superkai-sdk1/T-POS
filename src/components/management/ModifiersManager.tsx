@@ -163,7 +163,7 @@ export function ModifiersManager() {
         </div>
         <button
           onClick={openCreate}
-          className="h-9 sm:h-11 px-3 sm:px-5 rounded-xl sm:rounded-2xl flex items-center gap-1.5 sm:gap-2 font-bold text-xs sm:text-sm transition-all active:scale-95 text-white [background:linear-gradient(135deg,#8b5cf6,#06b6d4)] [box-shadow:0_4px_20px_rgba(139,92,246,0.25)] shrink-0"
+          className="h-9 sm:h-11 px-3 sm:px-5 rounded-2xl sm:rounded-3xl flex items-center gap-1.5 sm:gap-2 font-bold text-xs sm:text-sm transition-all active:scale-95 text-white [background:linear-gradient(135deg,#8b5cf6,#06b6d4)] [box-shadow:0_4px_20px_rgba(139,92,246,0.25)] shrink-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 min-w-[44px] min-h-[44px]"
         >
           <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
           <span className="hidden xs:inline">Добавить</span>
@@ -177,7 +177,7 @@ export function ModifiersManager() {
           <input
             type="text"
             placeholder="Поиск модификаторов..."
-            className="w-full bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl sm:rounded-2xl py-2.5 sm:py-3.5 pl-9 sm:pl-11 pr-3 sm:pr-4 focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/40 transition-all placeholder:text-[var(--c-muted)] text-[13px] sm:text-sm text-[var(--c-text)]"
+            className="w-full bg-[var(--c-surface)] border border-[var(--c-border)] rounded-2xl sm:rounded-3xl py-2.5 sm:py-3.5 pl-9 sm:pl-11 pr-3 sm:pr-4 focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/40 transition-all placeholder:text-[var(--c-muted)] text-sm text-[var(--c-text)]"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -338,9 +338,9 @@ function ModifierCard({
   const [showMenu, setShowMenu] = useState(false);
 
   return (
-    <div className="group rounded-[16px] sm:rounded-[22px] p-3 sm:p-5 flex flex-col justify-between transition-all duration-200 border border-[var(--c-border)] hover:border-[var(--c-accent)]/30 bg-[var(--c-surface)]">
+    <div className="group rounded-[22px] sm:rounded-[28px] p-3 sm:p-5 flex flex-col justify-between transition-all duration-200 border border-[var(--c-border)] hover:border-[var(--c-accent)]/30 bg-[var(--c-surface)]">
       <div className="flex justify-between items-start mb-2.5 sm:mb-4">
-        <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:scale-105 transition-transform">
+        <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl sm:rounded-3xl flex items-center justify-center bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:scale-105 transition-transform">
           <SlidersHorizontal className="w-4 h-4 sm:w-5 sm:h-5" />
         </div>
         <div className="relative">

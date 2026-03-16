@@ -102,12 +102,12 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
       {onBack && (
         <button
           onClick={onBack}
-          className="absolute p-2 sm:p-2.5 rounded-lg sm:rounded-xl transition-all duration-200 z-10 active:scale-90"
+          className="absolute p-2.5 sm:p-3 rounded-xl sm:rounded-2xl transition-all duration-200 z-10 active:scale-90 min-w-[44px] min-h-[44px] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
           style={{
             top: 'calc(var(--safe-top) + 0.5rem)',
             left: '0.75rem',
             background: 'rgba(255, 255, 255, 0.05)',
-            border: '1px solid rgba(255, 255, 255, 0.06)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
           }}
         >
           <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-[var(--c-hint)]" />
@@ -144,7 +144,7 @@ export function PinPad({ title, subtitle, onComplete, onBack, error, isLoading, 
               {displayTitle}
             </h1>
             {displaySubtitle && (
-              <p className="text-[10px] sm:text-[11px] text-[var(--c-hint)] mt-0.5 sm:mt-1">{displaySubtitle}</p>
+              <p className="text-xs sm:text-sm text-[var(--c-hint)] mt-0.5 sm:mt-1">{displaySubtitle}</p>
             )}
           </div>
 

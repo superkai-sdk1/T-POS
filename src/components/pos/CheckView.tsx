@@ -120,9 +120,9 @@ const MenuSheetItem = memo(function MenuSheetItem({
   const CatIcon = getIconComponent(iconName || '');
   return (
     <div
-      className={`group relative border transition-all duration-500 rounded-xl lg:rounded-2xl p-3 lg:p-4 flex flex-col text-left min-h-[88px] overflow-hidden ${
+      className={`group relative border transition-all duration-500 rounded-2xl lg:rounded-2xl p-4 lg:p-4 flex flex-col text-left min-h-[88px] overflow-hidden ${
         inCartQty > 0
-          ? `${colors.bgActive} border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.3)] ring-1 ring-white/10`
+          ? `${colors.bgActive} border-white/12 shadow-[0_10px_30px_rgba(0,0,0,0.3)] ring-1 ring-white/12`
           : `${colors.bg} border-white/5 hover:bg-white/[0.08]`
       }`}
     >
@@ -138,7 +138,7 @@ const MenuSheetItem = memo(function MenuSheetItem({
         onClick={() => onAdd(item)}
         className="relative z-10 flex-1 flex flex-col min-w-0 min-h-0 active:scale-[0.98] transition-transform"
       >
-        <div className="flex items-start justify-between gap-2 mb-1">
+        <div className="flex items-start justify-between gap-3 mb-1">
           <div className="flex items-center gap-1 min-w-0">
             <div className={`w-1.5 h-1.5 lg:w-1 h-1 rounded-full shrink-0 ${colors.active} shadow-[0_0_6px_rgba(255,255,255,0.1)]`} />
             <span className={`text-[8px] lg:text-[7px] font-black uppercase tracking-[0.15em] truncate ${colors.text}`}>

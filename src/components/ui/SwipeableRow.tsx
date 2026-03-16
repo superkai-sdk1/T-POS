@@ -49,9 +49,9 @@ export function SwipeableRow({ children, onDelete, disabled }: SwipeableRowProps
   }, [swiping, offsetX, onDelete]);
 
   return (
-    <div className={`relative overflow-hidden rounded-xl ${removing ? 'animate-swipe-out' : ''}`}>
-      <div className="absolute inset-y-0 right-0 w-20 bg-red-500/15 flex items-center justify-center rounded-r-xl">
-        <Trash2 className="w-4 h-4 text-red-400" />
+    <div className={`relative overflow-hidden rounded-2xl ${removing ? 'animate-swipe-out' : ''}`}>
+      <div className="absolute inset-y-0 right-0 w-20 bg-red-500/15 flex items-center justify-center rounded-r-2xl">
+        <Trash2 className="w-5 h-5 text-red-400" />
       </div>
       <div
         className="relative z-10"

@@ -56,13 +56,13 @@ const ClientRow = memo(function ClientRow({ client, onSelect, getAge, isBirthday
   return (
     <button
       onClick={() => onSelect(client)}
-      className="w-full flex items-center gap-3 p-2.5 rounded-xl card-interactive text-left"
+      className="w-full flex items-center gap-3 p-4 rounded-2xl card-interactive text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
     >
       <ClientAvatar photoUrl={client.photo_url} id={client.id} size="lg" />
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <p className="text-[13px] font-medium text-[var(--c-text)] truncate">{client.nickname}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium text-[var(--c-text)] truncate">{client.nickname}</p>
           {client.birthday && isBirthdaySoon(client.birthday) && (
             <Cake className="w-3.5 h-3.5 text-pink-400 shrink-0" />
           )}
@@ -73,13 +73,13 @@ const ClientRow = memo(function ClientRow({ client, onSelect, getAge, isBirthday
           {client.client_tier === 'resident' && <Badge variant="success" size="sm">Резидент</Badge>}
           {client.client_tier === 'student' && <Badge variant="accent" size="sm">Студент</Badge>}
           {client.tg_username && (
-            <span className="text-[10px] text-sky-400/50">@{client.tg_username}</span>
+            <span className="text-xs text-sky-400/50">@{client.tg_username}</span>
           )}
           {client.phone && (
-            <span className="text-[10px] text-[var(--c-hint)]">{client.phone}</span>
+            <span className="text-xs text-[var(--c-hint)]">{client.phone}</span>
           )}
           {client.birthday && (
-            <span className="text-[10px] text-[var(--c-muted)]">{getAge(client.birthday)} лет</span>
+            <span className="text-xs text-[var(--c-muted)]">{getAge(client.birthday)} лет</span>
           )}
         </div>
       </div>
@@ -89,7 +89,7 @@ const ClientRow = memo(function ClientRow({ client, onSelect, getAge, isBirthday
           <p className="text-xs font-bold text-[var(--c-warning)] flex items-center gap-0.5"><Star className="w-3 h-3" />{client.bonus_points}</p>
         )}
         {client.balance < 0 && (
-          <p className="text-[10px] text-[var(--c-danger)]">{client.balance}₽</p>
+          <p className="text-xs text-[var(--c-danger)]">{client.balance}₽</p>
         )}
       </div>
     </button>
@@ -351,18 +351,18 @@ export function ClientsManager() {
   return (
     <div className="space-y-4">
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-2">
-        <div className="p-3 rounded-xl bg-[var(--c-accent)]/10 text-center">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="p-4 rounded-2xl bg-[var(--c-accent)]/10 text-center">
           <p className="text-lg font-bold text-[var(--c-accent)]">{clients.length}</p>
-          <p className="text-[10px] text-[var(--c-hint)]">Всего</p>
+          <p className="text-xs text-[var(--c-hint)]">Всего</p>
         </div>
-        <div className="p-3 rounded-xl bg-[var(--c-success-bg)] text-center">
+        <div className="p-4 rounded-2xl bg-[var(--c-success-bg)] text-center">
           <p className="text-lg font-bold text-[var(--c-success)]">{totalResidents}</p>
-          <p className="text-[10px] text-[var(--c-hint)]">Резиденты</p>
+          <p className="text-xs text-[var(--c-hint)]">Резиденты</p>
         </div>
-        <div className="p-3 rounded-xl card text-center">
+        <div className="p-4 rounded-2xl card text-center">
           <p className="text-lg font-bold text-[var(--c-text)]">{clients.length - totalResidents}</p>
-          <p className="text-[10px] text-[var(--c-hint)]">Гости</p>
+          <p className="text-xs text-[var(--c-hint)]">Гости</p>
         </div>
       </div>
 
@@ -373,7 +373,7 @@ export function ClientsManager() {
           <input
             type="text"
             placeholder="Имя или телефон..."
-            className="w-full pl-10 pr-4 py-2.5 card rounded-xl text-[13px] text-[var(--c-text)] placeholder:text-[var(--c-muted)]"
+            className="w-full pl-10 pr-4 py-2.5 card rounded-2xl text-sm text-[var(--c-text)] placeholder:text-[var(--c-muted)] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
             value={search}
             onChange={(e) => startTransition(() => setSearch(e.target.value))}
           />
@@ -385,12 +385,12 @@ export function ClientsManager() {
 
       {/* Filter tabs */}
       {!search && (
-        <div className="flex gap-1 p-1 card rounded-xl">
+        <div className="flex gap-1 p-1 card rounded-2xl">
           {([['all', 'Все'], ['residents', 'Резиденты'], ['students', 'Студенты'], ['guests', 'Гости']] as const).map(([key, label]) => (
             <button
               key={key}
               onClick={() => setFilter(key)}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${
+              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 ${
                 filter === key ? 'bg-[var(--c-accent)] text-white shadow' : 'text-[var(--c-hint)]'
               }`}
             >
@@ -402,13 +402,13 @@ export function ClientsManager() {
 
       {/* Link Requests */}
       {linkRequests.length > 0 && (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           <div className="flex items-center gap-2 px-1">
             <Link className="w-3.5 h-3.5 text-sky-400" />
             <p className="text-xs font-semibold text-sky-400">Заявки на привязку ({linkRequests.length})</p>
           </div>
           {linkRequests.map((req) => (
-            <div key={req.id} className="flex items-center gap-3 p-2.5 rounded-xl card border-sky-500/20">
+            <div key={req.id} className="flex items-center gap-3 p-4 rounded-2xl card border-sky-500/20">
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-medium text-[var(--c-text)]">
                   {req.tg_first_name || 'Пользователь'}
@@ -418,16 +418,16 @@ export function ClientsManager() {
                   хочет привязаться к <span className="text-[var(--c-hint)] font-medium">{(req.profile as unknown as { nickname: string })?.nickname || '?'}</span>
                 </p>
               </div>
-              <div className="flex gap-1.5 shrink-0">
+              <div className="flex gap-2 shrink-0">
                 <button
                   onClick={() => handleApproveLink(req)}
-                  className="w-8 h-8 rounded-lg bg-[var(--c-success-bg)] flex items-center justify-center active:scale-90 transition-transform"
+                  className="w-8 h-8 rounded-lg bg-[var(--c-success-bg)] flex items-center justify-center active:scale-90 transition-transform cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 min-w-[44px] min-h-[44px]"
                 >
                   <CheckCircle className="w-4 h-4 text-emerald-400" />
                 </button>
                 <button
                   onClick={() => handleRejectLink(req)}
-                  className="w-8 h-8 rounded-lg bg-[var(--c-danger-bg)] flex items-center justify-center active:scale-90 transition-transform"
+                  className="w-8 h-8 rounded-lg bg-[var(--c-danger-bg)] flex items-center justify-center active:scale-90 transition-transform cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 min-w-[44px] min-h-[44px]"
                 >
                   <XCircle className="w-4 h-4 text-[var(--c-danger)]" />
                 </button>

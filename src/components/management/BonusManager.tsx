@@ -147,14 +147,14 @@ export function BonusManager() {
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="p-3 rounded-xl bg-[var(--c-warning-bg)] border border-[var(--c-warning-border)] text-center">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="p-4 rounded-2xl bg-[var(--c-warning-bg)] border border-[var(--c-warning-border)] text-center">
           <p className="text-lg font-bold text-[var(--c-warning)]">{totalBonusPoints}</p>
-          <p className="text-[10px] text-[var(--c-hint)]">Всего баллов</p>
+          <p className="text-xs text-[var(--c-hint)]">Всего баллов</p>
         </div>
-        <div className="p-3 rounded-xl bg-[rgba(var(--c-accent-rgb),0.1)] border border-violet-500/15 text-center">
+        <div className="p-4 rounded-2xl bg-[rgba(var(--c-accent-rgb),0.1)] border border-violet-500/15 text-center">
           <p className="text-lg font-bold text-[var(--c-accent)]">{playersWithBonus}</p>
-          <p className="text-[10px] text-[var(--c-hint)]">С баллами</p>
+          <p className="text-xs text-[var(--c-hint)]">С баллами</p>
         </div>
       </div>
 

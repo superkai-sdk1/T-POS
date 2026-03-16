@@ -298,10 +298,10 @@ export function DiscountsManager() {
           {discounts.filter((d) => !d.is_auto).map((d) => (
             <div
               key={d.id}
-              className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${d.is_active ? 'card' : 'bg-white/2 border-[var(--c-border)] opacity-50'
+              className={`flex items-center gap-3 p-4 rounded-2xl border transition-all ${d.is_active ? 'card' : 'bg-white/2 border-[var(--c-border)] opacity-50'
                 }`}
             >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isQuantityDiscount(d) ? 'bg-[var(--c-warning-bg)]' :
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${isQuantityDiscount(d) ? 'bg-[var(--c-warning-bg)]' :
                   d.type === 'percentage' ? 'bg-[rgba(var(--c-accent-rgb),0.1)]' : 'bg-[var(--c-success-bg)]'
                 }`}>
                 {isQuantityDiscount(d) ? (
@@ -313,10 +313,10 @@ export function DiscountsManager() {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-[13px] text-[var(--c-text)] truncate">
+                <p className="font-semibold text-sm text-[var(--c-text)] truncate">
                   {d.name}
                 </p>
-                <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                   <Badge variant={d.type === 'percentage' ? 'default' : 'success'} size="sm">
                     {d.type === 'percentage' ? `-${d.value}%` : `-${d.value}₽`}
                   </Badge>
@@ -326,14 +326,14 @@ export function DiscountsManager() {
                     </Badge>
                   )}
                   {d.item && (
-                    <span className="text-[10px] text-[var(--c-hint)] truncate max-w-[120px]">{d.item.name}</span>
+                    <span className="text-xs text-[var(--c-hint)] truncate max-w-[120px]">{d.item.name}</span>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => toggleActive(d)}
-                  className={`w-10 h-6 rounded-full transition-colors relative ${d.is_active ? 'bg-emerald-500' : 'bg-[var(--c-surface-hover)]'
+                  className={`w-10 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 ${d.is_active ? 'bg-emerald-500' : 'bg-[var(--c-surface-hover)]'
                     }`}
                 >
                   <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-all ${d.is_active ? 'left-5' : 'left-1'
@@ -341,13 +341,13 @@ export function DiscountsManager() {
                 </button>
                 <button
                   onClick={() => openEdit(d)}
-                  className="w-8 h-8 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform"
+                  className="w-8 h-8 rounded-xl bg-[var(--c-surface)] flex items-center justify-center active:scale-90 transition-transform cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                 >
                   <Edit2 className="w-3.5 h-3.5 text-[var(--c-hint)]" />
                 </button>
                 <button
                   onClick={() => handleDelete(d.id)}
-                  className="w-8 h-8 rounded-lg bg-[var(--c-danger-bg)] flex items-center justify-center active:scale-90 transition-transform"
+                  className="w-8 h-8 rounded-xl bg-[var(--c-danger-bg)] flex items-center justify-center active:scale-90 transition-transform cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                 >
                   <Trash2 className="w-3.5 h-3.5 text-[var(--c-danger)]" />
                 </button>
@@ -369,7 +369,7 @@ export function DiscountsManager() {
             Добавить правило
           </Button>
         </div>
-        <p className="text-[11px] text-[var(--c-hint)] mb-3">
+        <p className="text-xs text-[var(--c-hint)] mb-3">
           При добавлении позиции в чек указанному клиенту автоматически применяется скидка
         </p>
         {clientRules.length === 0 ? (
@@ -382,19 +382,19 @@ export function DiscountsManager() {
             {clientRules.map((r) => (
               <div
                 key={r.id}
-                className="flex items-center gap-3 p-2.5 rounded-xl border border-[var(--c-border)] bg-white/[0.02]"
+                className="flex items-center gap-3 p-4 rounded-2xl border border-[var(--c-border)] bg-white/[0.02]"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium text-[var(--c-text)] truncate">
+                  <p className="text-sm font-medium text-[var(--c-text)] truncate">
                     {(r.profile as { nickname?: string })?.nickname || '?'} → {(r.item as { name?: string })?.name || '?'}
                   </p>
-                  <p className="text-[11px] text-[var(--c-hint)]">
+                  <p className="text-xs text-[var(--c-hint)]">
                     {(r.discount as Discount)?.name || '?'} ({(r.discount as Discount)?.type === 'percentage' ? `-${(r.discount as Discount)?.value}%` : `-${(r.discount as Discount)?.value}₽`})
                   </p>
                 </div>
                 <button
                   onClick={() => deleteRule(r)}
-                  className="w-8 h-8 rounded-lg bg-[var(--c-danger-bg)] flex items-center justify-center active:scale-90 shrink-0"
+                  className="w-8 h-8 rounded-lg bg-[var(--c-danger-bg)] flex items-center justify-center active:scale-90 shrink-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                 >
                   <Trash2 className="w-3.5 h-3.5 text-[var(--c-danger)]" />
                 </button>
@@ -421,19 +421,19 @@ export function DiscountsManager() {
           />
 
           <div>
-            <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider mb-2">Тип скидки</p>
-            <div className="grid grid-cols-2 gap-2">
+            <p className="text-xs font-semibold text-[var(--c-muted)] uppercase tracking-wider mb-2">Тип скидки</p>
+            <div className="grid grid-cols-2 gap-3">
               {([['percentage', 'Процент', Percent], ['fixed', 'Фиксированная', Banknote]] as const).map(([t, label, Icon]) => (
                 <button
                   key={t}
                   onClick={() => setType(t)}
-                  className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all active:scale-[0.97] ${type === t
+                  className={`flex items-center gap-2 p-4 rounded-2xl border transition-all active:scale-[0.97] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 ${type === t
                       ? 'bg-[var(--c-accent)]/15 border-[var(--c-accent)]/30'
                       : 'bg-[var(--c-surface)] border-[var(--c-border)]'
                     }`}
                 >
                   <Icon className={`w-4 h-4 ${type === t ? 'text-[var(--c-accent)]' : 'text-[var(--c-hint)]'}`} />
-                  <span className={`text-[13px] font-medium ${type === t ? 'text-[var(--c-text)]' : 'text-[var(--c-hint)]'}`}>
+                  <span className={`text-sm font-medium ${type === t ? 'text-[var(--c-text)]' : 'text-[var(--c-hint)]'}`}>
                     {label}
                   </span>
                 </button>
@@ -452,8 +452,8 @@ export function DiscountsManager() {
           />
 
           {/* Quantity-based section */}
-          <div className="p-3 rounded-xl bg-[var(--c-warning-bg)] border border-[var(--c-warning-border)] space-y-3">
-            <p className="text-[11px] font-semibold text-[var(--c-warning)]">Скидка по количеству (необязательно)</p>
+          <div className="p-4 rounded-2xl bg-[var(--c-warning-bg)] border border-[var(--c-warning-border)] space-y-4">
+            <p className="text-xs font-semibold text-[var(--c-warning)]">Скидка по количеству (необязательно)</p>
 
             <Input
               label="Мин. количество в чеке"
@@ -468,23 +468,23 @@ export function DiscountsManager() {
             <div>
               <p className="text-xs font-medium text-[var(--c-hint)] mb-1.5">Применить к товару</p>
               {selectedItemId ? (
-                <div className="flex items-center gap-2 p-2 rounded-xl card">
+                <div className="flex items-center gap-2 p-3 rounded-2xl card">
                   <Package className="w-4 h-4 text-[var(--c-warning)] shrink-0" />
-                  <span className="text-[13px] text-[var(--c-text)] truncate flex-1 min-w-0">{selectedItemName}</span>
-                  <button onClick={clearItem} className="w-6 h-6 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 shrink-0">
+                  <span className="text-sm text-[var(--c-text)] truncate flex-1 min-w-0">{selectedItemName}</span>
+                  <button onClick={clearItem} className="w-6 h-6 rounded-lg bg-[var(--c-surface)] flex items-center justify-center active:scale-90 shrink-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20">
                     <Trash2 className="w-3 h-3 text-[var(--c-hint)]" />
                   </button>
                 </div>
               ) : (
                 <button
                   onClick={openItemPicker}
-                  className="w-full flex items-center gap-2 p-2.5 rounded-xl border border-dashed border-[var(--c-border)] text-[var(--c-hint)] hover:text-[var(--c-hint)] hover:border-white/20 transition-all active:scale-[0.98]"
+                  className="w-full flex items-center gap-2 p-4 rounded-2xl border border-dashed border-[var(--c-border)] text-[var(--c-hint)] hover:text-[var(--c-hint)] transition-all active:scale-[0.98] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                 >
                   <Search className="w-4 h-4" />
                   <span className="text-xs">Выбрать товар...</span>
                 </button>
               )}
-              <p className="text-[10px] text-[var(--c-muted)] mt-1">
+              <p className="text-xs text-[var(--c-muted)] mt-1">
                 Если не выбран — скидка на любые {minQuantity || 'N'} одинаковых позиций
               </p>
             </div>

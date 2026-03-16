@@ -333,7 +333,7 @@ function ChecksTab({ allChecks }: {
     <div className="space-y-4">
       {/* Day selector */}
       <div className="flex items-center gap-2">
-        <button onClick={() => setSelectedDayIdx((i) => Math.min(i + 1, reportDays.length - 1))} disabled={selectedDayIdx >= reportDays.length - 1} className="w-9 h-9 rounded-xl bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all">
+        <button onClick={() => setSelectedDayIdx((i) => Math.min(i + 1, reportDays.length - 1))} disabled={selectedDayIdx >= reportDays.length - 1} className="min-w-[44px] min-h-[44px] rounded-xl bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20">
           <ChevronLeft className="w-4 h-4 text-[var(--c-text)]" />
         </button>
         <div className="flex-1 text-center">
@@ -344,7 +344,7 @@ function ChecksTab({ allChecks }: {
             </>
           )}
         </div>
-        <button onClick={() => setSelectedDayIdx((i) => Math.max(i - 1, 0))} disabled={selectedDayIdx <= 0} className="w-9 h-9 rounded-xl bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all">
+        <button onClick={() => setSelectedDayIdx((i) => Math.max(i - 1, 0))} disabled={selectedDayIdx <= 0} className="min-w-[44px] min-h-[44px] rounded-xl bg-[var(--c-surface)] flex items-center justify-center disabled:opacity-20 active:scale-95 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20">
           <ChevronRight className="w-4 h-4 text-[var(--c-text)]" />
         </button>
       </div>
@@ -365,7 +365,7 @@ function ChecksTab({ allChecks }: {
                   { label: 'В долг', value: daySummary.debt, icon: HandCoins, color: 'text-[var(--c-danger)]' },
                   { label: 'Бонусы', value: daySummary.bonus, icon: Star, color: 'text-[var(--c-warning)]' },
                 ] as const).filter((s) => s.value > 0).map((s) => (
-                  <div key={s.label} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--c-surface)]">
+                  <div key={s.label} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--c-surface)] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20">
                     <s.icon className={`w-3.5 h-3.5 ${s.color} shrink-0`} />
                     <span className="text-xs text-[var(--c-hint)]">{s.label}</span>
                     <span className="ml-auto text-xs font-bold text-[var(--c-text)]">{fmtCur(s.value)}</span>
@@ -387,12 +387,12 @@ function ChecksTab({ allChecks }: {
               const hasRefund = refundAmt > 0;
               const displayTotal = hasRefund ? origTotal - refundAmt : (c.bonus_used > 0 ? origTotal : c.total_amount);
               return (
-                <button key={c.id} onClick={() => setExpandedCheckId(isExp ? null : c.id)} className="w-full text-left p-2.5 rounded-xl card active:scale-[0.99] transition-transform">
+                <button key={c.id} onClick={() => setExpandedCheckId(isExp ? null : c.id)} className="w-full text-left p-2.5 rounded-xl card active:scale-[0.99] transition-transform cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <span className="font-medium text-sm text-[var(--c-text)] truncate">{c.player_nickname}</span>
                       {hasRefund && (
-                        <span className="flex items-center gap-0.5 shrink-0 text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--c-warning-bg)] text-[var(--c-warning)] font-medium">
+                        <span className="flex items-center gap-0.5 shrink-0 text-xs px-1.5 py-0.5 rounded-md bg-[var(--c-warning-bg)] text-[var(--c-warning)] font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20">
                           <RotateCcw className="w-3 h-3" /> Возврат
                         </span>
                       )}
@@ -400,7 +400,7 @@ function ChecksTab({ allChecks }: {
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       {c.payment_method && (
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${c.payment_method === 'cash' ? 'bg-[var(--c-success-bg)] text-[var(--c-success)]' :
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 ${c.payment_method === 'cash' ? 'bg-[var(--c-success-bg)] text-[var(--c-success)]' :
                           c.payment_method === 'card' ? 'bg-[var(--c-info-bg)] text-[var(--c-info)]' :
                             c.payment_method === 'debt' ? 'bg-[var(--c-danger-bg)] text-[var(--c-danger)]' :
                               'bg-[var(--c-warning-bg)] text-[var(--c-warning)]'

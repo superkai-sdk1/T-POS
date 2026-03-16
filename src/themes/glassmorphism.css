@@ -1,4 +1,4 @@
-/* ── Glassmorphism 2.0 ── */
+/* ── Glassmorphism 2.0 Premium ── */
 :root {
     color-scheme: dark;
 
@@ -34,34 +34,34 @@
     --c-info-bg: rgba(96, 165, 250, 0.08);
     --c-info-border: rgba(96, 165, 250, 0.18);
 
-    /* ── Glass Surfaces ── */
+    /* ── Glass Surfaces (improved visibility) ── */
     --c-surface: rgba(255, 255, 255, 0.04);
     --c-surface-hover: rgba(255, 255, 255, 0.08);
     --c-surface-active: rgba(255, 255, 255, 0.12);
-    --c-border: rgba(255, 255, 255, 0.08);
-    --c-border-strong: rgba(255, 255, 255, 0.14);
+    --c-border: rgba(255, 255, 255, 0.12);
+    --c-border-strong: rgba(255, 255, 255, 0.18);
     --c-overlay: rgba(0, 0, 0, 0.55);
 
-    /* ── Glass Card ── */
+    /* ── Glass Card (optimized blur) ── */
     --c-card-bg: rgba(255, 255, 255, 0.04);
     --c-card-active-bg: rgba(255, 255, 255, 0.08);
     --c-glass-bg: rgba(15, 23, 42, 0.65);
-    --c-glass-blur: 24px;
+    --c-glass-blur: 16px;
     --c-glass-strong-bg: rgba(10, 14, 26, 0.88);
-    --c-glass-strong-blur: 40px;
+    --c-glass-strong-blur: 32px;
 
     /* ── Skeleton ── */
     --c-skeleton-a: rgba(255, 255, 255, 0.03);
     --c-skeleton-b: rgba(255, 255, 255, 0.08);
 
-    /* ── Radii (more rounded = more mobile) ── */
+    /* ── Radii (mobile-optimized) ── */
     --radius-sm: 0.625rem;
     --radius-md: 0.875rem;
     --radius-lg: 1.25rem;
     --radius-xl: 1.5rem;
     --radius-full: 9999px;
 
-    /* ── Shadows & Glows ── */
+    /* ── Shadows & Glows (refined) ── */
     --shadow-card: 0 2px 12px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.05);
     --shadow-glow: 0 0 20px rgba(139, 92, 246, 0.2), 0 0 60px rgba(139, 92, 246, 0.06);
     --shadow-card-hover: 0 4px 24px rgba(0, 0, 0, 0.3), 0 0 16px rgba(139, 92, 246, 0.08);
@@ -77,21 +77,23 @@
 /* ── GLASS CARD SYSTEM ── */
 .card {
     background: rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(20px) saturate(1.3);
-    -webkit-backdrop-filter: blur(20px) saturate(1.3);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px) saturate(1.3);
+    -webkit-backdrop-filter: blur(12px) saturate(1.3);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);
+    backface-visibility: hidden;
 }
 
 .card-interactive {
     background: rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(20px) saturate(1.3);
-    -webkit-backdrop-filter: blur(20px) saturate(1.3);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px) saturate(1.3);
+    -webkit-backdrop-filter: blur(12px) saturate(1.3);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);
     transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    backface-visibility: hidden;
 }
 
 .card-interactive:active {
@@ -104,17 +106,19 @@
 /* ── GLASS NAVIGATION ── */
 .glass {
     background: rgba(15, 23, 42, 0.65);
-    backdrop-filter: blur(24px) saturate(1.5);
-    -webkit-backdrop-filter: blur(24px) saturate(1.5);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(16px) saturate(1.5);
+    -webkit-backdrop-filter: blur(16px) saturate(1.5);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backface-visibility: hidden;
 }
 
 .glass-strong {
     background: rgba(10, 14, 26, 0.88);
-    backdrop-filter: blur(40px) saturate(1.6);
-    -webkit-backdrop-filter: blur(40px) saturate(1.6);
+    backdrop-filter: blur(32px) saturate(1.6);
+    -webkit-backdrop-filter: blur(32px) saturate(1.6);
     border-top: 1px solid rgba(255, 255, 255, 0.06);
     box-shadow: var(--shadow-nav);
+    backface-visibility: hidden;
 }
 
 /* ── SKELETON ── */

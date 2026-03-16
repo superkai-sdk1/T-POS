@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/Users/kaimichaelson/Documents/tpos/**)",
+      "Write(/Users/kaimichaelson/Documents/tpos**)"
+    ]
+  }
+}

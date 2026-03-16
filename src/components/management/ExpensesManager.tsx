@@ -105,23 +105,23 @@ export function ExpensesManager() {
         </Button>
       </div>
 
-      <div className="p-3 rounded-xl card">
+      <div className="p-4 rounded-2xl card">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] text-[var(--c-hint)] font-semibold uppercase tracking-wider">Итого за месяц</span>
+          <span className="text-xs text-[var(--c-hint)] font-semibold uppercase tracking-wider">Итого за месяц</span>
           <span className="text-xl font-black text-[var(--c-danger)] tabular-nums">{fmtCur(totalMonth)}</span>
         </div>
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-2 gap-2">
           {byCategory.map((cat) => (
             <button
               key={cat.value}
               onClick={() => setFilterCat(filterCat === cat.value ? 'all' : cat.value)}
-              className={`flex items-center gap-2 p-2 rounded-lg transition-all active:scale-95 ${filterCat === cat.value ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/20' : 'bg-[var(--c-surface)]'
+              className={`flex items-center gap-2 p-3 rounded-2xl transition-all active:scale-95 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 ${filterCat === cat.value ? 'bg-[var(--c-accent)]/10 border border-[var(--c-accent)]/20' : 'bg-[var(--c-surface)]'
                 }`}
             >
               <cat.icon className={`w-3.5 h-3.5 ${cat.color.split(' ')[0]}`} />
               <div className="flex-1 text-left">
-                <p className="text-[10px] text-[var(--c-hint)]">{cat.label}</p>
-                <p className="text-[12px] font-bold text-[var(--c-text)] tabular-nums">{fmtCur(cat.total)}</p>
+                <p className="text-xs text-[var(--c-hint)]">{cat.label}</p>
+                <p className="text-sm font-bold text-[var(--c-text)] tabular-nums">{fmtCur(cat.total)}</p>
               </div>
             </button>
           ))}
@@ -138,20 +138,20 @@ export function ExpensesManager() {
             const cat = CATEGORIES.find((c) => c.value === exp.category) || CATEGORIES[3];
             return (
               <SwipeableRow key={exp.id} onDelete={() => handleDelete(exp.id)}>
-                <div className="flex items-center gap-2.5 p-2.5 rounded-xl card">
+                <div className="flex items-center gap-2 p-4 rounded-2xl card">
                   <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${cat.color.split(' ')[1]}`}>
                     <cat.icon className={`w-4 h-4 ${cat.color.split(' ')[0]}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-[var(--c-text)] truncate">
+                    <p className="text-sm font-medium text-[var(--c-text)] truncate">
                       {exp.description || cat.label}
                     </p>
-                    <div className="flex gap-1.5 mt-0.5 truncate">
-                      <span className="text-[10px] text-[var(--c-muted)]">
+                    <div className="flex gap-2 mt-0.5 truncate">
+                      <span className="text-xs text-[var(--c-muted)]">
                         {new Date(exp.expense_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                       </span>
                       {exp.creator?.nickname && (
-                        <span className="text-[10px] text-[var(--c-muted)] truncate">· {exp.creator.nickname}</span>
+                        <span className="text-xs text-[var(--c-muted)] truncate">· {exp.creator.nickname}</span>
                       )}
                     </div>
                   </div>
@@ -170,13 +170,13 @@ export function ExpensesManager() {
               <button
                 key={cat.value}
                 onClick={() => { hapticFeedback('light'); setCategory(cat.value); }}
-                className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all active:scale-95 ${category === cat.value
+                className={`flex items-center gap-2 p-4 rounded-2xl border transition-all active:scale-95 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 ${category === cat.value
                     ? 'bg-[var(--c-accent)]/10 border-[var(--c-accent)]/20'
                     : 'bg-[var(--c-surface)] border-[var(--c-border)]'
                   }`}
               >
                 <cat.icon className={`w-4 h-4 ${cat.color.split(' ')[0]}`} />
-                <span className={`text-[12px] font-semibold ${category === cat.value ? 'text-[var(--c-accent)]' : 'text-[var(--c-hint)]'}`}>
+                <span className={`text-sm font-semibold ${category === cat.value ? 'text-[var(--c-accent)]' : 'text-[var(--c-hint)]'}`}>
                   {cat.label}
                 </span>
               </button>

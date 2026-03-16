@@ -45,62 +45,64 @@ function AppHeader({
 }) {
   return (
     <header
-      className="lg:hidden shrink-0 z-40 select-none rounded-b-[1.5rem] mx-2 mb-2 border border-white/10"
+      className="lg:hidden shrink-0 z-40 select-none rounded-b-2xl mx-2 mb-2 border border-white/12"
       style={{
         background: 'rgba(255, 255, 255, 0.04)',
-        backdropFilter: 'blur(24px) saturate(1.5)',
-        WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
+        backdropFilter: 'blur(16px) saturate(1.5)',
+        WebkitBackdropFilter: 'blur(16px) saturate(1.5)',
         boxShadow: '0 4px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
         paddingTop: 'var(--safe-top)',
-        paddingBottom: '10px',
-        paddingLeft: 'calc(var(--safe-left) + 12px)',
-        paddingRight: 'calc(var(--safe-right) + 12px)',
+        paddingBottom: '12px',
+        paddingLeft: 'calc(var(--safe-left) + 16px)',
+        paddingRight: 'calc(var(--safe-right) + 16px)',
+        backfaceVisibility: 'hidden',
+        willChange: 'transform',
       }}
     >
-      <div className="flex items-center justify-between gap-2 min-h-[40px]">
+      <div className="flex items-center justify-between gap-3 min-h-[44px]">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {showBack && onBack ? (
             <button
               type="button"
               onClick={() => { hapticFeedback('light'); onBack(); }}
-              className="p-2 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 active:scale-90 tap"
+              className="p-2 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 active:scale-90 tap min-w-[44px] min-h-[44px] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
           >
-              <ArrowLeft className="w-4 h-4 text-white" />
+              <ArrowLeft className="w-5 h-5 text-white" />
             </button>
           ) : null}
           <div className="min-w-0 flex-1">
-            <h1 className="text-[14px] font-bold text-white truncate">{title}</h1>
+            <h1 className="text-base font-bold text-white truncate">{title}</h1>
             {subtitle ? (
-              <p className="text-[10px] text-white/30 truncate mt-0.5">{subtitle}</p>
+              <p className="text-xs text-white/30 truncate mt-0.5">{subtitle}</p>
             ) : shiftStatus ? (
               <div className="mt-0.5">{shiftStatus}</div>
             ) : null}
           </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {rightContent}
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-white/40 hover:text-white/70 active:scale-90 transition-all shrink-0 disabled:opacity-50 tap"
+            className="w-11 h-11 rounded-xl flex items-center justify-center text-white/40 hover:text-white/70 active:scale-90 transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed tap cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
             aria-label="Обновить"
           >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
           {cashInRegister !== null && !rightContent ? (
             <div className="flex flex-col items-end">
-              <span className="text-[8px] text-white/40 uppercase tracking-widest">В кассе</span>
-              <span className="text-base font-black tracking-tight text-white italic tabular-nums">
+              <span className="text-xs text-white/40 uppercase tracking-widest">В кассе</span>
+              <span className="text-lg font-black tracking-tight text-white italic tabular-nums">
                 {cashInRegister.toLocaleString('ru-RU')} ₽
               </span>
             </div>
           ) : null}
           <button
             onClick={onLogout}
-            className="w-9 h-9 rounded-xl flex items-center justify-center text-white/40 hover:text-rose-400 active:scale-90 transition-all shrink-0 tap"
+            className="w-11 h-11 rounded-xl flex items-center justify-center text-white/40 hover:text-rose-400 active:scale-90 transition-all shrink-0 tap cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
             aria-label="Выйти"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -136,12 +138,12 @@ function CheckPaymentPanel({ sidebarCollapsed, onNewCheck }: { sidebarCollapsed:
       } lg:right-4`}
       style={{ bottom: 'calc(var(--safe-bottom, 0px) + 16px)' }}
     >
-      <div className="relative w-full max-w-lg rounded-[2rem] border border-white/10 bg-white/[0.06] backdrop-blur-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-        <div className="relative p-3 flex items-center justify-between gap-3">
+      <div className="relative w-full max-w-lg rounded-3xl border border-white/12 bg-white/[0.06] backdrop-blur-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]" style={{ WebkitBackdropFilter: 'blur(24px)', backfaceVisibility: 'hidden', willChange: 'transform' }}>
+        <div className="relative p-4 flex items-center justify-between gap-4">
         <div className="flex gap-2">
           <button
             onClick={() => { hapticFeedback('light'); window.dispatchEvent(new CustomEvent('tpos:open-menu')); }}
-            className="w-11 h-11 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 text-white/40 hover:text-white active:scale-90 transition-all"
+            className="w-11 h-11 flex items-center justify-center bg-white/5 rounded-2xl border border-white/12 text-white/40 hover:text-white active:scale-90 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 min-w-[44px] min-h-[44px]"
             title="Меню"
           >
             <Plus className="w-5 h-5" />
@@ -149,7 +151,7 @@ function CheckPaymentPanel({ sidebarCollapsed, onNewCheck }: { sidebarCollapsed:
           {onNewCheck && activeShift && (
             <button
               onClick={() => { hapticFeedback('medium'); onNewCheck(); }}
-              className="w-11 h-11 flex items-center justify-center rounded-2xl border border-white/10 active:scale-90 transition-all"
+              className="w-11 h-11 flex items-center justify-center rounded-2xl border border-white/12 active:scale-90 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 min-w-[44px] min-h-[44px]"
               style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(109, 40, 217, 0.15))', color: '#a78bfa' }}
               title="Новый чек"
             >
@@ -158,13 +160,13 @@ function CheckPaymentPanel({ sidebarCollapsed, onNewCheck }: { sidebarCollapsed:
           )}
           <button
             onClick={() => { hapticFeedback('light'); window.dispatchEvent(new CustomEvent('tpos:open-add-player')); }}
-            className="w-11 h-11 flex items-center justify-center bg-white/5 rounded-2xl border border-white/10 text-[#10b981] active:scale-90 transition-all"
+            className="w-11 h-11 flex items-center justify-center bg-white/5 rounded-2xl border border-white/12 text-[#10b981] active:scale-90 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 min-w-[44px] min-h-[44px]"
             title="Добавить игрока"
           >
             <UserPlus className="w-5 h-5" />
           </button>
         </div>
-        <div className="flex items-baseline gap-2">
+        <div className="flex items-baseline gap-3">
         {(cartCount > 0 || (hasEvent && eventAmount > 0)) && (
           <span className="text-2xl font-black italic text-white tabular-nums">{fmtCur(total)}</span>
         )}
@@ -172,9 +174,9 @@ function CheckPaymentPanel({ sidebarCollapsed, onNewCheck }: { sidebarCollapsed:
         {(cartCount > 0 || (hasEvent && eventAmount > 0)) && (
           <button
             onClick={() => { hapticFeedback('medium'); window.dispatchEvent(new CustomEvent('tpos:open-payment')); }}
-            className="flex-1 max-w-[160px] bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-xl shadow-[#8b5cf6]/30 font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all text-white"
+            className="flex-1 max-w-[160px] bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] py-3 rounded-2xl flex items-center justify-center gap-2 shadow-xl shadow-[#8b5cf6]/30 font-black uppercase text-xs tracking-widest active:scale-95 transition-all text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 min-h-[44px]"
           >
-            <CreditCard className="w-[18px] h-[18px]" /> Оплата
+            <CreditCard className="w-5 h-5" /> Оплата
           </button>
         )}
         </div>
@@ -381,9 +383,11 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
           className="flex-1 flex flex-col rounded-[2rem] overflow-hidden border border-white/10"
           style={{
             background: 'rgba(255, 255, 255, 0.04)',
-            backdropFilter: 'blur(40px) saturate(1.6)',
-            WebkitBackdropFilter: 'blur(40px) saturate(1.6)',
+            backdropFilter: 'blur(32px) saturate(1.6)',
+            WebkitBackdropFilter: 'blur(32px) saturate(1.6)',
             boxShadow: '0 20px 60px rgba(0, 0, 0, 0.4)',
+            backfaceVisibility: 'hidden',
+            willChange: 'transform',
           }}
         >
           {/* Logo + collapse */}
@@ -604,7 +608,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
             </div>
           ) : (
           <div className="lg:hidden fixed bottom-3 left-1/2 -translate-x-1/2 w-[92%] max-w-lg z-[60]">
-            <div className="absolute inset-0 bg-white/[0.06] backdrop-blur-3xl rounded-[1.5rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]" />
+            <div className="absolute inset-0 bg-white/[0.06] backdrop-blur-[24px] rounded-[1.5rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]" style={{ WebkitBackdropFilter: 'blur(24px)', backfaceVisibility: 'hidden' }} />
             <nav className="relative p-2 flex items-center justify-center">
               {tabs.slice(0, 2).map((tab) => {
                 const isActive = activeTab === tab.id;

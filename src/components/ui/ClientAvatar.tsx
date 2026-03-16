@@ -17,7 +17,7 @@ interface ClientAvatarProps {
   className?: string;
 }
 
-const sizeMap = { sm: 'w-8 h-8', md: 'w-10 h-10', lg: 'w-11 h-11', xl: 'w-12 h-12', '2xl': 'w-16 h-16' };
+const sizeMap = { sm: 'w-9 h-9', md: 'w-10 h-10', lg: 'w-11 h-11', xl: 'w-12 h-12', '2xl': 'w-16 h-16' };
 
 export function ClientAvatar({ photoUrl, id = '', size = 'md', rounded = 'full', className = '' }: ClientAvatarProps) {
   const hue = useMemo(() => getAvatarHue(id), [id]);

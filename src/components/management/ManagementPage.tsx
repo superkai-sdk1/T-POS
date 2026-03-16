@@ -139,7 +139,7 @@ export function ManagementPage({ initialScreen, initialSupplyId, initialRevision
       rightContent: screen === 'inventory' ? (
         <button
           onClick={() => { hapticFeedback('light'); setInventorySubTab('revision'); }}
-          className="w-9 h-9 rounded-xl flex items-center justify-center text-white/40 hover:text-white/70 active:scale-90 tap"
+          className="min-w-[44px] min-h-[44px] rounded-xl flex items-center justify-center text-white/40 hover:text-white/70 active:scale-90 tap cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
         >
           <History className="w-4 h-4" />
         </button>
@@ -171,11 +171,11 @@ export function ManagementPage({ initialScreen, initialSupplyId, initialRevision
               <button
                 key={item.id}
                 onClick={() => startTransition(() => setScreen(item.id))}
-                className="group relative text-left rounded-[20px] sm:rounded-[28px] p-4 sm:p-6 border border-[var(--c-border)] bg-[var(--c-surface)] transition-all duration-200 hover:bg-[var(--c-surface-hover)] hover:border-[var(--c-border-hover)] active:scale-[0.97] overflow-hidden"
+                className="group relative text-left rounded-3xl sm:rounded-3xl p-4 sm:p-6 border border-white/12 bg-[var(--c-surface)] transition-all duration-200 hover:bg-[var(--c-surface-hover)] hover:border-[var(--c-border-hover)] active:scale-[0.97] overflow-hidden cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
               >
                 <div className={`absolute -right-4 -top-4 w-20 h-20 ${bgClass} opacity-0 group-hover:opacity-40 blur-3xl transition-opacity duration-500`} />
 
-                <div className={`relative w-11 h-11 sm:w-14 sm:h-14 ${bgClass} rounded-xl sm:rounded-2xl flex items-center justify-center mb-3 sm:mb-5 group-hover:scale-110 transition-transform duration-300`}>
+                <div className={`relative w-11 h-11 sm:w-14 sm:h-14 ${bgClass} rounded-2xl sm:rounded-3xl flex items-center justify-center mb-4 sm:mb-5 group-hover:scale-110 transition-transform duration-300`}>
                   <item.icon className={`w-5 h-5 sm:w-6 sm:h-6 ${textClass}`} />
                 </div>
 
@@ -288,24 +288,24 @@ function InventoryFull() {
     <div className={`space-y-4 sm:space-y-5 relative ${hideNav ? 'pb-0' : 'pb-24'} lg:pb-0`}>
       {/* Критический остаток */}
       {criticalItems.length > 0 && (
-        <div className="relative overflow-hidden bg-rose-500/5 border border-rose-500/20 rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:p-5">
+        <div className="relative overflow-hidden bg-rose-500/5 border border-rose-500/20 rounded-2xl sm:rounded-2xl p-4 sm:p-4 lg:p-5">
           <div className="absolute top-0 right-0 p-4 sm:p-6 text-rose-500/10 pointer-events-none">
             <AlertTriangle className="w-10 h-10 sm:w-14 sm:h-14 lg:w-16 lg:h-16 text-rose-500/10" />
           </div>
-          <div className="flex items-center gap-2 mb-2 sm:mb-3">
-            <div className="p-1.5 sm:p-2 bg-rose-500/20 text-rose-500 rounded-lg">
+          <div className="flex items-center gap-1.5 mb-3 sm:mb-3">
+            <div className="p-2 sm:p-2 bg-rose-500/20 text-rose-500 rounded-lg">
               <TrendingDown className="w-4 h-4 sm:w-5 h-5" />
             </div>
             <h2 className="text-rose-400 font-black uppercase tracking-wider text-xs sm:text-sm">Критический остаток</h2>
           </div>
-          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+          <div className="flex flex-wrap gap-1.5 sm:gap-3">
             {criticalItems.map((item) => (
               <div
                 key={item.id}
-                className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-rose-500/10 border border-rose-500/20 rounded-lg sm:rounded-xl flex items-center gap-1.5 transition-all hover:bg-rose-500/20"
+                className="px-2.5 sm:px-3 py-2 sm:py-2 bg-rose-500/10 border border-rose-500/20 rounded-xl sm:rounded-xl flex items-center gap-1.5 transition-all hover:bg-rose-500/20 cursor-pointer"
               >
                 <span className="text-white font-bold text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none">{item.name}</span>
-                <span className="text-rose-400 font-black text-[10px] sm:text-xs bg-rose-950/40 px-1.5 py-0.5 rounded shrink-0">
+                <span className="text-rose-400 font-black text-xs sm:text-xs bg-rose-950/40 px-1.5 py-0.5 rounded shrink-0">
                   {item.stock_quantity}/{item.min_threshold}
                 </span>
               </div>
@@ -315,7 +315,7 @@ function InventoryFull() {
       )}
 
       {/* Поиск и фильтры */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4 sm:w-5 sm:h-5" />
           <input
@@ -323,10 +323,10 @@ function InventoryFull() {
             placeholder="Поиск товара..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900/40 border border-slate-800 rounded-xl sm:rounded-2xl py-2.5 sm:py-3 pl-9 sm:pl-12 pr-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-600 text-[var(--c-text)]"
+            className="w-full bg-slate-900/40 border border-white/12 rounded-2xl sm:rounded-2xl py-2.5 sm:py-3 pl-9 sm:pl-12 pr-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-600 text-[var(--c-text)]"
           />
         </div>
-        <button className="h-10 sm:h-10 w-10 sm:w-auto sm:px-4 bg-slate-900/40 border border-slate-800 rounded-xl sm:rounded-2xl flex items-center justify-center gap-2 text-slate-400 hover:bg-slate-800 transition-all shrink-0">
+        <button className="min-h-[44px] min-w-[44px] sm:w-auto sm:px-4 bg-slate-900/40 border border-white/12 rounded-2xl sm:rounded-2xl flex items-center justify-center gap-2 text-slate-400 hover:bg-slate-800 transition-all shrink-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20">
           <Filter className="w-4 h-4 sm:w-5 h-5" />
           <span className="hidden sm:inline font-bold text-xs">Фильтры</span>
         </button>
@@ -341,17 +341,17 @@ function InventoryFull() {
           </p>
         </div>
       ) : (
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 lg:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3 lg:gap-4">
         {filteredItems.map((item) => {
           const isService = item.is_service === true;
           const isLow = !isService && item.min_threshold > 0 && item.stock_quantity <= item.min_threshold;
           return (
             <div
               key={item.id}
-              className={`group relative bg-slate-900/30 border ${isLow ? 'border-rose-500/30' : 'border-slate-800'} rounded-xl sm:rounded-2xl p-3 sm:p-4 hover:bg-slate-800/40 transition-all flex items-center justify-between shadow-lg`}
+              className={`group relative bg-slate-900/30 border ${isLow ? 'border-rose-500/30' : 'border-white/12'} rounded-2xl sm:rounded-2xl p-4 sm:p-4 hover:bg-slate-800/40 transition-all flex items-center justify-between shadow-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20`}
             >
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-inner shrink-0 ${
+                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl sm:rounded-2xl flex items-center justify-center shadow-inner shrink-0 ${
                   isLow ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800/80 text-slate-500'
                 }`}>
                   <Box className="w-5 h-5 sm:w-6 h-6" />
@@ -359,7 +359,7 @@ function InventoryFull() {
                 <div className="min-w-0">
                   <h3 className="text-sm sm:text-base font-bold text-[var(--c-text)] group-hover:text-indigo-400 transition-colors truncate">{item.name}</h3>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                    <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-slate-500 bg-slate-800/50 px-1.5 py-0.5 rounded">
+                    <span className="text-xs sm:text-xs font-bold uppercase tracking-widest text-slate-500 bg-slate-800/50 px-1.5 py-0.5 rounded">
                       {categoryLabels[item.category] || item.category}
                     </span>
                     <span className="text-[10px] sm:text-xs font-bold text-indigo-400/80">{item.price} ₽</span>
@@ -369,25 +369,25 @@ function InventoryFull() {
 
               <div className="flex flex-col items-end shrink-0">
                 {isService ? (
-                  <span className="text-[10px] text-slate-500 font-bold uppercase">—</span>
+                  <span className="text-xs text-slate-500 font-bold uppercase">—</span>
                 ) : (
                   <>
                     <div className="flex items-baseline gap-0.5">
                       <span className={`text-xl sm:text-2xl font-black ${isLow ? 'text-rose-500' : 'text-[var(--c-text)]'}`}>
                         {item.stock_quantity}
                       </span>
-                      <span className="text-slate-500 text-[10px] font-bold uppercase">шт</span>
+                      <span className="text-slate-500 text-xs font-bold uppercase">шт</span>
                     </div>
                     <div className="flex items-center gap-1 mt-0.5">
-                      <span className="text-[9px] text-slate-500 font-bold uppercase">Мин:</span>
-                      <span className="text-[9px] text-slate-400 font-black bg-slate-800 px-1 py-0.5 rounded">{item.min_threshold}</span>
+                      <span className="text-xs text-slate-500 font-bold uppercase">Мин:</span>
+                      <span className="text-xs text-slate-400 font-black bg-slate-800 px-1 py-0.5 rounded">{item.min_threshold}</span>
                     </div>
                   </>
                 )}
               </div>
 
               <div className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button className="p-1 text-slate-600 hover:text-white">
+                <button className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-600 hover:text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20">
                   <MoreVertical className="w-4 h-4 sm:w-5 h-5" />
                 </button>
               </div>

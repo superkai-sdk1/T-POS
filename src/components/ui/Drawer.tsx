@@ -180,7 +180,7 @@ export function Drawer({
     >
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-[8px] transition-opacity duration-500"
-        style={{ opacity: overlayOpacity, WebkitBackdropFilter: 'blur(8px)' }}
+        style={{ opacity: overlayOpacity, WebkitBackdropFilter: 'blur(8px)', backfaceVisibility: 'hidden' }}
         onClick={handleClose}
       />
 
@@ -190,15 +190,17 @@ export function Drawer({
           transform: `translateY(${panelTranslate}) translateZ(0)`,
           transition: dragging ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
           willChange: 'transform',
+          backfaceVisibility: 'hidden',
         }}
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className="bg-[#0c0c14] sm:bg-white/[0.03] backdrop-blur-[30px] border-t border-white/10 rounded-t-[32px] sm:rounded-t-[48px] shadow-2xl flex flex-col overflow-hidden"
+          className="bg-[#0c0c14] sm:bg-white/[0.03] backdrop-blur-[24px] border-t border-white/12 rounded-t-[32px] sm:rounded-[24px] shadow-2xl flex flex-col overflow-hidden"
           style={{
             maxHeight: maxH,
-            WebkitBackdropFilter: 'blur(30px)',
+            WebkitBackdropFilter: 'blur(24px)',
             transition: keyboardOpen ? 'max-height 0.15s ease' : 'max-height 0.3s ease',
+            backfaceVisibility: 'hidden',
           }}
         >
           <div
@@ -208,50 +210,50 @@ export function Drawer({
             onTouchEnd={handleTouchEnd}
           >
             <div
-              className="w-full flex justify-center pt-2 sm:pt-3 pb-1"
-              style={{ minHeight: '2rem' }}
+              className="w-full flex justify-center pt-3 sm:pt-4 pb-2"
+              style={{ minHeight: '2.5rem' }}
             >
               <div className="w-12 sm:w-16 h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full" />
             </div>
 
-            <div className="px-6 sm:px-10 py-2 sm:py-3 flex items-center justify-between gap-3">
+            <div className="px-6 sm:px-8 py-4 sm:py-5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
               {titleIcon != null ? (
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/20 shrink-0 text-white font-black text-base sm:text-lg">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center shadow-lg shadow-purple-500/20 shrink-0 text-white font-black text-base sm:text-lg">
                   {titleIcon}
                 </div>
               ) : null}
               <div className="min-w-0 flex-1">
                 {title ? (
                   <>
-                    <h2 className="text-lg sm:text-xl font-black tracking-tight leading-none uppercase italic text-white truncate">
+                    <h2 className="text-lg sm:text-xl font-black tracking-tight leading-tight uppercase italic text-white truncate">
                       {title}
                     </h2>
                     {subtitle ? (
-                      <p className="text-white/40 text-[10px] sm:text-xs mt-0.5 uppercase tracking-tighter truncate">
+                      <p className="text-white/40 text-xs sm:text-sm mt-1 uppercase tracking-tighter truncate">
                         {subtitle}
                       </p>
                     ) : null}
                   </>
                 ) : (
-                  <span className="block min-h-[1.25rem]" aria-hidden />
+                  <span className="block min-h-[1.5rem]" aria-hidden />
                 )}
               </div>
             </div>
             <button
               type="button"
               onClick={handleClose}
-              className="p-2.5 sm:p-3 bg-white/5 hover:bg-rose-500/20 rounded-xl sm:rounded-2xl transition-all shrink-0 min-w-[2.25rem] min-h-[2.25rem] flex items-center justify-center group"
+              className="p-2.5 sm:p-3 bg-white/5 hover:bg-rose-500/20 rounded-xl sm:rounded-2xl transition-all shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center group cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
               aria-label="Закрыть"
             >
-              <X className="w-4 h-4 sm:w-5 h-5 text-white/40 group-hover:text-rose-400 transition-colors" />
+              <X className="w-5 h-5 text-white/40 group-hover:text-rose-400 transition-colors" />
             </button>
             </div>
           </div>
 
           <div
             ref={contentRef}
-            className="px-6 sm:px-10 pb-4 sm:pb-6 overflow-y-auto overflow-x-hidden flex-1 min-h-0 overscroll-contain"
+            className="px-6 sm:px-8 pb-6 sm:pb-8 overflow-y-auto overflow-x-hidden flex-1 min-h-0 overscroll-contain"
             style={{
               WebkitOverflowScrolling: 'touch',
               touchAction: 'pan-y',
