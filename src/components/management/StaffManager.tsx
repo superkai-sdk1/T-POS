@@ -284,7 +284,7 @@ export function StaffManager() {
               className="w-full flex items-center gap-3 p-4 rounded-2xl card-interactive cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
             >
               {p.photo_url ? (
-                <ClientAvatar photoUrl={p.photo_url} id={p.id} size="md" rounded="2xl" />
+                <ClientAvatar photoUrl={p.photo_url} id={p.id} size="md" rounded="xl" />
               ) : (
                 <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
                   isOwnerRole ? 'bg-[var(--c-warning-bg)]' : 'bg-[var(--c-accent)]/15'
@@ -383,7 +383,7 @@ export function StaffManager() {
             <h3 className="text-xs font-semibold text-[var(--c-hint)] uppercase tracking-wider mb-2">Профиль</h3>
             <div className="flex items-center gap-3 mb-4">
               <div className="relative shrink-0">
-                <ClientAvatar photoUrl={photoUrl || selected?.photo_url} id={selected?.id || ''} size="2xl" />
+                <ClientAvatar photoUrl={photoUrl || selected?.photo_url} id={selected?.id || ''} size="xl" />
                 {photoUrl && (
                   <button
                     onClick={() => setPhotoUrl('')}
@@ -476,8 +476,8 @@ export function StaffManager() {
           {error && (
             <p className="text-sm text-[var(--c-danger)] bg-[var(--c-danger-bg)] rounded-xl px-3 py-2">{error}</p>
           )}
-          <Button fullWidth size="lg" onClick={handleSaveEdit}
-            <Button fullWidth onClick={handleSaveEdit}>
+          <div className="flex gap-3">
+            <Button fullWidth size="lg" onClick={handleSaveEdit}>
               Сохранить
             </Button>
             {selected?.role !== 'owner' && (

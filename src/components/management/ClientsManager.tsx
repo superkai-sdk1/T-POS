@@ -650,7 +650,7 @@ export function ClientsManager() {
             placeholder="Имя клиента"
             value={form.nickname}
             onChange={(e) => updateField('nickname', e.target.value)}
-            compact
+            size="md"
           />
 
           <Input
@@ -658,7 +658,7 @@ export function ClientsManager() {
             placeholder="@username"
             value={form.tg_username}
             onChange={(e) => updateField('tg_username', e.target.value)}
-            compact
+            size="md"
           />
 
           <Input
@@ -667,7 +667,7 @@ export function ClientsManager() {
             value={form.phone}
             onChange={(e) => updateField('phone', e.target.value)}
             type="tel"
-            compact
+            size="md"
           />
 
           <Input
@@ -675,7 +675,7 @@ export function ClientsManager() {
             type="date"
             value={form.birthday}
             onChange={(e) => updateField('birthday', e.target.value)}
-            compact
+            size="md"
           />
 
           <Input
@@ -684,7 +684,7 @@ export function ClientsManager() {
             value={form.search_tags_text}
             onChange={(e) => updateField('search_tags_text', e.target.value)}
             hint="Всё, по чему можно найти клиента при создании чека"
-            compact
+            size="md"
           />
 
           {/* Tier selector */}

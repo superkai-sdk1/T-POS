@@ -462,7 +462,7 @@ export function DiscountsManager() {
               value={minQuantity}
               onChange={(e) => setMinQuantity(e.target.value)}
               min={1}
-              compact
+              size="md"
             />
 
             <div>
@@ -614,7 +614,7 @@ export function DiscountsManager() {
               onChange={(e) => setRuleValue(e.target.value)}
               min={0}
               max={ruleType === 'percentage' ? 100 : undefined}
-              compact
+              size="md"
             />
           </div>
 

@@ -142,14 +142,14 @@ export function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-3">
               <Input
                 label="Никнейм"
-                compact
+                size="md"
                 placeholder="Введите никнейм"
                 value={nickname}
                 onChange={(e) => setNickname(e.target.value)}
               />
               <Input
                 label="Пароль"
-                compact
+                size="md"
                 type="password"
                 placeholder="Введите пароль"
                 value={password}

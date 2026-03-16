@@ -692,7 +692,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
             placeholder="Сумма на начало"
             value={cashStart}
             onChange={(e) => setCashStart(e.target.value)}
-            compact
+            size="md"
             min={0}
             autoFocus
           />
@@ -751,8 +751,8 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
             </div>
           )}
 
-          <Input type="number" label="Наличные в кассе (факт)" placeholder="Пересчитайте наличные" value={cashEnd} onChange={(e) => setCashEnd(e.target.value)} compact min={0} />
-          <Input label="Примечание" placeholder="Комментарий к смене" value={closeNote} onChange={(e) => setCloseNote(e.target.value)} compact />
+          <Input type="number" label="Наличные в кассе (факт)" placeholder="Пересчитайте наличные" value={cashEnd} onChange={(e) => setCashEnd(e.target.value)} size="md" min={0} />
+          <Input label="Примечание" placeholder="Комментарий к смене" value={closeNote} onChange={(e) => setCloseNote(e.target.value)} size="md" />
           <Button fullWidth variant="danger" onClick={handleConfirmClose} disabled={isClosing || !!closeError}>
             {isClosing ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <StopCircle className="w-4 h-4" />}
             Закрыть смену

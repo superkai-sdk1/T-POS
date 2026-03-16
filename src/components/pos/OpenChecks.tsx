@@ -878,7 +878,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               value={searchQuery}
               onChange={(e) => searchPlayers(e.target.value)}
               className="pl-9"
-              compact
+              size="md"
               autoFocus
             />
           </div>
@@ -1096,7 +1096,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
             placeholder="Имя клиента"
             value={newNickname}
             onChange={(e) => setNewNickname(e.target.value)}
-            compact
+            size="md"
             autoFocus
           />
 

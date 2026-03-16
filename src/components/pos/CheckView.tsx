@@ -1387,7 +1387,7 @@ export function CheckView({ onBack }: CheckViewProps) {
               value={playerSearch}
               onChange={(e) => searchPlayersForAdd(e.target.value)}
               className="pl-9"
-              compact
+              size="md"
               autoFocus
             />
           </div>

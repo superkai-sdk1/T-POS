@@ -514,7 +514,7 @@ export function RefundsManager() {
           placeholder="Необязательно"
           value={refundNote}
           onChange={(e) => setRefundNote(e.target.value)}
-          compact
+          size="md"
         />
 
         {errorMsg && (

@@ -379,7 +379,7 @@ export function EventsPage() {
                                 placeholder="Где будет проходить?"
                                 value={formData.location || ''}
                                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                compact
+                                size="md"
                             />
                         )}
 
@@ -389,14 +389,14 @@ export function EventsPage() {
                                 label="Дата"
                                 value={formData.date}
                                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                compact
+                                size="md"
                             />
                             <Input
                                 type="time"
                                 label="Время"
                                 value={formData.start_time}
                                 onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                                compact
+                                size="md"
                             />
                         </div>
 
@@ -440,7 +440,7 @@ export function EventsPage() {
                                     const raw = e.target.value.replace(/[^0-9]/g, '');
                                     setFormData({ ...formData, fixed_amount: raw === '' ? 0 : Number(raw) });
                                 }}
-                                compact
+                                size="md"
                             />
                         )}
 
@@ -449,7 +449,7 @@ export function EventsPage() {
                             placeholder="Заказчик, особенности..."
                             value={formData.comment || ''}
                             onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
-                            compact
+                            size="md"
                         />
                     </div>
 

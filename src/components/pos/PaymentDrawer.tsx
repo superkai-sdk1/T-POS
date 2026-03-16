@@ -580,6 +580,8 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
 
               {bonusAmount > 0 && (
                 <div className="grid grid-cols-2 gap-4">
+                  <button
+                    onClick={() => handleBonusConfirm('cash')}
                     disabled={isProcessing}
                     className="flex flex-col items-center gap-2 p-4 bg-[#10b981]/5 border border-[#10b981]/20 rounded-[2rem] active:scale-[0.96] transition-all disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                   >
@@ -727,7 +729,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                   <div className="space-y-4">
                     <div className="flex gap-3">
                       <Input
-                        compact
+                        size="md"
                         placeholder="Введите код сертификата"
                         value={certCode}
                         onChange={(e) => { setCertCode(e.target.value.toUpperCase()); setCertError(''); }}
@@ -893,7 +895,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                   <div className="flex gap-3">
                     <Input
                       type="number"
-                      compact
+                      size="md"
                       placeholder={`Макс ${fmtCur(splitMethod === 'bonus' ? Math.min(splitRemaining, splitBonusAvailable) : splitMethod === 'deposit' ? Math.min(splitRemaining, splitDepositAvailable) : splitRemaining)}`}
                       value={splitAmount}
                       onChange={(e) => setSplitAmount(e.target.value)}
