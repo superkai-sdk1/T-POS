@@ -438,7 +438,9 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     return usePOSStore.subscribe((state, prev) => {
       if (state.recentlyDeletedCheck && state.recentlyDeletedCheck !== prev.recentlyDeletedCheck) {
         setExitingCheck(state.recentlyDeletedCheck);
-        usePOSStore.setState({ recentlyDeletedCheck: null });
+        queueMicrotask(() => {
+          usePOSStore.setState({ recentlyDeletedCheck: null });
+        });
       }
     });
   }, []);
@@ -459,8 +461,10 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   }, [inventory]);
 
   const checksLoaded = usePOSStore((s) => s.checksLoaded);
+  const isLoadingChecks = usePOSStore((s) => s.isLoading);
   const activeCheck = usePOSStore((s) => s.activeCheck);
   const activeShift = useShiftStore((s) => s.activeShift);
+  const isLoadingShift = useShiftStore((s) => s.isLoading);
   const openShift = useShiftStore((s) => s.openShift);
   const closeShift = useShiftStore((s) => s.closeShift);
   const getShiftAnalytics = useShiftStore((s) => s.getShiftAnalytics);
@@ -512,7 +516,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
     }
   }, [activeShift]);
 
-  const noOpenChecks = openChecks.length === 0;
+  const noOpenChecks = openChecks.length === 0 && checksLoaded;
   useEffect(() => {
     if (noOpenChecks && activeShift) {
       setCloseError('');
@@ -758,7 +762,14 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 lg:h-full relative bg-[#0d0d12] text-white">
-      {!activeShift ? (
+      {isLoadingShift || isLoadingChecks ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="w-12 h-12 border-4 border-white/10 border-t-indigo-500 rounded-full animate-spin mx-auto" />
+            <p className="text-sm text-white/40 font-bold uppercase tracking-wider">Загрузка...</p>
+          </div>
+        </div>
+      ) : !activeShift ? (
         <OpenShiftView
           eveningType={eveningType}
           setEveningType={setEveningType}

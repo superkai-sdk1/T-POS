@@ -143,12 +143,16 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   loadOpenChecks: async () => {
+    set({ isLoading: true });
     const { data } = await supabase
       .from('checks')
       .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*), event:events!events_check_id_fkey(*)')
       .eq('status', 'open')
       .order('created_at', { ascending: false });
-    if (!data) return;
+    if (!data) {
+      set({ isLoading: false });
+      return;
+    }
 
     const checks = data.map((c) => ({
       ...c,
@@ -158,7 +162,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     })) as Check[];
 
     if (checks.length === 0) {
-      set({ openChecks: [], openCheckCarts: {}, openCheckItems: {}, openCheckDiscounts: {}, checksLoaded: true });
+      set({ openChecks: [], openCheckCarts: {}, openCheckItems: {}, openCheckDiscounts: {}, checksLoaded: true, isLoading: false });
       return;
     }
 
@@ -251,7 +255,8 @@ export const usePOSStore = create<POSState>((set, get) => ({
       openCheckItems: newItemsMap,
       openCheckCarts: newCartsMap,
       openCheckDiscounts: newDiscountsMap,
-      checksLoaded: true
+      checksLoaded: true,
+      isLoading: false
     });
   },
 

@@ -134,8 +134,10 @@ export default function App() {
   }, [isResizing, handleSplitResize]);
 
   const clearAllHideReasons = useLayoutStore((s) => s.clearAllHideReasons);
+  const setHeader = useLayoutStore((s) => s.setHeader);
   const handleTabChange = useCallback((tab: string) => {
     clearAllHideReasons();
+    setHeader(null);
     if (showCheckView) {
       setShowCheckView(false);
       setTimeout(() => leaveCheck(), 0);
@@ -161,7 +163,7 @@ export default function App() {
     setPrevTab(activeTab);
     setActiveTab(tab);
     setVisitedTabs((prev) => new Set(prev).add(tab));
-  }, [showCheckView, activeCheck, leaveCheck, activeTab, clearAllHideReasons]);
+  }, [showCheckView, activeCheck, leaveCheck, activeTab, clearAllHideReasons, setHeader]);
 
   const handleDashboardNavigate = useCallback((target: string, params?: { supplyId?: string; revisionId?: string }) => {
     if (target.startsWith('management:')) {

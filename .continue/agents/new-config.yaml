@@ -1,23 +1,33 @@
-# This is an example configuration file
-# To learn more, see the full config.yaml reference: https://docs.continue.dev/reference
-
-name: Example Config
-version: 1.0.0
-schema: v1
-
-# Define which models can be used
-# https://docs.continue.dev/customization/models
+name: Continue
+version: 2.0.0
 models:
-  - name: my gpt-5
-    provider: openai
-    model: gpt-5
-    apiKey: YOUR_OPENAI_API_KEY_HERE
-  - uses: ollama/qwen2.5-coder-7b
-  - uses: anthropic/claude-4-sonnet
-    with:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  - title: "Claude 3.5 Sonnet (4.6)"
+    provider: "openai"
+    model: "claude-sonnet-4.6"
+    apiKey: "sk-rLpaZXs3l4Ki2eqp1LW9kFRNt1bPob9jSGXoLnayqjqGtAt7"
+    apiBase: "https://leexx.site/v1"
 
-# MCP Servers that Continue can access
-# https://docs.continue.dev/customization/mcp-tools
-mcpServers:
-  - uses: anthropic/memory-mcp
+  - title: "Claude 3 Opus (4.6)"
+    provider: "openai"
+    model: "claude-opus-4-6"
+    apiKey: "sk-rLpaZXs3l4Ki2eqp1LW9kFRNt1bPob9jSGXoLnayqjqGtAt7"
+    apiBase: "https://leexx.site/v1"
+
+tabAutocompleteModel:
+  title: "Autocomplete"
+  provider: "openai"
+  model: "claude-sonnet-4.6"
+  apiKey: "sk-rLpaZXs3l4Ki2eqp1LW9kFRNt1bPob9jSGXoLnayqjqGtAt7"
+  apiBase: "https://leexx.site/v1"
+
+contextProviders:
+  - name: code
+  - name: docs
+  - name: diff
+  - name: terminal
+
+slashCommands:
+  - name: edit
+    description: Edit selected code
+  - name: comment
+    description: Write comments for selected code
