@@ -62,6 +62,10 @@ interface POSState {
 let _savingCart = false;
 export function isSavingCart() { return _savingCart; }
 
+let _activeCheckId: string | null = null;
+export function getActiveCheckId() { return _activeCheckId; }
+export function isActiveCheck(checkId: string) { return _activeCheckId === checkId; }
+
 const _cancellingCheckIds = new Set<string>();
 export function isCancellingCheck(checkId: string) { return _cancellingCheckIds.has(checkId); }
 
@@ -303,6 +307,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
   selectCheck: async (check: Check) => {
     _lastCartFingerprint = '';
+    _activeCheckId = check.id;
 
     const cart = get().openCheckCarts[check.id] || [];
     const items = get().openCheckItems[check.id] || [];
@@ -753,6 +758,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const deletedCheck = { ...activeCheck };
     const prevFp = _lastCartFingerprint;
     _lastCartFingerprint = '';
+    _activeCheckId = null;
     _cancellingCheckIds.add(checkId);
     markCheckRemoved(checkId);
     set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [], recentlyDeletedCheck: deletedCheck });
@@ -788,6 +794,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const { activeCheck, cart, checkItems, appliedDiscounts } = get();
     get().saveCartToDb();
     _lastCartFingerprint = '';
+    _activeCheckId = null;
 
     if (activeCheck) {
       const subtotal = cart.reduce((sum, c) => {
@@ -845,6 +852,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const primaryMethod: PaymentMethod = isSplit ? 'split' : payments[0]?.method || 'cash';
 
     _closingCheckIds.add(checkId);
+    _activeCheckId = null;
     markCheckRemoved(checkId);
 
     set((state) => {
