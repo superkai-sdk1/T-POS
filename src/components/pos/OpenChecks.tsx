@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Drawer } from '@/components/ui/Drawer';
 import { Input } from '@/components/ui/Input';
 import { ShiftClosedChecks } from '@/components/shift/ShiftClosedChecks';
-import { Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen, Home, Building2, Warehouse, Star, GraduationCap, Gamepad2, RotateCcw, Play, Power, AlertCircle } from 'lucide-react';
+import { Receipt, Search, User, Clock, History, UserPlus, UserX, DoorOpen, Home, Building2, Warehouse, Star, GraduationCap, Gamepad2, RotateCcw, Play, Power, AlertCircle, Trophy, Building, Baby, Dices, Moon } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Profile, Space, VisitTariff, ClientTier, Check } from '@/types';
 import { EVENING_TYPE_LABELS, type EveningType } from '@/types';
@@ -47,22 +47,43 @@ function OpenShiftView({
       <div className="space-y-5 bg-white/[0.03] backdrop-blur-[24px] border border-white/12 rounded-2xl p-6" style={{ WebkitBackdropFilter: 'blur(24px)', backfaceVisibility: 'hidden' }}>
         <div className="space-y-4">
           <p className="text-xs text-white/40 font-black uppercase tracking-wider px-1 italic">Тип вечера</p>
-          <div className="grid grid-cols-3 gap-2">
-            {(Object.keys(EVENING_TYPE_LABELS) as EveningType[]).map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => { hapticFeedback('light'); setEveningType(key); }}
-                className={`p-3 rounded-xl text-xs font-black uppercase transition-all border flex flex-col items-center gap-1.5 tap cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 min-h-[44px] ${
-                  eveningType === key
-                    ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-600/20'
-                    : 'bg-white/5 border-transparent text-white/50 hover:bg-white/10'
-                }`}
-              >
-                <span className="text-lg">{EVENING_ICONS[key]}</span>
-                <span className="truncate w-full text-center tracking-tighter">{EVENING_TYPE_LABELS[key]}</span>
-              </button>
-            ))}
+          <div className="space-y-2">
+            {/* Первая строка: Спортивная, Городская */}
+            <div className="grid grid-cols-2 gap-2">
+              {(['sport_mafia', 'city_mafia'] as EveningType[]).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => { hapticFeedback('light'); setEveningType(key); }}
+                  className={`p-3 rounded-xl text-xs font-black uppercase transition-all border flex flex-col items-center gap-2 tap cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 min-h-[44px] ${
+                    eveningType === key
+                      ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-600/20'
+                      : 'bg-white/5 border-transparent text-white/50 hover:bg-white/10'
+                  }`}
+                >
+                  {EVENING_ICONS_SVG[key]}
+                  <span className="truncate w-full text-center tracking-tighter">{EVENING_TYPE_LABELS[key]}</span>
+                </button>
+              ))}
+            </div>
+            {/* Вторая строка: Настолки, Без вечера (по умолчанию), Детская */}
+            <div className="grid grid-cols-3 gap-2">
+              {(['board_games', 'no_event', 'kids_mafia'] as EveningType[]).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => { hapticFeedback('light'); setEveningType(key); }}
+                  className={`p-3 rounded-xl text-xs font-black uppercase transition-all border flex flex-col items-center gap-2 tap cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 min-h-[44px] ${
+                    eveningType === key
+                      ? 'bg-indigo-600 border-indigo-400 text-white shadow-lg shadow-indigo-600/20'
+                      : 'bg-white/5 border-transparent text-white/50 hover:bg-white/10'
+                  }`}
+                >
+                  {EVENING_ICONS_SVG[key]}
+                  <span className="truncate w-full text-center tracking-tighter">{EVENING_TYPE_LABELS[key]}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -290,6 +311,14 @@ const spaceIconMap: Record<string, typeof Home> = {
 
 const fmtCur = (n: number) =>
   new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + ' ₽';
+
+const EVENING_ICONS_SVG: Record<EveningType, JSX.Element> = {
+  sport_mafia: <Trophy size={20} className="text-current" />,
+  city_mafia: <Building size={20} className="text-current" />,
+  kids_mafia: <Baby size={20} className="text-current" />,
+  board_games: <Dices size={20} className="text-current" />,
+  no_event: <Moon size={20} className="text-current" />,
+};
 
 const EVENING_ICONS: Record<EveningType, string> = {
   sport_mafia: '⚽',
