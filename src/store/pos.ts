@@ -143,14 +143,19 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   loadOpenChecks: async () => {
-    set({ isLoading: true });
+    const isInitialLoad = !get().checksLoaded;
+    if (isInitialLoad) {
+      set({ isLoading: true });
+    }
     const { data } = await supabase
       .from('checks')
       .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*), event:events!events_check_id_fkey(*)')
       .eq('status', 'open')
       .order('created_at', { ascending: false });
     if (!data) {
-      set({ isLoading: false });
+      if (isInitialLoad) {
+        set({ isLoading: false, checksLoaded: true });
+      }
       return;
     }
 
@@ -256,7 +261,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       openCheckCarts: newCartsMap,
       openCheckDiscounts: newDiscountsMap,
       checksLoaded: true,
-      isLoading: false
+      ...(isInitialLoad ? { isLoading: false } : {})
     });
   },
 
