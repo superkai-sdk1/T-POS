@@ -168,7 +168,6 @@ export function EventsPage() {
                     hapticNotification('error');
                 }
             } catch (e) {
-                console.error('handleStatusChange active error:', e);
                 hapticNotification('error');
             }
             setIsSubmitting(false);
@@ -195,7 +194,6 @@ export function EventsPage() {
                 hapticNotification('error');
             }
         } catch (e) {
-            console.error('handleCancelEvent error:', e);
             hapticNotification('error');
         } finally {
             setIsSubmitting(false);

@@ -284,7 +284,6 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
         })
         .eq('id', appliedCert.id);
       if (updErr) {
-        console.error('Certificate update error:', updErr);
         hapticNotification('error');
       } else {
         hapticNotification('success');

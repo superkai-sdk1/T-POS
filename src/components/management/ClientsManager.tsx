@@ -254,10 +254,9 @@ export function ClientsManager() {
         }
       } else {
         // Storage не работает — base64 dataUrl уже в форме, сохранится в БД
-        console.warn('Storage upload failed, using base64:', error.message);
       }
     } catch (err) {
-      console.warn('Storage unavailable, using base64:', err);
+      // Storage unavailable, using base64
     }
 
     hapticNotification('success');

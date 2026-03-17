@@ -156,7 +156,7 @@ export function AboutSystem() {
         }
       }
     } catch (e) {
-      console.error('Clear cache error:', e);
+      // Clear cache error - ignore
     }
     window.location.href = window.location.origin + window.location.pathname + '?nocache=' + Date.now();
   };

@@ -221,7 +221,6 @@ export function RefundsManager() {
         .single();
 
       if (refundError || !refundRow) {
-        console.error('Refund insert error:', refundError);
         setErrorMsg(`Ошибка создания возврата: ${refundError?.message || 'unknown'}`);
         hapticNotification('error');
         return;
@@ -237,8 +236,7 @@ export function RefundsManager() {
         }));
 
       if (refundItemRows.length > 0) {
-        const { error: riErr } = await supabase.from('refund_items').insert(refundItemRows);
-        if (riErr) console.error('Refund items insert error:', riErr);
+        await supabase.from('refund_items').insert(refundItemRows);
       }
 
       const qtyByItemId = new Map<string, number>();
@@ -327,7 +325,6 @@ export function RefundsManager() {
       loadInventory();
       loadOpenChecks();
     } catch (err) {
-      console.error('Refund error:', err);
       setErrorMsg(`Ошибка возврата: ${err instanceof Error ? err.message : 'Неизвестная ошибка'}`);
       hapticNotification('error');
     } finally {

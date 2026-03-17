@@ -183,7 +183,6 @@ export function useRealtimeSync() {
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const handleReconnect = () => {
-      console.log('[T-POS] Reconnecting realtime channel');
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (channelRef.current) {
         channelRef.current.unsubscribe();

@@ -697,7 +697,6 @@ export const usePOSStore = create<POSState>((set, get) => ({
               .from('check_items')
               .upsert(existingItems.map(({ _temp_modifiers, ...rest }) => { void _temp_modifiers; return rest; }));
             if (upErr) {
-              console.error('saveCartToDb upsert error:', upErr);
               success = false;
             }
           }
@@ -713,7 +712,6 @@ export const usePOSStore = create<POSState>((set, get) => ({
               .single();
 
             if (insErr || !saved) {
-              console.error('saveCartToDb insert error:', insErr);
               success = false;
               continue;
             }
@@ -736,7 +734,6 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
         _lastCartFingerprint = modKey;
       } catch (err) {
-        console.error('saveCartToDb error:', err);
         success = false;
       } finally {
         setTimeout(() => { _savingCart = false; }, 600);
@@ -769,7 +766,6 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const { error: discErr } = await supabase.from('check_discounts').delete().eq('check_id', checkId);
     const { error: itemsErr } = await supabase.from('check_items').delete().eq('check_id', checkId);
     if (discErr || itemsErr) {
-      console.error('cancelCheck cleanup error:', discErr || itemsErr);
       _cancellingCheckIds.delete(checkId);
       _lastCartFingerprint = prevFp;
       set({ activeCheck, cart, checkItems, appliedDiscounts, recentlyDeletedCheck: null });
@@ -778,7 +774,6 @@ export const usePOSStore = create<POSState>((set, get) => ({
     }
     const { error } = await supabase.from('checks').delete().eq('id', checkId);
     if (error) {
-      console.error('cancelCheck error:', error);
       _cancellingCheckIds.delete(checkId);
       _lastCartFingerprint = prevFp;
       set({ activeCheck, cart, checkItems, appliedDiscounts, recentlyDeletedCheck: null });
