@@ -629,16 +629,29 @@ export function CheckView({ onBack }: CheckViewProps) {
       showBack: true,
       onBack: handleBack,
       rightContent: (
-        <div className="flex items-center gap-1">
-          <button onClick={() => { loadDiscountsList(); setShowDiscounts(true); }} className={`w-9 h-9 rounded-xl flex items-center justify-center tap ${appliedDiscounts.length > 0 ? 'bg-pink-500/10 text-pink-400' : 'text-white/40'}`}>
-            <Percent className="w-4 h-4" />
+        <div className="flex items-center">
+          <button
+            onClick={() => setShowCancelConfirm(true)}
+            className="p-2.5 bg-red-500/10 rounded-xl hover:bg-red-500/20 active:scale-90 transition-all mr-3"
+            title="Удалить весь чек"
+          >
+            <Trash2 size={18} className="text-red-500" />
           </button>
-          <button onClick={() => setShowNote((v) => !v)} className={`w-9 h-9 rounded-xl flex items-center justify-center tap ${(note || showNote) ? 'bg-amber-500/10 text-amber-400' : 'text-white/40'}`}>
-            <MessageSquare className="w-4 h-4" />
-          </button>
-          <button onClick={() => setShowCancelConfirm(true)} className="w-9 h-9 rounded-xl flex items-center justify-center text-rose-400 tap">
-            <X className="w-4 h-4" />
-          </button>
+
+          <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-2xl">
+            <button
+              onClick={() => { loadDiscountsList(); setShowDiscounts(true); }}
+              className={`p-2 rounded-xl hover:bg-white/10 active:scale-90 transition-all ${appliedDiscounts.length > 0 ? 'bg-pink-500/10 text-pink-400' : 'bg-white/5 text-white/60'}`}
+            >
+              <Percent size={18} />
+            </button>
+            <button
+              onClick={() => setShowNote((v) => !v)}
+              className={`p-2 rounded-xl hover:bg-white/10 active:scale-90 transition-all ${(note || showNote) ? 'bg-amber-500/10 text-amber-400' : 'bg-white/5 text-white/60'}`}
+            >
+              <MessageSquare size={18} />
+            </button>
+          </div>
         </div>
       ),
     });

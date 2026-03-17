@@ -14,7 +14,7 @@ import { ShiftAnalytics as ShiftAnalyticsModal } from '@/components/shift/ShiftA
 import {
   Receipt, BarChart3, LogOut, Settings, Calendar,
   PlayCircle, StopCircle, AlertTriangle, X, Plus,
-  PanelLeftClose, PanelLeftOpen, RefreshCw, CreditCard, UserPlus, ArrowLeft,
+  PanelLeftClose, PanelLeftOpen, RefreshCw, CreditCard, UserPlus, ArrowLeft, User, RotateCw,
 } from 'lucide-react';
 import { EVENING_TYPE_LABELS, type EveningType } from '@/types';
 
@@ -43,70 +43,78 @@ function AppHeader({
   shiftStatus?: ReactNode;
   onLogout: () => void;
 }) {
+  const user = useAuthStore((s) => s.user);
+
   return (
-    <header
-      className="lg:hidden shrink-0 z-40 select-none rounded-b-2xl mx-2 mb-2 border border-white/12"
+    <div
+      className="lg:hidden sticky top-0 z-50 bg-[#0f111a]/95 backdrop-blur-2xl border-b border-white/5 px-4 py-3"
       style={{
-        background: 'rgba(255, 255, 255, 0.04)',
-        backdropFilter: 'blur(16px) saturate(1.5)',
-        WebkitBackdropFilter: 'blur(16px) saturate(1.5)',
-        boxShadow: '0 4px 24px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
-        paddingTop: 'var(--safe-top)',
-        paddingBottom: '12px',
-        paddingLeft: 'calc(var(--safe-left) + 16px)',
-        paddingRight: 'calc(var(--safe-right) + 16px)',
-        backfaceVisibility: 'hidden',
-        willChange: 'transform',
+        paddingTop: 'calc(var(--safe-top, 0px) + 12px)',
       }}
     >
-      <div className="flex items-center justify-between gap-3 min-h-[44px]">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          {showBack && onBack ? (
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 overflow-hidden">
+          {showBack && onBack && (
             <button
-              type="button"
               onClick={() => { hapticFeedback('light'); onBack(); }}
-              className="p-2 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 active:scale-90 tap min-w-[44px] min-h-[44px] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
-          >
-              <ArrowLeft className="w-5 h-5 text-white" />
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 shrink-0 transition-all active:scale-95"
+            >
+              <ArrowLeft size={18} className="text-white/70" />
             </button>
-          ) : null}
-          <div className="min-w-0 flex-1">
-            <h1 className="text-base font-bold text-white truncate">{title}</h1>
-            {subtitle ? (
-              <p className="text-xs text-white/30 truncate mt-0.5">{subtitle}</p>
-            ) : shiftStatus ? (
-              <div className="mt-0.5">{shiftStatus}</div>
-            ) : null}
+          )}
+
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/20 flex items-center justify-center shrink-0 relative">
+              {user?.photo_url ? (
+                <img src={user.photo_url} alt="User" className="w-full h-full object-cover rounded-full" />
+              ) : (
+                <User size={20} className="text-indigo-400" />
+              )}
+            </div>
+            <div className="flex flex-col overflow-hidden">
+              <h1 className="text-base font-bold text-white truncate leading-tight">{title}</h1>
+              {subtitle && (
+                <span className="text-[10px] text-white/30 uppercase font-black tracking-widest truncate">
+                  {subtitle}
+                </span>
+              )}
+              {!subtitle && shiftStatus && (
+                <div className="text-[10px] text-white/30 uppercase font-black tracking-widest truncate">
+                  {shiftStatus}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+
+        <div className="flex items-center gap-2">
           {rightContent}
-          <button
-            onClick={onRefresh}
-            disabled={isRefreshing}
-            className="w-11 h-11 rounded-xl flex items-center justify-center text-white/40 hover:text-white/70 active:scale-90 transition-all shrink-0 disabled:opacity-50 disabled:cursor-not-allowed tap cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
-            aria-label="Обновить"
-          >
-            <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-          </button>
-          {cashInRegister !== null && !rightContent ? (
-            <div className="flex flex-col items-end">
-              <span className="text-xs text-white/40 uppercase tracking-widest">В кассе</span>
-              <span className="text-lg font-black tracking-tight text-white italic tabular-nums">
+          {!rightContent && cashInRegister !== null && (
+            <div className="flex flex-col items-end mr-2">
+              <span className="text-[9px] text-white/20 uppercase tracking-widest">В кассе</span>
+              <span className="text-sm font-black tracking-tight text-white italic tabular-nums">
                 {cashInRegister.toLocaleString('ru-RU')} ₽
               </span>
             </div>
-          ) : null}
-          <button
-            onClick={onLogout}
-            className="w-11 h-11 rounded-xl flex items-center justify-center text-white/40 hover:text-rose-400 active:scale-90 transition-all shrink-0 tap cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
-            aria-label="Выйти"
-          >
-            <LogOut className="w-5 h-5" />
-          </button>
+          )}
+          <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-2xl">
+            <button
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              className="p-2 bg-white/5 rounded-xl hover:bg-white/10 active:scale-90 transition-all disabled:opacity-50"
+            >
+              <RotateCw size={18} className={`text-white/60 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={onLogout}
+              className="p-2 bg-white/5 rounded-xl hover:bg-white/10 active:scale-90 transition-all"
+            >
+              <LogOut size={18} className="text-white/30" />
+            </button>
+          </div>
         </div>
       </div>
-    </header>
+    </div>
   );
 }
 
