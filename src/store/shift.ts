@@ -10,6 +10,7 @@ interface ShiftState {
   birthdayNames: string[];
   cashInRegister: number | null;
   isLoading: boolean;
+  shiftLoaded: boolean;
 
   loadActiveShift: () => Promise<void>;
   loadCashBalance: () => Promise<void>;
@@ -39,9 +40,13 @@ export const useShiftStore = create<ShiftState>()(
       cashInRegister: null,
       birthdayNames: [],
       isLoading: false,
+      shiftLoaded: false,
 
       loadActiveShift: async () => {
-        set({ isLoading: true });
+        const isInitialLoad = !get().shiftLoaded;
+        if (isInitialLoad) {
+          set({ isLoading: true });
+        }
         const { data } = await supabase
           .from('shifts')
           .select('*')
@@ -50,7 +55,7 @@ export const useShiftStore = create<ShiftState>()(
           .limit(1)
           .maybeSingle();
         const activeShift = data ? (data as Shift) : null;
-        set({ activeShift, isLoading: false });
+        set({ activeShift, isLoading: false, shiftLoaded: true });
         if (activeShift) {
           get().loadCashBalance();
         }

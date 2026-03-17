@@ -153,32 +153,6 @@ function CheckPaymentPanel({ sidebarCollapsed, onNewCheck }: { sidebarCollapsed:
     >
       <div className="relative w-full max-w-lg rounded-3xl border border-white/12 bg-white/[0.06] backdrop-blur-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]" style={{ WebkitBackdropFilter: 'blur(24px)', backfaceVisibility: 'hidden', willChange: 'transform' }}>
         <div className="relative p-4 flex items-center justify-between gap-4">
-        <div className="flex gap-2">
-          <button
-            onClick={() => { hapticFeedback('light'); window.dispatchEvent(new CustomEvent('tpos:open-menu')); }}
-            className="w-11 h-11 flex items-center justify-center bg-white/5 rounded-2xl border border-white/12 text-white/40 hover:text-white active:scale-90 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 min-w-[44px] min-h-[44px]"
-            title="Меню"
-          >
-            <Plus className="w-5 h-5" />
-          </button>
-          {onNewCheck && activeShift && (
-            <button
-              onClick={() => { hapticFeedback('medium'); onNewCheck(); }}
-              className="w-11 h-11 flex items-center justify-center rounded-2xl border border-white/12 active:scale-90 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 min-w-[44px] min-h-[44px]"
-              style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(109, 40, 217, 0.15))', color: '#a78bfa' }}
-              title="Новый чек"
-            >
-              <Receipt className="w-5 h-5" />
-            </button>
-          )}
-          <button
-            onClick={() => { hapticFeedback('light'); window.dispatchEvent(new CustomEvent('tpos:open-add-player')); }}
-            className="w-11 h-11 flex items-center justify-center bg-white/5 rounded-2xl border border-white/12 text-[#10b981] active:scale-90 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 min-w-[44px] min-h-[44px]"
-            title="Добавить игрока"
-          >
-            <UserPlus className="w-5 h-5" />
-          </button>
-        </div>
         <div className="flex items-baseline gap-3">
         {(cartCount > 0 || (hasEvent && eventAmount > 0)) && (
           <span className="text-2xl font-black italic text-white tabular-nums">{fmtCur(total)}</span>
