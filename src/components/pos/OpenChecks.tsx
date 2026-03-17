@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, memo, useMemo, startTransition } from 'react';
+import { useEffect, useState, useRef, useCallback, memo, useMemo, startTransition, type ReactElement } from 'react';
 import { usePOSStore } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
 import { Button } from '@/components/ui/Button';
@@ -312,7 +312,7 @@ const spaceIconMap: Record<string, typeof Home> = {
 const fmtCur = (n: number) =>
   new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + ' ₽';
 
-const EVENING_ICONS_SVG: Record<EveningType, JSX.Element> = {
+const EVENING_ICONS_SVG: Record<EveningType, ReactElement> = {
   sport_mafia: <Trophy size={20} className="text-current" />,
   city_mafia: <Building size={20} className="text-current" />,
   kids_mafia: <Baby size={20} className="text-current" />,

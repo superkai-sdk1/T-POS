@@ -1,5 +1,5 @@
 import { ArrowLeft, User } from 'lucide-react';
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 interface HeaderProps {
   title: string;
