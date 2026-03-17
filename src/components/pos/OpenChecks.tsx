@@ -762,7 +762,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 lg:h-full relative bg-[#0d0d12] text-white">
-      {isLoadingShift || isLoadingChecks ? (
+      {(isLoadingShift || (isLoadingChecks && !checksLoaded)) ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <div className="w-12 h-12 border-4 border-white/10 border-t-indigo-500 rounded-full animate-spin mx-auto" />
