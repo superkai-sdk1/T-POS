@@ -368,25 +368,25 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
         >
         <div className="absolute top-0 right-0 w-32 h-32 bg-[#8b5cf6] blur-[80px] opacity-20 pointer-events-none" />
 
-        <div className="flex justify-between items-center mb-6 relative z-10">
-          <h2 className="text-3xl font-black italic tracking-tighter uppercase text-white">Оплата</h2>
-          <button onClick={handleClose} className="p-4 bg-white/6 rounded-full border border-white/12 text-white/40 hover:text-white transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20">
-            <X size={20} />
+        <div className="flex justify-between items-center mb-4 relative z-10">
+          <h2 className="text-2xl font-black italic tracking-tighter uppercase text-white">Оплата</h2>
+          <button onClick={handleClose} className="p-3 bg-white/6 rounded-full border border-white/12 text-white/40 hover:text-white transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20">
+            <X size={18} />
           </button>
         </div>
 
-        <div className="space-y-6 relative z-10">
+        <div className="space-y-4 relative z-10">
           {playerInfo && (
-            <div className="bg-white/6 border border-white/12 rounded-3xl p-4 flex items-center gap-4">
-              <ClientAvatar photoUrl={playerInfo.photo_url} id={playerInfo.id} size="xl" rounded="xl" className="!rounded-2xl shrink-0" />
+            <div className="bg-white/6 border border-white/12 rounded-2xl p-3 flex items-center gap-3">
+              <ClientAvatar photoUrl={playerInfo.photo_url} id={playerInfo.id} size="lg" rounded="xl" className="!rounded-xl shrink-0" />
               <div>
-                <h4 className="font-bold text-white">{playerInfo.nickname}</h4>
-                <div className="flex gap-3 mt-1 flex-wrap">
-                  <span className={`px-2 py-0.5 rounded-xl text-xs font-bold border uppercase tracking-tighter ${playerInfo.balance < 0 ? 'bg-[#f43f5e]/10 text-[#f43f5e] border-[#f43f5e]/20' : playerInfo.balance > 0 ? 'bg-[#06b6d4]/10 text-[#06b6d4] border-[#06b6d4]/20' : 'bg-white/6 text-white/40 border-white/5'}`}>
+                <h4 className="text-sm font-bold text-white">{playerInfo.nickname}</h4>
+                <div className="flex gap-2 mt-1 flex-wrap">
+                  <span className={`px-1.5 py-0.5 rounded-lg text-[10px] font-bold border uppercase tracking-tighter ${playerInfo.balance < 0 ? 'bg-[#f43f5e]/10 text-[#f43f5e] border-[#f43f5e]/20' : playerInfo.balance > 0 ? 'bg-[#06b6d4]/10 text-[#06b6d4] border-[#06b6d4]/20' : 'bg-white/6 text-white/40 border-white/5'}`}>
                     {playerInfo.balance > 0 ? `Депозит: ${playerInfo.balance}₽` : `${playerInfo.balance}₽`}
                   </span>
                   {playerInfo.bonus_points > 0 && (
-                    <span className="px-2 py-0.5 bg-[#10b981]/10 rounded-xl text-xs font-bold text-[#10b981] border border-[#10b981]/20 uppercase flex items-center gap-1">
+                    <span className="px-1.5 py-0.5 bg-[#10b981]/10 rounded-lg text-[10px] font-bold text-[#10b981] border border-[#10b981]/20 uppercase flex items-center gap-1">
                       <Star size={8} fill="currentColor" /> {playerInfo.bonus_points} бонусов
                     </span>
                   )}
@@ -396,8 +396,8 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
           )}
 
           <div className="text-center">
-            <p className="text-xs text-white/30 font-bold uppercase tracking-[0.3em] mb-2">Итоговая сумма</p>
-            <h3 className="text-5xl font-black italic tracking-tighter text-white drop-shadow-[0_10px_20px_rgba(255,255,255,0.1)] tabular-nums">
+            <p className="text-[10px] text-white/30 font-bold uppercase tracking-[0.3em] mb-1.5">Итоговая сумма</p>
+            <h3 className="text-4xl font-black italic tracking-tighter text-white drop-shadow-[0_10px_20px_rgba(255,255,255,0.1)] tabular-nums">
               {fmtCur(total)}
             </h3>
           </div>
@@ -410,50 +410,50 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
                 const extraCols = (hasBonus ? 1 : 0) + (hasDeposit ? 1 : 0);
                 const cols = 2 + Math.min(extraCols, 1);
                 return (
-                  <div className={`grid gap-4 ${cols === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                  <div className={`grid gap-3 ${cols === 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                     <button
                       onClick={() => handleSimplePay('cash')}
                       disabled={isProcessing}
-                      className="flex flex-col items-center gap-4 p-5 bg-[#10b981]/5 border border-[#10b981]/20 rounded-[2rem] hover:bg-[#10b981]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
+                      className="flex flex-col items-center gap-3 p-4 bg-[#10b981]/5 border border-[#10b981]/20 rounded-2xl hover:bg-[#10b981]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                     >
-                      <div className="p-4 bg-[#10b981]/10 rounded-2xl text-[#10b981] group-hover:scale-110 transition-transform">
-                        <Banknote size={24} />
+                      <div className="p-3 bg-[#10b981]/10 rounded-xl text-[#10b981] group-hover:scale-110 transition-transform">
+                        <Banknote size={20} />
                       </div>
-                      <span className="text-xs font-black uppercase text-[#10b981] tracking-widest">Наличные</span>
+                      <span className="text-[10px] font-black uppercase text-[#10b981] tracking-widest">Наличные</span>
                     </button>
                     <button
                       onClick={() => handleSimplePay('card')}
                       disabled={isProcessing}
-                      className="flex flex-col items-center gap-4 p-5 bg-[#3b82f6]/5 border border-[#3b82f6]/20 rounded-[2rem] hover:bg-[#3b82f6]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
+                      className="flex flex-col items-center gap-3 p-4 bg-[#3b82f6]/5 border border-[#3b82f6]/20 rounded-2xl hover:bg-[#3b82f6]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                     >
-                      <div className="p-4 bg-[#3b82f6]/10 rounded-2xl text-[#3b82f6] group-hover:scale-110 transition-transform">
-                        <CreditCard size={24} />
+                      <div className="p-3 bg-[#3b82f6]/10 rounded-xl text-[#3b82f6] group-hover:scale-110 transition-transform">
+                        <CreditCard size={20} />
                       </div>
-                      <span className="text-xs font-black uppercase text-[#3b82f6] tracking-widest">Карта</span>
+                      <span className="text-[10px] font-black uppercase text-[#3b82f6] tracking-widest">Карта</span>
                     </button>
                     {hasDeposit && (
                       <button
                         onClick={openDepositScreen}
                         disabled={isProcessing}
-                        className="flex flex-col items-center gap-4 p-5 bg-[#06b6d4]/5 border border-[#06b6d4]/20 rounded-[2rem] hover:bg-[#06b6d4]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
+                        className="flex flex-col items-center gap-3 p-4 bg-[#06b6d4]/5 border border-[#06b6d4]/20 rounded-2xl hover:bg-[#06b6d4]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                       >
-                        <div className="p-4 bg-[#06b6d4]/10 rounded-2xl text-[#06b6d4] group-hover:scale-110 transition-transform">
-                          <PiggyBank size={24} />
+                        <div className="p-3 bg-[#06b6d4]/10 rounded-xl text-[#06b6d4] group-hover:scale-110 transition-transform">
+                          <PiggyBank size={20} />
                         </div>
-                        <span className="text-xs font-black uppercase text-[#06b6d4] tracking-widest">Депозит</span>
-                        <span className="text-xs text-white/30 -mt-2">{fmtCur(playerDeposit)}</span>
+                        <span className="text-[10px] font-black uppercase text-[#06b6d4] tracking-widest">Депозит</span>
+                        <span className="text-[10px] text-white/30 -mt-1.5">{fmtCur(playerDeposit)}</span>
                       </button>
                     )}
                     {hasBonus && !hasDeposit && (
                       <button
                         onClick={openBonusScreen}
                         disabled={isProcessing}
-                        className="flex flex-col items-center gap-4 p-5 bg-[#f59e0b]/5 border border-[#f59e0b]/20 rounded-[2rem] hover:bg-[#f59e0b]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
+                        className="flex flex-col items-center gap-3 p-4 bg-[#f59e0b]/5 border border-[#f59e0b]/20 rounded-2xl hover:bg-[#f59e0b]/10 transition-all group shadow-lg active:scale-[0.96] disabled:opacity-30 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
                       >
-                        <div className="p-4 bg-[#f59e0b]/10 rounded-2xl text-[#f59e0b] group-hover:scale-110 transition-transform">
-                          <Star size={24} />
+                        <div className="p-3 bg-[#f59e0b]/10 rounded-xl text-[#f59e0b] group-hover:scale-110 transition-transform">
+                          <Star size={20} />
                         </div>
-                        <span className="text-xs font-black uppercase text-[#f59e0b] tracking-widest">Бонусы</span>
+                        <span className="text-[10px] font-black uppercase text-[#f59e0b] tracking-widest">Бонусы</span>
                       </button>
                     )}
                   </div>

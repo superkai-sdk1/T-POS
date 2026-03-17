@@ -9,6 +9,7 @@ import { Drawer } from '@/components/ui/Drawer';
 import { PullToRefreshContainer } from '@/components/ui/PullToRefreshContainer';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { ClientAvatar } from '@/components/ui/ClientAvatar';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { ShiftAnalytics as ShiftAnalyticsModal } from '@/components/shift/ShiftAnalytics';
 import {
@@ -34,6 +35,7 @@ function AppHeader({
   hideSystemButtons,
   avatar,
   showAvatar,
+  playerId,
 }: {
   title: string;
   subtitle?: string;
@@ -48,6 +50,7 @@ function AppHeader({
   hideSystemButtons?: boolean;
   avatar?: string | null;
   showAvatar?: boolean;
+  playerId?: string | null;
 }) {
   return (
     <div
@@ -69,13 +72,7 @@ function AppHeader({
 
           <div className="flex items-center gap-3 overflow-hidden">
             {showAvatar && (
-              <div className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/20 flex items-center justify-center shrink-0 relative">
-                {avatar ? (
-                  <img src={avatar} alt="Avatar" className="w-full h-full object-cover rounded-full" />
-                ) : (
-                  <User size={20} className="text-indigo-400" />
-                )}
-              </div>
+              <ClientAvatar photoUrl={avatar} id={playerId || ''} size="md" />
             )}
             <div className="flex flex-col overflow-hidden">
               <h1 className="text-base font-bold text-white truncate leading-tight">{title}</h1>
@@ -576,6 +573,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
           const hideSystemButtons = storeHeader?.hideSystemButtons;
           const avatar = storeHeader?.avatar;
           const showAvatar = storeHeader?.showAvatar ?? false;
+          const playerId = storeHeader?.playerId;
           const shiftStatus = activeTab === 'pos' && !storeHeader?.subtitle && openChecks.length === 0 ? posShiftStatus : undefined;
           return (
             <AppHeader
@@ -587,6 +585,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
               hideSystemButtons={hideSystemButtons}
               avatar={avatar}
               showAvatar={showAvatar}
+              playerId={playerId}
               onRefresh={() => {
                 if (!isRefreshing) {
                   hapticFeedback('medium');

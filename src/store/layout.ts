@@ -10,6 +10,7 @@ export interface HeaderConfig {
   hideSystemButtons?: boolean;
   avatar?: string | null;
   showAvatar?: boolean;
+  playerId?: string | null;
 }
 
 interface LayoutState {
