@@ -50,17 +50,6 @@ export function CheckCartBar() {
 
   return (
     <div className="shrink-0 p-4 rounded-2xl border border-white/12 bg-white/6 backdrop-blur-xl flex items-center justify-between gap-3 w-full max-w-md mx-auto">
-      <div className="flex gap-3">
-        <button
-          onClick={() => {
-            hapticFeedback('light');
-            window.dispatchEvent(new CustomEvent('tpos:open-menu'));
-          }}
-          className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-white/6 border border-white/12 text-white/40 hover:text-white active:scale-90 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
-        >
-          <Plus className="w-5 h-5" />
-        </button>
-      </div>
       <div className="flex items-baseline gap-3">
         {(cartCount > 0 || (hasEvent && eventAmount > 0)) && (
           <span className="text-xl font-black italic text-white tabular-nums">{fmtCur(total)}</span>
