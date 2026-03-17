@@ -629,6 +629,8 @@ export function CheckView({ onBack }: CheckViewProps) {
       showBack: true,
       onBack: handleBack,
       hideSystemButtons: true,
+      avatar: activeCheck.player?.photo_url || null,
+      showAvatar: true,
       rightContent: (
         <button
           onClick={() => setShowCancelConfirm(true)}

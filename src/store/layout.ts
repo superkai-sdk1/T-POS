@@ -8,6 +8,8 @@ export interface HeaderConfig {
   onBack?: () => void;
   rightContent?: ReactNode;
   hideSystemButtons?: boolean;
+  avatar?: string | null;
+  showAvatar?: boolean;
 }
 
 interface LayoutState {

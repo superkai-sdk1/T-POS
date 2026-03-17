@@ -32,6 +32,8 @@ function AppHeader({
   shiftStatus,
   onLogout,
   hideSystemButtons,
+  avatar,
+  showAvatar,
 }: {
   title: string;
   subtitle?: string;
@@ -44,9 +46,9 @@ function AppHeader({
   shiftStatus?: ReactNode;
   onLogout: () => void;
   hideSystemButtons?: boolean;
+  avatar?: string | null;
+  showAvatar?: boolean;
 }) {
-  const user = useAuthStore((s) => s.user);
-
   return (
     <div
       className="lg:hidden sticky top-0 z-50 bg-[#0f111a]/95 backdrop-blur-2xl border-b border-white/5 px-4 py-3"
@@ -66,13 +68,15 @@ function AppHeader({
           )}
 
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/20 flex items-center justify-center shrink-0 relative">
-              {user?.photo_url ? (
-                <img src={user.photo_url} alt="User" className="w-full h-full object-cover rounded-full" />
-              ) : (
-                <User size={20} className="text-indigo-400" />
-              )}
-            </div>
+            {showAvatar && (
+              <div className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/20 flex items-center justify-center shrink-0 relative">
+                {avatar ? (
+                  <img src={avatar} alt="Avatar" className="w-full h-full object-cover rounded-full" />
+                ) : (
+                  <User size={20} className="text-indigo-400" />
+                )}
+              </div>
+            )}
             <div className="flex flex-col overflow-hidden">
               <h1 className="text-base font-bold text-white truncate leading-tight">{title}</h1>
               {subtitle && (
@@ -570,6 +574,8 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
           const onBack = storeHeader?.onBack;
           const rightContent = storeHeader?.rightContent;
           const hideSystemButtons = storeHeader?.hideSystemButtons;
+          const avatar = storeHeader?.avatar;
+          const showAvatar = storeHeader?.showAvatar ?? false;
           const shiftStatus = activeTab === 'pos' && !storeHeader?.subtitle && openChecks.length === 0 ? posShiftStatus : undefined;
           return (
             <AppHeader
@@ -579,6 +585,8 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
               onBack={onBack}
               rightContent={rightContent}
               hideSystemButtons={hideSystemButtons}
+              avatar={avatar}
+              showAvatar={showAvatar}
               onRefresh={() => {
                 if (!isRefreshing) {
                   hapticFeedback('medium');
