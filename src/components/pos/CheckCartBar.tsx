@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { usePOSStore } from '@/store/pos';
 import { supabase } from '@/lib/supabase';
-import { CreditCard, Plus, UserPlus } from 'lucide-react';
+import { CreditCard, Plus } from 'lucide-react';
 import { hapticFeedback } from '@/lib/telegram';
 
 const fmtCur = (n: number) =>
@@ -59,16 +59,6 @@ export function CheckCartBar() {
           className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-white/6 border border-white/12 text-white/40 hover:text-white active:scale-90 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
         >
           <Plus className="w-5 h-5" />
-        </button>
-        <button
-          onClick={() => {
-            hapticFeedback('light');
-            window.dispatchEvent(new CustomEvent('tpos:open-add-player'));
-          }}
-          className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-white/6 border border-white/12 text-[#10b981] active:scale-90 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
-          title="Добавить игрока"
-        >
-          <UserPlus className="w-5 h-5" />
         </button>
       </div>
       <div className="flex items-baseline gap-3">

@@ -31,6 +31,7 @@ function AppHeader({
   cashInRegister,
   shiftStatus,
   onLogout,
+  hideSystemButtons,
 }: {
   title: string;
   subtitle?: string;
@@ -42,6 +43,7 @@ function AppHeader({
   cashInRegister: number | null;
   shiftStatus?: ReactNode;
   onLogout: () => void;
+  hideSystemButtons?: boolean;
 }) {
   const user = useAuthStore((s) => s.user);
 
@@ -97,21 +99,23 @@ function AppHeader({
               </span>
             </div>
           )}
-          <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-2xl">
-            <button
-              onClick={onRefresh}
-              disabled={isRefreshing}
-              className="p-2 bg-white/5 rounded-xl hover:bg-white/10 active:scale-90 transition-all disabled:opacity-50"
-            >
-              <RotateCw size={18} className={`text-white/60 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </button>
-            <button
-              onClick={onLogout}
-              className="p-2 bg-white/5 rounded-xl hover:bg-white/10 active:scale-90 transition-all"
-            >
-              <LogOut size={18} className="text-white/30" />
-            </button>
-          </div>
+          {!hideSystemButtons && (
+            <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-2xl">
+              <button
+                onClick={onRefresh}
+                disabled={isRefreshing}
+                className="p-2 bg-white/5 rounded-xl hover:bg-white/10 active:scale-90 transition-all disabled:opacity-50"
+              >
+                <RotateCw size={18} className={`text-white/60 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+              <button
+                onClick={onLogout}
+                className="p-2 bg-white/5 rounded-xl hover:bg-white/10 active:scale-90 transition-all"
+              >
+                <LogOut size={18} className="text-white/30" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -565,6 +569,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
           const showBack = storeHeader?.showBack ?? false;
           const onBack = storeHeader?.onBack;
           const rightContent = storeHeader?.rightContent;
+          const hideSystemButtons = storeHeader?.hideSystemButtons;
           const shiftStatus = activeTab === 'pos' && !storeHeader?.subtitle && openChecks.length === 0 ? posShiftStatus : undefined;
           return (
             <AppHeader
@@ -573,6 +578,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
               showBack={showBack}
               onBack={onBack}
               rightContent={rightContent}
+              hideSystemButtons={hideSystemButtons}
               onRefresh={() => {
                 if (!isRefreshing) {
                   hapticFeedback('medium');

@@ -628,35 +628,19 @@ export function CheckView({ onBack }: CheckViewProps) {
       subtitle: checkSubtitle,
       showBack: true,
       onBack: handleBack,
+      hideSystemButtons: true,
       rightContent: (
-        <div className="flex items-center">
-          <button
-            onClick={() => setShowCancelConfirm(true)}
-            className="p-2.5 bg-red-500/10 rounded-xl hover:bg-red-500/20 active:scale-90 transition-all mr-3"
-            title="Удалить весь чек"
-          >
-            <Trash2 size={18} className="text-red-500" />
-          </button>
-
-          <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-2xl">
-            <button
-              onClick={() => { loadDiscountsList(); setShowDiscounts(true); }}
-              className={`p-2 rounded-xl hover:bg-white/10 active:scale-90 transition-all ${appliedDiscounts.length > 0 ? 'bg-pink-500/10 text-pink-400' : 'bg-white/5 text-white/60'}`}
-            >
-              <Percent size={18} />
-            </button>
-            <button
-              onClick={() => setShowNote((v) => !v)}
-              className={`p-2 rounded-xl hover:bg-white/10 active:scale-90 transition-all ${(note || showNote) ? 'bg-amber-500/10 text-amber-400' : 'bg-white/5 text-white/60'}`}
-            >
-              <MessageSquare size={18} />
-            </button>
-          </div>
-        </div>
+        <button
+          onClick={() => setShowCancelConfirm(true)}
+          className="p-2.5 bg-red-500/10 rounded-xl hover:bg-red-500/20 active:scale-90 transition-all"
+          title="Удалить чек"
+        >
+          <Trash2 size={18} className="text-red-500" />
+        </button>
       ),
     });
     return () => setHeader(null);
-  }, [activeCheck, checkTitle, checkSubtitle, handleBack, setHeader, appliedDiscounts.length, note, showNote, loadDiscountsList]);
+  }, [activeCheck, checkTitle, checkSubtitle, handleBack, setHeader]);
 
   const searchPlayersForAdd = useCallback((query: string) => {
     setPlayerSearch(query);
@@ -815,6 +799,33 @@ export function CheckView({ onBack }: CheckViewProps) {
     >
       {swipeIndicatorStyle && <div style={swipeIndicatorStyle} />}
       {overlayStyle && <div style={overlayStyle} />}
+
+      {/* Панель действий чека — только для мобильной версии */}
+      <div className="lg:hidden px-4 py-3 flex gap-2 border-b border-white/5 bg-[#0f111a]/50">
+        <button
+          onClick={() => { loadDiscountsList(); setShowDiscounts(true); }}
+          className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all ${
+            appliedDiscounts.length > 0
+              ? 'bg-indigo-500/10 text-indigo-400'
+              : 'bg-white/5 text-white/40 hover:bg-white/10'
+          }`}
+        >
+          <Percent size={16} />
+          <span className="text-[10px] font-black uppercase tracking-wider text-center">Добавить скидку</span>
+        </button>
+        <button
+          onClick={() => setShowNote((v) => !v)}
+          className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all ${
+            (note || showNote)
+              ? 'bg-amber-500/10 text-amber-400'
+              : 'bg-white/5 text-white/40 hover:bg-white/10'
+          }`}
+        >
+          <MessageSquare size={16} />
+          <span className="text-[10px] font-black uppercase tracking-wider text-center">Комментарий</span>
+        </button>
+      </div>
+
       {/* Glass header — desktop only; mobile uses unified Layout header */}
       <div className="hidden lg:block sticky top-0 z-20 -mx-1 lg:mx-0 px-1 lg:px-4 py-2 lg:py-3 mb-3 lg:mb-4" style={{ transform: 'translateZ(0)' }}>
         <div className="flex items-center justify-between bg-white/5 backdrop-blur-xl p-3 lg:p-4 rounded-[2rem] border border-white/10 shadow-xl">

@@ -7,6 +7,7 @@ export interface HeaderConfig {
   showBack?: boolean;
   onBack?: () => void;
   rightContent?: ReactNode;
+  hideSystemButtons?: boolean;
 }
 
 interface LayoutState {
