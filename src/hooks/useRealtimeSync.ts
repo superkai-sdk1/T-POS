@@ -192,15 +192,17 @@ export function useRealtimeSync() {
 
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const handleReconnect = () => {
+    const handleReconnect = (reloadData = true) => {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (channelRef.current) {
         channelRef.current.unsubscribe();
         channelRef.current = null;
       }
       reconnectTimer = setTimeout(() => {
-        usePOSStore.getState().loadOpenChecks();
-        usePOSStore.getState().loadInventory();
+        if (reloadData) {
+          usePOSStore.getState().loadOpenChecks();
+          usePOSStore.getState().loadInventory();
+        }
         const freshChannel = supabase
           .channel('tpos-realtime-' + Date.now())
           .on('postgres_changes', { event: '*', schema: 'public', table: 'checks' },
@@ -323,7 +325,7 @@ export function useRealtimeSync() {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        handleReconnect();
+        handleReconnect(false);
       }
     };
 
