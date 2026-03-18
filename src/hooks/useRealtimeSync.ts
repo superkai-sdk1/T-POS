@@ -329,13 +329,14 @@ export function useRealtimeSync() {
       }
     };
 
-    window.addEventListener('tpos:reconnect', handleReconnect);
-    window.addEventListener('online', handleReconnect);
+    const handleReconnectEvent = () => handleReconnect();
+    window.addEventListener('tpos:reconnect', handleReconnectEvent);
+    window.addEventListener('online', handleReconnectEvent);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      window.removeEventListener('tpos:reconnect', handleReconnect);
-      window.removeEventListener('online', handleReconnect);
+      window.removeEventListener('tpos:reconnect', handleReconnectEvent);
+      window.removeEventListener('online', handleReconnectEvent);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (channelRef.current) {
