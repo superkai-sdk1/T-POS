@@ -153,7 +153,14 @@ export const usePOSStore = create<POSState>((set, get) => ({
     }
     const { data } = await supabase
       .from('checks')
-      .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*), event:events!events_check_id_fkey(*)')
+      .select(`
+        id, player_id, staff_id, shift_id, status, total_amount, payment_method,
+        bonus_used, discount_total, certificate_used, certificate_id,
+        space_id, space_start_at, space_end_at, guest_names, note, created_at, closed_at,
+        player:profiles!checks_player_id_fkey(id, nickname, photo_url, bonus_points, balance, client_tier, tg_id, tg_username, role, is_resident, pin, phone, birthday, search_tags, created_at, updated_at, deleted_at, password_hash, permissions),
+        space:spaces!checks_space_id_fkey(id, name, type, hourly_rate, is_active),
+        event:events!events_check_id_fkey(id, type, location, date, start_time, end_time, payment_type, fixed_amount, status, comment, check_id, created_at)
+      `)
       .eq('status', 'open')
       .order('created_at', { ascending: false });
     if (!data) {
@@ -283,7 +290,13 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const { data, error } = await supabase
       .from('checks')
       .insert(insert)
-      .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*)')
+      .select(`
+        id, player_id, staff_id, shift_id, status, total_amount, payment_method,
+        bonus_used, discount_total, certificate_used, certificate_id,
+        space_id, space_start_at, space_end_at, guest_names, note, created_at, closed_at,
+        player:profiles!checks_player_id_fkey(id, nickname, photo_url, bonus_points, balance, client_tier, tg_id, tg_username, role, is_resident, pin, phone, birthday, search_tags, created_at, updated_at, deleted_at, password_hash, permissions),
+        space:spaces!checks_space_id_fkey(id, name, type, hourly_rate, is_active)
+      `)
       .single();
     if (error || !data) return null;
     const check = {
@@ -512,7 +525,14 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
     const { data: checkData } = await supabase
       .from('checks')
-      .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*), event:events!events_check_id_fkey(*)')
+      .select(`
+        id, player_id, staff_id, shift_id, status, total_amount, payment_method,
+        bonus_used, discount_total, certificate_used, certificate_id,
+        space_id, space_start_at, space_end_at, guest_names, note, created_at, closed_at,
+        player:profiles!checks_player_id_fkey(id, nickname, photo_url, bonus_points, balance, client_tier, tg_id, tg_username, role, is_resident, pin, phone, birthday, search_tags, created_at, updated_at, deleted_at, password_hash, permissions),
+        space:spaces!checks_space_id_fkey(id, name, type, hourly_rate, is_active),
+        event:events!events_check_id_fkey(id, type, location, date, start_time, end_time, payment_type, fixed_amount, status, comment, check_id, created_at)
+      `)
       .eq('id', activeCheck.id)
       .single();
 
@@ -1102,7 +1122,14 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
     const { data: checkData } = await supabase
       .from('checks')
-      .select('*, player:profiles!checks_player_id_fkey(*), space:spaces!checks_space_id_fkey(*), event:events!events_check_id_fkey(*)')
+      .select(`
+        id, player_id, staff_id, shift_id, status, total_amount, payment_method,
+        bonus_used, discount_total, certificate_used, certificate_id,
+        space_id, space_start_at, space_end_at, guest_names, note, created_at, closed_at,
+        player:profiles!checks_player_id_fkey(id, nickname, photo_url, bonus_points, balance, client_tier, tg_id, tg_username, role, is_resident, pin, phone, birthday, search_tags, created_at, updated_at, deleted_at, password_hash, permissions),
+        space:spaces!checks_space_id_fkey(id, name, type, hourly_rate, is_active),
+        event:events!events_check_id_fkey(id, type, location, date, start_time, end_time, payment_type, fixed_amount, status, comment, check_id, created_at)
+      `)
       .eq('id', checkId)
       .single();
 
