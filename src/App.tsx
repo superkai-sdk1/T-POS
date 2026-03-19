@@ -191,16 +191,16 @@ export default function App() {
 
   const needsPinSetup = useAuthStore((s) => s.needsPinSetup);
 
-  if (!user || needsPinSetup) {
-    return <LoginPage />;
-  }
-
   const handleNewCheckFromCheckView = useCallback(() => {
     setShowCheckView(false);
     leaveCheck().then(() => {
       setTimeout(() => useLayoutStore.getState().requestNewCheck(), 150);
     });
   }, [leaveCheck]);
+
+  if (!user || needsPinSetup) {
+    return <LoginPage />;
+  }
 
   return (
     <Layout activeTab={activeTab} onTabChange={handleTabChange} showCheckView={showCheckView} onNewCheckFromCheckView={handleNewCheckFromCheckView}>
