@@ -161,8 +161,8 @@ body::after {
   flex: 1;
   min-height: 0;
   width: 100%;
-  height: 100dvh;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   z-index: 1;
   display: flex;
@@ -197,7 +197,6 @@ input[type="number"] {
   touch-action: pan-y;
   contain: layout style;
   scroll-behavior: smooth;
-  scroll-snap-type: y proximity;
 }
 
 /* Flex задаёт высоту — max-height не ограничивает, чтобы не было пустой области при скрытом навбаре */
@@ -225,20 +224,17 @@ input[type="number"] {
   from {
     opacity: 0;
     transform: translateY(10px);
-    backface-visibility: hidden;
   }
 
   to {
     opacity: 1;
     transform: translateY(0);
-    backface-visibility: hidden;
   }
 }
 
 @keyframes slide-up {
   0% {
     transform: translateY(100%);
-    backface-visibility: hidden;
   }
 
   70% {
@@ -247,7 +243,6 @@ input[type="number"] {
 
   100% {
     transform: translateY(0);
-    backface-visibility: hidden;
   }
 }
 
@@ -255,13 +250,11 @@ input[type="number"] {
   from {
     transform: translateY(0);
     opacity: 1;
-    backface-visibility: hidden;
   }
 
   to {
     transform: translateY(100%);
     opacity: 0;
-    backface-visibility: hidden;
   }
 }
 
@@ -269,13 +262,11 @@ input[type="number"] {
   from {
     opacity: 0;
     transform: translateX(24px);
-    backface-visibility: hidden;
   }
 
   to {
     opacity: 1;
     transform: translateX(0);
-    backface-visibility: hidden;
   }
 }
 
@@ -283,13 +274,11 @@ input[type="number"] {
   from {
     opacity: 0;
     transform: translateX(-24px);
-    backface-visibility: hidden;
   }
 
   to {
     opacity: 1;
     transform: translateX(0);
-    backface-visibility: hidden;
   }
 }
 
@@ -297,13 +286,11 @@ input[type="number"] {
   0% {
     transform: scale(0.92);
     opacity: 0;
-    backface-visibility: hidden;
   }
 
   100% {
     transform: scale(1);
     opacity: 1;
-    backface-visibility: hidden;
   }
 }
 

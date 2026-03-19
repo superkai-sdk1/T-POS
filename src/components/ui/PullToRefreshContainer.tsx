@@ -58,7 +58,7 @@ export function PullToRefreshContainer({
     }, [isRefreshing]);
 
     return (
-        <div className="contents relative h-full w-full">
+        <div className="relative flex-1 flex flex-col min-h-0">
             {/* ── Spinner UI ── */}
             {activeTab === 'pos' && !activeCheck && (
                 <div

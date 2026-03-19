@@ -185,7 +185,7 @@ export function Drawer({
       />
 
       <div
-        className="absolute bottom-0 left-0 right-0 w-full max-w-xl lg:max-w-2xl mx-auto z-[101]"
+        className="absolute bottom-0 left-0 right-0 w-full max-w-xl lg:static lg:max-w-2xl lg:w-full mx-auto z-[101]"
         style={{
           transform: `translateY(${panelTranslate}) translateZ(0)`,
           transition: dragging ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',

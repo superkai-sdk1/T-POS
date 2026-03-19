@@ -65,6 +65,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
   const { activeCheck, getCartTotal, closeCheck } = usePOSStore();
   const { height: vvHeight, offsetTop: vvOffset } = useVisualViewport();
   const isMobile = useIsMobile();
+  const keyboardOpen = vvHeight < window.innerHeight - 60;
   const [visible, setVisible] = useState(false);
   const [closing, setClosing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -340,7 +341,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
       style={{
         top: vvOffset,
         height: vvHeight,
-        transition: 'top 0.3s ease, height 0.3s ease',
+        transition: keyboardOpen ? 'none' : 'top 0.3s ease, height 0.3s ease',
       }}
     >
       <div
@@ -350,7 +351,7 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
       />
 
       <div
-        className="absolute bottom-0 left-0 right-0 w-full max-w-lg mx-auto z-[101]"
+        className="absolute bottom-0 left-0 right-0 w-full max-w-lg lg:static lg:w-full mx-auto z-[101]"
         style={{
           transform: `translateY(${panelTranslate}) translateZ(0)`,
           transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo, memo, startTransition } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo, memo, startTransition, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -53,43 +53,60 @@ const emptyForm: ClientForm = {
 };
 
 const ClientRow = memo(function ClientRow({ client, onSelect, getAge, isBirthdaySoon }: { client: Profile; onSelect: (c: Profile) => void; getAge: (d: string) => number; isBirthdaySoon: (d: string) => boolean }) {
+  const hasBadge = client.role === 'owner' || client.role === 'staff' || client.client_tier === 'resident' || client.client_tier === 'student';
+  const subItems: ReactNode[] = [];
+  if (client.tg_username) subItems.push(
+    <span key="tg" className="text-xs text-sky-400/60 truncate max-w-[100px]">@{client.tg_username}</span>
+  );
+  if (client.phone) subItems.push(
+    <span key="ph" className="text-xs text-[var(--c-hint)] truncate">{client.phone}</span>
+  );
+  if (client.birthday) subItems.push(
+    <span key="age" className="text-xs text-[var(--c-muted)] shrink-0">{getAge(client.birthday)} лет</span>
+  );
+
   return (
     <button
       onClick={() => onSelect(client)}
-      className="w-full flex items-center gap-3 p-4 rounded-2xl card-interactive text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
+      className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl card-interactive text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
     >
-      <ClientAvatar photoUrl={client.photo_url} id={client.id} size="lg" />
+      <ClientAvatar photoUrl={client.photo_url} id={client.id} size="lg" className="shrink-0" />
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-[var(--c-text)] truncate">{client.nickname}</p>
+      <div className="flex-1 min-w-0 overflow-hidden">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <p className="text-sm font-semibold text-[var(--c-text)] truncate leading-tight">{client.nickname}</p>
           {client.birthday && isBirthdaySoon(client.birthday) && (
-            <Cake className="w-3.5 h-3.5 text-pink-400 shrink-0" />
+            <Cake className="w-3 h-3 text-pink-400 shrink-0" />
           )}
         </div>
-        <div className="flex items-center gap-2 mt-0.5">
-          {client.role === 'owner' && <Badge variant="warning" size="sm">Владелец</Badge>}
-          {client.role === 'staff' && <Badge size="sm">Сотрудник</Badge>}
-          {client.client_tier === 'resident' && <Badge variant="success" size="sm">Резидент</Badge>}
-          {client.client_tier === 'student' && <Badge variant="accent" size="sm">Студент</Badge>}
-          {client.tg_username && (
-            <span className="text-xs text-sky-400/50">@{client.tg_username}</span>
-          )}
-          {client.phone && (
-            <span className="text-xs text-[var(--c-hint)]">{client.phone}</span>
-          )}
-          {client.birthday && (
-            <span className="text-xs text-[var(--c-muted)]">{getAge(client.birthday)} лет</span>
-          )}
-        </div>
+
+        {hasBadge && (
+          <div className="flex items-center gap-1 mt-1 flex-wrap">
+            {client.role === 'owner' && <Badge variant="warning" size="sm">Владелец</Badge>}
+            {client.role === 'staff' && <Badge size="sm">Сотрудник</Badge>}
+            {client.client_tier === 'resident' && <Badge variant="success" size="sm">Резидент</Badge>}
+            {client.client_tier === 'student' && <Badge variant="accent" size="sm">Студент</Badge>}
+          </div>
+        )}
+
+        {subItems.length > 0 && (
+          <div className={`flex items-center gap-2 flex-wrap ${hasBadge ? 'mt-0.5' : 'mt-1'}`}>
+            {subItems}
+          </div>
+        )}
       </div>
 
-      <div className="text-right shrink-0">
+      <div className="flex flex-col items-end gap-0.5 shrink-0 ml-1">
         {client.bonus_points > 0 && (
-          <p className="text-xs font-bold text-[var(--c-warning)] flex items-center gap-0.5"><Star className="w-3 h-3" />{client.bonus_points}</p>
+          <span className="text-xs font-bold text-[var(--c-warning)] flex items-center gap-0.5 tabular-nums">
+            <Star className="w-3 h-3" />{client.bonus_points}
+          </span>
         )}
         {client.balance < 0 && (
-          <p className="text-xs text-[var(--c-danger)]">{client.balance}₽</p>
+          <span className="text-xs text-[var(--c-danger)] tabular-nums">{client.balance}₽</span>
+        )}
+        {client.balance > 0 && (
+          <span className="text-xs text-[#06b6d4] tabular-nums">+{client.balance}₽</span>
         )}
       </div>
     </button>
@@ -177,8 +194,11 @@ export function ClientsManager() {
   const clientVirtualizer = useVirtualizer({
     count: filtered.length,
     getScrollElement: () => clientListRef.current,
-    estimateSize: () => 72,
-    overscan: 5,
+    estimateSize: () => 80,
+    overscan: 8,
+    measureElement: typeof window !== 'undefined'
+      ? (el) => el.getBoundingClientRect().height
+      : undefined,
   });
 
   const totalResidents = clients.filter((c) => c.client_tier === 'resident').length;
@@ -452,13 +472,15 @@ export function ClientsManager() {
               return (
                 <div
                   key={client.id}
+                  ref={clientVirtualizer.measureElement}
+                  data-index={virtualRow.index}
                   style={{
                     position: 'absolute',
                     top: 0,
                     left: 0,
                     width: '100%',
-                    height: `${virtualRow.size}px`,
                     transform: `translateY(${virtualRow.start}px)`,
+                    paddingBottom: '4px',
                   }}
                 >
                   <ClientRow client={client} onSelect={openDetail} getAge={getAge} isBirthdaySoon={isBirthdaySoon} />
