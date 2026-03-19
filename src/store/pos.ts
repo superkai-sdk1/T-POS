@@ -817,6 +817,8 @@ export const usePOSStore = create<POSState>((set, get) => ({
         return sum + (c.item.price + modPrice) * c.quantity;
       }, 0);
       const discountTotal = appliedDiscounts.reduce((sum, d) => sum + d.discount_amount, 0);
+      // total_amount stores only cart items minus discounts (space rental and event amounts
+      // are calculated separately at display time in CheckTile / CheckPaymentPanel)
       const total = Math.max(0, subtotal - discountTotal);
       const checkId = activeCheck.id;
       set((state) => ({
@@ -824,6 +826,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
         cart: [],
         checkItems: [],
         appliedDiscounts: [],
+        spaceRentalAmount: 0,
         openChecks: state.openChecks.map((c) =>
           c.id === checkId ? { ...c, total_amount: total } : c
         ),
@@ -832,7 +835,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
         openCheckDiscounts: { ...state.openCheckDiscounts, [checkId]: appliedDiscounts },
       }));
     } else {
-      set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [] });
+      set({ activeCheck: null, cart: [], checkItems: [], appliedDiscounts: [], spaceRentalAmount: 0 });
     }
   },
 

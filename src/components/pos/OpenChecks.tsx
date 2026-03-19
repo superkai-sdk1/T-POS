@@ -349,6 +349,7 @@ const EVENING_ICONS: Record<EveningType, string> = {
 
 const CheckTile = memo(({ check, onSelect, listMode, exiting, isEvent }: { check: Check; onSelect: (check: Check) => void; listMode?: boolean; exiting?: boolean; isEvent?: boolean }) => {
   const hasSpace = !!check.space;
+  const isEventCheck = !!check.event || !!check.note?.startsWith('Заказ в ');
   const displayName = check.note?.startsWith('Заказ в ')
     ? check.note
     : hasSpace
@@ -359,8 +360,9 @@ const CheckTile = memo(({ check, onSelect, listMode, exiting, isEvent }: { check
         if (check.guest_names) names.push(...check.guest_names.split(', ').filter(Boolean));
       return names.length > 0 ? names.join(', ') : getAnonymousClientName(check.id);
       })();
-  const isEventCheck = !!check.note?.startsWith('Заказ в ');
-  const isEmpty = !check.player && !check.space && check.total_amount === 0 && !isEventCheck;
+  const eventAmount = check.event?.fixed_amount ?? 0;
+  const cartTotal = check.total_amount || 0;
+  const isEmpty = !check.player && !check.space && cartTotal === 0 && !isEventCheck;
   return (
     <button
       type="button"
@@ -431,9 +433,9 @@ const CheckTile = memo(({ check, onSelect, listMode, exiting, isEvent }: { check
                   hourlyRate={check.space.hourly_rate}
                   startAt={check.space_start_at ?? check.created_at}
                   endAt={check.space_end_at ?? null}
-                  cartTotal={check.total_amount || 0}
+                  cartTotal={cartTotal + eventAmount}
                 />
-              : `${(check.total_amount || 0).toLocaleString('ru-RU')} ₽`
+              : `${(cartTotal + eventAmount).toLocaleString('ru-RU')} ₽`
           }
         </div>
       </div>
