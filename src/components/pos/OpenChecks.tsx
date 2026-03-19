@@ -449,6 +449,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const selectCheck = usePOSStore((s) => s.selectCheck);
   const addToCart = usePOSStore((s) => s.addToCart);
   const saveCartToDb = usePOSStore((s) => s.saveCartToDb);
+  const leaveCheck = usePOSStore((s) => s.leaveCheck);
   const inventory = usePOSStore((s) => s.inventory);
 
   const VISIT_ITEMS = useMemo(() => {
@@ -563,11 +564,19 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
 
   const triggerNewCheck = useTriggerNewCheck();
   useEffect(() => {
-    if (triggerNewCheck > 0 && activeShift && !activeCheck) {
-      setShowNewCheck(true);
+    if (triggerNewCheck > 0 && activeShift) {
+      // Снимаем триггер сразу, чтобы эффект не срабатывал повторно от изменения активного чека.
       useLayoutStore.setState({ triggerNewCheck: 0 });
+      (async () => {
+        try {
+          // Если активный чек ещё не успел уйти (race при back/leaveCheck) — сохраняем/очищаем и открываем Drawer.
+          if (activeCheck) await leaveCheck();
+        } finally {
+          setShowNewCheck(true);
+        }
+      })();
     }
-  }, [triggerNewCheck, activeShift, activeCheck]);
+  }, [triggerNewCheck, activeShift, activeCheck, leaveCheck]);
 
   useEffect(() => {
     const handler = (e: Event) => {
