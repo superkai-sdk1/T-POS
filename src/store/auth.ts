@@ -58,6 +58,7 @@ export const useAuthStore = create<AuthState>()(
             .single();
 
           if (error || !data) {
+            if (import.meta.env.DEV && error) console.error('[auth] login error:', error);
             set({ error: 'Неверный логин или пароль', isLoading: false });
             return false;
           }
@@ -73,7 +74,8 @@ export const useAuthStore = create<AuthState>()(
             isLoading: false,
           });
           return true;
-        } catch {
+        } catch (err) {
+          if (import.meta.env.DEV) console.error('[auth] login catch:', err);
           set({ error: 'Ошибка подключения', isLoading: false });
           return false;
         }
@@ -207,12 +209,13 @@ export const useAuthStore = create<AuthState>()(
       },
 
       loadStaffUsers: async () => {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('profiles')
           .select('id, nickname, role, pin')
           .in('role', ['staff', 'owner'])
           .order('role')
           .order('nickname');
+        if (import.meta.env.DEV && error) console.error('[auth] loadStaffUsers:', error);
         if (data) {
           set({
             staffUsers: data.map((p) => ({
