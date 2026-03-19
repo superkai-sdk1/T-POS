@@ -10,7 +10,7 @@ import {
   ShoppingBag,
   MessageSquare, Percent, Trash2, Timer, Search,
   UserPlus, User, Star, GraduationCap, Gamepad2,
-  Sparkles, SlidersHorizontal,
+  Sparkles, SlidersHorizontal, Edit2, Check as CheckIcon,
 } from 'lucide-react';
 import { hapticFeedback } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase';
@@ -312,7 +312,7 @@ interface CheckViewProps {
 }
 
 export function CheckView({ onBack }: CheckViewProps) {
-  const { activeCheck, cart, addToCart, updateCartQuantity, updateCartModifiers, removeFromCart, inventory, leaveCheck, cancelCheck, getCartTotal, getDiscountTotal, updateCheckNote, saveCartToDb, appliedDiscounts, applyDiscount, removeDiscount, productModifiers } = usePOSStore();
+  const { activeCheck, cart, addToCart, updateCartQuantity, updateCartModifiers, removeFromCart, inventory, leaveCheck, cancelCheck, getCartTotal, getDiscountTotal, updateCheckNote, saveCartToDb, appliedDiscounts, applyDiscount, removeDiscount, productModifiers, setSpaceRentalAmount } = usePOSStore();
   const hideNav = useHideNav();
 
   const [showPayment, setShowPayment] = useState(false);
@@ -445,21 +445,71 @@ export function CheckView({ onBack }: CheckViewProps) {
   const [rentalMinutes, setRentalMinutes] = useState(0);
   const [billedMinutes, setBilledMinutes] = useState(0);
 
+  // Time editing state
+  const [editingStartTime, setEditingStartTime] = useState(false);
+  const [editingEndTime, setEditingEndTime] = useState(false);
+  const [startTimeInput, setStartTimeInput] = useState('');
+  const [endTimeInput, setEndTimeInput] = useState('');
+
+  // Helper: convert ISO string to local datetime-local value (HH:MM)
+  const toTimeInput = (iso: string) => {
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+  // Helper: build ISO string from today's date + HH:MM
+  const fromTimeInput = (hhmm: string): string => {
+    const now = new Date();
+    const [h, m] = hhmm.split(':').map(Number);
+    now.setHours(h, m, 0, 0);
+    return now.toISOString();
+  };
+
+  const saveSpaceStartAt = useCallback(async (iso: string) => {
+    if (!activeCheck) return;
+    usePOSStore.setState((s) => ({
+      activeCheck: s.activeCheck ? { ...s.activeCheck, space_start_at: iso } : null,
+    }));
+    await supabase.from('checks').update({ space_start_at: iso }).eq('id', activeCheck.id);
+  }, [activeCheck]);
+
+  const saveSpaceEndAt = useCallback(async (iso: string | null) => {
+    if (!activeCheck) return;
+    usePOSStore.setState((s) => ({
+      activeCheck: s.activeCheck ? { ...s.activeCheck, space_end_at: iso } : null,
+    }));
+    await supabase.from('checks').update({ space_end_at: iso }).eq('id', activeCheck.id);
+  }, [activeCheck]);
+
   useEffect(() => {
-    if (!activeCheck?.space || !activeCheck.space.hourly_rate) return;
+    if (!activeCheck?.space || !activeCheck.space.hourly_rate) {
+      setSpaceRentalAmount(0);
+      return;
+    }
     const rate = activeCheck.space.hourly_rate;
 
     const tick = () => {
-      const elapsed = (Date.now() - new Date(activeCheck.created_at).getTime()) / 60000;
+      const startMs = new Date(activeCheck.space_start_at ?? activeCheck.created_at).getTime();
+      const endMs = activeCheck.space_end_at
+        ? new Date(activeCheck.space_end_at).getTime()
+        : Date.now();
+      const elapsed = Math.max(0, (endMs - startMs) / 60000);
       const rounded = Math.max(1, Math.ceil(elapsed / 30)) * 30;
+      const amount = Math.round((rounded / 60) * rate);
       setRentalMinutes(Math.round(elapsed));
       setBilledMinutes(rounded);
-      setRentalAmount(Math.round((rounded / 60) * rate));
+      setRentalAmount(amount);
+      setSpaceRentalAmount(amount);
     };
     tick();
+    // Only run interval if end time is not fixed
+    if (activeCheck.space_end_at) return;
     const iv = setInterval(tick, 15000);
     return () => clearInterval(iv);
-  }, [activeCheck?.space, activeCheck?.created_at]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCheck?.space, activeCheck?.space_start_at, activeCheck?.space_end_at, activeCheck?.created_at, setSpaceRentalAmount]);
+
+  // Clear rental from store on unmount
+  useEffect(() => () => { setSpaceRentalAmount(0); }, [setSpaceRentalAmount]);
 
   const cartSubtotal = cart.reduce((s, c) => {
     if (!c?.item) return s;
@@ -906,16 +956,9 @@ export function CheckView({ onBack }: CheckViewProps) {
         </div>
 
         {activeCheck.space && activeCheck.space.hourly_rate != null && (
-          <div className="flex items-center justify-between mt-2 px-4">
-            <div className="flex items-center gap-1.5 text-indigo-400/70">
-              <Timer className="w-3 h-3" />
-              <span className="text-[11px] tabular-nums">{Math.floor(rentalMinutes / 60)}ч {String(rentalMinutes % 60).padStart(2, '0')}м</span>
-              <span className="text-white/20">·</span>
-              <span className="text-[11px] text-white/40">тариф {Math.floor(billedMinutes / 60)}ч {String(billedMinutes % 60).padStart(2, '0')}м</span>
-              <span className="text-white/20">·</span>
-              <span className="text-[11px]">{activeCheck.space.hourly_rate}₽/ч</span>
-            </div>
-            <span className="text-[11px] font-bold text-indigo-400 tabular-nums">{fmtCur(rentalAmount)}</span>
+          <div className="flex items-center gap-1.5 mt-1 px-1 text-indigo-400/60">
+            <Timer className="w-3 h-3 shrink-0" />
+            <span className="text-[10px] tabular-nums">{Math.floor(rentalMinutes / 60)}ч {String(rentalMinutes % 60).padStart(2, '0')}м · {fmtCur(rentalAmount)}</span>
           </div>
         )}
       </div>
@@ -1014,6 +1057,152 @@ export function CheckView({ onBack }: CheckViewProps) {
             )}
           </div>
         )}
+        {/* ====== БЛОК АРЕНДЫ КАБИНКИ ====== */}
+        {activeCheck.space && activeCheck.space.hourly_rate != null && (
+          <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 space-y-2 animate-fade-in">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-indigo-500/20 flex items-center justify-center shrink-0">
+                  <Timer className="w-4 h-4 text-indigo-400" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-bold text-white truncate">{activeCheck.space.name}</p>
+                  <p className="text-[10px] text-indigo-400/70 font-semibold uppercase tracking-wider">
+                    {activeCheck.space.hourly_rate}₽/ч
+                  </p>
+                </div>
+              </div>
+              <span className="text-lg font-black text-indigo-300 tabular-nums shrink-0">{fmtCur(rentalAmount)}</span>
+            </div>
+
+            {/* Timer row */}
+            <div className="flex items-center gap-2 text-[11px] text-indigo-400/60 px-1">
+              <span className="tabular-nums">
+                {Math.floor(rentalMinutes / 60)}ч {String(rentalMinutes % 60).padStart(2, '0')}м прошло
+              </span>
+              <span className="text-indigo-500/40">·</span>
+              <span className="tabular-nums text-indigo-400/40">
+                тариф {Math.floor(billedMinutes / 60)}ч {String(billedMinutes % 60).padStart(2, '0')}м
+              </span>
+            </div>
+
+            {/* Start time row */}
+            <div className="flex items-center justify-between gap-2 px-1">
+              <span className="text-[11px] text-white/40 shrink-0">Начало</span>
+              {editingStartTime ? (
+                <div className="flex items-center gap-1.5 flex-1 justify-end">
+                  <input
+                    type="time"
+                    value={startTimeInput}
+                    onChange={(e) => setStartTimeInput(e.target.value)}
+                    className="bg-black/40 border border-indigo-500/30 rounded-lg px-2 py-1 text-xs text-white outline-none w-24 tabular-nums"
+                  />
+                  <button
+                    onClick={async () => {
+                      if (startTimeInput) {
+                        const iso = fromTimeInput(startTimeInput);
+                        await saveSpaceStartAt(iso);
+                      }
+                      setEditingStartTime(false);
+                    }}
+                    className="w-6 h-6 rounded-md bg-indigo-500/20 flex items-center justify-center active:scale-90"
+                  >
+                    <CheckIcon className="w-3.5 h-3.5 text-indigo-400" />
+                  </button>
+                  <button
+                    onClick={() => setEditingStartTime(false)}
+                    className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center active:scale-90"
+                  >
+                    <X className="w-3 h-3 text-white/40" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    const iso = activeCheck.space_start_at ?? activeCheck.created_at;
+                    setStartTimeInput(toTimeInput(iso));
+                    setEditingStartTime(true);
+                    setEditingEndTime(false);
+                  }}
+                  className="flex items-center gap-1.5 text-[11px] text-indigo-300/70 active:scale-95 transition-transform"
+                >
+                  <span className="tabular-nums">
+                    {toTimeInput(activeCheck.space_start_at ?? activeCheck.created_at)}
+                  </span>
+                  <Edit2 className="w-3 h-3 text-indigo-400/40" />
+                </button>
+              )}
+            </div>
+
+            {/* End time row */}
+            <div className="flex items-center justify-between gap-2 px-1">
+              <span className="text-[11px] text-white/40 shrink-0">Конец</span>
+              {editingEndTime ? (
+                <div className="flex items-center gap-1.5 flex-1 justify-end">
+                  <input
+                    type="time"
+                    value={endTimeInput}
+                    onChange={(e) => setEndTimeInput(e.target.value)}
+                    className="bg-black/40 border border-indigo-500/30 rounded-lg px-2 py-1 text-xs text-white outline-none w-24 tabular-nums"
+                  />
+                  <button
+                    onClick={async () => {
+                      if (endTimeInput) {
+                        const iso = fromTimeInput(endTimeInput);
+                        await saveSpaceEndAt(iso);
+                      }
+                      setEditingEndTime(false);
+                    }}
+                    className="w-6 h-6 rounded-md bg-indigo-500/20 flex items-center justify-center active:scale-90"
+                  >
+                    <CheckIcon className="w-3.5 h-3.5 text-indigo-400" />
+                  </button>
+                  <button
+                    onClick={() => setEditingEndTime(false)}
+                    className="w-6 h-6 rounded-md bg-white/5 flex items-center justify-center active:scale-90"
+                  >
+                    <X className="w-3 h-3 text-white/40" />
+                  </button>
+                </div>
+              ) : activeCheck.space_end_at ? (
+                <button
+                  onClick={() => {
+                    setEndTimeInput(toTimeInput(activeCheck.space_end_at!));
+                    setEditingEndTime(true);
+                    setEditingStartTime(false);
+                  }}
+                  className="flex items-center gap-1.5 text-[11px] text-indigo-300/70 active:scale-95 transition-transform"
+                >
+                  <span className="tabular-nums">{toTimeInput(activeCheck.space_end_at)}</span>
+                  <Edit2 className="w-3 h-3 text-indigo-400/40" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    const now = new Date();
+                    setEndTimeInput(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+                    setEditingEndTime(true);
+                    setEditingStartTime(false);
+                  }}
+                  className="flex items-center gap-1.5 text-[11px] text-white/25 active:scale-95 transition-transform"
+                >
+                  <span>Сейчас (авто)</span>
+                  <Edit2 className="w-3 h-3 text-white/20" />
+                </button>
+              )}
+              {activeCheck.space_end_at && (
+                <button
+                  onClick={async () => { await saveSpaceEndAt(null); }}
+                  className="ml-1 w-5 h-5 rounded flex items-center justify-center active:scale-90 transition-transform"
+                  title="Сбросить время окончания"
+                >
+                  <X className="w-3 h-3 text-white/30" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {cart.length === 0 ? (
           <div className="text-center py-16 animate-fade-in">
             <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3">

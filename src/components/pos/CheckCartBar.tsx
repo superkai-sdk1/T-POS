@@ -12,11 +12,13 @@ export function CheckCartBar() {
   const cart = usePOSStore((s) => s.cart);
   const getCartTotal = usePOSStore((s) => s.getCartTotal);
   const activeCheck = usePOSStore((s) => s.activeCheck);
+  const spaceRentalAmount = usePOSStore((s) => s.spaceRentalAmount);
   const [hasEvent, setHasEvent] = useState(false);
   const [eventAmount, setEventAmount] = useState(0);
 
-  const total = getCartTotal() + (hasEvent ? eventAmount : 0);
+  const total = getCartTotal() + (hasEvent ? eventAmount : 0) + spaceRentalAmount;
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
+  const hasRental = spaceRentalAmount > 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -51,11 +53,11 @@ export function CheckCartBar() {
   return (
     <div className="shrink-0 p-4 rounded-2xl border border-white/12 bg-white/6 backdrop-blur-xl flex items-center justify-between gap-3 w-full max-w-md mx-auto">
       <div className="flex items-baseline gap-3">
-        {(cartCount > 0 || (hasEvent && eventAmount > 0)) && (
+        {(cartCount > 0 || (hasEvent && eventAmount > 0) || hasRental) && (
           <span className="text-xl font-black italic text-white tabular-nums">{fmtCur(total)}</span>
         )}
       </div>
-      {(cartCount > 0 || (hasEvent && eventAmount > 0)) && (
+      {(cartCount > 0 || (hasEvent && eventAmount > 0) || hasRental) && (
         <button
           onClick={() => {
             hapticFeedback('medium');

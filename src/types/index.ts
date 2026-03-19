@@ -90,6 +90,8 @@ export interface Check {
   certificate_used: number;
   certificate_id: string | null;
   space_id: string | null;
+  space_start_at: string | null;
+  space_end_at: string | null;
   guest_names: string | null;
   note: string | null;
   created_at: string;

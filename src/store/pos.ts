@@ -27,6 +27,8 @@ interface POSState {
   checksLoaded: boolean;
   inventoryLoaded: boolean;
   categoriesLoaded: boolean;
+  spaceRentalAmount: number;
+  setSpaceRentalAmount: (amount: number) => void;
 
   loadInventory: () => Promise<void>;
   loadMenuCategories: () => Promise<void>;
@@ -99,6 +101,8 @@ export const usePOSStore = create<POSState>((set, get) => ({
   checksLoaded: false,
   inventoryLoaded: false,
   categoriesLoaded: false,
+  spaceRentalAmount: 0,
+  setSpaceRentalAmount: (amount: number) => set({ spaceRentalAmount: amount }),
 
   loadMenuCategories: async () => {
     if (get().categoriesLoaded) return;

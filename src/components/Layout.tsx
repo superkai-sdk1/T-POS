@@ -128,11 +128,13 @@ function CheckPaymentPanel({ sidebarCollapsed, onNewCheck }: { sidebarCollapsed:
   const getCartTotal = usePOSStore((s) => s.getCartTotal);
   const activeCheck = usePOSStore((s) => s.activeCheck);
   const activeShift = useShiftStore((s) => s.activeShift);
+  const spaceRentalAmount = usePOSStore((s) => s.spaceRentalAmount);
   const [hasEvent, setHasEvent] = useState(false);
   const [eventAmount, setEventAmount] = useState(0);
 
-  const total = getCartTotal() + (hasEvent ? eventAmount : 0);
+  const total = getCartTotal() + (hasEvent ? eventAmount : 0) + spaceRentalAmount;
   const cartCount = cart.reduce((s, c) => s + c.quantity, 0);
+  const hasRental = spaceRentalAmount > 0;
 
   useEffect(() => {
     if (activeCheck?.event) {
@@ -154,11 +156,11 @@ function CheckPaymentPanel({ sidebarCollapsed, onNewCheck }: { sidebarCollapsed:
       <div className="relative w-full max-w-lg rounded-3xl border border-white/12 bg-white/[0.06] backdrop-blur-[24px] shadow-[0_20px_50px_rgba(0,0,0,0.5)]" style={{ WebkitBackdropFilter: 'blur(24px)', backfaceVisibility: 'hidden', willChange: 'transform' }}>
         <div className="relative p-4 flex items-center justify-between gap-4">
         <div className="flex items-baseline gap-3">
-        {(cartCount > 0 || (hasEvent && eventAmount > 0)) && (
+        {(cartCount > 0 || (hasEvent && eventAmount > 0) || hasRental) && (
           <span className="text-2xl font-black italic text-white tabular-nums">{fmtCur(total)}</span>
         )}
         </div>
-        {(cartCount > 0 || (hasEvent && eventAmount > 0)) && (
+        {(cartCount > 0 || (hasEvent && eventAmount > 0) || hasRental) && (
           <button
             onClick={() => { hapticFeedback('medium'); window.dispatchEvent(new CustomEvent('tpos:open-payment')); }}
             className="flex-1 max-w-[160px] bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] py-3 rounded-2xl flex items-center justify-center gap-2 shadow-xl shadow-[#8b5cf6]/30 font-black uppercase text-xs tracking-widest active:scale-95 transition-all text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 min-h-[44px]"
