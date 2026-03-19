@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo, memo, startTransition, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -591,12 +592,13 @@ export function ClientsManager() {
       </Drawer>
 
       {/* ============ QR CODE MODAL ============ */}
-      {showQr && qrDataUrl && detailClient && (
+      {/* Рендерим через портал напрямую в body, чтобы вырваться из stacking context Drawer'а (transform создаёт новый контекст) */}
+      {showQr && qrDataUrl && detailClient && typeof document !== 'undefined' && createPortal(
         <div
           role="dialog"
           aria-modal="true"
           aria-label="QR-код для привязки Telegram"
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-sm"
           style={{
             paddingTop: 'var(--safe-top)',
             paddingBottom: 'var(--safe-bottom)',
@@ -606,7 +608,7 @@ export function ClientsManager() {
           onClick={() => setShowQr(false)}
         >
           <div
-            className="bg-white rounded-2xl p-6 max-w-xs w-full mx-4 text-center"
+            className="bg-white rounded-2xl p-6 max-w-xs w-full mx-4 text-center animate-pop-in"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-black font-bold text-lg mb-1">{detailClient.nickname}</p>
@@ -626,7 +628,8 @@ export function ClientsManager() {
               Закрыть
             </button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {/* ============ EDIT / CREATE DRAWER ============ */}
