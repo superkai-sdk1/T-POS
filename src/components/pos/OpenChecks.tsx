@@ -311,15 +311,15 @@ function calcSpaceRental(hourlyRate: number, startAt: string, endAt: string | nu
   return Math.round((rounded / 60) * hourlyRate);
 }
 
-function LiveSpaceRental({ hourlyRate, startAt, endAt }: { hourlyRate: number; startAt: string; endAt: string | null }) {
-  const [amount, setAmount] = useState(() => calcSpaceRental(hourlyRate, startAt, endAt));
+function LiveSpaceRental({ hourlyRate, startAt, endAt, cartTotal }: { hourlyRate: number; startAt: string; endAt: string | null; cartTotal: number }) {
+  const [rental, setRental] = useState(() => calcSpaceRental(hourlyRate, startAt, endAt));
   useEffect(() => {
-    setAmount(calcSpaceRental(hourlyRate, startAt, endAt));
-    if (endAt) return; // fixed end — no interval needed
-    const iv = setInterval(() => setAmount(calcSpaceRental(hourlyRate, startAt, null)), 15000);
+    setRental(calcSpaceRental(hourlyRate, startAt, endAt));
+    if (endAt) return;
+    const iv = setInterval(() => setRental(calcSpaceRental(hourlyRate, startAt, null)), 15000);
     return () => clearInterval(iv);
   }, [hourlyRate, startAt, endAt]);
-  return <>{amount.toLocaleString('ru-RU')} ₽</>;
+  return <>{(rental + cartTotal).toLocaleString('ru-RU')} ₽</>;
 }
 
 const spaceIconMap: Record<string, typeof Home> = {
@@ -431,6 +431,7 @@ const CheckTile = memo(({ check, onSelect, listMode, exiting, isEvent }: { check
                   hourlyRate={check.space.hourly_rate}
                   startAt={check.space_start_at ?? check.created_at}
                   endAt={check.space_end_at ?? null}
+                  cartTotal={check.total_amount || 0}
                 />
               : `${(check.total_amount || 0).toLocaleString('ru-RU')} ₽`
           }
