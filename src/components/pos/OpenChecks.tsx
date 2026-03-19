@@ -303,6 +303,25 @@ function ElapsedTime({ since }: { since: string }) {
   return <>{text}</>;
 }
 
+function calcSpaceRental(hourlyRate: number, startAt: string, endAt: string | null): number {
+  const startMs = new Date(startAt).getTime();
+  const endMs = endAt ? new Date(endAt).getTime() : Date.now();
+  const elapsed = Math.max(0, (endMs - startMs) / 60000);
+  const rounded = Math.max(1, Math.ceil(elapsed / 30)) * 30;
+  return Math.round((rounded / 60) * hourlyRate);
+}
+
+function LiveSpaceRental({ hourlyRate, startAt, endAt }: { hourlyRate: number; startAt: string; endAt: string | null }) {
+  const [amount, setAmount] = useState(() => calcSpaceRental(hourlyRate, startAt, endAt));
+  useEffect(() => {
+    setAmount(calcSpaceRental(hourlyRate, startAt, endAt));
+    if (endAt) return; // fixed end — no interval needed
+    const iv = setInterval(() => setAmount(calcSpaceRental(hourlyRate, startAt, null)), 15000);
+    return () => clearInterval(iv);
+  }, [hourlyRate, startAt, endAt]);
+  return <>{amount.toLocaleString('ru-RU')} ₽</>;
+}
+
 const spaceIconMap: Record<string, typeof Home> = {
   cabin_small: Home,
   cabin_big: Building2,
@@ -405,7 +424,16 @@ const CheckTile = memo(({ check, onSelect, listMode, exiting, isEvent }: { check
           className={`font-black italic tracking-tighter tabular-nums ${listMode ? 'text-base' : 'text-lg'} ${isEmpty ? 'text-white/5' : 'text-[#8b5cf6]'
             }`}
         >
-          {isEmpty ? '—' : `${(check.total_amount || 0).toLocaleString('ru-RU')} ₽`}
+          {isEmpty
+            ? '—'
+            : check.space?.hourly_rate
+              ? <LiveSpaceRental
+                  hourlyRate={check.space.hourly_rate}
+                  startAt={check.space_start_at ?? check.created_at}
+                  endAt={check.space_end_at ?? null}
+                />
+              : `${(check.total_amount || 0).toLocaleString('ru-RU')} ₽`
+          }
         </div>
       </div>
     </button>
