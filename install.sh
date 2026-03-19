@@ -484,7 +484,7 @@ if [ "$MODE" = "update" ]; then
   SCRIPT_HASH_BEFORE=$(md5sum "$INSTALL_DIR/install.sh" 2>/dev/null | awk '{print $1}') || true
 
   info "Загрузка обновлений..."
-  git clean -fd 2>/dev/null || true
+  git clean -fd -e .env -e .env.local 2>/dev/null || true
   git fetch origin
   git reset --hard origin/main
 
