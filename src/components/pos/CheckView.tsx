@@ -502,17 +502,26 @@ export function CheckView({ onBack }: CheckViewProps) {
     await supabase.from('checks').update({ space_end_at: iso }).eq('id', activeCheck.id);
   }, [activeCheck]);
 
+  const spaceHourlyRate = activeCheck?.space?.hourly_rate;
+  const spaceStartAt = activeCheck?.space_start_at;
+  const spaceEndAt = activeCheck?.space_end_at;
+  const checkCreatedAt = activeCheck?.created_at;
+  const checkId = activeCheck?.id;
+
   useEffect(() => {
-    if (!activeCheck?.space || !activeCheck.space.hourly_rate) {
+    if (!spaceHourlyRate) {
       setSpaceRentalAmount(0);
       return;
     }
-    const rate = activeCheck.space.hourly_rate;
+    const rate = spaceHourlyRate;
 
     const tick = () => {
-      const startMs = new Date(activeCheck.space_start_at ?? activeCheck.created_at).getTime();
-      const endMs = activeCheck.space_end_at
-        ? new Date(activeCheck.space_end_at).getTime()
+      // Read fresh values from store to avoid stale closures
+      const check = usePOSStore.getState().activeCheck;
+      if (!check) return;
+      const startMs = new Date(check.space_start_at ?? check.created_at).getTime();
+      const endMs = check.space_end_at
+        ? new Date(check.space_end_at).getTime()
         : Date.now();
       const elapsed = Math.max(0, (endMs - startMs) / 60000);
       const rounded = Math.max(1, Math.ceil(elapsed / 30)) * 30;
@@ -524,11 +533,11 @@ export function CheckView({ onBack }: CheckViewProps) {
     };
     tick();
     // Only run interval if end time is not fixed
-    if (activeCheck.space_end_at) return;
+    if (spaceEndAt) return;
     const iv = setInterval(tick, 15000);
     return () => clearInterval(iv);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeCheck?.id, activeCheck?.space?.hourly_rate, activeCheck?.space_start_at, activeCheck?.space_end_at, activeCheck?.created_at, setSpaceRentalAmount]);
+  }, [checkId, spaceHourlyRate, spaceStartAt, spaceEndAt, checkCreatedAt, setSpaceRentalAmount]);
 
   // Clear rental from store on unmount
   useEffect(() => () => { setSpaceRentalAmount(0); }, [setSpaceRentalAmount]);
