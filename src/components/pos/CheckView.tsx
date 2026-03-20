@@ -11,7 +11,6 @@ import {
   MessageSquare, Percent, Trash2, Timer, Search,
   UserPlus, User, Star, GraduationCap, Gamepad2,
   Sparkles, SlidersHorizontal, Edit2, Check as CheckIcon,
-  DoorOpen, Home, Building2, Warehouse,
 } from 'lucide-react';
 import { hapticFeedback } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase';
@@ -21,7 +20,7 @@ import { useHideNav, useSetHeader } from '@/store/layout';
 import { Input } from '@/components/ui/Input';
 import { ClientAvatar } from '@/components/ui/ClientAvatar';
 import { Button } from '@/components/ui/Button';
-import type { InventoryItem, Discount, Profile, VisitTariff, ClientTier, Modifier, ClientDiscountRule, Event, Space } from '@/types';
+import type { InventoryItem, Discount, Profile, VisitTariff, ClientTier, Modifier, ClientDiscountRule, Event } from '@/types';
 
 const VISIT_ITEMS: Record<VisitTariff, { label: string; price: number; dbName: string }> = {
   regular: { label: 'Гость', price: 700, dbName: 'Игровой вечер Гость' },
@@ -452,36 +451,17 @@ export function CheckView({ onBack }: CheckViewProps) {
   const [startTimeInput, setStartTimeInput] = useState('');
   const [endTimeInput, setEndTimeInput] = useState('');
 
-  // Space picker state
-  const [showSpacePicker, setShowSpacePicker] = useState(false);
-  const [spacePickerList, setSpacePickerList] = useState<Space[]>([]);
-
-  const spaceIconMap: Record<string, typeof Home> = {
-    cabin_small: Home,
-    cabin_big: Building2,
-    hall: Warehouse,
-  };
-
-  const loadSpacesForPicker = useCallback(async () => {
-    const { data } = await supabase.from('spaces').select('*').eq('is_active', true);
-    if (data) setSpacePickerList(data as Space[]);
-    setShowSpacePicker(true);
-  }, []);
-
-  const attachSpaceToCheck = useCallback(async (spaceId: string) => {
-    if (!activeCheck) return;
+  const attachSpaceToCheck = useCallback(async (item: InventoryItem) => {
+    if (!activeCheck || !item.linked_space_id || !item.linked_space) return;
     const now = new Date().toISOString();
+    const spaceId = item.linked_space_id;
+    const space = item.linked_space;
     // Update DB
     await supabase.from('checks').update({ space_id: spaceId, space_start_at: now }).eq('id', activeCheck.id);
-    // Fetch updated space relation
-    const { data: spaceData } = await supabase.from('spaces').select('*').eq('id', spaceId).single();
-    if (spaceData) {
-      const space = spaceData as Space;
-      usePOSStore.setState((s) => ({
-        activeCheck: s.activeCheck ? { ...s.activeCheck, space_id: spaceId, space, space_start_at: now, space_end_at: null } : null,
-      }));
-    }
-    setShowSpacePicker(false);
+    // Update store
+    usePOSStore.setState((s) => ({
+      activeCheck: s.activeCheck ? { ...s.activeCheck, space_id: spaceId, space, space_start_at: now, space_end_at: null } : null,
+    }));
   }, [activeCheck]);
 
   // Helper: convert ISO string to local datetime-local value (HH:MM)
@@ -781,6 +761,11 @@ export function CheckView({ onBack }: CheckViewProps) {
 
   const handleAdd = (item: InventoryItem) => {
     hapticFeedback('light');
+    // If item is linked to a space, attach it to the check instead of adding to cart
+    if (item.linked_space_id && item.linked_space) {
+      attachSpaceToCheck(item);
+      return;
+    }
     addToCart(item);
   };
 
@@ -1089,16 +1074,6 @@ export function CheckView({ onBack }: CheckViewProps) {
               <p className="text-[10px] text-white/40 mt-1">Сохраняем данные мероприятия…</p>
             )}
           </div>
-        )}
-        {/* ====== КНОПКА ДОБАВИТЬ КАБИНКУ (если нет space) ====== */}
-        {!activeCheck.space && (
-          <button
-            onClick={loadSpacesForPicker}
-            className="w-full p-3 rounded-2xl border-2 border-dashed border-indigo-500/20 hover:border-indigo-500/40 bg-indigo-500/[0.03] hover:bg-indigo-500/[0.06] transition-all flex items-center justify-center gap-2 text-indigo-400/50 hover:text-indigo-400/80 active:scale-[0.98]"
-          >
-            <DoorOpen className="w-5 h-5" />
-            <span className="text-sm font-bold uppercase tracking-wider">Добавить кабинку</span>
-          </button>
         )}
 
         {/* ====== БЛОК АРЕНДЫ КАБИНКИ ====== */}
@@ -1544,43 +1519,6 @@ export function CheckView({ onBack }: CheckViewProps) {
         spaceRental={spaceRental}
       />
 
-      {/* Space picker drawer */}
-      <Drawer
-        open={showSpacePicker}
-        onClose={() => setShowSpacePicker(false)}
-        title="Добавить кабинку / зал"
-        size="sm"
-      >
-        <div className="space-y-2">
-          {spacePickerList.map((s) => {
-            const SpIcon = spaceIconMap[s.type] || DoorOpen;
-            return (
-              <button
-                key={s.id}
-                onClick={() => attachSpaceToCheck(s.id)}
-                className="w-full flex items-center gap-3 p-3.5 rounded-xl active:scale-[0.97] transition-all min-h-[56px]"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                }}
-              >
-                <div className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(99, 102, 241, 0.12)' }}>
-                  <SpIcon className="w-5 h-5 text-indigo-400" />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="font-semibold text-[14px] text-[var(--c-text)]">{s.name}</p>
-                  <p className="text-[12px] text-[var(--c-muted)]">
-                    {s.hourly_rate ? `${s.hourly_rate}₽/час` : 'Ручная цена'}
-                  </p>
-                </div>
-              </button>
-            );
-          })}
-          {spacePickerList.length === 0 && (
-            <p className="text-xs text-center text-[var(--c-hint)] py-6">Нет доступных кабинок</p>
-          )}
-        </div>
-      </Drawer>
 
       {/* Discounts */}
       <Drawer

@@ -61,6 +61,8 @@ export interface InventoryItem {
   sort_order: number;
   search_tags: string[];
   is_top: boolean;
+  linked_space_id?: string | null;
+  linked_space?: Space | null;
   created_at: string;
   updated_at: string;
 }

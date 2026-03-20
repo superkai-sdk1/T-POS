@@ -34,7 +34,7 @@ import {
   AVAILABLE_ICONS,
   CATEGORY_COLOR_OPTIONS,
 } from '@/hooks/useMenuCategories';
-import type { InventoryItem, MenuCategory } from '@/types';
+import type { InventoryItem, MenuCategory, Space } from '@/types';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
@@ -49,6 +49,8 @@ interface EditForm {
   is_top: boolean;
   image_url: string;
   search_tags: string;
+  linked_space_id: string;
+  hourly_rate: string;
 }
 
 const emptyForm: EditForm = {
@@ -62,6 +64,8 @@ const emptyForm: EditForm = {
   is_top: false,
   image_url: '',
   search_tags: '',
+  linked_space_id: '',
+  hourly_rate: '',
 };
 
 interface CategoryForm {
@@ -110,19 +114,32 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
   const [catForm, setCatForm] = useState<CategoryForm>(emptyCategoryForm);
   const [deleteCatTarget, setDeleteCatTarget] = useState<MenuCategory | null>(null);
   const [isReorderMode, setIsReorderMode] = useState(false);
+  const [allSpaces, setAllSpaces] = useState<Space[]>([]);
 
   const loadItems = useCallback(async () => {
     const { data } = await supabase
       .from('inventory')
-      .select('*')
+      .select('*, linked_space:spaces!inventory_linked_space_id_fkey(id, name, type, hourly_rate, is_active)')
       .order('sort_order', { ascending: true })
       .order('name');
-    if (data) setItems(data as InventoryItem[]);
+    if (data) {
+      const items = (data as any[]).map((item) => ({
+        ...item,
+        linked_space: Array.isArray(item.linked_space) ? item.linked_space[0] || null : item.linked_space || null,
+      })) as InventoryItem[];
+      setItems(items);
+    }
+  }, []);
+
+  const loadSpaces = useCallback(async () => {
+    const { data } = await supabase.from('spaces').select('*').eq('is_active', true);
+    if (data) setAllSpaces(data as Space[]);
   }, []);
 
   useEffect(() => {
     loadItems().then(() => setIsLoading(false));
-  }, [loadItems]);
+    loadSpaces();
+  }, [loadItems, loadSpaces]);
 
   const getChildren = useCallback(
     (parentId: string | null) =>
@@ -185,6 +202,8 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
       is_top: item.is_top ?? false,
       image_url: item.image_url || '',
       search_tags: (item.search_tags || []).join(', '),
+      linked_space_id: item.linked_space_id || '',
+      hourly_rate: item.linked_space?.hourly_rate != null ? String(item.linked_space.hourly_rate) : '',
     });
     setShowEditor(true);
     hapticFeedback();
@@ -229,7 +248,12 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
       is_top: form.is_top,
       image_url: form.image_url || null,
       search_tags: tags,
+      linked_space_id: form.linked_space_id || null,
     };
+    // If linked to a space, also update the space's hourly_rate
+    if (form.linked_space_id && form.hourly_rate) {
+      await supabase.from('spaces').update({ hourly_rate: Number(form.hourly_rate) }).eq('id', form.linked_space_id);
+    }
     let error;
     if (editingItem) {
       const res = await supabase.from('inventory').update(payload).eq('id', editingItem.id);
@@ -800,6 +824,49 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
                 />
               </div>
             </div>
+
+            {/* Привязка к кабинке / залу */}
+            {form.is_service && (
+              <div className="space-y-4">
+                <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Привязка к кабинке / залу</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { updateField('linked_space_id', ''); updateField('hourly_rate', ''); }}
+                    className={`px-5 py-3 rounded-2xl border transition-all font-bold text-sm ${
+                      !form.linked_space_id ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    Нет
+                  </button>
+                  {allSpaces.map((sp) => (
+                    <button
+                      key={sp.id}
+                      type="button"
+                      onClick={() => { updateField('linked_space_id', sp.id); updateField('hourly_rate', String(sp.hourly_rate || 0)); }}
+                      className={`px-5 py-3 rounded-2xl border transition-all font-bold text-sm ${
+                        form.linked_space_id === sp.id ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-600/20' : 'bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      {sp.name}
+                    </button>
+                  ))}
+                </div>
+                {form.linked_space_id && (
+                  <div className="space-y-3">
+                    <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Ставка (₽/час)</label>
+                    <input
+                      type="number"
+                      value={form.hourly_rate}
+                      onChange={(e) => updateField('hourly_rate', e.target.value)}
+                      placeholder="0"
+                      min={0}
+                      className="w-full bg-slate-900/50 border border-slate-800 rounded-2xl py-4 px-5 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all text-indigo-400 font-black text-xl"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Переключатели */}
             <div className="space-y-3">

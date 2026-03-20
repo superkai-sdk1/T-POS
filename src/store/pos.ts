@@ -117,7 +117,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
   loadInventory: async () => {
     const { data: invData } = await supabase
       .from('inventory')
-      .select('*')
+      .select('*, linked_space:spaces!inventory_linked_space_id_fkey(id, name, type, hourly_rate, is_active)')
       .eq('is_active', true)
       .order('category')
       .order('sort_order')
@@ -138,8 +138,12 @@ export const usePOSStore = create<POSState>((set, get) => ({
     }
 
     if (invData) {
+      const items = (invData as any[]).map((item) => ({
+        ...item,
+        linked_space: Array.isArray(item.linked_space) ? item.linked_space[0] || null : item.linked_space || null,
+      })) as InventoryItem[];
       set({
-        inventory: invData as InventoryItem[],
+        inventory: items,
         productModifiers: modMap,
         inventoryLoaded: true
       });
