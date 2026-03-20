@@ -976,8 +976,8 @@ export function CheckView({ onBack }: CheckViewProps) {
         </div>
       )}
 
-      {/* Cart (pb-44 под плавающую нав + итого-бар на мобиле; убираем когда нав скрыт) */}
-      <div className={`flex-1 min-h-0 space-y-3 lg:space-y-4 ${hideNav ? 'pb-0' : 'pb-44 lg:pb-0'}`}>
+      {/* Cart (overflow-y-auto + pb под плавающую нав + итого-бар на мобиле) */}
+      <div className={`flex-1 min-h-0 overflow-y-auto space-y-3 lg:space-y-4 ${hideNav ? 'pb-0' : 'pb-44 lg:pb-0'}`}>
         {/* Блок информации о мероприятии, если чек привязан к событию */}
         {linkedEvent && (
           <div className="p-3 rounded-2xl bg-white/5 border border-white/10 space-y-2">
@@ -1283,6 +1283,8 @@ export function CheckView({ onBack }: CheckViewProps) {
             </div>
           </div>
         )}
+        {/* Spacer чтобы кнопка "Добавить позицию" не скрывалась за плашкой оплаты */}
+        <div className="h-10 lg:hidden shrink-0" />
       </div>
 
       {/* Menu sheet — portaled to body to avoid parent transform affecting fixed position */}
