@@ -478,11 +478,17 @@ export function CheckView({ onBack }: CheckViewProps) {
     const d = new Date(iso);
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
-  // Helper: build ISO string from today's date + HH:MM
+  // Helper: build ISO string from today's date + HH:MM, handling midnight crossing
   const fromTimeInput = (hhmm: string): string => {
     const now = new Date();
     const [h, m] = hhmm.split(':').map(Number);
     now.setHours(h, m, 0, 0);
+    // If entered time is > 12 hours in the future, it likely means yesterday (e.g. entered 23:00 but it's 00:30 now)
+    if (now.getTime() - Date.now() > 12 * 60 * 60 * 1000) {
+      now.setDate(now.getDate() - 1);
+    }
+    // If entered time is > 12 hours in the past, it might mean tomorrow? Usually not needed for POS, 
+    // but yesterday handling is crucial for night shifts.
     return now.toISOString();
   };
 
