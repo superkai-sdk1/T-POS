@@ -464,6 +464,15 @@ export function CheckView({ onBack }: CheckViewProps) {
     }));
   }, [activeCheck]);
 
+  const detachSpaceFromCheck = useCallback(async () => {
+    if (!activeCheck) return;
+    await supabase.from('checks').update({ space_id: null, space_start_at: null, space_end_at: null }).eq('id', activeCheck.id);
+    usePOSStore.setState((s) => ({
+      activeCheck: s.activeCheck ? { ...s.activeCheck, space_id: null, space: undefined, space_start_at: null, space_end_at: null } : null,
+    }));
+    setSpaceRentalAmount(0);
+  }, [activeCheck, setSpaceRentalAmount]);
+
   // Helper: convert ISO string to local datetime-local value (HH:MM)
   const toTimeInput = (iso: string) => {
     const d = new Date(iso);
@@ -1078,6 +1087,7 @@ export function CheckView({ onBack }: CheckViewProps) {
 
         {/* ====== БЛОК АРЕНДЫ КАБИНКИ ====== */}
         {activeCheck.space && activeCheck.space.hourly_rate != null && (
+          <CartSwipeableRow quantity={1} onRemove={detachSpaceFromCheck}>
           <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 space-y-2 animate-fade-in">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
@@ -1220,6 +1230,7 @@ export function CheckView({ onBack }: CheckViewProps) {
               )}
             </div>
           </div>
+          </CartSwipeableRow>
         )}
 
         {cart.length === 0 ? (

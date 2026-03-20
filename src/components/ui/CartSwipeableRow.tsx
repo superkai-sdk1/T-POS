@@ -5,8 +5,8 @@ import { hapticFeedback } from '@/lib/telegram';
 interface CartSwipeableRowProps {
     children: ReactNode;
     quantity: number;
-    onIncrement: () => void;
-    onDecrement: () => void;
+    onIncrement?: () => void;
+    onDecrement?: () => void;
     onRemove: () => void;
     disabled?: boolean;
 }
@@ -74,14 +74,14 @@ export function CartSwipeableRow({ children, quantity, onIncrement, onDecrement,
         if (offsetX > SWIPE_THRESHOLD) {
             // Swiped Right -> Increment
             hapticFeedback('medium');
-            onIncrement();
+            onIncrement?.();
             // Snap back to 0
             setOffsetX(0);
         } else if (offsetX < -SWIPE_THRESHOLD) {
             // Swiped Left -> Decrement or Remove
             hapticFeedback('medium');
             if (quantity > 1) {
-                onDecrement();
+                onDecrement?.();
                 setOffsetX(0);
             } else {
                 setRemoving(true);
