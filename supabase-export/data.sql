@@ -2,8 +2,6 @@
 -- PostgreSQL database dump
 --
 
-\restrict GldPkI72ww7K0EDnz0s1BGMTDXcx54vuQ031Oor4CsNmj3Mpc7vdcsKy3dLN9eE
-
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.9 (Homebrew)
 
@@ -1094,6 +1092,3 @@ COPY "public"."user_notification_settings" ("user_id", "types", "updated_at") FR
 --
 -- PostgreSQL database dump complete
 --
-
-\unrestrict GldPkI72ww7K0EDnz0s1BGMTDXcx54vuQ031Oor4CsNmj3Mpc7vdcsKy3dLN9eE
-

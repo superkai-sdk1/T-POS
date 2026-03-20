@@ -9,7 +9,9 @@
 
 Прямое подключение (psql) может не работать из-за сети (IPv6, firewall). В этом случае:
 1. Запустите миграцию с машины с доступом к Supabase (например, облачный сервер)
-2. Или используйте Supabase Dashboard → SQL Editor: вставьте содержимое `data.sql` (без строк `\restrict` и `\unrestrict`) и выполните
+2. Или используйте **Supabase Dashboard → SQL Editor**: вставьте содержимое `data-insert.sql` и выполните (по частям, если большой объём)
+
+**Важно:** `data.sql` использует формат `COPY ... FROM stdin`, который работает только с psql. Для SQL Editor нужен `data-insert.sql` (INSERT-запросы). Сгенерировать его: `node copy-to-insert.mjs`
 
 ## Подготовка
 
@@ -75,7 +77,9 @@ chmod +x import.sh
 | Файл | Описание |
 |------|----------|
 | schema.sql | Схема БД (таблицы, типы, RLS, политики) |
-| data.sql | Данные всех таблиц (COPY формат) |
+| data.sql | Данные (COPY формат, для psql) |
+| data-insert.sql | Данные (INSERT формат, для SQL Editor) |
+| copy-to-insert.mjs | Конвертер COPY → INSERT |
 | auth_dump.sql | Схема auth (не запускать на новом проекте) |
 | storage_dump.sql | Метаданные storage |
 | data/*.json | Экспорт через REST API (частично пустые) |

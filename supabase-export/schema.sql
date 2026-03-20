@@ -2,8 +2,6 @@
 -- PostgreSQL database dump
 --
 
-\restrict bh7zIOMzs1oPHFa30WY5aQHVuRjpeYx2uA0tdyOIlmfbeoyc0eChTPENAOT0iYZ
-
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.9 (Homebrew)
 
@@ -2589,21 +2587,13 @@ CREATE POLICY "transactions_select" ON "public"."transactions" FOR SELECT TO "au
 
 --
 -- Name: supabase_realtime; Type: PUBLICATION; Schema: -; Owner: postgres
+-- Skipped: Supabase already creates these publications. Only ADD TABLE is needed.
 --
-
-CREATE PUBLICATION "supabase_realtime" WITH (publish = 'insert, update, delete, truncate');
-
-
-ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
 
 --
 -- Name: supabase_realtime_messages_publication; Type: PUBLICATION; Schema: -; Owner: supabase_admin
+-- Skipped: Supabase already creates this publication.
 --
-
-CREATE PUBLICATION "supabase_realtime_messages_publication" WITH (publish = 'insert, update, delete, truncate');
-
-
-ALTER PUBLICATION "supabase_realtime_messages_publication" OWNER TO "supabase_admin";
 
 --
 -- Name: supabase_realtime bookings; Type: PUBLICATION TABLE; Schema: public; Owner: postgres
@@ -2774,7 +2764,7 @@ GRANT USAGE ON SCHEMA "public" TO "service_role";
 --
 
 REVOKE ALL ON FUNCTION "extensions"."armor"("bytea") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."armor"("bytea") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."armor"("bytea") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."armor"("bytea") TO "dashboard_user";
 
 
@@ -2783,7 +2773,7 @@ GRANT ALL ON FUNCTION "extensions"."armor"("bytea") TO "dashboard_user";
 --
 
 REVOKE ALL ON FUNCTION "extensions"."armor"("bytea", "text"[], "text"[]) FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."armor"("bytea", "text"[], "text"[]) TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."armor"("bytea", "text"[], "text"[]) TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."armor"("bytea", "text"[], "text"[]) TO "dashboard_user";
 
 
@@ -2792,7 +2782,7 @@ GRANT ALL ON FUNCTION "extensions"."armor"("bytea", "text"[], "text"[]) TO "dash
 --
 
 REVOKE ALL ON FUNCTION "extensions"."crypt"("text", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."crypt"("text", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."crypt"("text", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."crypt"("text", "text") TO "dashboard_user";
 
 
@@ -2801,7 +2791,7 @@ GRANT ALL ON FUNCTION "extensions"."crypt"("text", "text") TO "dashboard_user";
 --
 
 REVOKE ALL ON FUNCTION "extensions"."dearmor"("text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."dearmor"("text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."dearmor"("text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."dearmor"("text") TO "dashboard_user";
 
 
@@ -2810,7 +2800,7 @@ GRANT ALL ON FUNCTION "extensions"."dearmor"("text") TO "dashboard_user";
 --
 
 REVOKE ALL ON FUNCTION "extensions"."decrypt"("bytea", "bytea", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."decrypt"("bytea", "bytea", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."decrypt"("bytea", "bytea", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."decrypt"("bytea", "bytea", "text") TO "dashboard_user";
 
 
@@ -2819,7 +2809,7 @@ GRANT ALL ON FUNCTION "extensions"."decrypt"("bytea", "bytea", "text") TO "dashb
 --
 
 REVOKE ALL ON FUNCTION "extensions"."decrypt_iv"("bytea", "bytea", "bytea", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."decrypt_iv"("bytea", "bytea", "bytea", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."decrypt_iv"("bytea", "bytea", "bytea", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."decrypt_iv"("bytea", "bytea", "bytea", "text") TO "dashboard_user";
 
 
@@ -2828,7 +2818,7 @@ GRANT ALL ON FUNCTION "extensions"."decrypt_iv"("bytea", "bytea", "bytea", "text
 --
 
 REVOKE ALL ON FUNCTION "extensions"."digest"("bytea", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."digest"("bytea", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."digest"("bytea", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."digest"("bytea", "text") TO "dashboard_user";
 
 
@@ -2837,7 +2827,7 @@ GRANT ALL ON FUNCTION "extensions"."digest"("bytea", "text") TO "dashboard_user"
 --
 
 REVOKE ALL ON FUNCTION "extensions"."digest"("text", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."digest"("text", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."digest"("text", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."digest"("text", "text") TO "dashboard_user";
 
 
@@ -2846,7 +2836,7 @@ GRANT ALL ON FUNCTION "extensions"."digest"("text", "text") TO "dashboard_user";
 --
 
 REVOKE ALL ON FUNCTION "extensions"."encrypt"("bytea", "bytea", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."encrypt"("bytea", "bytea", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."encrypt"("bytea", "bytea", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."encrypt"("bytea", "bytea", "text") TO "dashboard_user";
 
 
@@ -2855,7 +2845,7 @@ GRANT ALL ON FUNCTION "extensions"."encrypt"("bytea", "bytea", "text") TO "dashb
 --
 
 REVOKE ALL ON FUNCTION "extensions"."encrypt_iv"("bytea", "bytea", "bytea", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."encrypt_iv"("bytea", "bytea", "bytea", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."encrypt_iv"("bytea", "bytea", "bytea", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."encrypt_iv"("bytea", "bytea", "bytea", "text") TO "dashboard_user";
 
 
@@ -2864,7 +2854,7 @@ GRANT ALL ON FUNCTION "extensions"."encrypt_iv"("bytea", "bytea", "bytea", "text
 --
 
 REVOKE ALL ON FUNCTION "extensions"."gen_random_bytes"(integer) FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."gen_random_bytes"(integer) TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."gen_random_bytes"(integer) TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."gen_random_bytes"(integer) TO "dashboard_user";
 
 
@@ -2873,7 +2863,7 @@ GRANT ALL ON FUNCTION "extensions"."gen_random_bytes"(integer) TO "dashboard_use
 --
 
 REVOKE ALL ON FUNCTION "extensions"."gen_random_uuid"() FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."gen_random_uuid"() TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."gen_random_uuid"() TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."gen_random_uuid"() TO "dashboard_user";
 
 
@@ -2882,7 +2872,7 @@ GRANT ALL ON FUNCTION "extensions"."gen_random_uuid"() TO "dashboard_user";
 --
 
 REVOKE ALL ON FUNCTION "extensions"."gen_salt"("text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."gen_salt"("text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."gen_salt"("text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."gen_salt"("text") TO "dashboard_user";
 
 
@@ -2891,7 +2881,7 @@ GRANT ALL ON FUNCTION "extensions"."gen_salt"("text") TO "dashboard_user";
 --
 
 REVOKE ALL ON FUNCTION "extensions"."gen_salt"("text", integer) FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."gen_salt"("text", integer) TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."gen_salt"("text", integer) TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."gen_salt"("text", integer) TO "dashboard_user";
 
 
@@ -2900,7 +2890,7 @@ GRANT ALL ON FUNCTION "extensions"."gen_salt"("text", integer) TO "dashboard_use
 --
 
 REVOKE ALL ON FUNCTION "extensions"."hmac"("bytea", "bytea", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."hmac"("bytea", "bytea", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."hmac"("bytea", "bytea", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."hmac"("bytea", "bytea", "text") TO "dashboard_user";
 
 
@@ -2909,7 +2899,7 @@ GRANT ALL ON FUNCTION "extensions"."hmac"("bytea", "bytea", "text") TO "dashboar
 --
 
 REVOKE ALL ON FUNCTION "extensions"."hmac"("text", "text", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."hmac"("text", "text", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."hmac"("text", "text", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."hmac"("text", "text", "text") TO "dashboard_user";
 
 
@@ -2918,7 +2908,7 @@ GRANT ALL ON FUNCTION "extensions"."hmac"("text", "text", "text") TO "dashboard_
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pg_stat_statements"("showtext" boolean, OUT "userid" "oid", OUT "dbid" "oid", OUT "toplevel" boolean, OUT "queryid" bigint, OUT "query" "text", OUT "plans" bigint, OUT "total_plan_time" double precision, OUT "min_plan_time" double precision, OUT "max_plan_time" double precision, OUT "mean_plan_time" double precision, OUT "stddev_plan_time" double precision, OUT "calls" bigint, OUT "total_exec_time" double precision, OUT "min_exec_time" double precision, OUT "max_exec_time" double precision, OUT "mean_exec_time" double precision, OUT "stddev_exec_time" double precision, OUT "rows" bigint, OUT "shared_blks_hit" bigint, OUT "shared_blks_read" bigint, OUT "shared_blks_dirtied" bigint, OUT "shared_blks_written" bigint, OUT "local_blks_hit" bigint, OUT "local_blks_read" bigint, OUT "local_blks_dirtied" bigint, OUT "local_blks_written" bigint, OUT "temp_blks_read" bigint, OUT "temp_blks_written" bigint, OUT "shared_blk_read_time" double precision, OUT "shared_blk_write_time" double precision, OUT "local_blk_read_time" double precision, OUT "local_blk_write_time" double precision, OUT "temp_blk_read_time" double precision, OUT "temp_blk_write_time" double precision, OUT "wal_records" bigint, OUT "wal_fpi" bigint, OUT "wal_bytes" numeric, OUT "jit_functions" bigint, OUT "jit_generation_time" double precision, OUT "jit_inlining_count" bigint, OUT "jit_inlining_time" double precision, OUT "jit_optimization_count" bigint, OUT "jit_optimization_time" double precision, OUT "jit_emission_count" bigint, OUT "jit_emission_time" double precision, OUT "jit_deform_count" bigint, OUT "jit_deform_time" double precision, OUT "stats_since" timestamp with time zone, OUT "minmax_stats_since" timestamp with time zone) FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pg_stat_statements"("showtext" boolean, OUT "userid" "oid", OUT "dbid" "oid", OUT "toplevel" boolean, OUT "queryid" bigint, OUT "query" "text", OUT "plans" bigint, OUT "total_plan_time" double precision, OUT "min_plan_time" double precision, OUT "max_plan_time" double precision, OUT "mean_plan_time" double precision, OUT "stddev_plan_time" double precision, OUT "calls" bigint, OUT "total_exec_time" double precision, OUT "min_exec_time" double precision, OUT "max_exec_time" double precision, OUT "mean_exec_time" double precision, OUT "stddev_exec_time" double precision, OUT "rows" bigint, OUT "shared_blks_hit" bigint, OUT "shared_blks_read" bigint, OUT "shared_blks_dirtied" bigint, OUT "shared_blks_written" bigint, OUT "local_blks_hit" bigint, OUT "local_blks_read" bigint, OUT "local_blks_dirtied" bigint, OUT "local_blks_written" bigint, OUT "temp_blks_read" bigint, OUT "temp_blks_written" bigint, OUT "shared_blk_read_time" double precision, OUT "shared_blk_write_time" double precision, OUT "local_blk_read_time" double precision, OUT "local_blk_write_time" double precision, OUT "temp_blk_read_time" double precision, OUT "temp_blk_write_time" double precision, OUT "wal_records" bigint, OUT "wal_fpi" bigint, OUT "wal_bytes" numeric, OUT "jit_functions" bigint, OUT "jit_generation_time" double precision, OUT "jit_inlining_count" bigint, OUT "jit_inlining_time" double precision, OUT "jit_optimization_count" bigint, OUT "jit_optimization_time" double precision, OUT "jit_emission_count" bigint, OUT "jit_emission_time" double precision, OUT "jit_deform_count" bigint, OUT "jit_deform_time" double precision, OUT "stats_since" timestamp with time zone, OUT "minmax_stats_since" timestamp with time zone) TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pg_stat_statements"("showtext" boolean, OUT "userid" "oid", OUT "dbid" "oid", OUT "toplevel" boolean, OUT "queryid" bigint, OUT "query" "text", OUT "plans" bigint, OUT "total_plan_time" double precision, OUT "min_plan_time" double precision, OUT "max_plan_time" double precision, OUT "mean_plan_time" double precision, OUT "stddev_plan_time" double precision, OUT "calls" bigint, OUT "total_exec_time" double precision, OUT "min_exec_time" double precision, OUT "max_exec_time" double precision, OUT "mean_exec_time" double precision, OUT "stddev_exec_time" double precision, OUT "rows" bigint, OUT "shared_blks_hit" bigint, OUT "shared_blks_read" bigint, OUT "shared_blks_dirtied" bigint, OUT "shared_blks_written" bigint, OUT "local_blks_hit" bigint, OUT "local_blks_read" bigint, OUT "local_blks_dirtied" bigint, OUT "local_blks_written" bigint, OUT "temp_blks_read" bigint, OUT "temp_blks_written" bigint, OUT "shared_blk_read_time" double precision, OUT "shared_blk_write_time" double precision, OUT "local_blk_read_time" double precision, OUT "local_blk_write_time" double precision, OUT "temp_blk_read_time" double precision, OUT "temp_blk_write_time" double precision, OUT "wal_records" bigint, OUT "wal_fpi" bigint, OUT "wal_bytes" numeric, OUT "jit_functions" bigint, OUT "jit_generation_time" double precision, OUT "jit_inlining_count" bigint, OUT "jit_inlining_time" double precision, OUT "jit_optimization_count" bigint, OUT "jit_optimization_time" double precision, OUT "jit_emission_count" bigint, OUT "jit_emission_time" double precision, OUT "jit_deform_count" bigint, OUT "jit_deform_time" double precision, OUT "stats_since" timestamp with time zone, OUT "minmax_stats_since" timestamp with time zone) TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pg_stat_statements"("showtext" boolean, OUT "userid" "oid", OUT "dbid" "oid", OUT "toplevel" boolean, OUT "queryid" bigint, OUT "query" "text", OUT "plans" bigint, OUT "total_plan_time" double precision, OUT "min_plan_time" double precision, OUT "max_plan_time" double precision, OUT "mean_plan_time" double precision, OUT "stddev_plan_time" double precision, OUT "calls" bigint, OUT "total_exec_time" double precision, OUT "min_exec_time" double precision, OUT "max_exec_time" double precision, OUT "mean_exec_time" double precision, OUT "stddev_exec_time" double precision, OUT "rows" bigint, OUT "shared_blks_hit" bigint, OUT "shared_blks_read" bigint, OUT "shared_blks_dirtied" bigint, OUT "shared_blks_written" bigint, OUT "local_blks_hit" bigint, OUT "local_blks_read" bigint, OUT "local_blks_dirtied" bigint, OUT "local_blks_written" bigint, OUT "temp_blks_read" bigint, OUT "temp_blks_written" bigint, OUT "shared_blk_read_time" double precision, OUT "shared_blk_write_time" double precision, OUT "local_blk_read_time" double precision, OUT "local_blk_write_time" double precision, OUT "temp_blk_read_time" double precision, OUT "temp_blk_write_time" double precision, OUT "wal_records" bigint, OUT "wal_fpi" bigint, OUT "wal_bytes" numeric, OUT "jit_functions" bigint, OUT "jit_generation_time" double precision, OUT "jit_inlining_count" bigint, OUT "jit_inlining_time" double precision, OUT "jit_optimization_count" bigint, OUT "jit_optimization_time" double precision, OUT "jit_emission_count" bigint, OUT "jit_emission_time" double precision, OUT "jit_deform_count" bigint, OUT "jit_deform_time" double precision, OUT "stats_since" timestamp with time zone, OUT "minmax_stats_since" timestamp with time zone) TO "dashboard_user";
 
 
@@ -2927,7 +2917,7 @@ GRANT ALL ON FUNCTION "extensions"."pg_stat_statements"("showtext" boolean, OUT 
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pg_stat_statements_info"(OUT "dealloc" bigint, OUT "stats_reset" timestamp with time zone) FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pg_stat_statements_info"(OUT "dealloc" bigint, OUT "stats_reset" timestamp with time zone) TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pg_stat_statements_info"(OUT "dealloc" bigint, OUT "stats_reset" timestamp with time zone) TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pg_stat_statements_info"(OUT "dealloc" bigint, OUT "stats_reset" timestamp with time zone) TO "dashboard_user";
 
 
@@ -2936,7 +2926,7 @@ GRANT ALL ON FUNCTION "extensions"."pg_stat_statements_info"(OUT "dealloc" bigin
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pg_stat_statements_reset"("userid" "oid", "dbid" "oid", "queryid" bigint, "minmax_only" boolean) FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pg_stat_statements_reset"("userid" "oid", "dbid" "oid", "queryid" bigint, "minmax_only" boolean) TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pg_stat_statements_reset"("userid" "oid", "dbid" "oid", "queryid" bigint, "minmax_only" boolean) TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pg_stat_statements_reset"("userid" "oid", "dbid" "oid", "queryid" bigint, "minmax_only" boolean) TO "dashboard_user";
 
 
@@ -2945,7 +2935,7 @@ GRANT ALL ON FUNCTION "extensions"."pg_stat_statements_reset"("userid" "oid", "d
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_armor_headers"("text", OUT "key" "text", OUT "value" "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_armor_headers"("text", OUT "key" "text", OUT "value" "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_armor_headers"("text", OUT "key" "text", OUT "value" "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_armor_headers"("text", OUT "key" "text", OUT "value" "text") TO "dashboard_user";
 
 
@@ -2954,7 +2944,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_armor_headers"("text", OUT "key" "text",
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_key_id"("bytea") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_key_id"("bytea") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_key_id"("bytea") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_key_id"("bytea") TO "dashboard_user";
 
 
@@ -2963,7 +2953,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_key_id"("bytea") TO "dashboard_user";
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_pub_decrypt"("bytea", "bytea") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt"("bytea", "bytea") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt"("bytea", "bytea") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt"("bytea", "bytea") TO "dashboard_user";
 
 
@@ -2972,7 +2962,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt"("bytea", "bytea") TO "dashb
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_pub_decrypt"("bytea", "bytea", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt"("bytea", "bytea", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt"("bytea", "bytea", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt"("bytea", "bytea", "text") TO "dashboard_user";
 
 
@@ -2981,7 +2971,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt"("bytea", "bytea", "text") T
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_pub_decrypt"("bytea", "bytea", "text", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt"("bytea", "bytea", "text", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt"("bytea", "bytea", "text", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt"("bytea", "bytea", "text", "text") TO "dashboard_user";
 
 
@@ -2990,7 +2980,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt"("bytea", "bytea", "text", "
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_pub_decrypt_bytea"("bytea", "bytea") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt_bytea"("bytea", "bytea") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt_bytea"("bytea", "bytea") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt_bytea"("bytea", "bytea") TO "dashboard_user";
 
 
@@ -2999,7 +2989,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt_bytea"("bytea", "bytea") TO 
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_pub_decrypt_bytea"("bytea", "bytea", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt_bytea"("bytea", "bytea", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt_bytea"("bytea", "bytea", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt_bytea"("bytea", "bytea", "text") TO "dashboard_user";
 
 
@@ -3008,7 +2998,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt_bytea"("bytea", "bytea", "te
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_pub_decrypt_bytea"("bytea", "bytea", "text", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt_bytea"("bytea", "bytea", "text", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt_bytea"("bytea", "bytea", "text", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt_bytea"("bytea", "bytea", "text", "text") TO "dashboard_user";
 
 
@@ -3017,7 +3007,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_pub_decrypt_bytea"("bytea", "bytea", "te
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_pub_encrypt"("text", "bytea") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_pub_encrypt"("text", "bytea") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_pub_encrypt"("text", "bytea") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_pub_encrypt"("text", "bytea") TO "dashboard_user";
 
 
@@ -3026,7 +3016,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_pub_encrypt"("text", "bytea") TO "dashbo
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_pub_encrypt"("text", "bytea", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_pub_encrypt"("text", "bytea", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_pub_encrypt"("text", "bytea", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_pub_encrypt"("text", "bytea", "text") TO "dashboard_user";
 
 
@@ -3035,7 +3025,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_pub_encrypt"("text", "bytea", "text") TO
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_pub_encrypt_bytea"("bytea", "bytea") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_pub_encrypt_bytea"("bytea", "bytea") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_pub_encrypt_bytea"("bytea", "bytea") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_pub_encrypt_bytea"("bytea", "bytea") TO "dashboard_user";
 
 
@@ -3044,7 +3034,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_pub_encrypt_bytea"("bytea", "bytea") TO 
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_pub_encrypt_bytea"("bytea", "bytea", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_pub_encrypt_bytea"("bytea", "bytea", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_pub_encrypt_bytea"("bytea", "bytea", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_pub_encrypt_bytea"("bytea", "bytea", "text") TO "dashboard_user";
 
 
@@ -3053,7 +3043,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_pub_encrypt_bytea"("bytea", "bytea", "te
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_sym_decrypt"("bytea", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_sym_decrypt"("bytea", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_sym_decrypt"("bytea", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_sym_decrypt"("bytea", "text") TO "dashboard_user";
 
 
@@ -3062,7 +3052,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_sym_decrypt"("bytea", "text") TO "dashbo
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_sym_decrypt"("bytea", "text", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_sym_decrypt"("bytea", "text", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_sym_decrypt"("bytea", "text", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_sym_decrypt"("bytea", "text", "text") TO "dashboard_user";
 
 
@@ -3071,7 +3061,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_sym_decrypt"("bytea", "text", "text") TO
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_sym_decrypt_bytea"("bytea", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_sym_decrypt_bytea"("bytea", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_sym_decrypt_bytea"("bytea", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_sym_decrypt_bytea"("bytea", "text") TO "dashboard_user";
 
 
@@ -3080,7 +3070,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_sym_decrypt_bytea"("bytea", "text") TO "
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_sym_decrypt_bytea"("bytea", "text", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_sym_decrypt_bytea"("bytea", "text", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_sym_decrypt_bytea"("bytea", "text", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_sym_decrypt_bytea"("bytea", "text", "text") TO "dashboard_user";
 
 
@@ -3089,7 +3079,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_sym_decrypt_bytea"("bytea", "text", "tex
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_sym_encrypt"("text", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_sym_encrypt"("text", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_sym_encrypt"("text", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_sym_encrypt"("text", "text") TO "dashboard_user";
 
 
@@ -3098,7 +3088,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_sym_encrypt"("text", "text") TO "dashboa
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_sym_encrypt"("text", "text", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_sym_encrypt"("text", "text", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_sym_encrypt"("text", "text", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_sym_encrypt"("text", "text", "text") TO "dashboard_user";
 
 
@@ -3107,7 +3097,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_sym_encrypt"("text", "text", "text") TO 
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_sym_encrypt_bytea"("bytea", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_sym_encrypt_bytea"("bytea", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_sym_encrypt_bytea"("bytea", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_sym_encrypt_bytea"("bytea", "text") TO "dashboard_user";
 
 
@@ -3116,7 +3106,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_sym_encrypt_bytea"("bytea", "text") TO "
 --
 
 REVOKE ALL ON FUNCTION "extensions"."pgp_sym_encrypt_bytea"("bytea", "text", "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."pgp_sym_encrypt_bytea"("bytea", "text", "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."pgp_sym_encrypt_bytea"("bytea", "text", "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."pgp_sym_encrypt_bytea"("bytea", "text", "text") TO "dashboard_user";
 
 
@@ -3125,7 +3115,7 @@ GRANT ALL ON FUNCTION "extensions"."pgp_sym_encrypt_bytea"("bytea", "text", "tex
 --
 
 REVOKE ALL ON FUNCTION "extensions"."uuid_generate_v1"() FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."uuid_generate_v1"() TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."uuid_generate_v1"() TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."uuid_generate_v1"() TO "dashboard_user";
 
 
@@ -3134,7 +3124,7 @@ GRANT ALL ON FUNCTION "extensions"."uuid_generate_v1"() TO "dashboard_user";
 --
 
 REVOKE ALL ON FUNCTION "extensions"."uuid_generate_v1mc"() FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."uuid_generate_v1mc"() TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."uuid_generate_v1mc"() TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."uuid_generate_v1mc"() TO "dashboard_user";
 
 
@@ -3143,7 +3133,7 @@ GRANT ALL ON FUNCTION "extensions"."uuid_generate_v1mc"() TO "dashboard_user";
 --
 
 REVOKE ALL ON FUNCTION "extensions"."uuid_generate_v3"("namespace" "uuid", "name" "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."uuid_generate_v3"("namespace" "uuid", "name" "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."uuid_generate_v3"("namespace" "uuid", "name" "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."uuid_generate_v3"("namespace" "uuid", "name" "text") TO "dashboard_user";
 
 
@@ -3152,7 +3142,7 @@ GRANT ALL ON FUNCTION "extensions"."uuid_generate_v3"("namespace" "uuid", "name"
 --
 
 REVOKE ALL ON FUNCTION "extensions"."uuid_generate_v4"() FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."uuid_generate_v4"() TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."uuid_generate_v4"() TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."uuid_generate_v4"() TO "dashboard_user";
 
 
@@ -3161,7 +3151,7 @@ GRANT ALL ON FUNCTION "extensions"."uuid_generate_v4"() TO "dashboard_user";
 --
 
 REVOKE ALL ON FUNCTION "extensions"."uuid_generate_v5"("namespace" "uuid", "name" "text") FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."uuid_generate_v5"("namespace" "uuid", "name" "text") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."uuid_generate_v5"("namespace" "uuid", "name" "text") TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."uuid_generate_v5"("namespace" "uuid", "name" "text") TO "dashboard_user";
 
 
@@ -3170,7 +3160,7 @@ GRANT ALL ON FUNCTION "extensions"."uuid_generate_v5"("namespace" "uuid", "name"
 --
 
 REVOKE ALL ON FUNCTION "extensions"."uuid_nil"() FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."uuid_nil"() TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."uuid_nil"() TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."uuid_nil"() TO "dashboard_user";
 
 
@@ -3179,7 +3169,7 @@ GRANT ALL ON FUNCTION "extensions"."uuid_nil"() TO "dashboard_user";
 --
 
 REVOKE ALL ON FUNCTION "extensions"."uuid_ns_dns"() FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."uuid_ns_dns"() TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."uuid_ns_dns"() TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."uuid_ns_dns"() TO "dashboard_user";
 
 
@@ -3188,7 +3178,7 @@ GRANT ALL ON FUNCTION "extensions"."uuid_ns_dns"() TO "dashboard_user";
 --
 
 REVOKE ALL ON FUNCTION "extensions"."uuid_ns_oid"() FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."uuid_ns_oid"() TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."uuid_ns_oid"() TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."uuid_ns_oid"() TO "dashboard_user";
 
 
@@ -3197,7 +3187,7 @@ GRANT ALL ON FUNCTION "extensions"."uuid_ns_oid"() TO "dashboard_user";
 --
 
 REVOKE ALL ON FUNCTION "extensions"."uuid_ns_url"() FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."uuid_ns_url"() TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."uuid_ns_url"() TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."uuid_ns_url"() TO "dashboard_user";
 
 
@@ -3206,7 +3196,7 @@ GRANT ALL ON FUNCTION "extensions"."uuid_ns_url"() TO "dashboard_user";
 --
 
 REVOKE ALL ON FUNCTION "extensions"."uuid_ns_x500"() FROM "postgres";
-GRANT ALL ON FUNCTION "extensions"."uuid_ns_x500"() TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "extensions"."uuid_ns_x500"() TO "postgres";
 GRANT ALL ON FUNCTION "extensions"."uuid_ns_x500"() TO "dashboard_user";
 
 
@@ -3260,7 +3250,7 @@ GRANT ALL ON FUNCTION "public"."update_updated_at_column"() TO "service_role";
 -- Name: FUNCTION "_crypto_aead_det_decrypt"("message" "bytea", "additional" "bytea", "key_id" bigint, "context" "bytea", "nonce" "bytea"); Type: ACL; Schema: vault; Owner: supabase_admin
 --
 
-GRANT ALL ON FUNCTION "vault"."_crypto_aead_det_decrypt"("message" "bytea", "additional" "bytea", "key_id" bigint, "context" "bytea", "nonce" "bytea") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "vault"."_crypto_aead_det_decrypt"("message" "bytea", "additional" "bytea", "key_id" bigint, "context" "bytea", "nonce" "bytea") TO "postgres";
 GRANT ALL ON FUNCTION "vault"."_crypto_aead_det_decrypt"("message" "bytea", "additional" "bytea", "key_id" bigint, "context" "bytea", "nonce" "bytea") TO "service_role";
 
 
@@ -3268,7 +3258,7 @@ GRANT ALL ON FUNCTION "vault"."_crypto_aead_det_decrypt"("message" "bytea", "add
 -- Name: FUNCTION "create_secret"("new_secret" "text", "new_name" "text", "new_description" "text", "new_key_id" "uuid"); Type: ACL; Schema: vault; Owner: supabase_admin
 --
 
-GRANT ALL ON FUNCTION "vault"."create_secret"("new_secret" "text", "new_name" "text", "new_description" "text", "new_key_id" "uuid") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "vault"."create_secret"("new_secret" "text", "new_name" "text", "new_description" "text", "new_key_id" "uuid") TO "postgres";
 GRANT ALL ON FUNCTION "vault"."create_secret"("new_secret" "text", "new_name" "text", "new_description" "text", "new_key_id" "uuid") TO "service_role";
 
 
@@ -3276,7 +3266,7 @@ GRANT ALL ON FUNCTION "vault"."create_secret"("new_secret" "text", "new_name" "t
 -- Name: FUNCTION "update_secret"("secret_id" "uuid", "new_secret" "text", "new_name" "text", "new_description" "text", "new_key_id" "uuid"); Type: ACL; Schema: vault; Owner: supabase_admin
 --
 
-GRANT ALL ON FUNCTION "vault"."update_secret"("secret_id" "uuid", "new_secret" "text", "new_name" "text", "new_description" "text", "new_key_id" "uuid") TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON FUNCTION "vault"."update_secret"("secret_id" "uuid", "new_secret" "text", "new_name" "text", "new_description" "text", "new_key_id" "uuid") TO "postgres";
 GRANT ALL ON FUNCTION "vault"."update_secret"("secret_id" "uuid", "new_secret" "text", "new_name" "text", "new_description" "text", "new_key_id" "uuid") TO "service_role";
 
 
@@ -3285,7 +3275,7 @@ GRANT ALL ON FUNCTION "vault"."update_secret"("secret_id" "uuid", "new_secret" "
 --
 
 REVOKE ALL ON TABLE "extensions"."pg_stat_statements" FROM "postgres";
-GRANT ALL ON TABLE "extensions"."pg_stat_statements" TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON TABLE "extensions"."pg_stat_statements" TO "postgres";
 GRANT ALL ON TABLE "extensions"."pg_stat_statements" TO "dashboard_user";
 
 
@@ -3294,7 +3284,7 @@ GRANT ALL ON TABLE "extensions"."pg_stat_statements" TO "dashboard_user";
 --
 
 REVOKE ALL ON TABLE "extensions"."pg_stat_statements_info" FROM "postgres";
-GRANT ALL ON TABLE "extensions"."pg_stat_statements_info" TO "postgres" WITH GRANT OPTION;
+GRANT ALL ON TABLE "extensions"."pg_stat_statements_info" TO "postgres";
 GRANT ALL ON TABLE "extensions"."pg_stat_statements_info" TO "dashboard_user";
 
 
@@ -3599,7 +3589,7 @@ GRANT ALL ON TABLE "public"."user_notification_settings" TO "service_role";
 -- Name: TABLE "secrets"; Type: ACL; Schema: vault; Owner: supabase_admin
 --
 
-GRANT SELECT,REFERENCES,DELETE,TRUNCATE ON TABLE "vault"."secrets" TO "postgres" WITH GRANT OPTION;
+GRANT SELECT,REFERENCES,DELETE,TRUNCATE ON TABLE "vault"."secrets" TO "postgres";
 GRANT SELECT,DELETE ON TABLE "vault"."secrets" TO "service_role";
 
 
@@ -3607,7 +3597,7 @@ GRANT SELECT,DELETE ON TABLE "vault"."secrets" TO "service_role";
 -- Name: TABLE "decrypted_secrets"; Type: ACL; Schema: vault; Owner: supabase_admin
 --
 
-GRANT SELECT,REFERENCES,DELETE,TRUNCATE ON TABLE "vault"."decrypted_secrets" TO "postgres" WITH GRANT OPTION;
+GRANT SELECT,REFERENCES,DELETE,TRUNCATE ON TABLE "vault"."decrypted_secrets" TO "postgres";
 GRANT SELECT,DELETE ON TABLE "vault"."decrypted_secrets" TO "service_role";
 
 
@@ -3615,129 +3605,11 @@ GRANT SELECT,DELETE ON TABLE "vault"."decrypted_secrets" TO "service_role";
 -- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: postgres
 --
 
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "service_role";
+-- Skipped: ALTER DEFAULT PRIVILEGES requires elevated permissions; Supabase already configures these.
 
 
 --
--- Name: DEFAULT PRIVILEGES FOR SEQUENCES; Type: DEFAULT ACL; Schema: public; Owner: supabase_admin
---
-
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "service_role";
-
-
---
--- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: postgres
---
-
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "service_role";
-
-
---
--- Name: DEFAULT PRIVILEGES FOR FUNCTIONS; Type: DEFAULT ACL; Schema: public; Owner: supabase_admin
---
-
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON FUNCTIONS TO "service_role";
-
-
---
--- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: postgres
---
-
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
-
---
--- Name: DEFAULT PRIVILEGES FOR TABLES; Type: DEFAULT ACL; Schema: public; Owner: supabase_admin
---
-
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON TABLES TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "supabase_admin" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
-
-
---
--- Name: issue_graphql_placeholder; Type: EVENT TRIGGER; Schema: -; Owner: supabase_admin
---
-
-CREATE EVENT TRIGGER "issue_graphql_placeholder" ON "sql_drop"
-         WHEN TAG IN ('DROP EXTENSION')
-   EXECUTE FUNCTION "extensions"."set_graphql_placeholder"();
-
-
-ALTER EVENT TRIGGER "issue_graphql_placeholder" OWNER TO "supabase_admin";
-
---
--- Name: issue_pg_cron_access; Type: EVENT TRIGGER; Schema: -; Owner: supabase_admin
---
-
-CREATE EVENT TRIGGER "issue_pg_cron_access" ON "ddl_command_end"
-         WHEN TAG IN ('CREATE EXTENSION')
-   EXECUTE FUNCTION "extensions"."grant_pg_cron_access"();
-
-
-ALTER EVENT TRIGGER "issue_pg_cron_access" OWNER TO "supabase_admin";
-
---
--- Name: issue_pg_graphql_access; Type: EVENT TRIGGER; Schema: -; Owner: supabase_admin
---
-
-CREATE EVENT TRIGGER "issue_pg_graphql_access" ON "ddl_command_end"
-         WHEN TAG IN ('CREATE FUNCTION')
-   EXECUTE FUNCTION "extensions"."grant_pg_graphql_access"();
-
-
-ALTER EVENT TRIGGER "issue_pg_graphql_access" OWNER TO "supabase_admin";
-
---
--- Name: issue_pg_net_access; Type: EVENT TRIGGER; Schema: -; Owner: supabase_admin
---
-
-CREATE EVENT TRIGGER "issue_pg_net_access" ON "ddl_command_end"
-         WHEN TAG IN ('CREATE EXTENSION')
-   EXECUTE FUNCTION "extensions"."grant_pg_net_access"();
-
-
-ALTER EVENT TRIGGER "issue_pg_net_access" OWNER TO "supabase_admin";
-
---
--- Name: pgrst_ddl_watch; Type: EVENT TRIGGER; Schema: -; Owner: supabase_admin
---
-
-CREATE EVENT TRIGGER "pgrst_ddl_watch" ON "ddl_command_end"
-   EXECUTE FUNCTION "extensions"."pgrst_ddl_watch"();
-
-
-ALTER EVENT TRIGGER "pgrst_ddl_watch" OWNER TO "supabase_admin";
-
---
--- Name: pgrst_drop_watch; Type: EVENT TRIGGER; Schema: -; Owner: supabase_admin
---
-
-CREATE EVENT TRIGGER "pgrst_drop_watch" ON "sql_drop"
-   EXECUTE FUNCTION "extensions"."pgrst_drop_watch"();
-
-
-ALTER EVENT TRIGGER "pgrst_drop_watch" OWNER TO "supabase_admin";
-
+-- EVENT TRIGGERS: Supabase создаёт их автоматически, пропускаем.
 --
 -- PostgreSQL database dump complete
 --
-
-\unrestrict bh7zIOMzs1oPHFa30WY5aQHVuRjpeYx2uA0tdyOIlmfbeoyc0eChTPENAOT0iYZ
-

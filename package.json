@@ -4,6 +4,8 @@
   "version": "1.2.0",
   "type": "module",
   "scripts": {
+    "migrate": "node supabase-export/migrate-api.mjs",
+    "migrate:db": "NODE_TLS_REJECT_UNAUTHORIZED=0 node supabase-export/migrate.mjs",
     "dev": "vite",
     "dev:wallet": "vite --config vite.wallet.config.ts",
     "build": "tsc -b && vite build",

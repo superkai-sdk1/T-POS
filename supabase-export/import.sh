@@ -31,8 +31,9 @@ elif [ -n "$SUPABASE_DB_PASSWORD" ] && [ -n "$VITE_SUPABASE_URL" ]; then
   PROJECT_REF=$(echo "$VITE_SUPABASE_URL" | sed -E 's|https://([^.]+)\.supabase\.co.*|\1|')
   # Сначала пробуем pooler (eu-west-1), если не указан регион
   REGION="${SUPABASE_DB_REGION:-eu-west-1}"
-  # Pooler: user=postgres.PROJECT_REF. Fallback: direct connection.
-  DB_URL="postgresql://postgres.${PROJECT_REF}:${SUPABASE_DB_PASSWORD}@aws-0-${REGION}.pooler.supabase.com:5432/postgres?sslmode=require"
+  POOLER="${SUPABASE_DB_POOLER:-aws-1}"
+  # Pooler: user=postgres.PROJECT_REF
+  DB_URL="postgresql://postgres.${PROJECT_REF}:${SUPABASE_DB_PASSWORD}@${POOLER}-${REGION}.pooler.supabase.com:5432/postgres?sslmode=require"
 else
   echo "Ошибка: нужен SUPABASE_DB_URL или (SUPABASE_DB_PASSWORD + VITE_SUPABASE_URL) в .env"
   echo ""
@@ -57,13 +58,19 @@ strip_restrict schema.sql | psql "$DB_URL" -v ON_ERROR_STOP=0 -q 2>/dev/null || 
 echo "Схема применена (игнорируем ошибки 'already exists')."
 
 # 2. Импортируем данные
-echo "Шаг 2/2: Импорт данных (data.sql)..."
-strip_restrict data.sql | psql "$DB_URL" -v ON_ERROR_STOP=1 -q && echo "Данные импортированы." || {
-  echo "Ошибка при импорте данных. Проверьте:"
-  echo "  - Существуют ли таблицы (схема применена)"
-  echo "  - Нет ли конфликтов с существующими данными"
+echo "Шаг 2/2: Импорт данных..."
+if strip_restrict data.sql | psql "$DB_URL" -v ON_ERROR_STOP=1 -q 2>/dev/null; then
+  echo "Данные импортированы (data.sql)."
+elif [ -f data-insert.sql ]; then
+  echo "Пробуем data-insert.sql..."
+  strip_restrict data-insert.sql | psql "$DB_URL" -v ON_ERROR_STOP=1 -q && echo "Данные импортированы (data-insert.sql)." || {
+    echo "Ошибка при импорте данных."
+    exit 1
+  }
+else
+  echo "Ошибка: data.sql и data-insert.sql не найдены."
   exit 1
-}
+fi
 
 echo ""
 echo "=== Миграция завершена ==="

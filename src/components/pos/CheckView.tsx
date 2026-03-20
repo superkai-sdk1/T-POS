@@ -478,18 +478,28 @@ export function CheckView({ onBack }: CheckViewProps) {
     const d = new Date(iso);
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   };
-  // Helper: build ISO string from today's date + HH:MM, handling midnight crossing
-  const fromTimeInput = (hhmm: string): string => {
-    const now = new Date();
+  // Helper: build ISO string taking into account cross-midnight shifts
+  const fromTimeInput = (hhmm: string, referenceIso: string, isEndTime: boolean = false): string => {
+    const base = new Date(referenceIso);
     const [h, m] = hhmm.split(':').map(Number);
-    now.setHours(h, m, 0, 0);
-    // If entered time is > 12 hours in the future, it likely means yesterday (e.g. entered 23:00 but it's 00:30 now)
-    if (now.getTime() - Date.now() > 12 * 60 * 60 * 1000) {
-      now.setDate(now.getDate() - 1);
+    const res = new Date(base);
+    res.setHours(h, m, 0, 0);
+
+    // If setting start time, and it's > 12h ahead of check creation, it probably means yesterday.
+    // E.g. check created at 00:30, user enters 23:00 start time.
+    if (!isEndTime) {
+      if (res.getTime() - base.getTime() > 12 * 60 * 60 * 1000) {
+        res.setDate(res.getDate() - 1);
+      }
+    } 
+    // If setting end time, it must be AFTER the start time.
+    // E.g. start is 23:00, user enters 03:00 end time -> 03:00 must be tomorrow relative to start.
+    else {
+      if (res.getTime() < base.getTime()) {
+        res.setDate(res.getDate() + 1);
+      }
     }
-    // If entered time is > 12 hours in the past, it might mean tomorrow? Usually not needed for POS, 
-    // but yesterday handling is crucial for night shifts.
-    return now.toISOString();
+    return res.toISOString();
   };
 
   const saveSpaceStartAt = useCallback(async (iso: string) => {
@@ -1144,7 +1154,7 @@ export function CheckView({ onBack }: CheckViewProps) {
                   <button
                     onClick={async () => {
                       if (startTimeInput) {
-                        const iso = fromTimeInput(startTimeInput);
+                        const iso = fromTimeInput(startTimeInput, activeCheck.created_at, false);
                         await saveSpaceStartAt(iso);
                       }
                       setEditingStartTime(false);
@@ -1192,7 +1202,8 @@ export function CheckView({ onBack }: CheckViewProps) {
                   <button
                     onClick={async () => {
                       if (endTimeInput) {
-                        const iso = fromTimeInput(endTimeInput);
+                        const baseIso = activeCheck.space_start_at ?? activeCheck.created_at;
+                        const iso = fromTimeInput(endTimeInput, baseIso, true);
                         await saveSpaceEndAt(iso);
                       }
                       setEditingEndTime(false);
