@@ -30,33 +30,10 @@ CREATE TABLE IF NOT EXISTS tablet_order_items (
   quantity NUMERIC NOT NULL CHECK (quantity > 0)
 );
 
--- RLS Settings
-ALTER TABLE tablet_orders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE tablet_order_items ENABLE ROW LEVEL SECURITY;
-
--- Clean up existing policies if they exist (idempotent run)
-DROP POLICY IF EXISTS "Tablets can view their own orders" ON tablet_orders;
-DROP POLICY IF EXISTS "Tablets can insert orders" ON tablet_orders;
-DROP POLICY IF EXISTS "Staff can update orders" ON tablet_orders;
-DROP POLICY IF EXISTS "Tablets can view items from their orders" ON tablet_order_items;
-DROP POLICY IF EXISTS "Tablets can insert items" ON tablet_order_items;
-
--- Allow tablets to insert their own orders and read them
-CREATE POLICY "Tablets can view their own orders" ON tablet_orders
-  FOR SELECT USING (auth.uid() = profile_id OR auth.uid() IN (SELECT id FROM profiles WHERE role IN ('owner', 'staff')));
-
-CREATE POLICY "Tablets can insert orders" ON tablet_orders
-  FOR INSERT WITH CHECK (auth.uid() = profile_id);
-
-CREATE POLICY "Staff can update orders" ON tablet_orders
-  FOR UPDATE USING (auth.uid() IN (SELECT id FROM profiles WHERE role IN ('owner', 'staff')));
-
--- Items policies
-CREATE POLICY "Tablets can view items from their orders" ON tablet_order_items
-  FOR SELECT USING (order_id IN (SELECT id FROM tablet_orders WHERE profile_id = auth.uid()) OR auth.uid() IN (SELECT id FROM profiles WHERE role IN ('owner', 'staff')));
-
-CREATE POLICY "Tablets can insert items" ON tablet_order_items
-  FOR INSERT WITH CHECK (order_id IN (SELECT id FROM tablet_orders WHERE profile_id = auth.uid()));
+-- RLS disabled: app uses custom auth (password/PIN), not Supabase Auth.
+-- auth.uid() is always NULL, so RLS policies based on it would block all operations.
+ALTER TABLE tablet_orders DISABLE ROW LEVEL SECURITY;
+ALTER TABLE tablet_order_items DISABLE ROW LEVEL SECURITY;
 
 -- Realtime publication for orders (safe to ignore if already exists)
 DO $$
