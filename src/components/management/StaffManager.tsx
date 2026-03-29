@@ -56,7 +56,7 @@ export function StaffManager() {
   const loadStaff = useCallback(async () => {
     const { data } = await supabase
       .from('profiles')
-      .select('*, linked_space:spaces!profiles_linked_space_id_fkey(id, name)')
+      .select('*, linked_space:spaces(*)')
       .in('role', ['staff', 'owner', 'tablet'])
       .order('role')
       .order('nickname');

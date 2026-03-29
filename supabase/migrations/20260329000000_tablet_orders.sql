@@ -4,6 +4,9 @@
 ALTER TABLE inventory ADD COLUMN IF NOT EXISTS is_tablet_visible BOOLEAN DEFAULT true;
 ALTER TABLE menu_categories ADD COLUMN IF NOT EXISTS is_tablet_visible BOOLEAN DEFAULT true;
 
+-- 1.5 Add tablet to user_role enum
+ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'tablet';
+
 -- 2. Link profile to a space (for Tablet auth roles)
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS linked_space_id UUID REFERENCES spaces(id) ON DELETE SET NULL;
 
