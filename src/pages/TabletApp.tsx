@@ -6,13 +6,16 @@ import { useAllMenuCategories, getIconComponent, getCategoryColorConfig } from '
 import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
 import { ListSkeleton } from '@/components/ui/Skeleton';
-import { Plus, Minus, ShoppingCart, LogOut, ChevronLeft, Send, Check } from 'lucide-react';
+import { Plus, Minus, ShoppingCart, LogOut, ChevronLeft, Send, Check, Bell, Receipt, Clock, XCircle } from 'lucide-react';
 import type { InventoryItem, MenuCategory } from '@/types';
 
 export function TabletApp() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
-  const { cart, comment, addComment, addToCart, removeFromCart, updateQuantity, submitOrder, isSubmitting } = useTabletStore();
+  const { 
+    cart, comment, addComment, addToCart, removeFromCart, updateQuantity, submitOrder, isSubmitting,
+    myOrders, currentCheckTotal, subscribeToMyOrders, callStaff
+  } = useTabletStore();
 
   const { categories, loading: catLoading } = useAllMenuCategories();
   const [items, setItems] = useState<InventoryItem[]>([]);
@@ -20,6 +23,14 @@ export function TabletApp() {
 
   const [activeCategory, setActiveCategory] = useState<MenuCategory | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isMyOrdersOpen, setIsMyOrdersOpen] = useState(false);
+  const [isCalling, setIsCalling] = useState<'waiter'|'check'|null>(null);
+
+  useEffect(() => {
+    if (user?.linked_space_id && user?.id) {
+      return subscribeToMyOrders(user.linked_space_id, user.id);
+    }
+  }, [subscribeToMyOrders, user?.linked_space_id, user?.id]);
 
   useEffect(() => {
     async function loadItems() {
@@ -67,6 +78,13 @@ export function TabletApp() {
     if (ok) setIsCartOpen(false);
   };
 
+  const handleCall = async (type: 'waiter' | 'check') => {
+    if (!user?.linked_space_id || !user?.id) return;
+    setIsCalling(type);
+    await callStaff(user.linked_space_id, user.id, type);
+    setIsCalling(null);
+  };
+
   if (catLoading || itemsLoading) return <ListSkeleton rows={5} />;
 
   return (
@@ -86,16 +104,35 @@ export function TabletApp() {
             <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
               {activeCategory ? activeCategory.name : 'Меню заведения'}
             </h1>
-            <p className="text-[11px] sm:text-sm text-[var(--c-muted)] font-medium">Кабинка: {user?.linked_space?.name || 'Не привязано'}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] sm:text-sm text-[var(--c-muted)] font-medium">Кабинка: {user?.linked_space?.name || 'Не привязано'}</p>
+              {currentCheckTotal !== null && currentCheckTotal > 0 && (
+                <span className="text-[10px] sm:text-xs font-black bg-[var(--c-surface-hover)] border border-[var(--c-border)] px-2 py-0.5 rounded-full text-[var(--c-text)]">
+                  Счёт: {currentCheckTotal} ₽
+                </span>
+              )}
+            </div>
           </div>
         </div>
-        <button
-          onClick={logout}
-          className="p-3 sm:px-4 rounded-xl font-bold bg-[var(--c-bg)] border border-[var(--c-border)] text-[var(--c-hint)] hover:text-red-400 active:scale-95 transition-all text-xs flex items-center gap-2"
-        >
-          <LogOut className="w-4 h-4" />
-          <span className="hidden sm:inline">Выход</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsMyOrdersOpen(true)}
+            className="p-3 sm:px-4 rounded-xl font-bold bg-[var(--c-bg)] border border-[var(--c-border)] text-[var(--c-hint)] hover:text-[var(--c-text)] active:scale-95 transition-all text-xs flex items-center gap-2"
+          >
+            <Clock className="w-4 h-4" />
+            <span className="hidden sm:inline">Мои заказы</span>
+            {myOrders.length > 0 && (
+              <span className="bg-[var(--c-accent)] text-white shrink-0 w-5 h-5 flex items-center justify-center rounded-full text-[10px]">{myOrders.length}</span>
+            )}
+          </button>
+          <button
+            onClick={logout}
+            className="p-3 sm:px-4 rounded-xl font-bold bg-[var(--c-bg)] border border-[var(--c-border)] text-[var(--c-hint)] hover:text-red-400 active:scale-95 transition-all text-xs flex items-center gap-2"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Выход</span>
+          </button>
+        </div>
       </header>
 
       {/* MAIN CONTENT AREA */}
@@ -141,12 +178,22 @@ export function TabletApp() {
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
               {currentItems.map((item) => {
+                const isOutOfStock = item.track_stock && item.stock_quantity <= 0;
                 const inCart = cart.find((c) => c.item.id === item.id);
                 return (
                   <div
                     key={item.id}
-                    className="flex flex-col rounded-3xl bg-[var(--c-surface)] border border-[var(--c-border)] p-3 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+                    className={`flex flex-col rounded-3xl border p-3 shadow-sm transition-shadow relative overflow-hidden ${
+                      isOutOfStock ? 'bg-[var(--c-bg)] border-[var(--c-border)] opacity-60 grayscale-[0.5]' : 'bg-[var(--c-surface)] border-[var(--c-border)] hover:shadow-md'
+                    }`}
                   >
+                    {isOutOfStock && (
+                      <div className="absolute inset-x-0 top-1/3 z-10 flex justify-center -translate-y-1/2">
+                        <span className="bg-red-500 text-white font-black uppercase tracking-widest text-[10px] px-3 py-1 rounded-xl shadow-lg border border-red-400 rotate-[-5deg]">
+                          Нет в наличии
+                        </span>
+                      </div>
+                    )}
                     {item.image_url ? (
                       <div className="w-full aspect-square rounded-2xl mb-3 overflow-hidden bg-[var(--c-bg)] ring-1 ring-inset ring-[var(--c-border)]">
                         <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
@@ -186,7 +233,12 @@ export function TabletApp() {
                       ) : (
                         <button
                           onClick={() => addToCart(item)}
-                          className="w-full h-12 rounded-xl bg-[var(--c-surface)] border-2 border-[var(--c-border)] active:scale-[0.98] active:bg-[var(--c-surface-hover)] transition-all font-bold text-sm text-[var(--c-text)] flex items-center justify-center gap-2"
+                          disabled={isOutOfStock}
+                          className={`w-full h-12 rounded-xl border-2 active:scale-[0.98] transition-all font-bold text-sm flex items-center justify-center gap-2 ${
+                            isOutOfStock 
+                              ? 'bg-[var(--c-bg)] border-[var(--c-border)] text-[var(--c-muted)]' 
+                              : 'bg-[var(--c-surface)] border-[var(--c-border)] active:bg-[var(--c-surface-hover)] text-[var(--c-text)]'
+                          }`}
                         >
                           <Plus className="w-5 h-5" />
                           В корзину
@@ -207,6 +259,26 @@ export function TabletApp() {
           </div>
         )}
       </main>
+
+      {/* SERVICE BUTTONS (Call Waiter / Ask for Check) */}
+      <div className="fixed bottom-24 right-4 sm:bottom-6 sm:right-6 sm:left-auto flex flex-col gap-3 z-30 pointer-events-none">
+        <button
+          onClick={() => handleCall('check')}
+          disabled={isCalling === 'check'}
+          className="pointer-events-auto flex items-center justify-center bg-emerald-500 hover:bg-emerald-600 active:scale-90 text-white shadow-lg p-3 sm:p-4 rounded-2xl sm:rounded-full transition-all group"
+        >
+          {isCalling === 'check' ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Receipt className="w-6 h-6 sm:w-7 sm:h-7" />}
+          <span className="ml-0 w-0 overflow-hidden opacity-0 group-hover:w-auto group-hover:ml-3 group-hover:opacity-100 whitespace-nowrap font-bold text-sm transition-all hidden sm:inline-flex">Попросить счёт</span>
+        </button>
+        <button
+          onClick={() => handleCall('waiter')}
+          disabled={isCalling === 'waiter'}
+          className="pointer-events-auto flex items-center justify-center bg-indigo-500 hover:bg-indigo-600 active:scale-90 text-white shadow-lg p-3 sm:p-4 rounded-2xl sm:rounded-full transition-all group"
+        >
+          {isCalling === 'waiter' ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Bell className="w-6 h-6 sm:w-7 sm:h-7" />}
+          <span className="ml-0 w-0 overflow-hidden opacity-0 group-hover:w-auto group-hover:ml-3 group-hover:opacity-100 whitespace-nowrap font-bold text-sm transition-all hidden sm:inline-flex">Вызвать персонал</span>
+        </button>
+      </div>
 
       {/* FLOATING CART BUTTON */}
       {totalCount > 0 && (
@@ -304,6 +376,67 @@ export function TabletApp() {
             </button>
             {!user?.linked_space_id && (
                <p className="text-center text-red-500 text-xs mt-3 font-semibold">Нельзя сделать заказ: планшет не привязан к кабинке.</p>
+            )}
+          </div>
+        </div>
+      </Drawer>
+
+      {/* MY ORDERS DRAWER */}
+      <Drawer
+        open={isMyOrdersOpen}
+        onClose={() => setIsMyOrdersOpen(false)}
+        title="Мои текущие заказы"
+        size="md"
+      >
+        <div className="flex flex-col h-full -mx-6 -mb-6 sm:-mx-10 sm:-mb-10 bg-[var(--c-bg)]">
+          <div className="flex-1 overflow-y-auto px-6 sm:px-10 py-6 space-y-4">
+            {myOrders.length === 0 ? (
+              <div className="text-center py-20">
+                <Clock className="w-12 h-12 text-[var(--c-border)] mx-auto mb-4" />
+                <p className="text-[var(--c-hint)] font-medium">Вы еще ничего не заказывали</p>
+              </div>
+            ) : (
+              myOrders.map(order => {
+                const isSpecial = order.comment?.startsWith('[');
+                return (
+                  <div key={order.id} className="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-2xl p-4 shadow-sm">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        {isSpecial ? (
+                          <h4 className="font-bold text-[var(--c-text)] text-sm">{order.comment}</h4>
+                        ) : (
+                          <h4 className="font-bold text-[var(--c-text)] text-sm">Заказ от {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</h4>
+                        )}
+                        <p className="text-[10px] text-[var(--c-muted)] mt-1 tracking-wider uppercase">Оформил: {user?.nickname}</p>
+                      </div>
+                      <div className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${
+                        order.status === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 
+                        order.status === 'accepted' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+                        'bg-red-500/10 text-red-500 border-red-500/20'
+                      }`}>
+                        {order.status === 'pending' ? 'В обработке' : order.status === 'accepted' ? 'Заказ принят' : 'Отклонён'}
+                      </div>
+                    </div>
+                    
+                    {!isSpecial && order.items && order.items.length > 0 && (
+                      <div className="space-y-2 mt-2 pt-2 border-t border-[var(--c-border)]">
+                        {order.items.map(item => (
+                          <div key={item.id} className="flex justify-between text-xs sm:text-sm">
+                            <span className="text-[var(--c-hint)]">{item.item?.name} <span className="text-[var(--c-muted)]">×{item.quantity}</span></span>
+                            <span className="font-bold text-[var(--c-text)]">{(item.item?.price || 0) * item.quantity} ₽</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {!isSpecial && order.comment && (
+                      <div className="mt-3 text-xs bg-[var(--c-bg)] p-2 rounded-lg border border-[var(--c-border)] text-[var(--c-hint)]">
+                        <span className="font-bold text-[var(--c-text)]">Вы:</span> {order.comment}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
         </div>

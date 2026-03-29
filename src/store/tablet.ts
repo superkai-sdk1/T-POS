@@ -19,10 +19,19 @@ interface TabletState {
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
   submitOrder: (spaceId: string, profileId: string) => Promise<boolean>;
+  
+  myOrders: TabletOrder[];
+  currentCheckTotal: number | null;
+  loadMyOrders: (spaceId: string, profileId: string) => Promise<void>;
+  subscribeToMyOrders: (spaceId: string, profileId: string) => () => void;
+  loadCurrentCheckTotal: (spaceId: string) => Promise<void>;
+  callStaff: (spaceId: string, profileId: string, type: 'waiter' | 'check') => Promise<boolean>;
 }
 
 export const useTabletStore = create<TabletState>((set, get) => ({
   cart: [],
+  myOrders: [],
+  currentCheckTotal: null,
   isSubmitting: false,
   error: null,
   comment: '',
@@ -108,6 +117,95 @@ export const useTabletStore = create<TabletState>((set, get) => ({
     } catch (err: any) {
       console.error('Error submitting tablet order:', err);
       set({ error: err.message, isSubmitting: false });
+      hapticNotification('error');
+      return false;
+    }
+  },
+
+  loadMyOrders: async (spaceId: string, profileId: string) => {
+    const { data } = await supabase
+      .from('tablet_orders')
+      .select(`
+        *,
+        items:tablet_order_items(
+          *,
+          item:inventory(name, price)
+        )
+      `)
+      .eq('space_id', spaceId)
+      .eq('profile_id', profileId)
+      .order('created_at', { ascending: false });
+
+    if (data) {
+      set({ myOrders: data as TabletOrder[] });
+    }
+  },
+
+  subscribeToMyOrders: (spaceId: string, profileId: string) => {
+    get().loadMyOrders(spaceId, profileId);
+
+    const channel = supabase.channel('my-tablet-orders')
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'tablet_orders',
+          filter: `profile_id=eq.${profileId}` // Can't filter multiple easily, so filter by profile
+        },
+        (payload: any) => {
+          // Check if status changed
+          const prevOrder = get().myOrders.find(o => o.id === payload.new?.id);
+          get().loadMyOrders(spaceId, profileId);
+          get().loadCurrentCheckTotal(spaceId);
+
+          if (payload.eventType === 'UPDATE' && prevOrder && prevOrder.status !== payload.new.status) {
+            if (payload.new.status === 'accepted') {
+              hapticNotification('success');
+            } else if (payload.new.status === 'rejected') {
+              hapticNotification('error');
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  },
+
+  loadCurrentCheckTotal: async (spaceId: string) => {
+    const { data } = await supabase
+      .from('checks')
+      .select('total_amount')
+      .eq('space_id', spaceId)
+      .eq('status', 'open')
+      .maybeSingle();
+      
+    set({ currentCheckTotal: data?.total_amount || 0 });
+  },
+
+  callStaff: async (spaceId: string, profileId: string, type: 'waiter' | 'check') => {
+    const cmts = {
+      waiter: '[ВЫЗОВ] Подойдите к столику',
+      check: '[СЧЁТ] Рассчитайте гостей',
+    };
+    
+    try {
+      const { error } = await supabase
+        .from('tablet_orders')
+        .insert({
+          space_id: spaceId,
+          profile_id: profileId,
+          status: 'pending',
+          comment: cmts[type],
+        });
+
+      if (error) throw error;
+      hapticNotification('success');
+      return true;
+    } catch {
       hapticNotification('error');
       return false;
     }
