@@ -26,6 +26,7 @@ interface TabletState {
   subscribeToMyOrders: (spaceId: string, profileId: string) => () => void;
   loadCurrentCheckTotal: (spaceId: string) => Promise<void>;
   callStaff: (spaceId: string, profileId: string, type: 'waiter' | 'check') => Promise<boolean>;
+  cancelOrder: (orderId: string) => Promise<boolean>;
 }
 
 export const useTabletStore = create<TabletState>((set, get) => ({
@@ -204,6 +205,27 @@ export const useTabletStore = create<TabletState>((set, get) => ({
 
       if (error) throw error;
       hapticNotification('success');
+      return true;
+    } catch {
+      hapticNotification('error');
+      return false;
+    }
+  },
+
+  cancelOrder: async (orderId: string) => {
+    try {
+      const { error } = await supabase
+        .from('tablet_orders')
+        .update({ status: 'rejected' })
+        .eq('id', orderId)
+        .eq('status', 'pending'); // can only cancel pending
+
+      if (error) throw error;
+      // Remove from local state immediately
+      set((state) => ({
+        myOrders: state.myOrders.filter((o) => o.id !== orderId),
+      }));
+      hapticNotification('warning');
       return true;
     } catch {
       hapticNotification('error');

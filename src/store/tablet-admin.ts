@@ -84,7 +84,7 @@ export const useAdminTabletStore = create<AdminTabletState>((set, get) => ({
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'tablet_orders' },
-        (payload) => {
+        () => {
           // New order!
           get().loadPendingOrders();
           set({ hasUnread: true });
@@ -96,15 +96,30 @@ export const useAdminTabletStore = create<AdminTabletState>((set, get) => ({
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'tablet_orders' },
-        (payload) => {
+        () => {
           // Status changed (accepted/rejected by someone else)
           get().loadPendingOrders();
         }
       )
       .subscribe();
 
+    // Polling fallback every 10s in case Realtime isn't working
+    const prevCount = { value: get().pendingOrders.length };
+    const pollInterval = setInterval(async () => {
+      await get().loadPendingOrders();
+      const newCount = get().pendingOrders.length;
+      if (newCount > prevCount.value) {
+        set({ hasUnread: true });
+        playNotificationSound();
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        hapticNotification('success');
+      }
+      prevCount.value = newCount;
+    }, 10000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
     };
   },
 

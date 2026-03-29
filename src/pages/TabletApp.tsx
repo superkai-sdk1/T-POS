@@ -14,7 +14,7 @@ export function TabletApp() {
   const logout = useAuthStore((s) => s.logout);
   const { 
     cart, comment, addComment, addToCart, removeFromCart, updateQuantity, submitOrder, isSubmitting,
-    myOrders, currentCheckTotal, subscribeToMyOrders, callStaff
+    myOrders, currentCheckTotal, subscribeToMyOrders, callStaff, cancelOrder
   } = useTabletStore();
 
   const { categories, loading: catLoading } = useAllMenuCategories();
@@ -433,6 +433,16 @@ export function TabletApp() {
                       <div className="mt-3 text-xs bg-[var(--c-bg)] p-2 rounded-lg border border-[var(--c-border)] text-[var(--c-hint)]">
                         <span className="font-bold text-[var(--c-text)]">Вы:</span> {order.comment}
                       </div>
+                    )}
+
+                    {order.status === 'pending' && (
+                      <button
+                        onClick={() => cancelOrder(order.id)}
+                        className="mt-3 w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-xs font-bold text-red-500 bg-red-500/10 hover:bg-red-500/20 active:scale-[0.98] transition-all border border-red-500/20"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Отменить заказ
+                      </button>
                     )}
                   </div>
                 );
