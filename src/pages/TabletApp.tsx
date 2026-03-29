@@ -25,6 +25,15 @@ export function TabletApp() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMyOrdersOpen, setIsMyOrdersOpen] = useState(false);
   const [isCalling, setIsCalling] = useState<'waiter'|'check'|null>(null);
+  const [spaceName, setSpaceName] = useState('Не привязано');
+
+  useEffect(() => {
+    if (user?.linked_space_id) {
+      supabase.from('spaces').select('name').eq('id', user.linked_space_id).single().then(({data}) => {
+        if (data) setSpaceName(data.name);
+      });
+    }
+  }, [user?.linked_space_id]);
 
   useEffect(() => {
     if (user?.linked_space_id && user?.id) {
@@ -105,7 +114,7 @@ export function TabletApp() {
               {activeCategory ? activeCategory.name : 'Меню заведения'}
             </h1>
             <div className="flex items-center gap-2">
-              <p className="text-[11px] sm:text-sm text-[var(--c-muted)] font-medium">Кабинка: {user?.linked_space?.name || 'Не привязано'}</p>
+              <p className="text-[11px] sm:text-sm text-[var(--c-muted)] font-medium">Кабинка: {spaceName}</p>
               {currentCheckTotal !== null && currentCheckTotal > 0 && (
                 <span className="text-[10px] sm:text-xs font-black bg-[var(--c-surface-hover)] border border-[var(--c-border)] px-2 py-0.5 rounded-full text-[var(--c-text)]">
                   Счёт: {currentCheckTotal} ₽
@@ -159,7 +168,7 @@ export function TabletApp() {
                       <div className={`w-12 h-12 mb-3 rounded-2xl flex items-center justify-center border ${colorCfg.text} bg-white shadow-sm ring-4 ring-white/30`}>
                         <Icon strokeWidth={2.5} className="w-6 h-6" />
                       </div>
-                      <h3 className={`text-base sm:text-lg font-bold leading-tight ${colorCfg.text === 'text-white' ? 'text-white' : 'text-slate-900'} drop-shadow-sm`}>
+                      <h3 className={`text-base sm:text-lg font-bold leading-tight ${colorCfg.text === 'text-white' ? 'text-white' : 'text-[var(--c-text)]'} drop-shadow-sm`}>
                         {cat.name}
                       </h3>
                     </div>
@@ -194,21 +203,12 @@ export function TabletApp() {
                         </span>
                       </div>
                     )}
-                    {item.image_url ? (
-                      <div className="w-full aspect-square rounded-2xl mb-3 overflow-hidden bg-[var(--c-bg)] ring-1 ring-inset ring-[var(--c-border)]">
-                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                      </div>
-                    ) : (
-                      <div className="w-full aspect-square rounded-2xl mb-3 flex items-center justify-center bg-[var(--c-bg)] ring-1 ring-inset ring-[var(--c-border)]">
-                        <ShoppingCart className="w-12 h-12 text-[var(--c-hint)] opacity-20" />
-                      </div>
-                    )}
-
-                    <div className="flex-1 flex flex-col min-h-[4rem]">
-                      <h3 className="font-bold text-sm sm:text-base leading-tight line-clamp-2 text-[var(--c-text)] mb-1">
+                    
+                    <div className="flex-1 flex flex-col justify-between p-1 mt-2">
+                      <h3 className="font-bold text-sm sm:text-base leading-tight text-[var(--c-text)] mb-2">
                         {item.name}
                       </h3>
-                      <p className="text-lg font-black text-[var(--c-accent)] mt-auto">
+                      <p className="text-lg font-black text-[var(--c-accent)]">
                         {item.price} ₽
                       </p>
                     </div>
@@ -304,7 +304,7 @@ export function TabletApp() {
         open={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         title="Ваш заказ"
-        subtitle={`Кабинка: ${user?.linked_space?.name || 'Неизвестно'}`}
+        subtitle={`Кабинка: ${spaceName}`}
       >
         <div className="flex flex-col h-full -mx-6 -mb-6 sm:-mx-10 sm:-mb-10">
           <div className="flex-1 overflow-y-auto px-6 sm:px-10 py-4 space-y-4">

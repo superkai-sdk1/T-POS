@@ -34,6 +34,13 @@ CREATE TABLE IF NOT EXISTS tablet_order_items (
 ALTER TABLE tablet_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tablet_order_items ENABLE ROW LEVEL SECURITY;
 
+-- Clean up existing policies if they exist (idempotent run)
+DROP POLICY IF EXISTS "Tablets can view their own orders" ON tablet_orders;
+DROP POLICY IF EXISTS "Tablets can insert orders" ON tablet_orders;
+DROP POLICY IF EXISTS "Staff can update orders" ON tablet_orders;
+DROP POLICY IF EXISTS "Tablets can view items from their orders" ON tablet_order_items;
+DROP POLICY IF EXISTS "Tablets can insert items" ON tablet_order_items;
+
 -- Allow tablets to insert their own orders and read them
 CREATE POLICY "Tablets can view their own orders" ON tablet_orders
   FOR SELECT USING (auth.uid() = profile_id OR auth.uid() IN (SELECT id FROM profiles WHERE role IN ('owner', 'staff')));
@@ -51,7 +58,13 @@ CREATE POLICY "Tablets can view items from their orders" ON tablet_order_items
 CREATE POLICY "Tablets can insert items" ON tablet_order_items
   FOR INSERT WITH CHECK (order_id IN (SELECT id FROM tablet_orders WHERE profile_id = auth.uid()));
 
--- Realtime publication for orders
-ALTER PUBLICATION supabase_realtime ADD TABLE tablet_orders;
-
--- Helper to quickly accept tablet order and migrate items to active check (done in TS usually, but good to have)
+-- Realtime publication for orders (safe to ignore if already exists)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables 
+    WHERE pubname = 'supabase_realtime' AND tablename = 'tablet_orders'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE tablet_orders;
+  END IF;
+END $$;
