@@ -1167,8 +1167,8 @@ const server = http.createServer((req, res) => {
         if (userId) {
           profiles = await sbSelect('profiles', `id=eq.${encodeURIComponent(userId)}&limit=1`);
         } else {
-          // Global PIN search (staff/owner only) — load all staff with non-null pins
-          profiles = await sbSelect('profiles', `role=in.(owner,staff)&pin=not.is.null`);
+          // Global PIN search (staff/owner/tablet) — load all with non-null pins
+          profiles = await sbSelect('profiles', `role=in.(owner,staff,tablet)&pin=not.is.null`);
         }
         if (!profiles || profiles.length === 0) { json(res, { error: 'Неверный PIN-код' }, 401); return; }
 

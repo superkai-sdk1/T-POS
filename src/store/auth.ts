@@ -94,7 +94,7 @@ export const useAuthStore = create<AuthState>()(
 
           const { data, error } = await supabase
             .from('profiles')
-            .select('id, nickname, role, balance, bonus_points, client_tier, is_resident, photo_url, tg_id, tg_username, phone, birthday, created_at, deleted_at')
+            .select('id, nickname, role, balance, bonus_points, client_tier, is_resident, photo_url, tg_id, tg_username, phone, birthday, linked_space_id, created_at, deleted_at')
             .eq('tg_id', tgId)
             .single();
 
@@ -173,7 +173,7 @@ export const useAuthStore = create<AuthState>()(
         const { data, error } = await supabase
           .from('profiles')
           .select('id, nickname, role')
-          .in('role', ['staff', 'owner'])
+          .in('role', ['staff', 'owner', 'tablet'])
           .order('role')
           .order('nickname');
         if (import.meta.env.DEV && error) console.error('[auth] loadStaffUsers:', error);
@@ -230,7 +230,7 @@ export const useAuthStore = create<AuthState>()(
         const userId = user.id;
         const { data } = await supabase
           .from('profiles')
-          .select('id, nickname, role, balance, bonus_points, client_tier, is_resident, photo_url, tg_id, tg_username, phone, birthday, created_at, deleted_at')
+          .select('id, nickname, role, balance, bonus_points, client_tier, is_resident, photo_url, tg_id, tg_username, phone, birthday, linked_space_id, created_at, deleted_at')
           .eq('id', userId)
           .single();
         if (data && get().user?.id === userId) {
