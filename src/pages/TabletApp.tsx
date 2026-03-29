@@ -6,7 +6,7 @@ import { useAllMenuCategories, getIconComponent, getCategoryColorConfig } from '
 import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
 import { ListSkeleton } from '@/components/ui/Skeleton';
-import { Plus, Minus, ShoppingCart, LogOut, ChevronLeft, Send, Check, Bell, Receipt, Clock, XCircle } from 'lucide-react';
+import { Plus, Minus, ShoppingCart, LogOut, ChevronLeft, Send, Check, Bell, Receipt, Clock, XCircle, CreditCard, ClipboardList, Ban } from 'lucide-react';
 import type { InventoryItem, MenuCategory } from '@/types';
 
 export function TabletApp() {
@@ -14,7 +14,8 @@ export function TabletApp() {
   const logout = useAuthStore((s) => s.logout);
   const { 
     cart, comment, addComment, addToCart, removeFromCart, updateQuantity, submitOrder, isSubmitting,
-    myOrders, currentCheckTotal, subscribeToMyOrders, callStaff, cancelOrder
+    myOrders, currentCheckTotal, currentCheckItems, hasOpenCheck, subscribeToSpace, callStaff, cancelOrder,
+    orderSentMessage, dismissOrderSent, loadCheckItems,
   } = useTabletStore();
 
   const { categories, loading: catLoading } = useAllMenuCategories();
@@ -24,7 +25,8 @@ export function TabletApp() {
   const [activeCategory, setActiveCategory] = useState<MenuCategory | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isMyOrdersOpen, setIsMyOrdersOpen] = useState(false);
-  const [isCalling, setIsCalling] = useState<'waiter'|'check'|null>(null);
+  const [isCheckViewOpen, setIsCheckViewOpen] = useState(false);
+  const [isCalling, setIsCalling] = useState<'waiter'|'check'|'payment'|null>(null);
   const [spaceName, setSpaceName] = useState('Не привязано');
 
   useEffect(() => {
@@ -37,9 +39,9 @@ export function TabletApp() {
 
   useEffect(() => {
     if (user?.linked_space_id && user?.id) {
-      return subscribeToMyOrders(user.linked_space_id, user.id);
+      return subscribeToSpace(user.linked_space_id, user.id);
     }
-  }, [subscribeToMyOrders, user?.linked_space_id, user?.id]);
+  }, [subscribeToSpace, user?.linked_space_id, user?.id]);
 
   useEffect(() => {
     async function loadItems() {
@@ -57,15 +59,8 @@ export function TabletApp() {
   }, []);
 
   const visibleCategories = categories.filter((c) => c.is_tablet_visible !== false);
-
   const topCategories = visibleCategories.filter((c) => !c.parent_id);
-
   const getSubcategories = (parentId: string) => visibleCategories.filter((c) => c.parent_id === parentId);
-
-  // Identify direct items depending on selected category:
-  // If activeCategory is set, show items matching that slug + subcategories slugs.
-  // If activeCategory is null, maybe show "Top items" or root categories.
-  // Actually, standard POS approach: if null, show root categories. If selected, show its subcats + items.
 
   const currentCats = activeCategory ? getSubcategories(activeCategory.id) : topCategories;
 
@@ -76,7 +71,7 @@ export function TabletApp() {
       if (sub) return true;
       return false;
     })
-    : items.filter((i) => i.is_top); // Show Top positions on root screen
+    : items.filter((i) => i.is_top);
 
   const totalPrice = cart.reduce((sum, c) => sum + (c.item.price * c.quantity), 0);
   const totalCount = cart.reduce((sum, c) => sum + c.quantity, 0);
@@ -87,17 +82,77 @@ export function TabletApp() {
     if (ok) setIsCartOpen(false);
   };
 
-  const handleCall = async (type: 'waiter' | 'check') => {
+  const handleCall = async (type: 'waiter' | 'check' | 'payment') => {
     if (!user?.linked_space_id || !user?.id) return;
     setIsCalling(type);
     await callStaff(user.linked_space_id, user.id, type);
     setIsCalling(null);
   };
 
+  const handleOpenCheckView = () => {
+    if (user?.linked_space_id) {
+      loadCheckItems(user.linked_space_id);
+    }
+    setIsCheckViewOpen(true);
+  };
+
+  const checkItemsTotal = currentCheckItems.reduce((sum, ci) => sum + ci.price_at_time * ci.quantity, 0);
+
   if (catLoading || itemsLoading) return <ListSkeleton rows={5} />;
+
+  // If no open check, show blocking screen
+  if (!hasOpenCheck && user?.linked_space_id) {
+    return (
+      <div className="flex flex-col h-screen bg-[var(--c-bg)] text-[var(--c-text)]">
+        <header className="px-4 py-3 sm:px-6 sm:py-4 border-b border-[var(--c-border)] bg-[var(--c-surface)] flex items-center justify-between shadow-sm">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Меню заведения</h1>
+            <p className="text-[11px] sm:text-sm text-[var(--c-muted)] font-medium">Кабинка: {spaceName}</p>
+          </div>
+          <button
+            onClick={logout}
+            className="p-3 sm:px-4 rounded-xl font-bold bg-[var(--c-bg)] border border-[var(--c-border)] text-[var(--c-hint)] hover:text-red-400 active:scale-95 transition-all text-xs flex items-center gap-2"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Выход</span>
+          </button>
+        </header>
+        <main className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+          <div className="w-20 h-20 rounded-full bg-amber-500/10 flex items-center justify-center mb-6">
+            <Ban className="w-10 h-10 text-amber-500" />
+          </div>
+          <h2 className="text-2xl font-black text-[var(--c-text)] mb-3">Счёт ещё не открыт</h2>
+          <p className="text-[var(--c-muted)] text-sm max-w-sm leading-relaxed mb-8">
+            Заказы станут доступны после того, как персонал откроет счёт для вашей кабинки. Пожалуйста, подождите или позовите официанта.
+          </p>
+          <button
+            onClick={() => handleCall('waiter')}
+            disabled={isCalling === 'waiter'}
+            className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white font-bold shadow-lg transition-all"
+          >
+            {isCalling === 'waiter' ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Bell className="w-5 h-5" />}
+            Вызвать персонал
+          </button>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-[var(--c-bg)] text-[var(--c-text)]">
+      {/* ORDER SENT TOAST */}
+      {orderSentMessage && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-[slideDown_0.3s_ease] max-w-[90%] sm:max-w-md">
+          <div className="flex items-center gap-3 bg-emerald-500 text-white px-5 py-3.5 rounded-2xl shadow-2xl font-bold text-sm">
+            <Check className="w-5 h-5 shrink-0" />
+            <span className="flex-1">{orderSentMessage}</span>
+            <button onClick={dismissOrderSent} className="p-1 hover:bg-white/20 rounded-lg transition-colors">
+              <XCircle className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* HEADER */}
       <header className="px-4 py-3 sm:px-6 sm:py-4 border-b border-[var(--c-border)] bg-[var(--c-surface)] flex items-center justify-between shadow-sm z-10 sticky top-0">
         <div className="flex items-center gap-3">
@@ -124,6 +179,14 @@ export function TabletApp() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* View current check button */}
+          <button
+            onClick={handleOpenCheckView}
+            className="p-3 sm:px-4 rounded-xl font-bold bg-[var(--c-bg)] border border-[var(--c-border)] text-[var(--c-hint)] hover:text-[var(--c-text)] active:scale-95 transition-all text-xs flex items-center gap-2"
+          >
+            <ClipboardList className="w-4 h-4" />
+            <span className="hidden sm:inline">Текущий счёт</span>
+          </button>
           <button
             onClick={() => setIsMyOrdersOpen(true)}
             className="p-3 sm:px-4 rounded-xl font-bold bg-[var(--c-bg)] border border-[var(--c-border)] text-[var(--c-hint)] hover:text-[var(--c-text)] active:scale-95 transition-all text-xs flex items-center gap-2"
@@ -260,8 +323,16 @@ export function TabletApp() {
         )}
       </main>
 
-      {/* SERVICE BUTTONS (Call Waiter / Ask for Check) */}
+      {/* SERVICE BUTTONS */}
       <div className="fixed bottom-24 right-4 sm:bottom-6 sm:right-6 sm:left-auto flex flex-col gap-3 z-30 pointer-events-none">
+        <button
+          onClick={() => handleCall('payment')}
+          disabled={isCalling === 'payment'}
+          className="pointer-events-auto flex items-center justify-center bg-amber-500 hover:bg-amber-600 active:scale-90 text-white shadow-lg p-3 sm:p-4 rounded-2xl sm:rounded-full transition-all group"
+        >
+          {isCalling === 'payment' ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CreditCard className="w-6 h-6 sm:w-7 sm:h-7" />}
+          <span className="ml-0 w-0 overflow-hidden opacity-0 group-hover:w-auto group-hover:ml-3 group-hover:opacity-100 whitespace-nowrap font-bold text-sm transition-all hidden sm:inline-flex">Оплатить</span>
+        </button>
         <button
           onClick={() => handleCall('check')}
           disabled={isCalling === 'check'}
@@ -359,7 +430,7 @@ export function TabletApp() {
             </div>
             <button
                onClick={handleOrder}
-               disabled={isSubmitting || cart.length === 0 || !user?.linked_space_id}
+               disabled={isSubmitting || cart.length === 0 || !user?.linked_space_id || !hasOpenCheck}
                className="w-full h-16 rounded-3xl font-extrabold text-white flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-xl disabled:opacity-50 [background:linear-gradient(135deg,#6366f1,#8b5cf6)]"
             >
               {isSubmitting ? (
@@ -377,7 +448,58 @@ export function TabletApp() {
             {!user?.linked_space_id && (
                <p className="text-center text-red-500 text-xs mt-3 font-semibold">Нельзя сделать заказ: планшет не привязан к кабинке.</p>
             )}
+            {user?.linked_space_id && !hasOpenCheck && (
+               <p className="text-center text-amber-500 text-xs mt-3 font-semibold">Счёт ещё не открыт. Дождитесь открытия персоналом.</p>
+            )}
           </div>
+        </div>
+      </Drawer>
+
+      {/* CURRENT CHECK ITEMS DRAWER */}
+      <Drawer
+        open={isCheckViewOpen}
+        onClose={() => setIsCheckViewOpen(false)}
+        title="Текущий счёт"
+        subtitle={`Кабинка: ${spaceName}`}
+        size="md"
+      >
+        <div className="flex flex-col h-full -mx-6 -mb-6 sm:-mx-10 sm:-mb-10 bg-[var(--c-bg)]">
+          <div className="flex-1 overflow-y-auto px-6 sm:px-10 py-6 space-y-3">
+            {currentCheckItems.length === 0 ? (
+              <div className="text-center py-20">
+                <ClipboardList className="w-12 h-12 text-[var(--c-border)] mx-auto mb-4" />
+                <p className="text-[var(--c-hint)] font-medium">Счёт пока пуст</p>
+              </div>
+            ) : (
+              <>
+                {currentCheckItems.map((ci) => (
+                  <div key={ci.id} className="flex items-center justify-between py-3 border-b border-[var(--c-border)] last:border-0">
+                    <div className="flex-1">
+                      <h4 className="font-bold text-[var(--c-text)] text-sm">{ci.item?.name || 'Позиция'}</h4>
+                      <p className="text-xs text-[var(--c-muted)]">{ci.price_at_time} ₽ × {ci.quantity}</p>
+                    </div>
+                    <span className="font-black text-[var(--c-text)] text-sm">{ci.price_at_time * ci.quantity} ₽</span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+          {currentCheckItems.length > 0 && (
+            <div className="p-6 sm:p-10 bg-[var(--c-surface)] border-t border-[var(--c-border)] space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[var(--c-hint)] font-semibold uppercase tracking-wider text-sm">Итого по счёту</span>
+                <span className="text-2xl font-black text-[var(--c-text)]">{checkItemsTotal} <span className="text-lg text-[var(--c-muted)]">₽</span></span>
+              </div>
+              <button
+                onClick={() => { setIsCheckViewOpen(false); handleCall('payment'); }}
+                disabled={isCalling === 'payment'}
+                className="w-full h-14 rounded-2xl font-bold text-white flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg bg-amber-500 hover:bg-amber-600"
+              >
+                {isCalling === 'payment' ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CreditCard className="w-5 h-5" />}
+                Позвать для оплаты
+              </button>
+            </div>
+          )}
         </div>
       </Drawer>
 

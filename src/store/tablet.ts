@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { getTelegramWebApp, hapticFeedback, hapticNotification } from '@/lib/telegram';
-import type { InventoryItem, TabletOrder, TabletOrderItem } from '@/types';
+import type { InventoryItem, TabletOrder, TabletOrderItem, CheckItem } from '@/types';
 
 interface CartItem {
   item: InventoryItem;
@@ -13,29 +13,43 @@ interface TabletState {
   isSubmitting: boolean;
   error: string | null;
   comment: string;
+  orderSentMessage: string | null; // "Заказ отправлен" notification
+
+  // Check state
+  hasOpenCheck: boolean;
+  currentCheckTotal: number | null;
+  currentCheckItems: CheckItem[];
+  
+  // Orders
+  myOrders: TabletOrder[];
+
+  // Actions
   addComment: (text: string) => void;
   addToCart: (item: InventoryItem) => void;
   removeFromCart: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   clearCart: () => void;
   submitOrder: (spaceId: string, profileId: string) => Promise<boolean>;
+  dismissOrderSent: () => void;
   
-  myOrders: TabletOrder[];
-  currentCheckTotal: number | null;
   loadMyOrders: (spaceId: string, profileId: string) => Promise<void>;
-  subscribeToMyOrders: (spaceId: string, profileId: string) => () => void;
-  loadCurrentCheckTotal: (spaceId: string) => Promise<void>;
-  callStaff: (spaceId: string, profileId: string, type: 'waiter' | 'check') => Promise<boolean>;
+  subscribeToSpace: (spaceId: string, profileId: string) => () => void;
+  loadCheckState: (spaceId: string) => Promise<void>;
+  loadCheckItems: (spaceId: string) => Promise<void>;
+  callStaff: (spaceId: string, profileId: string, type: 'waiter' | 'check' | 'payment') => Promise<boolean>;
   cancelOrder: (orderId: string) => Promise<boolean>;
 }
 
 export const useTabletStore = create<TabletState>((set, get) => ({
   cart: [],
   myOrders: [],
+  hasOpenCheck: false,
   currentCheckTotal: null,
+  currentCheckItems: [],
   isSubmitting: false,
   error: null,
   comment: '',
+  orderSentMessage: null,
 
   addComment: (text: string) => set({ comment: text }),
 
@@ -76,6 +90,8 @@ export const useTabletStore = create<TabletState>((set, get) => ({
 
   clearCart: () => set({ cart: [], comment: '' }),
 
+  dismissOrderSent: () => set({ orderSentMessage: null }),
+
   submitOrder: async (spaceId: string, profileId: string) => {
     const { cart, comment } = get();
     if (cart.length === 0) return false;
@@ -83,7 +99,6 @@ export const useTabletStore = create<TabletState>((set, get) => ({
     set({ isSubmitting: true, error: null });
 
     try {
-      // 1. Create order
       const { data: order, error: orderError } = await supabase
         .from('tablet_orders')
         .insert({
@@ -97,7 +112,6 @@ export const useTabletStore = create<TabletState>((set, get) => ({
 
       if (orderError || !order) throw new Error(orderError?.message || 'Failed to create order');
 
-      // 2. Insert items
       const itemsToInsert = cart.map((c) => ({
         order_id: order.id,
         item_id: c.item.id,
@@ -110,11 +124,20 @@ export const useTabletStore = create<TabletState>((set, get) => ({
 
       if (itemsError) throw new Error(itemsError.message);
 
-      // Success
-      set({ cart: [], comment: '', isSubmitting: false });
+      set({ 
+        cart: [], 
+        comment: '', 
+        isSubmitting: false,
+        orderSentMessage: 'Заказ отправлен! Пожалуйста, ожидайте подтверждения.',
+      });
       hapticNotification('success');
-      return true;
 
+      // Auto-dismiss after 5 seconds
+      setTimeout(() => {
+        if (get().orderSentMessage) set({ orderSentMessage: null });
+      }, 5000);
+
+      return true;
     } catch (err: any) {
       console.error('Error submitting tablet order:', err);
       set({ error: err.message, isSubmitting: false });
@@ -142,23 +165,68 @@ export const useTabletStore = create<TabletState>((set, get) => ({
     }
   },
 
-  subscribeToMyOrders: (spaceId: string, profileId: string) => {
-    get().loadMyOrders(spaceId, profileId);
+  loadCheckState: async (spaceId: string) => {
+    const { data } = await supabase
+      .from('checks')
+      .select('id, total_amount, status')
+      .eq('space_id', spaceId)
+      .eq('status', 'open')
+      .maybeSingle();
 
-    const channel = supabase.channel('my-tablet-orders')
+    set({ 
+      hasOpenCheck: !!data,
+      currentCheckTotal: data?.total_amount || 0,
+    });
+  },
+
+  loadCheckItems: async (spaceId: string) => {
+    // Find the open check for this space
+    const { data: check } = await supabase
+      .from('checks')
+      .select('id')
+      .eq('space_id', spaceId)
+      .eq('status', 'open')
+      .maybeSingle();
+
+    if (!check) {
+      set({ currentCheckItems: [] });
+      return;
+    }
+
+    const { data: items } = await supabase
+      .from('check_items')
+      .select('*, item:inventory(name, price, image_url)')
+      .eq('check_id', check.id)
+      .order('created_at', { ascending: true });
+
+    set({ currentCheckItems: (items || []) as CheckItem[] });
+  },
+
+  subscribeToSpace: (spaceId: string, profileId: string) => {
+    // Initial load
+    get().loadMyOrders(spaceId, profileId);
+    get().loadCheckState(spaceId);
+
+    // Poll for check state + orders every 8s
+    const pollInterval = setInterval(() => {
+      get().loadCheckState(spaceId);
+      get().loadMyOrders(spaceId, profileId);
+    }, 8000);
+
+    // Subscribe to tablet_orders changes for this profile
+    const ordersChannel = supabase.channel('my-tablet-orders')
       .on(
         'postgres_changes',
         { 
           event: '*', 
           schema: 'public', 
           table: 'tablet_orders',
-          filter: `profile_id=eq.${profileId}` // Can't filter multiple easily, so filter by profile
+          filter: `profile_id=eq.${profileId}`
         },
         (payload: any) => {
-          // Check if status changed
           const prevOrder = get().myOrders.find(o => o.id === payload.new?.id);
           get().loadMyOrders(spaceId, profileId);
-          get().loadCurrentCheckTotal(spaceId);
+          get().loadCheckState(spaceId);
 
           if (payload.eventType === 'UPDATE' && prevOrder && prevOrder.status !== payload.new.status) {
             if (payload.new.status === 'accepted') {
@@ -171,26 +239,42 @@ export const useTabletStore = create<TabletState>((set, get) => ({
       )
       .subscribe();
 
+    // Subscribe to checks changes for this space (detect check open/close)
+    const checksChannel = supabase.channel('tablet-check-watch')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'checks',
+          filter: `space_id=eq.${spaceId}`
+        },
+        (payload: any) => {
+          // If check was closed, clear order history for this tablet
+          if (payload.eventType === 'UPDATE' && payload.new?.status === 'closed') {
+            set({ myOrders: [], currentCheckItems: [], cart: [], comment: '' });
+            get().loadCheckState(spaceId);
+          }
+          // If check was opened, reload state
+          if (payload.eventType === 'INSERT') {
+            get().loadCheckState(spaceId);
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(checksChannel);
     };
   },
 
-  loadCurrentCheckTotal: async (spaceId: string) => {
-    const { data } = await supabase
-      .from('checks')
-      .select('total_amount')
-      .eq('space_id', spaceId)
-      .eq('status', 'open')
-      .maybeSingle();
-      
-    set({ currentCheckTotal: data?.total_amount || 0 });
-  },
-
-  callStaff: async (spaceId: string, profileId: string, type: 'waiter' | 'check') => {
+  callStaff: async (spaceId: string, profileId: string, type: 'waiter' | 'check' | 'payment') => {
     const cmts = {
       waiter: '[ВЫЗОВ] Подойдите к столику',
       check: '[СЧЁТ] Рассчитайте гостей',
+      payment: '[ОПЛАТА] Гости хотят оплатить',
     };
     
     try {
@@ -218,10 +302,9 @@ export const useTabletStore = create<TabletState>((set, get) => ({
         .from('tablet_orders')
         .update({ status: 'rejected' })
         .eq('id', orderId)
-        .eq('status', 'pending'); // can only cancel pending
+        .eq('status', 'pending');
 
       if (error) throw error;
-      // Remove from local state immediately
       set((state) => ({
         myOrders: state.myOrders.filter((o) => o.id !== orderId),
       }));
