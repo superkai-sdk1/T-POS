@@ -24,6 +24,7 @@ import { OpenChecks } from '@/components/pos/OpenChecks';
 import { CheckView } from '@/components/pos/CheckView';
 import { CheckCartBar } from '@/components/pos/CheckCartBar';
 import { TabPanel } from '@/components/ui/TabPanel';
+import { TabletApp } from '@/pages/TabletApp';
 
 const ManagementPage = lazy(() => import('@/components/management/ManagementPage').then((m) => ({ default: m.ManagementPage })));
 const ReportsPage = lazy(() => import('@/components/dashboard/ReportsPage').then((m) => ({ default: m.ReportsPage })));
@@ -198,8 +199,12 @@ export default function App() {
     });
   }, [leaveCheck]);
 
-  if (!user || needsPinSetup) {
+  if (!user) {
     return <LoginPage />;
+  }
+
+  if (user.role === 'tablet') {
+    return <TabletApp />;
   }
 
   return (

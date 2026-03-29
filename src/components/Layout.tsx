@@ -12,9 +12,11 @@ import { Button } from '@/components/ui/Button';
 import { ClientAvatar } from '@/components/ui/ClientAvatar';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { ShiftAnalytics as ShiftAnalyticsModal } from '@/components/shift/ShiftAnalytics';
+import { useAdminTabletStore } from '@/store/tablet-admin';
+import { TabletOrdersDrawer } from '@/components/pos/TabletOrdersDrawer';
 import {
   Receipt, BarChart3, LogOut, Settings, Calendar,
-  PlayCircle, StopCircle, AlertTriangle, X, Plus,
+  PlayCircle, StopCircle, AlertTriangle, X, Plus, Bell,
   PanelLeftClose, PanelLeftOpen, RefreshCw, CreditCard, UserPlus, ArrowLeft, User, RotateCw,
 } from 'lucide-react';
 import { EVENING_TYPE_LABELS, type EveningType } from '@/types';
@@ -100,8 +102,22 @@ function AppHeader({
               </span>
             </div>
           )}
+          
+          {/* Notification bell inside the mobile header if owner/staff */}
           {!hideSystemButtons && (
             <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-2xl">
+              <button
+                onClick={() => {
+                  useAdminTabletStore.getState().markAsRead();
+                  window.dispatchEvent(new CustomEvent('open-tablet-orders'));
+                }}
+                className="relative p-2 bg-white/5 rounded-xl hover:bg-white/10 active:scale-90 transition-all"
+              >
+                <Bell size={18} className="text-white/60" />
+                {useAdminTabletStore.getState().hasUnread && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                )}
+              </button>
               <button
                 onClick={onRefresh}
                 disabled={isRefreshing}
@@ -208,6 +224,21 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
   // Pull-to-refresh global state needed in Layout
   const [isRefreshing, setIsRefreshing] = useState(false);
   const scrollRef = useRef<HTMLElement>(null);
+
+  const subscribeToOrders = useAdminTabletStore((s) => s.subscribeToOrders);
+  const hasUnread = useAdminTabletStore((s) => s.hasUnread);
+  const markAsRead = useAdminTabletStore((s) => s.markAsRead);
+  const [showTabletOrders, setShowTabletOrders] = useState(false);
+
+  useEffect(() => {
+    return subscribeToOrders();
+  }, [subscribeToOrders]);
+
+  useEffect(() => {
+    const fn = () => setShowTabletOrders(true);
+    window.addEventListener('open-tablet-orders', fn);
+    return () => window.removeEventListener('open-tablet-orders', fn);
+  }, []);
 
   const tabs = useMemo(() => [
     { id: 'pos', label: 'Касса', icon: Receipt },
@@ -764,6 +795,12 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
           analytics={analytics}
         />
       )}
+
+      {/* Admin Tablet Orders Drawer */}
+      <TabletOrdersDrawer
+        open={showTabletOrders}
+        onClose={() => setShowTabletOrders(false)}
+      />
     </div>
   );
 }

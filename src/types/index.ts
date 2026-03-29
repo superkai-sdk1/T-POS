@@ -1,4 +1,4 @@
-export type UserRole = 'owner' | 'staff' | 'client';
+export type UserRole = 'owner' | 'staff' | 'client' | 'tablet';
 
 /** Management section IDs (cash & analytics always accessible) */
 export type ManagementPermissionKey =
@@ -42,6 +42,8 @@ export interface Profile {
   client_tier: ClientTier;
   search_tags: string[];
   permissions?: ManagementPermissions | null;
+  linked_space_id?: string | null;
+  linked_space?: Space | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -61,6 +63,7 @@ export interface InventoryItem {
   sort_order: number;
   search_tags: string[];
   is_top: boolean;
+  is_tablet_visible: boolean;
   linked_space_id?: string | null;
   linked_space?: Space | null;
   created_at: string;
@@ -76,6 +79,7 @@ export interface MenuCategory {
   color?: string;
   sort_order: number;
   is_active: boolean;
+  is_tablet_visible: boolean;
   created_at: string;
 }
 
@@ -138,6 +142,30 @@ export const EVENING_TYPE_LABELS: Record<EveningType, string> = {
   board_games: 'Настолки',
   no_event: 'Без вечера',
 };
+
+export type TabletOrderStatus = 'pending' | 'accepted' | 'rejected';
+
+export interface TabletOrder {
+  id: string;
+  space_id: string;
+  profile_id: string;
+  status: TabletOrderStatus;
+  comment: string | null;
+  created_at: string;
+  updated_at: string;
+  processed_by: string | null;
+  space?: Space;
+  profile?: Profile;
+  items?: TabletOrderItem[];
+}
+
+export interface TabletOrderItem {
+  id: string;
+  order_id: string;
+  item_id: string;
+  quantity: number;
+  item?: InventoryItem;
+}
 
 export interface Shift {
   id: string;

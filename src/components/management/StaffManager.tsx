@@ -45,6 +45,9 @@ export function StaffManager() {
     Object.fromEntries(ALL_KEYS.map((k) => [k, true])) as ManagementPermissions
   );
   const [photoUrl, setPhotoUrl] = useState('');
+  const [role, setRole] = useState<'staff' | 'tablet'>('staff');
+  const [linkedSpaceId, setLinkedSpaceId] = useState<string>('');
+  const [allSpaces, setAllSpaces] = useState<{ id: string; name: string }[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -53,11 +56,18 @@ export function StaffManager() {
   const loadStaff = useCallback(async () => {
     const { data } = await supabase
       .from('profiles')
-      .select('*')
-      .in('role', ['staff', 'owner'])
+      .select('*, linked_space:spaces!profiles_linked_space_id_fkey(id, name)')
+      .in('role', ['staff', 'owner', 'tablet'])
       .order('role')
       .order('nickname');
-    if (data) setStaff(data as Profile[]);
+    if (data) {
+      setStaff(data.map(p => ({
+        ...p,
+        linked_space: Array.isArray(p.linked_space) ? p.linked_space[0] : p.linked_space
+      })) as Profile[]);
+    }
+    const { data: spacesData } = await supabase.from('spaces').select('id, name').eq('is_active', true).order('name');
+    if (spacesData) setAllSpaces(spacesData);
     setIsLoading(false);
   }, []);
 
@@ -72,6 +82,8 @@ export function StaffManager() {
     setNickname('');
     setPassword('');
     setPinCode('');
+    setRole('staff');
+    setLinkedSpaceId('');
     setPhotoUrl('');
     setShowPassword(false);
     setPermissions(Object.fromEntries(ALL_KEYS.map((k) => [k, true])) as ManagementPermissions);
@@ -140,7 +152,8 @@ export function StaffManager() {
     const insertData: Record<string, unknown> = {
       nickname: nickname.trim(),
       password_hash: hashedPassword,
-      role: 'staff',
+      role: role,
+      linked_space_id: role === 'tablet' && linkedSpaceId ? linkedSpaceId : null,
       is_resident: false,
     };
     if (pinCode.trim() && /^\d{4}$/.test(pinCode.trim())) {
@@ -174,6 +187,8 @@ export function StaffManager() {
   const openEdit = (p: Profile) => {
     setSelected(p);
     setNickname(p.nickname);
+    setRole((p.role as 'staff' | 'tablet') || 'staff');
+    setLinkedSpaceId(p.linked_space_id || '');
     setPassword('');
     setPinCode(p.pin || '');
     setPhotoUrl(p.photo_url || '');
@@ -188,7 +203,12 @@ export function StaffManager() {
     setError('');
     setIsSaving(true);
 
-    const updates: Record<string, unknown> = { nickname: nickname.trim(), photo_url: photoUrl || null };
+    const updates: Record<string, unknown> = {
+      nickname: nickname.trim(),
+      photo_url: photoUrl || null,
+      role: role,
+      linked_space_id: role === 'tablet' && linkedSpaceId ? linkedSpaceId : null,
+    };
 
     // Hash password on server if changed
     if (password.trim()) {
@@ -362,12 +382,19 @@ export function StaffManager() {
                   {isOwnerRole ? (
                     <Badge variant="warning" size="sm">Владелец</Badge>
                   ) : (
-                    <>
-                      <Badge size="sm">Сотрудник</Badge>
-                      {permCount < ALL_KEYS.length && (
-                        <Badge variant="accent" size="sm">{permCount}/{ALL_KEYS.length}</Badge>
-                      )}
-                    </>
+                    p.role === 'tablet' ? (
+                      <>
+                        <Badge size="sm" variant="accent">Планшет</Badge>
+                        {p.linked_space && <Badge variant="default" size="sm" className="truncate max-w-[100px]">{p.linked_space.name}</Badge>}
+                      </>
+                    ) : (
+                      <>
+                        <Badge size="sm">Сотрудник</Badge>
+                        {permCount < ALL_KEYS.length && (
+                          <Badge variant="accent" size="sm">{permCount}/{ALL_KEYS.length}</Badge>
+                        )}
+                      </>
+                    )
                   )}
                   {p.pin && <Badge variant="success" size="sm">PIN</Badge>}
                   {p.tg_id && <Badge variant="accent" size="sm">TG</Badge>}
@@ -417,6 +444,44 @@ export function StaffManager() {
             maxLength={4}
             inputMode="numeric"
           />
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <button
+              type="button"
+              onClick={() => setRole('staff')}
+              className={`p-3 rounded-xl border text-sm font-semibold transition-all active:scale-[0.98] ${
+                role === 'staff' ? 'bg-[var(--c-accent)] border-[var(--c-accent)] text-white' : 'bg-[var(--c-surface)] border-[var(--c-border)] text-[var(--c-hint)]'
+              }`}
+            >
+              Сотрудник POS
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole('tablet')}
+              className={`p-3 rounded-xl border text-sm font-semibold transition-all active:scale-[0.98] ${
+                role === 'tablet' ? 'bg-[var(--c-accent)] border-[var(--c-accent)] text-white' : 'bg-[var(--c-surface)] border-[var(--c-border)] text-[var(--c-hint)]'
+              }`}
+            >
+              Планшет
+            </button>
+          </div>
+
+          {role === 'tablet' && (
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-[var(--c-hint)] uppercase tracking-wider ml-1">Привязка к кабинке (Space)</label>
+              <select
+                value={linkedSpaceId}
+                onChange={(e) => setLinkedSpaceId(e.target.value)}
+                className="w-full bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 text-sm text-[var(--c-text)] focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)] transition-all"
+              >
+                <option value="">Не привязан</option>
+                {allSpaces.map(sp => (
+                  <option key={sp.id} value={sp.id}>{sp.name}</option>
+                ))}
+              </select>
+              <p className="text-[10px] text-[var(--c-muted)] mt-1 ml-1">Планшет будет открывать чеки на эту кабинку</p>
+            </div>
+          )}
+
           {error && (
             <p className="text-sm text-[var(--c-danger)] bg-[var(--c-danger-bg)] rounded-xl px-3 py-2">{error}</p>
           )}
@@ -503,6 +568,47 @@ export function StaffManager() {
                 maxLength={4}
                 inputMode="numeric"
               />
+              {selected?.role !== 'owner' && (
+                <>
+                  <div className="grid grid-cols-2 gap-2 mt-4 mb-2">
+                    <button
+                      type="button"
+                      onClick={() => setRole('staff')}
+                      className={`p-3 rounded-xl border text-sm font-semibold transition-all active:scale-[0.98] ${
+                        role === 'staff' ? 'bg-[var(--c-accent)] border-[var(--c-accent)] text-white' : 'bg-[var(--c-surface)] border-[var(--c-border)] text-[var(--c-hint)]'
+                      }`}
+                    >
+                      Сотрудник POS
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRole('tablet')}
+                      className={`p-3 rounded-xl border text-sm font-semibold transition-all active:scale-[0.98] ${
+                        role === 'tablet' ? 'bg-[var(--c-accent)] border-[var(--c-accent)] text-white' : 'bg-[var(--c-surface)] border-[var(--c-border)] text-[var(--c-hint)]'
+                      }`}
+                    >
+                      Планшет
+                    </button>
+                  </div>
+
+                  {role === 'tablet' && (
+                    <div className="space-y-1 mt-2">
+                      <label className="text-xs font-semibold text-[var(--c-hint)] uppercase tracking-wider ml-1">Привязка к кабинке (Space)</label>
+                      <select
+                        value={linkedSpaceId}
+                        onChange={(e) => setLinkedSpaceId(e.target.value)}
+                        className="w-full bg-[var(--c-surface)] border border-[var(--c-border)] rounded-xl px-4 py-3 text-sm text-[var(--c-text)] focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)] transition-all"
+                      >
+                        <option value="">Не привязан</option>
+                        {allSpaces.map(sp => (
+                          <option key={sp.id} value={sp.id}>{sp.name}</option>
+                        ))}
+                      </select>
+                      <p className="text-[10px] text-[var(--c-muted)] mt-1 ml-1">Планшет будет открывать чеки на эту кабинку</p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
 

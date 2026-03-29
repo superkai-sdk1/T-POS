@@ -74,7 +74,7 @@ export const useAuthStore = create<AuthState>()(
           user: data,
           rememberedUserId: data.id,
           rememberedNickname: data.nickname,
-          needsPinSetup: !data.pin,
+          needsPinSetup: data.role === 'tablet' || data.role === 'client' ? false : !data.pin,
           isLoading: false,
         });
         return true;

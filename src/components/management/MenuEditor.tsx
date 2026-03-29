@@ -47,6 +47,7 @@ interface EditForm {
   min_threshold: string;
   is_active: boolean;
   is_top: boolean;
+  is_tablet_visible: boolean;
   image_url: string;
   search_tags: string;
   linked_space_id: string;
@@ -62,6 +63,7 @@ const emptyForm: EditForm = {
   min_threshold: '0',
   is_active: true,
   is_top: false,
+  is_tablet_visible: true,
   image_url: '',
   search_tags: '',
   linked_space_id: '',
@@ -73,6 +75,7 @@ interface CategoryForm {
   slug: string;
   icon_name: string;
   color: string;
+  is_tablet_visible: boolean;
   parent_id: string | null;
 }
 
@@ -81,6 +84,7 @@ const emptyCategoryForm: CategoryForm = {
   slug: '',
   icon_name: 'Package',
   color: 'slate',
+  is_tablet_visible: true,
   parent_id: null,
 };
 
@@ -200,6 +204,7 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
       min_threshold: String(item.min_threshold),
       is_active: item.is_active,
       is_top: item.is_top ?? false,
+      is_tablet_visible: item.is_tablet_visible ?? true,
       image_url: item.image_url || '',
       search_tags: (item.search_tags || []).join(', '),
       linked_space_id: item.linked_space_id || '',
@@ -246,6 +251,7 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
       min_threshold: form.is_service || !form.track_stock ? 0 : Number(form.min_threshold) || 0,
       is_active: form.is_active,
       is_top: form.is_top,
+      is_tablet_visible: form.is_tablet_visible,
       image_url: form.image_url || null,
       search_tags: tags,
       linked_space_id: form.linked_space_id || null,
@@ -347,6 +353,7 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
       slug: cat.slug,
       icon_name: cat.icon_name,
       color: cat.color || 'slate',
+      is_tablet_visible: cat.is_tablet_visible ?? true,
       parent_id: cat.parent_id,
     });
     setShowCatEditor(true);
@@ -361,6 +368,7 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
       slug,
       icon_name: catForm.icon_name,
       color: catForm.color || 'slate',
+      is_tablet_visible: catForm.is_tablet_visible,
       parent_id: catForm.parent_id || null,
     };
     if (editingCategory) {
@@ -887,6 +895,24 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
                   <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${form.is_top ? 'left-7' : 'left-1'}`} />
                 </div>
               </button>
+              
+              <button
+                type="button"
+                onClick={() => updateField('is_tablet_visible', !form.is_tablet_visible)}
+                className={`w-full p-5 rounded-3xl flex items-center justify-between transition-all active:scale-[0.99] ${
+                  form.is_tablet_visible ? 'bg-purple-500/10 border border-purple-500/30' : 'bg-slate-900/30 border border-slate-800'
+                }`}
+              >
+                <div className="flex flex-col text-left">
+                  <span className={`text-sm font-bold ${form.is_tablet_visible ? 'text-purple-400' : 'text-slate-400'}`}>
+                    {form.is_tablet_visible ? 'Отображается на Планшете' : 'Скрыто на Планшете'}
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-medium">Могут ли клиенты заказывать это сами</span>
+                </div>
+                <div className={`w-14 h-8 rounded-full relative transition-all duration-300 ${form.is_tablet_visible ? 'bg-purple-500' : 'bg-slate-800'}`}>
+                  <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${form.is_tablet_visible ? 'left-7' : 'left-1'}`} />
+                </div>
+              </button>
               <button
                 type="button"
                 onClick={() => updateField('is_active', !form.is_active)}
@@ -1299,6 +1325,26 @@ function CategoryEditorDrawer({
               );
             })}
           </div>
+        </div>
+
+        <div>
+          <button
+            type="button"
+            onClick={() => setForm((prev) => ({ ...prev, is_tablet_visible: !prev.is_tablet_visible }))}
+            className={`w-full p-4 rounded-xl flex items-center justify-between transition-all active:scale-[0.99] ${
+              form.is_tablet_visible ? 'bg-purple-500/10 border border-purple-500/30' : 'bg-[var(--c-surface)] border border-[var(--c-border)]'
+            }`}
+          >
+            <div className="flex flex-col text-left">
+              <span className={`text-sm font-bold ${form.is_tablet_visible ? 'text-purple-400' : 'text-[var(--c-hint)]'}`}>
+                {form.is_tablet_visible ? 'Отображается на Планшете' : 'Скрыто на Планшете'}
+              </span>
+              <span className="text-[10px] text-[var(--c-muted)] font-medium">Видят ли клиенты эту категорию</span>
+            </div>
+            <div className={`w-12 h-6 rounded-full relative transition-all duration-300 ${form.is_tablet_visible ? 'bg-purple-500' : 'bg-[var(--c-border)]'}`}>
+              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-all duration-300 ${form.is_tablet_visible ? 'left-7' : 'left-1'}`} />
+            </div>
+          </button>
         </div>
 
         <Button fullWidth size="lg" onClick={onSave} disabled={!form.name.trim()}>
