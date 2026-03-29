@@ -57,12 +57,12 @@ export const useAdminTabletStore = create<AdminTabletState>((set, get) => ({
 
   loadPendingOrders: async () => {
     set({ isLoading: true });
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('tablet_orders')
       .select(`
         *,
-        space:spaces(*),
-        profile:profiles(id, nickname, photo_url),
+        space:spaces!tablet_orders_space_id_fkey(id, name),
+        profile:profiles!tablet_orders_profile_id_fkey(id, nickname, photo_url),
         items:tablet_order_items(
           *,
           item:inventory(*)
@@ -71,7 +71,18 @@ export const useAdminTabletStore = create<AdminTabletState>((set, get) => ({
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
-    if (data) {
+    if (error) {
+      console.error('[tablet-admin] loadPendingOrders error:', error);
+      // Fallback: load without joins
+      const { data: fallback } = await supabase
+        .from('tablet_orders')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      if (fallback) {
+        set({ pendingOrders: fallback as TabletOrder[] });
+      }
+    } else if (data) {
       set({ pendingOrders: data as TabletOrder[] });
     }
     set({ isLoading: false });
