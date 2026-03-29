@@ -120,17 +120,30 @@ export const useShiftStore = create<ShiftState>()(
             .in('id', refundCheckIds);
           const refCheckMap = new Map((refChecks || []).map((c) => [c.id, c]));
 
+          // Batch-fetch split payments for all refunded split checks (avoid N+1)
+          const splitRefundCheckIds = refundData
+            .filter((r) => refCheckMap.get(r.check_id)?.payment_method === 'split')
+            .map((r) => r.check_id);
+          const splitPaymentsMap = new Map<string, { method: string; amount: number }[]>();
+          if (splitRefundCheckIds.length > 0) {
+            const { data: splitPays } = await supabase
+              .from('check_payments')
+              .select('check_id, method, amount')
+              .in('check_id', splitRefundCheckIds);
+            for (const p of splitPays || []) {
+              if (!splitPaymentsMap.has(p.check_id)) splitPaymentsMap.set(p.check_id, []);
+              splitPaymentsMap.get(p.check_id)!.push({ method: p.method, amount: p.amount });
+            }
+          }
+
           for (const r of refundData) {
             const origCheck = refCheckMap.get(r.check_id);
             if (!origCheck) continue;
             if (origCheck.payment_method === 'cash') {
               cashRefunded += r.total_amount || 0;
             } else if (origCheck.payment_method === 'split') {
-              const { data: cp } = await supabase
-                .from('check_payments')
-                .select('method, amount')
-                .eq('check_id', r.check_id);
-              const cashPortion = (cp || []).filter((p) => p.method === 'cash').reduce((s, p) => s + p.amount, 0);
+              const cp = splitPaymentsMap.get(r.check_id) || [];
+              const cashPortion = cp.filter((p) => p.method === 'cash').reduce((s, p) => s + p.amount, 0);
               const origTotal = origCheck.total_amount || 1;
               cashRefunded += Math.round((cashPortion / origTotal) * (r.total_amount || 0));
             }

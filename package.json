@@ -24,6 +24,7 @@
     "@supabase/supabase-js": "^2.98.0",
     "@tanstack/react-virtual": "^3.13.20",
     "@telegram-apps/sdk": "^3.11.8",
+    "bcryptjs": "^3.0.3",
     "lucide-react": "^0.576.0",
     "pg": "^8.19.0",
     "qrcode": "^1.5.4",

@@ -537,6 +537,14 @@ if [ "$MODE" = "update" ]; then
 
   # ── .env: auto-fill defaults silently ──
 
+  # Migrate VITE_TELEGRAM_BOT_TOKEN → TELEGRAM_BOT_TOKEN (v1.3+)
+  _OLD_TG_TOKEN=$(read_env_value "$INSTALL_DIR/.env" "VITE_TELEGRAM_BOT_TOKEN") || true
+  _NEW_TG_TOKEN=$(read_env_value "$INSTALL_DIR/.env" "TELEGRAM_BOT_TOKEN") || true
+  if [ -n "$_OLD_TG_TOKEN" ] && [ -z "$_NEW_TG_TOKEN" ]; then
+    add_env_key "$INSTALL_DIR/.env" "TELEGRAM_BOT_TOKEN" "$_OLD_TG_TOKEN"
+    info "Миграция: VITE_TELEGRAM_BOT_TOKEN → TELEGRAM_BOT_TOKEN (токен больше не в клиентском бандле)"
+  fi
+
   echo ""
   DOMAIN=$(read_env_value "$INSTALL_DIR/.env" "POS_DOMAIN") || true
   if [ -z "$DOMAIN" ] && [ -f "$NGINX_CONF" ]; then
@@ -829,7 +837,7 @@ info "Создание .env..."
 cat > .env <<ENVEOF
 VITE_SUPABASE_URL=${SUPABASE_URL}
 VITE_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
-VITE_TELEGRAM_BOT_TOKEN=${TG_BOT_TOKEN}
+TELEGRAM_BOT_TOKEN=${TG_BOT_TOKEN}
 CLIENT_BOT_TOKEN=${CLIENT_TG_TOKEN}
 WALLET_DOMAIN=${WALLET_DOMAIN}
 POS_DOMAIN=${DOMAIN}

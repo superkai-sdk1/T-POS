@@ -161,7 +161,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
         id, player_id, staff_id, shift_id, status, total_amount, payment_method,
         bonus_used, discount_total, certificate_used, certificate_id,
         space_id, space_start_at, space_end_at, guest_names, note, created_at, closed_at,
-        player:profiles!checks_player_id_fkey(id, nickname, photo_url, bonus_points, balance, client_tier, tg_id, tg_username, role, is_resident, pin, phone, birthday, search_tags, created_at, updated_at, deleted_at, password_hash, permissions),
+        player:profiles!checks_player_id_fkey(id, nickname, photo_url, bonus_points, balance, client_tier, tg_id, tg_username, role, is_resident, phone, birthday, search_tags, created_at, updated_at, deleted_at, permissions),
         space:spaces!checks_space_id_fkey(id, name, type, hourly_rate, is_active),
         event:events!events_check_id_fkey(id, type, location, date, start_time, end_time, payment_type, fixed_amount, status, comment, check_id, created_at)
       `)
@@ -298,7 +298,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
         id, player_id, staff_id, shift_id, status, total_amount, payment_method,
         bonus_used, discount_total, certificate_used, certificate_id,
         space_id, space_start_at, space_end_at, guest_names, note, created_at, closed_at,
-        player:profiles!checks_player_id_fkey(id, nickname, photo_url, bonus_points, balance, client_tier, tg_id, tg_username, role, is_resident, pin, phone, birthday, search_tags, created_at, updated_at, deleted_at, password_hash, permissions),
+        player:profiles!checks_player_id_fkey(id, nickname, photo_url, bonus_points, balance, client_tier, tg_id, tg_username, role, is_resident, phone, birthday, search_tags, created_at, updated_at, deleted_at, permissions),
         space:spaces!checks_space_id_fkey(id, name, type, hourly_rate, is_active)
       `)
       .single();
@@ -533,7 +533,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
         id, player_id, staff_id, shift_id, status, total_amount, payment_method,
         bonus_used, discount_total, certificate_used, certificate_id,
         space_id, space_start_at, space_end_at, guest_names, note, created_at, closed_at,
-        player:profiles!checks_player_id_fkey(id, nickname, photo_url, bonus_points, balance, client_tier, tg_id, tg_username, role, is_resident, pin, phone, birthday, search_tags, created_at, updated_at, deleted_at, password_hash, permissions),
+        player:profiles!checks_player_id_fkey(id, nickname, photo_url, bonus_points, balance, client_tier, tg_id, tg_username, role, is_resident, phone, birthday, search_tags, created_at, updated_at, deleted_at, permissions),
         space:spaces!checks_space_id_fkey(id, name, type, hourly_rate, is_active),
         event:events!events_check_id_fkey(id, type, location, date, start_time, end_time, payment_type, fixed_amount, status, comment, check_id, created_at)
       `)
@@ -777,6 +777,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
         _lastCartFingerprint = modKey;
       } catch (err) {
+        console.error('[POS] saveCartToDb failed:', err);
         success = false;
       } finally {
         setTimeout(() => { _savingCart = false; }, 600);
@@ -914,35 +915,40 @@ export const usePOSStore = create<POSState>((set, get) => ({
       };
     });
 
-    const { error: closeErr } = await supabase
-      .from('checks')
-      .update({
-        status: 'closed',
-        total_amount: finalAmount,
-        payment_method: payments.length > 0 ? primaryMethod : 'cash',
-        bonus_used: bonusUsed,
-        certificate_used: certificateUsed,
-        certificate_id: certificateId,
-        discount_total: discountTotal,
-        closed_at: new Date().toISOString(),
-      })
-      .eq('id', checkId);
+    // --- Atomic close via server-side SQL function ---
+    const cartItems = cart
+      .filter((x) => x?.item)
+      .reduce((acc, c) => {
+        const existing = acc.find((a: { item_id: string }) => a.item_id === c.item.id);
+        if (existing) {
+          existing.quantity += c.quantity;
+        } else {
+          acc.push({ item_id: c.item.id, quantity: c.quantity });
+        }
+        return acc;
+      }, [] as { item_id: string; quantity: number }[]);
 
-    if (closeErr) {
-      console.error('closeCheck update error:', closeErr);
+    const { data: rpcResult, error: rpcErr } = await supabase.rpc('close_check', {
+      p_check_id: checkId,
+      p_payments: JSON.stringify(payments.map((p) => ({ method: p.method, amount: p.amount }))),
+      p_bonus_used: bonusUsed,
+      p_space_rental: spaceRental,
+      p_certificate_used: certificateUsed,
+      p_certificate_id: certificateId,
+      p_discount_total: discountTotal,
+      p_closed_by: user?.id || null,
+      p_cart_items: JSON.stringify(cartItems),
+    });
+
+    if (rpcErr || rpcResult?.error) {
+      console.error('closeCheck RPC error:', rpcErr || rpcResult?.error);
       _closingCheckIds.delete(checkId);
       await get().loadOpenChecks();
       return false;
     }
 
+    // Notifications (fire-and-forget, outside transaction)
     if (payments.length > 0) {
-      const paymentRows = payments.map((p) => ({
-        check_id: checkId,
-        method: p.method,
-        amount: p.amount,
-      }));
-      await supabase.from('check_payments').insert(paymentRows);
-
       const playerNick = (activeCheck.player as { nickname?: string })?.nickname || 'Гость';
       const paymentMap: Record<string, 'payment_cash' | 'payment_card' | 'payment_deposit' | 'payment_debt'> = {
         cash: 'payment_cash',
@@ -958,164 +964,6 @@ export const usePOSStore = create<POSState>((set, get) => ({
       }
     }
 
-    if (activeCheck.player_id) {
-      const debtAmount = payments
-        .filter((p) => p.method === 'debt')
-        .reduce((s, p) => s + p.amount, 0);
-      const depositPayAmount = payments
-        .filter((p) => p.method === 'deposit')
-        .reduce((s, p) => s + p.amount, 0);
-
-      const { data: settingsRows } = await supabase.from('app_settings').select('*');
-      const cfg: Record<string, string> = {};
-      if (settingsRows) for (const r of settingsRows) cfg[r.key] = r.value;
-      const bonusEnabled = cfg['bonus_enabled'] !== 'false';
-      const bonusRate = Number(cfg['bonus_accrual_rate'] || '10');
-      const bonusMin = Number(cfg['bonus_min_purchase'] || '0');
-      const bonusOnDebt = cfg['bonus_accrual_on_debt'] === 'true';
-
-      const hasNonDebt = payments.some((p) => p.method !== 'debt');
-      const shouldAccrue = bonusEnabled && total >= bonusMin && (hasNonDebt || bonusOnDebt);
-      const bonusAccrual = shouldAccrue ? Math.round(total * bonusRate / 100) : 0;
-
-      const { data: player } = await supabase
-        .from('profiles')
-        .select('balance, bonus_points')
-        .eq('id', activeCheck.player_id)
-        .single();
-
-      if (player) {
-        const updates: Record<string, number> = {};
-        let newBalance = player.balance;
-        if (debtAmount > 0) {
-          newBalance -= debtAmount;
-        }
-        if (depositPayAmount > 0) {
-          newBalance -= depositPayAmount;
-        }
-        if (newBalance !== player.balance) {
-          updates.balance = newBalance;
-        }
-        const newPoints = Math.max(0, player.bonus_points - bonusUsed) + bonusAccrual;
-        if (bonusUsed > 0 || bonusAccrual > 0) {
-          updates.bonus_points = newPoints;
-        }
-        if (Object.keys(updates).length > 0) {
-          await supabase
-            .from('profiles')
-            .update(updates)
-            .eq('id', activeCheck.player_id);
-        }
-      }
-
-      if (bonusUsed > 0) {
-        const { error: bsErr } = await supabase.from('transactions').insert({
-          type: 'bonus_spend',
-          amount: bonusUsed,
-          description: `Списание бонусов по чеку`,
-          check_id: checkId,
-          player_id: activeCheck.player_id,
-          created_by: user?.id,
-        });
-        if (bsErr) console.error('closeCheck: bonus_spend transaction failed:', bsErr);
-        if (player) {
-          await supabase.from('bonus_history').insert({
-            profile_id: activeCheck.player_id,
-            amount: -bonusUsed,
-            balance_after: Math.max(0, player.bonus_points - bonusUsed),
-            reason: 'Списание по чеку',
-          });
-        }
-      }
-      if (bonusAccrual > 0) {
-        const { error: baErr } = await supabase.from('transactions').insert({
-          type: 'bonus_accrual',
-          amount: bonusAccrual,
-          description: `Начисление бонусов (${bonusRate}% от ${total}₽)`,
-          check_id: checkId,
-          player_id: activeCheck.player_id,
-          created_by: user?.id,
-        });
-        if (baErr) console.error('closeCheck: bonus_accrual transaction failed:', baErr);
-        if (player) {
-          const newPts = Math.max(0, player.bonus_points - bonusUsed) + bonusAccrual;
-          await supabase.from('bonus_history').insert({
-            profile_id: activeCheck.player_id,
-            amount: bonusAccrual,
-            balance_after: newPts,
-            reason: `Начисление ${bonusRate}% от ${total}₽`,
-          });
-        }
-      }
-
-      if (depositPayAmount > 0 && player) {
-        const newBal = (player.balance - debtAmount) - depositPayAmount;
-        const { error: daErr } = await supabase.from('transactions').insert({
-          type: 'debt_adjustment',
-          amount: -depositPayAmount,
-          description: `Оплата с депозита по чеку (было ${player.balance}₽, стало ${newBal}₽)`,
-          check_id: checkId,
-          player_id: activeCheck.player_id,
-          created_by: user?.id,
-        });
-        if (daErr) console.error('closeCheck: debt_adjustment transaction failed:', daErr);
-      }
-    }
-
-    const methodLabels: Record<string, string> = { cash: 'наличные', card: 'карта', debt: 'долг', bonus: 'бонусы', deposit: 'депозит', split: 'разд. оплата' };
-    const methodDesc = certificateUsed > 0
-      ? (payments.length > 0 ? `сертификат + ${isSplit ? 'разд. оплата' : (methodLabels[primaryMethod] || primaryMethod)}` : 'сертификат')
-      : (isSplit ? 'разд. оплата' : (methodLabels[primaryMethod] || primaryMethod));
-
-    const { error: saleErr } = await supabase.from('transactions').insert({
-      type: 'sale',
-      amount: finalAmount,
-      description: `Закрытие чека (${methodDesc})`,
-      check_id: checkId,
-      player_id: activeCheck.player_id || null,
-      created_by: user?.id,
-    });
-    if (saleErr) console.error('closeCheck: sale transaction failed:', saleErr);
-
-    if (certificateUsed > 0) {
-      await supabase.from('transactions').insert({
-        type: 'sale',
-        amount: 0,
-        description: `Оплата сертификатом: ${certificateUsed}₽${certificateId ? ` (${certificateId.slice(0, 8)})` : ''}`,
-        check_id: checkId,
-        player_id: activeCheck.player_id || null,
-        created_by: user?.id,
-      });
-    }
-
-    const qtyByItemId = new Map<string, number>();
-    for (const c of cart.filter((x) => x?.item)) {
-      qtyByItemId.set(c.item.id, (qtyByItemId.get(c.item.id) || 0) + c.quantity);
-    }
-    const stockResults = await Promise.all(
-      [...qtyByItemId.entries()].map(([itemId, soldQty]) =>
-        supabase.rpc('decrement_stock', { p_item_id: itemId, p_qty: soldQty })
-      ),
-    );
-    const stockErrors = stockResults.filter((r) => r.error);
-    if (stockErrors.length > 0) {
-      console.error('decrement_stock errors:', stockErrors.map((r) => r.error));
-    }
-
-    if (activeCheck.space_id) {
-      await supabase
-        .from('bookings')
-        .update({ status: 'completed' })
-        .eq('check_id', checkId)
-        .eq('status', 'active');
-    }
-
-    await supabase
-      .from('events')
-      .update({ status: 'completed' })
-      .eq('check_id', checkId)
-      .neq('status', 'completed');
-
     _closingCheckIds.delete(checkId);
     get().loadInventory();
     return true;
@@ -1130,7 +978,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
         id, player_id, staff_id, shift_id, status, total_amount, payment_method,
         bonus_used, discount_total, certificate_used, certificate_id,
         space_id, space_start_at, space_end_at, guest_names, note, created_at, closed_at,
-        player:profiles!checks_player_id_fkey(id, nickname, photo_url, bonus_points, balance, client_tier, tg_id, tg_username, role, is_resident, pin, phone, birthday, search_tags, created_at, updated_at, deleted_at, password_hash, permissions),
+        player:profiles!checks_player_id_fkey(id, nickname, photo_url, bonus_points, balance, client_tier, tg_id, tg_username, role, is_resident, phone, birthday, search_tags, created_at, updated_at, deleted_at, permissions),
         space:spaces!checks_space_id_fkey(id, name, type, hourly_rate, is_active),
         event:events!events_check_id_fkey(id, type, location, date, start_time, end_time, payment_type, fixed_amount, status, comment, check_id, created_at)
       `)

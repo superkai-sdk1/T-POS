@@ -14,7 +14,8 @@ window.addEventListener('popstate', () => {
 });
 document.addEventListener('touchstart', (e: TouchEvent) => {
   const x = e.touches[0]?.pageX ?? 0;
-  if (x <= EDGE_ZONE_PX) e.preventDefault(); // block system back swipe (left edge)
+  const w = window.innerWidth;
+  if (x <= EDGE_ZONE_PX || x >= w - EDGE_ZONE_PX) e.preventDefault();
 }, { passive: false, capture: true });
 
 // Register service worker with auto-update

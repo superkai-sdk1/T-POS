@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
 import { usePOSStore, isSavingCart, isCancellingCheck, isClosingCheck, isRecentlyRemoved, isActiveCheck } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
@@ -228,12 +228,17 @@ export function useOnTableChange(tables: string[], callback: () => void) {
     cbRef.current = callback;
   });
 
+  // Stable key so we don't re-subscribe on every render when a new array ref is passed
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const tablesKey = useMemo(() => tables.slice().sort().join(','), [tables.join(',')]);
+
   useEffect(() => {
+    const tableList = tablesKey.split(',');
     const handler = (e: Event) => {
       const table = (e as CustomEvent).detail;
-      if (tables.includes(table)) cbRef.current();
+      if (tableList.includes(table)) cbRef.current();
     };
     window.addEventListener('rt:change', handler);
     return () => window.removeEventListener('rt:change', handler);
-  }, [tables]);
+  }, [tablesKey]);
 }

@@ -3,6 +3,7 @@ import { spawn, execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import bcrypt from 'bcryptjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_DIR = join(__dirname, '..');
@@ -58,6 +59,72 @@ function json(res, data, status = 200) {
 let updateInProgress = false;
 
 const MAX_BODY_SIZE = 1024 * 1024; // 1 MB
+
+// --- Supabase REST helpers ---
+function getSbConfig() {
+  const url = process.env.VITE_SUPABASE_URL;
+  const key = process.env.VITE_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  return {
+    url,
+    headers: {
+      'apikey': key,
+      'Authorization': `Bearer ${key}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation',
+    },
+  };
+}
+
+async function sbSelect(table, query = '') {
+  const sb = getSbConfig();
+  if (!sb) return [];
+  const res = await fetch(`${sb.url}/rest/v1/${table}?${query}`, { headers: sb.headers });
+  return res.ok ? await res.json() : [];
+}
+
+async function sbUpdate(table, filter, data) {
+  const sb = getSbConfig();
+  if (!sb) return false;
+  const res = await fetch(`${sb.url}/rest/v1/${table}?${filter}`, {
+    method: 'PATCH', headers: sb.headers, body: JSON.stringify(data),
+  });
+  return res.ok;
+}
+
+// --- Telegram helper (server-side only) ---
+function getTelegramToken() {
+  return process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN || '';
+}
+
+async function sendTelegram(chatId, text) {
+  const token = getTelegramToken();
+  if (!token || !chatId) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true }),
+    });
+  } catch { /* ignore */ }
+}
+
+// --- Password/PIN hashing helpers ---
+const BCRYPT_ROUNDS = 10;
+const isBcrypt = (hash) => hash && (hash.startsWith('$2a$') || hash.startsWith('$2b$') || hash.startsWith('$2y$'));
+
+async function verifyAndMigrate(table, id, field, plainValue, storedHash) {
+  if (isBcrypt(storedHash)) {
+    return bcrypt.compareSync(plainValue, storedHash);
+  }
+  // Plain text comparison (legacy) — migrate to bcrypt on success
+  if (storedHash === plainValue) {
+    const hashed = bcrypt.hashSync(plainValue, BCRYPT_ROUNDS);
+    await sbUpdate(table, `id=eq.${id}`, { [field]: hashed });
+    return true;
+  }
+  return false;
+}
 
 let _cachedInfo = null;
 let _cachedInfoAt = 0;
@@ -202,9 +269,14 @@ const server = http.createServer((req, res) => {
         const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
         const aiUrl = 'https://polza.ai/api/v1/chat/completions';
 
-        // --- Fetch compact database context from Supabase ---
+        // --- Fetch compact database context from Supabase (cached 60s) ---
         let dbContext = '';
-        if (SUPABASE_URL && SUPABASE_KEY) {
+        const AI_CACHE_TTL = 60_000; // 60 seconds
+        if (!global._aiContextCache) global._aiContextCache = { text: '', ts: 0 };
+        const cacheValid = Date.now() - global._aiContextCache.ts < AI_CACHE_TTL && global._aiContextCache.text;
+        if (cacheValid) {
+          dbContext = global._aiContextCache.text;
+        } else if (SUPABASE_URL && SUPABASE_KEY) {
           const sbHeaders = {
             'apikey': SUPABASE_KEY,
             'Authorization': `Bearer ${SUPABASE_KEY}`,
@@ -403,11 +475,13 @@ const server = http.createServer((req, res) => {
 МЕРОПРИЯТИЯ (предстоящие, с id для update_event): ${JSON.stringify(events.slice(0, 20).map((e) => ({ id: e.id, type: e.type, location: e.location, date: e.date, start_time: e.start_time, payment_type: e.payment_type, fixed_amount: e.fixed_amount, status: e.status, comment: e.comment })))}
 (ВНИМАНИЕ: Даты в списке могут быть старыми. ИСПОЛЬЗУЙ ТЕКУЩИЙ ГОД ИЗ СЕКЦИИ "СЕЙЧАС" ДЛЯ НОВЫХ ЗАПИСЕЙ!)
 ===`;
+          // Save to cache
+          global._aiContextCache = { text: dbContext, ts: Date.now() };
         }
 
         // --- Construct System Prompt ---
         const now = new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', dateStyle: 'long', timeStyle: 'short' });
-        const systemPromptHeader = `СЕЙЧАС (МСК): ${now}. ТЕКУЩИЙ ГОД: 2026.
+        const systemPromptHeader = `СЕЙЧАС (МСК): ${now}. ТЕКУЩИЙ ГОД: ${new Date().getFullYear()}.
 
 ТЫ — TITAN AI, ИИ-ассистент для сотрудников клуба "Titan Mafia Club" (titanmafia.ru, @titankbr, Нальчик, ул. Кабардинская 189а). Интегрирован с T-POS. Используй данные T-POS в реальном времени — полный доступ к коммерческой информации: выручка, прибыль, расходы, зарплаты, должники, остатки, поставки, персонал.
 
@@ -583,12 +657,24 @@ const server = http.createServer((req, res) => {
             return;
           }
 
+          // Find active shift so check is linked to current shift
+          let activeShiftId = null;
+          try {
+            const shiftRes = await fetch(
+              `${SUPABASE_URL}/rest/v1/shifts?status=eq.open&order=opened_at.desc&limit=1`,
+              { headers: sbHeaders }
+            );
+            const shifts = await shiftRes.json();
+            if (Array.isArray(shifts) && shifts.length > 0) activeShiftId = shifts[0].id;
+          } catch { /* no shift */ }
+
           const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/checks`, {
             method: 'POST',
             headers: sbHeaders,
             body: JSON.stringify({
               player_id: players[0].id,
               staff_id: staffId || null,
+              shift_id: activeShiftId,
               status: 'open',
               total_amount: 0,
               bonus_used: 0,
@@ -1049,6 +1135,139 @@ const server = http.createServer((req, res) => {
     }).catch((e) => {
       json(res, { error: String(e) }, 400);
     });
+    return;
+  }
+
+  // ── Auth: Login by nickname + password ──
+  if (url.pathname === '/api/auth/login' && req.method === 'POST') {
+    readBody(req).then(async (body) => {
+      try {
+        const { nickname, password } = JSON.parse(body);
+        if (!nickname || !password) { json(res, { error: 'nickname и password обязательны' }, 400); return; }
+        const rows = await sbSelect('profiles', `nickname=eq.${encodeURIComponent(nickname)}&limit=1`);
+        const profile = rows[0];
+        if (!profile) { json(res, { error: 'Неверный логин или пароль' }, 401); return; }
+        const ok = await verifyAndMigrate('profiles', profile.id, 'password_hash', password, profile.password_hash);
+        if (!ok) { json(res, { error: 'Неверный логин или пароль' }, 401); return; }
+        const { password_hash: _ph, pin: _p, ...safe } = profile;
+        void _ph; void _p;
+        json(res, { data: safe });
+      } catch (e) { json(res, { error: String(e) }, 500); }
+    }).catch((e) => json(res, { error: String(e) }, 400));
+    return;
+  }
+
+  // ── Auth: Login by PIN ──
+  if (url.pathname === '/api/auth/pin' && req.method === 'POST') {
+    readBody(req).then(async (body) => {
+      try {
+        const { userId, pin } = JSON.parse(body);
+        if (!pin) { json(res, { error: 'PIN обязателен' }, 400); return; }
+        let profiles;
+        if (userId) {
+          profiles = await sbSelect('profiles', `id=eq.${encodeURIComponent(userId)}&limit=1`);
+        } else {
+          // Global PIN search (staff/owner only) — load all staff with non-null pins
+          profiles = await sbSelect('profiles', `role=in.(owner,staff)&pin=not.is.null`);
+        }
+        if (!profiles || profiles.length === 0) { json(res, { error: 'Неверный PIN-код' }, 401); return; }
+
+        let matched = null;
+        for (const p of profiles) {
+          if (!p.pin) continue;
+          const ok = await verifyAndMigrate('profiles', p.id, 'pin', pin, p.pin);
+          if (ok) { matched = p; break; }
+        }
+        if (!matched) { json(res, { error: 'Неверный PIN-код' }, 401); return; }
+        const { password_hash: _ph, pin: _p, ...safe } = matched;
+        void _ph; void _p;
+        json(res, { data: safe });
+      } catch (e) { json(res, { error: String(e) }, 500); }
+    }).catch((e) => json(res, { error: String(e) }, 400));
+    return;
+  }
+
+  // ── Auth: Setup / Change PIN ──
+  if (url.pathname === '/api/auth/setup-pin' && req.method === 'POST') {
+    readBody(req).then(async (body) => {
+      try {
+        const { userId, pin } = JSON.parse(body);
+        if (!userId || !pin) { json(res, { error: 'userId и pin обязательны' }, 400); return; }
+        const hashed = bcrypt.hashSync(pin, BCRYPT_ROUNDS);
+        const ok = await sbUpdate('profiles', `id=eq.${encodeURIComponent(userId)}`, { pin: hashed });
+        if (!ok) { json(res, { error: 'Ошибка сохранения PIN' }, 500); return; }
+        json(res, { success: true });
+      } catch (e) { json(res, { error: String(e) }, 500); }
+    }).catch((e) => json(res, { error: String(e) }, 400));
+    return;
+  }
+
+  // ── Auth: Hash password (for staff management) ──
+  if (url.pathname === '/api/auth/hash-password' && req.method === 'POST') {
+    readBody(req).then(async (body) => {
+      try {
+        const { password } = JSON.parse(body);
+        if (!password) { json(res, { error: 'password обязателен' }, 400); return; }
+        const hash = bcrypt.hashSync(password, BCRYPT_ROUNDS);
+        json(res, { hash });
+      } catch (e) { json(res, { error: String(e) }, 500); }
+    }).catch((e) => json(res, { error: String(e) }, 400));
+    return;
+  }
+
+  // ── Notify: Server-side Telegram + PWA ──
+  if (url.pathname === '/api/notify' && req.method === 'POST') {
+    readBody(req).then(async (body) => {
+      try {
+        const { type, text, chatIds, title, pwaBody, meta } = JSON.parse(body);
+
+        // Direct Telegram send (by chatIds)
+        if (text && Array.isArray(chatIds)) {
+          for (const chatId of chatIds) {
+            await sendTelegram(chatId, text);
+          }
+        }
+
+        // User-settings-aware Telegram + PWA notification
+        if (type && text) {
+          const sb = getSbConfig();
+          if (sb) {
+            const settingsRows = await sbSelect(
+              'user_notification_settings',
+              'select=user_id,types,profiles!inner(tg_id)'
+            );
+            for (const row of settingsRows) {
+              const profile = row.profiles;
+              const tgId = profile?.tg_id;
+              const userTypes = row.types || {};
+              const typeSetting = userTypes[type];
+              if (!typeSetting?.enabled) continue;
+              const ch = typeSetting.channel || 'both';
+              if ((ch === 'telegram' || ch === 'both') && tgId) {
+                await sendTelegram(tgId, text);
+              }
+            }
+            // PWA notification (insert into notifications table)
+            if (title) {
+              const anyPwa = settingsRows.some(row => {
+                const ts = (row.types || {})[type];
+                return ts?.enabled && (ts.channel === 'pwa' || ts.channel === 'both');
+              });
+              if (anyPwa) {
+                const pwaHeaders = { ...sb.headers, 'Prefer': 'return=minimal' };
+                await fetch(`${sb.url}/rest/v1/notifications`, {
+                  method: 'POST',
+                  headers: pwaHeaders,
+                  body: JSON.stringify({ type, title, body: pwaBody || null, meta: meta || null }),
+                });
+              }
+            }
+          }
+        }
+
+        json(res, { success: true });
+      } catch (e) { json(res, { error: String(e) }, 500); }
+    }).catch((e) => json(res, { error: String(e) }, 400));
     return;
   }
 

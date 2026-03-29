@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import type { EveningType } from '@/types';
 import { EVENING_TYPE_LABELS } from '@/types';
 
-const BOT_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN as string;
+// Telegram messages now sent via server proxy (token never exposed to client)
 
 const fmt = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n);
 
@@ -91,17 +91,12 @@ function userWantsPwa(user: UserSettings, type: AdminNotificationType): boolean 
 }
 
 async function sendToTelegram(text: string, chatId: string): Promise<void> {
-  if (!BOT_TOKEN || !chatId) return;
+  if (!chatId) return;
   try {
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+    await fetch('/api/notify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: 'HTML',
-        disable_web_page_preview: true,
-      }),
+      body: JSON.stringify({ text, chatIds: [chatId] }),
     });
   } catch {
     // silently ignore

@@ -70,21 +70,24 @@ export function useAnalyticsData() {
   const [salaryPayments, setSalaryPayments] = useState<{ amount: number; created_at: string; payment_method: string; profile_id: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Server-side date lower bound — only load data from prevRange.start onwards
+  const dateLowerBound = useMemo(() => prevRange.start.toISOString(), [prevRange.start]);
+
   const loadAll = useCallback(async () => {
     setIsLoading(true);
     const [checksRes, itemsRes, debtorsRes, suppliesRes, cashRes, costsRes, expensesRes, playersRes, adminsRes, refundsRes, refundItemsRes, salaryRes] = await Promise.all([
-      supabase.from('checks').select('id, total_amount, payment_method, closed_at, player_id, staff_id, shift_id, player:profiles!checks_player_id_fkey(nickname), shift:shifts!checks_shift_id_fkey(evening_type)').eq('status', 'closed').order('closed_at', { ascending: false }),
+      supabase.from('checks').select('id, total_amount, payment_method, closed_at, player_id, staff_id, shift_id, player:profiles!checks_player_id_fkey(nickname), shift:shifts!checks_shift_id_fkey(evening_type)').eq('status', 'closed').gte('closed_at', dateLowerBound).order('closed_at', { ascending: false }),
       supabase.from('check_items').select('item_id, check_id, quantity, price_at_time, item:inventory(name, category, price, track_stock, is_service)'),
-      supabase.from('profiles').select('*').lt('balance', 0).order('balance', { ascending: true }),
-      supabase.from('supplies').select('id, total_cost, created_at').order('created_at', { ascending: false }),
-      supabase.from('cash_operations').select('id, type, amount, created_at').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('id, nickname, role, balance, bonus_points, client_tier, is_resident, photo_url, created_at, deleted_at').lt('balance', 0).order('balance', { ascending: true }),
+      supabase.from('supplies').select('id, total_cost, created_at').gte('created_at', dateLowerBound).order('created_at', { ascending: false }),
+      supabase.from('cash_operations').select('id, type, amount, created_at').gte('created_at', dateLowerBound).order('created_at', { ascending: false }),
       supabase.from('supply_items').select('item_id, cost_per_unit, quantity'),
-      supabase.from('expenses').select('amount, expense_date').order('expense_date', { ascending: false }),
-      supabase.from('profiles').select('*').eq('role', 'client').is('deleted_at', null),
+      supabase.from('expenses').select('amount, expense_date').gte('expense_date', dateLowerBound.slice(0, 10)).order('expense_date', { ascending: false }),
+      supabase.from('profiles').select('id, nickname, role, balance, bonus_points, client_tier, is_resident, photo_url, tg_id, phone, birthday, created_at, deleted_at').eq('role', 'client').is('deleted_at', null),
       supabase.from('profiles').select('id, nickname').in('role', ['owner', 'staff']).is('deleted_at', null),
-      supabase.from('refunds').select('check_id, total_amount, created_at').order('created_at', { ascending: false }),
+      supabase.from('refunds').select('check_id, total_amount, created_at').gte('created_at', dateLowerBound).order('created_at', { ascending: false }),
       supabase.from('refund_items').select('item_id, quantity, refund:refunds!refund_items_refund_id_fkey(check_id)'),
-      supabase.from('salary_payments').select('amount, created_at, payment_method, profile_id').order('created_at', { ascending: false }),
+      supabase.from('salary_payments').select('amount, created_at, payment_method, profile_id').gte('created_at', dateLowerBound).order('created_at', { ascending: false }),
     ]);
 
     if (checksRes.data) {
@@ -108,7 +111,10 @@ export function useAnalyticsData() {
     }
 
     if (itemsRes.data) {
-      setAllCheckItems(itemsRes.data.map((ci: Record<string, unknown>) => ({
+      // Filter check_items to only items from loaded (date-filtered) checks
+      const loadedCheckIds = checksRes.data ? new Set(checksRes.data.map((c: Record<string, unknown>) => c.id as string)) : new Set<string>();
+      const filtered = itemsRes.data.filter((ci: Record<string, unknown>) => loadedCheckIds.has(ci.check_id as string));
+      setAllCheckItems(filtered.map((ci: Record<string, unknown>) => ({
         ...ci,
         item: Array.isArray(ci.item) ? (ci.item as Record<string, unknown>[])[0] : ci.item,
       })) as CheckItemStat[]);
@@ -146,7 +152,7 @@ export function useAnalyticsData() {
     }
 
     setIsLoading(false);
-  }, []);
+  }, [dateLowerBound]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
 

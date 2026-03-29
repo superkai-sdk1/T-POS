@@ -120,21 +120,48 @@ export function StaffManager() {
       return;
     }
 
+    // Hash password on server
+    let hashedPassword: string;
+    try {
+      const res = await fetch('/api/auth/hash-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: password.trim() }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.hash) { setError('Ошибка хеширования пароля'); setIsSaving(false); return; }
+      hashedPassword = result.hash;
+    } catch {
+      setError('Ошибка подключения к серверу');
+      setIsSaving(false);
+      return;
+    }
+
     const insertData: Record<string, unknown> = {
       nickname: nickname.trim(),
-      password_hash: password,
+      password_hash: hashedPassword,
       role: 'staff',
       is_resident: false,
     };
     if (pinCode.trim() && /^\d{4}$/.test(pinCode.trim())) {
-      insertData.pin = pinCode.trim();
+      // Hash PIN via separate server endpoint after creation
+      insertData.pin = null;
     }
-    const { error: insertErr } = await supabase.from('profiles').insert(insertData);
+    const { data: inserted, error: insertErr } = await supabase.from('profiles').insert(insertData).select('id').single();
 
-    if (insertErr) {
+    if (insertErr || !inserted) {
       setError('Ошибка при создании');
       setIsSaving(false);
       return;
+    }
+
+    // Hash and save PIN if provided
+    if (pinCode.trim() && /^\d{4}$/.test(pinCode.trim())) {
+      await fetch('/api/auth/setup-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: inserted.id, pin: pinCode.trim() }),
+      });
     }
 
     hapticNotification('success');
@@ -162,16 +189,38 @@ export function StaffManager() {
     setIsSaving(true);
 
     const updates: Record<string, unknown> = { nickname: nickname.trim(), photo_url: photoUrl || null };
+
+    // Hash password on server if changed
     if (password.trim()) {
-      updates.password_hash = password.trim();
+      try {
+        const res = await fetch('/api/auth/hash-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: password.trim() }),
+        });
+        const result = await res.json();
+        if (res.ok && result.hash) {
+          updates.password_hash = result.hash;
+        } else {
+          setError('Ошибка хеширования пароля');
+          setIsSaving(false);
+          return;
+        }
+      } catch {
+        setError('Ошибка подключения');
+        setIsSaving(false);
+        return;
+      }
     }
+
+    // Handle PIN changes via server
     if (pinCode.trim()) {
       if (pinCode.trim().length !== 4 || !/^\d{4}$/.test(pinCode.trim())) {
         setError('PIN-код должен быть 4 цифры');
         setIsSaving(false);
         return;
       }
-      updates.pin = pinCode.trim();
+      // Will set PIN after profile update
     } else if (selected.pin) {
       updates.pin = null;
     }
@@ -190,6 +239,15 @@ export function StaffManager() {
       setError(updErr.message.includes('unique') ? 'Такой никнейм уже занят' : 'Ошибка сохранения');
       setIsSaving(false);
       return;
+    }
+
+    // Hash and save PIN if provided
+    if (pinCode.trim() && /^\d{4}$/.test(pinCode.trim())) {
+      await fetch('/api/auth/setup-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: selected.id, pin: pinCode.trim() }),
+      });
     }
 
     hapticNotification('success');

@@ -67,7 +67,14 @@ check_required "VITE_SUPABASE_ANON_KEY" "anon ключ Supabase" || FAIL=1
 echo ""
 
 echo "--- Для ботов и API ---"
-check_optional "VITE_TELEGRAM_BOT_TOKEN" "admin-бот"
+check_optional "TELEGRAM_BOT_TOKEN" "Telegram-уведомления и auth (серверный)"
+# Проверка устаревшей переменной
+OLD_TG=$(grep -m1 "^VITE_TELEGRAM_BOT_TOKEN=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2-) || true
+NEW_TG=$(grep -m1 "^TELEGRAM_BOT_TOKEN=" "$ENV_FILE" 2>/dev/null | cut -d'=' -f2-) || true
+if [ -n "$OLD_TG" ] && [ -z "$NEW_TG" ]; then
+  echo -e "${YELLOW}⚠ VITE_TELEGRAM_BOT_TOKEN${NC} — устарел! Переименуйте в TELEGRAM_BOT_TOKEN"
+  echo "  VITE_ префикс небезопасен — токен попадает в клиентский бандл"
+fi
 check_optional "CLIENT_BOT_TOKEN" "wallet-бот"
 check_optional "API_SECRET" "защита /api/system/update"
 check_optional "OWNER_CHAT_IDS" "чат admins"

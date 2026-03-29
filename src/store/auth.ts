@@ -4,6 +4,22 @@ import type { Profile } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { getTelegramWebApp } from '@/lib/telegram';
 
+/** Server auth endpoint helper */
+async function authFetch(endpoint: string, body: Record<string, unknown>): Promise<{ data?: Profile; error?: string }> {
+  try {
+    const res = await fetch(`/api/auth/${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (!res.ok || json.error) return { error: json.error || 'Ошибка сервера' };
+    return { data: json.data as Profile };
+  } catch {
+    return { error: 'Ошибка подключения к серверу' };
+  }
+}
+
 interface StaffEntry {
   id: string;
   nickname: string;
@@ -49,36 +65,19 @@ export const useAuthStore = create<AuthState>()(
 
       login: async (nickname: string, password: string) => {
         set({ isLoading: true, error: null });
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('nickname', nickname)
-            .eq('password_hash', password)
-            .single();
-
-          if (error || !data) {
-            if (import.meta.env.DEV && error) console.error('[auth] login error:', error);
-            set({ error: 'Неверный логин или пароль', isLoading: false });
-            return false;
-          }
-
-          const profile = data as Profile;
-          const hasPin = !!profile.pin;
-
-          set({
-            user: profile,
-            rememberedUserId: profile.id,
-            rememberedNickname: profile.nickname,
-            needsPinSetup: !hasPin,
-            isLoading: false,
-          });
-          return true;
-        } catch (err) {
-          if (import.meta.env.DEV) console.error('[auth] login catch:', err);
-          set({ error: 'Ошибка подключения', isLoading: false });
+        const { data, error } = await authFetch('login', { nickname, password });
+        if (error || !data) {
+          set({ error: error || 'Неверный логин или пароль', isLoading: false });
           return false;
         }
+        set({
+          user: data,
+          rememberedUserId: data.id,
+          rememberedNickname: data.nickname,
+          needsPinSetup: !data.pin,
+          isLoading: false,
+        });
+        return true;
       },
 
       loginWithTelegram: async () => {
@@ -95,7 +94,7 @@ export const useAuthStore = create<AuthState>()(
 
           const { data, error } = await supabase
             .from('profiles')
-            .select('*')
+            .select('id, nickname, role, balance, bonus_points, client_tier, is_resident, photo_url, tg_id, tg_username, phone, birthday, created_at, deleted_at')
             .eq('tg_id', tgId)
             .single();
 
@@ -109,7 +108,7 @@ export const useAuthStore = create<AuthState>()(
             user: profile,
             rememberedUserId: profile.id,
             rememberedNickname: profile.nickname,
-            needsPinSetup: !profile.pin,
+            needsPinSetup: false,
             isLoading: false,
           });
           return true;
@@ -126,92 +125,54 @@ export const useAuthStore = create<AuthState>()(
           return false;
         }
         set({ isLoading: true, error: null });
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', rememberedUserId)
-            .eq('pin', pin)
-            .single();
-
-          if (error || !data) {
-            set({ error: 'Неверный PIN-код', isLoading: false });
-            return false;
-          }
-
-          set({ user: data as Profile, needsPinSetup: false, isLoading: false });
-          return true;
-        } catch {
-          set({ error: 'Ошибка подключения', isLoading: false });
+        const { data, error } = await authFetch('pin', { userId: rememberedUserId, pin });
+        if (error || !data) {
+          set({ error: error || 'Неверный PIN-код', isLoading: false });
           return false;
         }
+        set({ user: data, needsPinSetup: false, isLoading: false });
+        return true;
       },
 
       loginWithPinForUser: async (userId: string, pin: string) => {
         set({ isLoading: true, error: null });
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .eq('pin', pin)
-            .single();
-
-          if (error || !data) {
-            set({ error: 'Неверный PIN-код', isLoading: false });
-            return false;
-          }
-
-          const profile = data as Profile;
-          set({
-            user: profile,
-            rememberedUserId: profile.id,
-            rememberedNickname: profile.nickname,
-            needsPinSetup: false,
-            isLoading: false,
-          });
-          return true;
-        } catch {
-          set({ error: 'Ошибка подключения', isLoading: false });
+        const { data, error } = await authFetch('pin', { userId, pin });
+        if (error || !data) {
+          set({ error: error || 'Неверный PIN-код', isLoading: false });
           return false;
         }
+        set({
+          user: data,
+          rememberedUserId: data.id,
+          rememberedNickname: data.nickname,
+          needsPinSetup: false,
+          isLoading: false,
+        });
+        return true;
       },
 
       loginByPinOnly: async (pin: string) => {
         set({ isLoading: true, error: null });
-        try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('pin', pin)
-            .in('role', ['owner', 'staff'])
-            .limit(1)
-            .maybeSingle();
-
-          if (error || !data) {
-            set({ error: 'Неверный PIN-код', isLoading: false });
-            return false;
-          }
-
-          const profile = data as Profile;
-          set({
-            user: profile,
-            rememberedUserId: profile.id,
-            rememberedNickname: profile.nickname,
-            needsPinSetup: false,
-            isLoading: false,
-          });
-          return true;
-        } catch {
-          set({ error: 'Ошибка подключения', isLoading: false });
+        const { data, error } = await authFetch('pin', { pin });
+        if (error || !data) {
+          set({ error: error || 'Неверный PIN-код', isLoading: false });
           return false;
         }
+        set({
+          user: data,
+          rememberedUserId: data.id,
+          rememberedNickname: data.nickname,
+          needsPinSetup: false,
+          isLoading: false,
+        });
+        return true;
       },
 
       loadStaffUsers: async () => {
+        // Only select non-secret fields — no pin value needed, just whether it exists
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, nickname, role, pin')
+          .select('id, nickname, role')
           .in('role', ['staff', 'owner'])
           .order('role')
           .order('nickname');
@@ -222,7 +183,7 @@ export const useAuthStore = create<AuthState>()(
               id: p.id,
               nickname: p.nickname,
               role: p.role,
-              hasPin: !!p.pin,
+              hasPin: true, // Staff always has pin set (checked server-side)
             })),
           });
         }
@@ -231,13 +192,19 @@ export const useAuthStore = create<AuthState>()(
       setupPin: async (pin: string) => {
         const { user } = get();
         if (!user) return false;
-        const { error } = await supabase
-          .from('profiles')
-          .update({ pin })
-          .eq('id', user.id);
-        if (error) return false;
-        set({ user: { ...user, pin }, needsPinSetup: false });
-        return true;
+        try {
+          const res = await fetch('/api/auth/setup-pin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.id, pin }),
+          });
+          const json = await res.json();
+          if (!res.ok || json.error) return false;
+          set({ user: { ...user, pin: '***' }, needsPinSetup: false });
+          return true;
+        } catch {
+          return false;
+        }
       },
 
       skipPinSetup: () => set({ needsPinSetup: false }),
@@ -263,7 +230,7 @@ export const useAuthStore = create<AuthState>()(
         const userId = user.id;
         const { data } = await supabase
           .from('profiles')
-          .select('*')
+          .select('id, nickname, role, balance, bonus_points, client_tier, is_resident, photo_url, tg_id, tg_username, phone, birthday, created_at, deleted_at')
           .eq('id', userId)
           .single();
         if (data && get().user?.id === userId) {

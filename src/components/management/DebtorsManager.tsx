@@ -46,9 +46,10 @@ export function DebtorsManager() {
   const user = useAuthStore((s) => s.user);
 
   const load = useCallback(async () => {
+    const SAFE_PROFILE = 'id, nickname, role, balance, bonus_points, client_tier, is_resident, photo_url, tg_id, tg_username, phone, birthday, search_tags, created_at, deleted_at';
     const [debtRes, depRes] = await Promise.all([
-      supabase.from('profiles').select('*').lt('balance', 0).is('deleted_at', null).order('balance', { ascending: true }),
-      supabase.from('profiles').select('*').gt('balance', 0).is('deleted_at', null).order('balance', { ascending: false }),
+      supabase.from('profiles').select(SAFE_PROFILE).lt('balance', 0).is('deleted_at', null).order('balance', { ascending: true }),
+      supabase.from('profiles').select(SAFE_PROFILE).gt('balance', 0).is('deleted_at', null).order('balance', { ascending: false }),
     ]);
     if (debtRes.data) setDebtors(debtRes.data as Profile[]);
     if (depRes.data) setDepositors(depRes.data as Profile[]);
@@ -190,7 +191,7 @@ export function DebtorsManager() {
     setNewNote('');
     const { data } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, nickname, role, balance, bonus_points, client_tier, is_resident, photo_url, phone, search_tags, created_at, deleted_at')
       .eq('role', 'client')
       .is('deleted_at', null)
       .order('nickname');
