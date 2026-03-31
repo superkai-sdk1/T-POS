@@ -942,6 +942,16 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
     if (rpcErr || rpcResult?.error) {
       console.error('closeCheck RPC error:', rpcErr || rpcResult?.error);
+      console.error('closeCheck RPC params:', {
+        p_check_id: checkId,
+        p_payments: payments,
+        p_bonus_used: bonusUsed,
+        p_space_rental: spaceRental,
+        p_certificate_used: certificateUsed,
+        p_discount_total: discountTotal,
+        p_closed_by: user?.id,
+        p_cart_items: cartItems,
+      });
       _closingCheckIds.delete(checkId);
       await get().loadOpenChecks();
       return false;

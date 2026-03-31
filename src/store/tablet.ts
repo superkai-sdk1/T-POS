@@ -207,10 +207,25 @@ export const useTabletStore = create<TabletState>((set, get) => ({
     get().loadMyOrders(spaceId, profileId);
     get().loadCheckState(spaceId);
 
-    // Poll for check state + orders every 8s
-    const pollInterval = setInterval(() => {
-      get().loadCheckState(spaceId);
-      get().loadMyOrders(spaceId, profileId);
+    // Track previous check state for polling-based detection
+    let prevHadCheck = get().hasOpenCheck;
+
+    // Poll for check state + orders every 8s — with close detection fallback
+    const pollInterval = setInterval(async () => {
+      const prevState = get().hasOpenCheck;
+      await get().loadCheckState(spaceId);
+      const newState = get().hasOpenCheck;
+
+      // Detect check closure via polling (if Realtime didn't fire)
+      if (prevState && !newState) {
+        console.log('[tablet] Poll detected check closed — clearing history');
+        set({ myOrders: [], currentCheckItems: [], cart: [], comment: '' });
+      }
+
+      // Only reload orders if check is open
+      if (newState) {
+        get().loadMyOrders(spaceId, profileId);
+      }
     }, 8000);
 
     // Subscribe to tablet_orders changes for this profile
@@ -239,7 +254,7 @@ export const useTabletStore = create<TabletState>((set, get) => ({
       )
       .subscribe();
 
-    // Subscribe to checks changes for this space (detect check open/close)
+    // Subscribe to checks changes for this space (detect check open/close/delete)
     const checksChannel = supabase.channel('tablet-check-watch')
       .on(
         'postgres_changes',
@@ -250,8 +265,14 @@ export const useTabletStore = create<TabletState>((set, get) => ({
           filter: `space_id=eq.${spaceId}`
         },
         (payload: any) => {
+          console.log('[tablet] checks realtime event:', payload.eventType, payload.new?.status);
           // If check was closed, clear order history for this tablet
           if (payload.eventType === 'UPDATE' && payload.new?.status === 'closed') {
+            set({ myOrders: [], currentCheckItems: [], cart: [], comment: '' });
+            get().loadCheckState(spaceId);
+          }
+          // If check was deleted, same thing
+          if (payload.eventType === 'DELETE') {
             set({ myOrders: [], currentCheckItems: [], cart: [], comment: '' });
             get().loadCheckState(spaceId);
           }
