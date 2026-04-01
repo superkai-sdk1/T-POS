@@ -1337,18 +1337,22 @@ function CategoryEditorDrawer({
           <button
             type="button"
             onClick={() => setForm((prev) => ({ ...prev, is_tablet_visible: !prev.is_tablet_visible }))}
-            className={`w-full p-4 rounded-xl flex items-center justify-between transition-all active:scale-[0.99] ${
-              form.is_tablet_visible ? 'bg-purple-500/10 border border-purple-500/30' : 'bg-[var(--c-surface)] border border-[var(--c-border)]'
+            className={`w-full p-3.5 rounded-2xl flex items-center gap-3 transition-all active:scale-[0.98] border ${
+              form.is_tablet_visible ? 'bg-purple-500/10 border-purple-500/25' : 'bg-red-500/10 border-red-500/25'
             }`}
           >
-            <div className="flex flex-col text-left">
-              <span className={`text-sm font-bold ${form.is_tablet_visible ? 'text-purple-400' : 'text-[var(--c-hint)]'}`}>
-                {form.is_tablet_visible ? 'Отображается на Планшете' : 'Скрыто на Планшете'}
-              </span>
-              <span className="text-[10px] text-[var(--c-muted)] font-medium">Видят ли клиенты эту категорию</span>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg ${
+              form.is_tablet_visible ? 'bg-purple-500/20' : 'bg-red-500/15'
+            }`}>
+              {form.is_tablet_visible ? '📱' : '🚫'}
             </div>
-            <div className={`w-12 h-6 rounded-full relative transition-all duration-300 ${form.is_tablet_visible ? 'bg-purple-500' : 'bg-[var(--c-border)]'}`}>
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-md transition-all duration-300 ${form.is_tablet_visible ? 'left-7' : 'left-1'}`} />
+            <div className="flex flex-col text-left min-w-0 flex-1">
+              <span className={`text-sm font-bold ${form.is_tablet_visible ? 'text-purple-400' : 'text-red-400'}`}>
+                {form.is_tablet_visible ? 'Видна на планшете' : 'Скрыта на планшете'}
+              </span>
+              <span className="text-[10px] text-[var(--c-muted)]">
+                {form.is_tablet_visible ? 'Клиенты видят этот раздел и все позиции в нём' : 'Раздел и все его позиции скрыты от клиентов'}
+              </span>
             </div>
           </button>
         </div>
