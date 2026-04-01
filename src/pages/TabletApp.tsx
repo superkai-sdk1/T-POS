@@ -58,17 +58,19 @@ export function TabletApp() {
   }, []);
 
   const visibleCategories = categories.filter((c) => c.is_tablet_visible !== false);
+  const hiddenCategorySlugs = new Set(categories.filter((c) => c.is_tablet_visible === false).map((c) => c.slug));
+  const visibleItems = items.filter((i) => !hiddenCategorySlugs.has(i.category));
   const topCategories = visibleCategories.filter((c) => !c.parent_id);
   const getSubcategories = (parentId: string) => visibleCategories.filter((c) => c.parent_id === parentId);
 
   // Filter by category
   const categoryFiltered = activeCategory
-    ? items.filter((i) => {
+    ? visibleItems.filter((i) => {
       if (i.category === activeCategory.slug) return true;
       const subs = getSubcategories(activeCategory.id);
       return subs.some((s) => s.slug === i.category);
     })
-    : items;
+    : visibleItems;
 
   // Filter by search query (name + search_tags)
   const q = searchQuery.trim().toLowerCase();
@@ -107,7 +109,7 @@ export function TabletApp() {
       <div className="flex flex-col h-screen bg-[var(--c-bg)] text-[var(--c-text)]">
         <header className="px-4 py-3 sm:px-6 sm:py-4 border-b border-[var(--c-border)] bg-[var(--c-surface)] flex items-center justify-between shadow-sm">
           <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Меню заведения</h1>
+            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Меню TITAN</h1>
             <p className="text-[11px] sm:text-sm text-[var(--c-muted)] font-medium">Кабинка: {spaceName}</p>
           </div>
           <button
@@ -149,7 +151,7 @@ export function TabletApp() {
       {/* HEADER */}
       <header className="px-4 py-3 sm:px-6 sm:py-4 border-b border-[var(--c-border)] bg-[var(--c-surface)] flex items-center justify-between shadow-sm z-10 shrink-0">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Меню заведения</h1>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Меню TITAN</h1>
           <div className="flex items-center gap-2">
             <p className="text-[11px] sm:text-sm text-[var(--c-muted)] font-medium">Кабинка: {spaceName}</p>
             {currentCheckTotal !== null && currentCheckTotal > 0 && (
