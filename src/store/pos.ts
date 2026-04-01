@@ -955,14 +955,14 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
     const { data: rpcResult, error: rpcErr } = await supabase.rpc('close_check', {
       p_check_id: checkId,
-      p_payments: JSON.stringify(payments.map((p) => ({ method: p.method, amount: p.amount }))),
+      p_payments: payments.map((p) => ({ method: p.method, amount: p.amount })),
       p_bonus_used: bonusUsed,
       p_space_rental: spaceRental,
       p_certificate_used: certificateUsed,
       p_certificate_id: certificateId,
       p_discount_total: discountTotal,
       p_closed_by: user?.id || null,
-      p_cart_items: JSON.stringify(cartItems),
+      p_cart_items: cartItems,
     });
 
     if (rpcErr || rpcResult?.error) {
