@@ -6,7 +6,7 @@ import { useAllMenuCategories, getIconComponent, getCategoryColorConfig } from '
 import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
 import { ListSkeleton } from '@/components/ui/Skeleton';
-import { Plus, Minus, ShoppingCart, LogOut, ChevronLeft, Send, Check, Bell, Receipt, Clock, XCircle, CreditCard, ClipboardList, Ban } from 'lucide-react';
+import { Plus, Minus, ShoppingCart, ShoppingBag, LogOut, Send, Check, Bell, Receipt, Clock, XCircle, CreditCard, ClipboardList, Ban } from 'lucide-react';
 import type { InventoryItem, MenuCategory } from '@/types';
 
 export function TabletApp() {
@@ -62,16 +62,19 @@ export function TabletApp() {
   const topCategories = visibleCategories.filter((c) => !c.parent_id);
   const getSubcategories = (parentId: string) => visibleCategories.filter((c) => c.parent_id === parentId);
 
-  const currentCats = activeCategory ? getSubcategories(activeCategory.id) : topCategories;
-
+  // activeCategory is now a slug or null ('All')
   const currentItems = activeCategory
     ? items.filter((i) => {
-      if (i.category === activeCategory.slug) return true;
-      const sub = getSubcategories(activeCategory.id).find((s) => s.slug === i.category);
-      if (sub) return true;
+      if (i.category === (activeCategory as unknown as MenuCategory)?.slug) return true;
+      // Also match subcategories
+      const parentCat = topCategories.find((c) => c.id === (activeCategory as unknown as MenuCategory)?.id);
+      if (parentCat) {
+        const subs = getSubcategories(parentCat.id);
+        return subs.some((s) => s.slug === i.category) || i.category === parentCat.slug;
+      }
       return false;
     })
-    : items.filter((i) => i.is_top);
+    : items; // 'All' shows everything
 
   const totalPrice = cart.reduce((sum, c) => sum + (c.item.price * c.quantity), 0);
   const totalCount = cart.reduce((sum, c) => sum + c.quantity, 0);
@@ -154,32 +157,19 @@ export function TabletApp() {
       )}
 
       {/* HEADER */}
-      <header className="px-4 py-3 sm:px-6 sm:py-4 border-b border-[var(--c-border)] bg-[var(--c-surface)] flex items-center justify-between shadow-sm z-10 sticky top-0">
-        <div className="flex items-center gap-3">
-          {activeCategory && (
-            <button
-              onClick={() => setActiveCategory(null)}
-              className="p-2 sm:p-2.5 rounded-xl bg-[var(--c-bg)] border border-[var(--c-border)] active:scale-95 transition-transform"
-            >
-              <ChevronLeft className="w-5 h-5 text-[var(--c-hint)]" />
-            </button>
-          )}
-          <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
-              {activeCategory ? activeCategory.name : 'Меню заведения'}
-            </h1>
-            <div className="flex items-center gap-2">
-              <p className="text-[11px] sm:text-sm text-[var(--c-muted)] font-medium">Кабинка: {spaceName}</p>
-              {currentCheckTotal !== null && currentCheckTotal > 0 && (
-                <span className="text-[10px] sm:text-xs font-black bg-[var(--c-surface-hover)] border border-[var(--c-border)] px-2 py-0.5 rounded-full text-[var(--c-text)]">
-                  Счёт: {currentCheckTotal} ₽
-                </span>
-              )}
-            </div>
+      <header className="px-4 py-3 sm:px-6 sm:py-4 border-b border-[var(--c-border)] bg-[var(--c-surface)] flex items-center justify-between shadow-sm z-10 shrink-0">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">Меню заведения</h1>
+          <div className="flex items-center gap-2">
+            <p className="text-[11px] sm:text-sm text-[var(--c-muted)] font-medium">Кабинка: {spaceName}</p>
+            {currentCheckTotal !== null && currentCheckTotal > 0 && (
+              <span className="text-[10px] sm:text-xs font-black bg-[var(--c-surface-hover)] border border-[var(--c-border)] px-2 py-0.5 rounded-full text-[var(--c-text)]">
+                Счёт: {currentCheckTotal} ₽
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* View current check button */}
           <button
             onClick={handleOpenCheckView}
             className="p-3 sm:px-4 rounded-xl font-bold bg-[var(--c-bg)] border border-[var(--c-border)] text-[var(--c-hint)] hover:text-[var(--c-text)] active:scale-95 transition-all text-xs flex items-center gap-2"
@@ -207,48 +197,56 @@ export function TabletApp() {
         </div>
       </header>
 
-      {/* MAIN CONTENT AREA */}
-      <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-24">
-        {/* CATEGORIES GRID */}
-        {currentCats.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-sm font-black text-[var(--c-hint)] uppercase tracking-[0.2em] mb-4">
-              Разделы
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-              {currentCats.map((cat) => {
-                const Icon = getIconComponent(cat.icon_name);
-                const colorCfg = getCategoryColorConfig(cat.color);
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setActiveCategory(cat)}
-                    className="relative group rounded-3xl p-4 sm:p-5 flex flex-col justify-between overflow-hidden transition-all duration-200 border border-[var(--c-border)] text-left hover:scale-[1.02] active:scale-[0.98]"
-                    style={{ minHeight: '130px' }}
-                  >
-                    <div className={`absolute inset-0 ${colorCfg.bg} opacity-[0.85]`} />
-                    <div className="relative z-10 flex flex-col h-full">
-                      <div className={`w-12 h-12 mb-3 rounded-2xl flex items-center justify-center border ${colorCfg.text} bg-white shadow-sm ring-4 ring-white/30`}>
-                        <Icon strokeWidth={2.5} className="w-6 h-6" />
-                      </div>
-                      <h3 className={`text-base sm:text-lg font-bold leading-tight ${colorCfg.text === 'text-white' ? 'text-white' : 'text-[var(--c-text)]'} drop-shadow-sm`}>
-                        {cat.name}
-                      </h3>
-                    </div>
-                  </button>
-                );
-              })}
+      {/* MAIN: SIDEBAR + CONTENT */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        {/* SIDEBAR — Categories */}
+        <nav className="shrink-0 w-[140px] sm:w-[170px] bg-[var(--c-surface)] border-r border-[var(--c-border)] overflow-y-auto py-3 flex flex-col gap-1 px-2">
+          {/* "Все" category */}
+          <button
+            onClick={() => setActiveCategory(null)}
+            className={`flex items-center gap-2.5 w-full px-3 py-3 rounded-xl transition-all duration-300 border shrink-0 ${
+              !activeCategory
+                ? 'bg-white/20 border-transparent shadow-lg scale-[1.02]'
+                : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.04]'
+            }`}
+          >
+            <div className={`p-1.5 rounded-lg transition-all ${!activeCategory ? 'bg-white/20 shadow-inner' : 'bg-white/5'}`}>
+              <ShoppingBag className={`w-4 h-4 ${!activeCategory ? 'text-white' : 'text-slate-400'}`} />
             </div>
-          </div>
-        )}
+            <span className={`text-[11px] sm:text-xs font-black uppercase tracking-[0.1em] truncate ${!activeCategory ? 'text-white' : 'text-white/30'}`}>
+              Все
+            </span>
+          </button>
 
-        {/* ITEMS GRID */}
-        {currentItems.length > 0 && (
-          <div>
-            <h2 className="text-sm font-black text-[var(--c-hint)] uppercase tracking-[0.2em] mb-4">
-              {activeCategory ? 'Позиции' : 'Популярное'}
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+          {topCategories.map((cat) => {
+            const CatIcon = getIconComponent(cat.icon_name);
+            const colors = getCategoryColorConfig(cat.color);
+            const isActive = activeCategory?.id === cat.id;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat)}
+                className={`flex items-center gap-2.5 w-full px-3 py-3 rounded-xl transition-all duration-300 border shrink-0 ${
+                  isActive
+                    ? `${colors.active} border-transparent shadow-lg ${colors.glow} scale-[1.02]`
+                    : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.04]'
+                }`}
+              >
+                <div className={`p-1.5 rounded-lg transition-all ${isActive ? 'bg-white/20 shadow-inner' : 'bg-white/5'}`}>
+                  <CatIcon className={`w-4 h-4 ${isActive ? 'text-white' : colors.text}`} />
+                </div>
+                <span className={`text-[11px] sm:text-xs font-black uppercase tracking-[0.1em] truncate ${isActive ? 'text-white' : 'text-white/30'}`}>
+                  {cat.name}
+                </span>
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* CONTENT — Items grid */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 pb-28">
+          {currentItems.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
               {currentItems.map((item) => {
                 const isOutOfStock = item.track_stock && item.stock_quantity <= 0;
                 const inCart = cart.find((c) => c.item.id === item.id);
@@ -324,16 +322,14 @@ export function TabletApp() {
                 );
               })}
             </div>
-          </div>
-        )}
-
-        {currentCats.length === 0 && currentItems.length === 0 && (
-          <div className="text-center py-20">
-            <ShoppingCart className="w-16 h-16 mx-auto text-[var(--c-muted)] mb-4" />
-            <p className="text-xl font-bold text-[var(--c-hint)]">В этом разделе пока ничего нет</p>
-          </div>
-        )}
-      </main>
+          ) : (
+            <div className="text-center py-20">
+              <ShoppingCart className="w-16 h-16 mx-auto text-[var(--c-muted)] mb-4" />
+              <p className="text-xl font-bold text-[var(--c-hint)]">В этом разделе пока ничего нет</p>
+            </div>
+          )}
+        </main>
+      </div>
 
       {/* SERVICE BUTTONS */}
       <div className="fixed bottom-24 right-4 sm:bottom-6 sm:right-6 sm:left-auto flex flex-col gap-3 z-30 pointer-events-none">
