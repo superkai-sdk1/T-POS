@@ -168,14 +168,24 @@ export const useTabletStore = create<TabletState>((set, get) => ({
   loadCheckState: async (spaceId: string) => {
     const { data } = await supabase
       .from('checks')
-      .select('id, total_amount, status')
+      .select('id, total_amount, status, space_rental, created_at, space:spaces!checks_space_id_fkey(hourly_rate)')
       .eq('space_id', spaceId)
       .eq('status', 'open')
       .maybeSingle();
 
+    // Calculate current rental if space has hourly_rate
+    let rentalAmount = data?.space_rental || 0;
+    if (data && (data as any).space?.hourly_rate && !data.space_rental) {
+      const hourlyRate = (data as any).space.hourly_rate;
+      const elapsedMs = Date.now() - new Date(data.created_at).getTime();
+      const mins = Math.max(0, Math.floor(elapsedMs / 60000));
+      const roundedMins = Math.ceil(mins / 30) * 30;
+      rentalAmount = Math.round((hourlyRate / 60) * roundedMins);
+    }
+
     set({ 
       hasOpenCheck: !!data,
-      currentCheckTotal: data?.total_amount || 0,
+      currentCheckTotal: (data?.total_amount || 0) + rentalAmount,
     });
   },
 

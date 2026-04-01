@@ -6,7 +6,7 @@ import { useAllMenuCategories, getIconComponent, getCategoryColorConfig } from '
 import { Button } from '@/components/ui/Button';
 import { Drawer } from '@/components/ui/Drawer';
 import { ListSkeleton } from '@/components/ui/Skeleton';
-import { Plus, Minus, ShoppingCart, ShoppingBag, LogOut, Send, Check, Bell, Receipt, Clock, XCircle, CreditCard, ClipboardList, Ban } from 'lucide-react';
+import { Plus, Minus, ShoppingCart, ShoppingBag, LogOut, Send, Check, XCircle, ClipboardList, Ban, Search } from 'lucide-react';
 import type { InventoryItem, MenuCategory } from '@/types';
 
 export function TabletApp() {
@@ -14,7 +14,7 @@ export function TabletApp() {
   const logout = useAuthStore((s) => s.logout);
   const { 
     cart, comment, addComment, addToCart, removeFromCart, updateQuantity, submitOrder, isSubmitting,
-    myOrders, currentCheckTotal, currentCheckItems, hasOpenCheck, subscribeToSpace, callStaff, cancelOrder,
+    currentCheckTotal, currentCheckItems, hasOpenCheck, subscribeToSpace,
     orderSentMessage, dismissOrderSent, loadCheckItems,
   } = useTabletStore();
 
@@ -24,10 +24,9 @@ export function TabletApp() {
 
   const [activeCategory, setActiveCategory] = useState<MenuCategory | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [isMyOrdersOpen, setIsMyOrdersOpen] = useState(false);
   const [isCheckViewOpen, setIsCheckViewOpen] = useState(false);
-  const [isCalling, setIsCalling] = useState<'waiter'|'check'|'payment'|null>(null);
   const [spaceName, setSpaceName] = useState('Не привязано');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (user?.linked_space_id) {
@@ -62,19 +61,23 @@ export function TabletApp() {
   const topCategories = visibleCategories.filter((c) => !c.parent_id);
   const getSubcategories = (parentId: string) => visibleCategories.filter((c) => c.parent_id === parentId);
 
-  // activeCategory is now a slug or null ('All')
-  const currentItems = activeCategory
+  // Filter by category
+  const categoryFiltered = activeCategory
     ? items.filter((i) => {
-      if (i.category === (activeCategory as unknown as MenuCategory)?.slug) return true;
-      // Also match subcategories
-      const parentCat = topCategories.find((c) => c.id === (activeCategory as unknown as MenuCategory)?.id);
-      if (parentCat) {
-        const subs = getSubcategories(parentCat.id);
-        return subs.some((s) => s.slug === i.category) || i.category === parentCat.slug;
-      }
-      return false;
+      if (i.category === activeCategory.slug) return true;
+      const subs = getSubcategories(activeCategory.id);
+      return subs.some((s) => s.slug === i.category);
     })
-    : items; // 'All' shows everything
+    : items;
+
+  // Filter by search query (name + search_tags)
+  const q = searchQuery.trim().toLowerCase();
+  const currentItems = q
+    ? categoryFiltered.filter((i) =>
+        i.name.toLowerCase().includes(q) ||
+        (i.search_tags || []).some((t) => t.toLowerCase().includes(q))
+      )
+    : categoryFiltered;
 
   const totalPrice = cart.reduce((sum, c) => sum + (c.item.price * c.quantity), 0);
   const totalCount = cart.reduce((sum, c) => sum + c.quantity, 0);
@@ -85,12 +88,7 @@ export function TabletApp() {
     if (ok) setIsCartOpen(false);
   };
 
-  const handleCall = async (type: 'waiter' | 'check' | 'payment') => {
-    if (!user?.linked_space_id || !user?.id) return;
-    setIsCalling(type);
-    await callStaff(user.linked_space_id, user.id, type);
-    setIsCalling(null);
-  };
+
 
   const handleOpenCheckView = () => {
     if (user?.linked_space_id) {
@@ -125,17 +123,9 @@ export function TabletApp() {
             <Ban className="w-10 h-10 text-amber-500" />
           </div>
           <h2 className="text-2xl font-black text-[var(--c-text)] mb-3">Счёт ещё не открыт</h2>
-          <p className="text-[var(--c-muted)] text-sm max-w-sm leading-relaxed mb-8">
-            Заказы станут доступны после того, как персонал откроет счёт для вашей кабинки. Пожалуйста, подождите или позовите официанта.
+          <p className="text-[var(--c-muted)] text-sm max-w-sm leading-relaxed">
+            Заказы станут доступны после того, как персонал откроет счёт для вашей кабинки. Пожалуйста, подождите.
           </p>
-          <button
-            onClick={() => handleCall('waiter')}
-            disabled={isCalling === 'waiter'}
-            className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-indigo-500 hover:bg-indigo-600 active:scale-95 text-white font-bold shadow-lg transition-all"
-          >
-            {isCalling === 'waiter' ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Bell className="w-5 h-5" />}
-            Вызвать персонал
-          </button>
         </main>
       </div>
     );
@@ -178,16 +168,6 @@ export function TabletApp() {
             <span className="hidden sm:inline">Текущий счёт</span>
           </button>
           <button
-            onClick={() => setIsMyOrdersOpen(true)}
-            className="p-3 sm:px-4 rounded-xl font-bold bg-[var(--c-bg)] border border-[var(--c-border)] text-[var(--c-hint)] hover:text-[var(--c-text)] active:scale-95 transition-all text-xs flex items-center gap-2"
-          >
-            <Clock className="w-4 h-4" />
-            <span className="hidden sm:inline">Мои заказы</span>
-            {myOrders.length > 0 && (
-              <span className="bg-[var(--c-accent)] text-white shrink-0 w-5 h-5 flex items-center justify-center rounded-full text-[10px]">{myOrders.length}</span>
-            )}
-          </button>
-          <button
             onClick={logout}
             className="p-3 sm:px-4 rounded-xl font-bold bg-[var(--c-bg)] border border-[var(--c-border)] text-[var(--c-hint)] hover:text-red-400 active:scale-95 transition-all text-xs flex items-center gap-2"
           >
@@ -201,6 +181,17 @@ export function TabletApp() {
       <div className="flex-1 flex min-h-0 overflow-hidden">
         {/* SIDEBAR — Categories */}
         <nav className="shrink-0 w-[140px] sm:w-[170px] bg-[var(--c-surface)] border-r border-[var(--c-border)] overflow-y-auto py-3 flex flex-col gap-1 px-2">
+          {/* Search */}
+          <div className="relative mb-2">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Поиск..."
+              className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-3 py-2.5 text-xs text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all"
+            />
+          </div>
           {/* "Все" category */}
           <button
             onClick={() => setActiveCategory(null)}
@@ -331,33 +322,7 @@ export function TabletApp() {
         </main>
       </div>
 
-      {/* SERVICE BUTTONS */}
-      <div className="fixed bottom-24 right-4 sm:bottom-6 sm:right-6 sm:left-auto flex flex-col gap-3 z-30 pointer-events-none">
-        <button
-          onClick={() => handleCall('payment')}
-          disabled={isCalling === 'payment'}
-          className="pointer-events-auto flex items-center justify-center bg-amber-500 hover:bg-amber-600 active:scale-90 text-white shadow-lg p-3 sm:p-4 rounded-2xl sm:rounded-full transition-all group"
-        >
-          {isCalling === 'payment' ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CreditCard className="w-6 h-6 sm:w-7 sm:h-7" />}
-          <span className="ml-0 w-0 overflow-hidden opacity-0 group-hover:w-auto group-hover:ml-3 group-hover:opacity-100 whitespace-nowrap font-bold text-sm transition-all hidden sm:inline-flex">Оплатить</span>
-        </button>
-        <button
-          onClick={() => handleCall('check')}
-          disabled={isCalling === 'check'}
-          className="pointer-events-auto flex items-center justify-center bg-emerald-500 hover:bg-emerald-600 active:scale-90 text-white shadow-lg p-3 sm:p-4 rounded-2xl sm:rounded-full transition-all group"
-        >
-          {isCalling === 'check' ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Receipt className="w-6 h-6 sm:w-7 sm:h-7" />}
-          <span className="ml-0 w-0 overflow-hidden opacity-0 group-hover:w-auto group-hover:ml-3 group-hover:opacity-100 whitespace-nowrap font-bold text-sm transition-all hidden sm:inline-flex">Попросить счёт</span>
-        </button>
-        <button
-          onClick={() => handleCall('waiter')}
-          disabled={isCalling === 'waiter'}
-          className="pointer-events-auto flex items-center justify-center bg-indigo-500 hover:bg-indigo-600 active:scale-90 text-white shadow-lg p-3 sm:p-4 rounded-2xl sm:rounded-full transition-all group"
-        >
-          {isCalling === 'waiter' ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Bell className="w-6 h-6 sm:w-7 sm:h-7" />}
-          <span className="ml-0 w-0 overflow-hidden opacity-0 group-hover:w-auto group-hover:ml-3 group-hover:opacity-100 whitespace-nowrap font-bold text-sm transition-all hidden sm:inline-flex">Вызвать персонал</span>
-        </button>
-      </div>
+
 
       {/* FLOATING CART BUTTON */}
       {totalCount > 0 && (
@@ -493,94 +458,16 @@ export function TabletApp() {
             )}
           </div>
           {currentCheckItems.length > 0 && (
-            <div className="p-6 sm:p-10 bg-[var(--c-surface)] border-t border-[var(--c-border)] space-y-4">
+            <div className="p-6 sm:p-10 bg-[var(--c-surface)] border-t border-[var(--c-border)]">
               <div className="flex items-center justify-between">
                 <span className="text-[var(--c-hint)] font-semibold uppercase tracking-wider text-sm">Итого по счёту</span>
-                <span className="text-2xl font-black text-[var(--c-text)]">{checkItemsTotal} <span className="text-lg text-[var(--c-muted)]">₽</span></span>
+                <span className="text-2xl font-black text-[var(--c-text)]">{currentCheckTotal || checkItemsTotal} <span className="text-lg text-[var(--c-muted)]">₽</span></span>
               </div>
-              <button
-                onClick={() => { setIsCheckViewOpen(false); handleCall('payment'); }}
-                disabled={isCalling === 'payment'}
-                className="w-full h-14 rounded-2xl font-bold text-white flex items-center justify-center gap-3 transition-all active:scale-[0.98] shadow-lg bg-amber-500 hover:bg-amber-600"
-              >
-                {isCalling === 'payment' ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <CreditCard className="w-5 h-5" />}
-                Позвать для оплаты
-              </button>
             </div>
           )}
         </div>
       </Drawer>
 
-      {/* MY ORDERS DRAWER */}
-      <Drawer
-        open={isMyOrdersOpen}
-        onClose={() => setIsMyOrdersOpen(false)}
-        title="Мои текущие заказы"
-        size="md"
-      >
-        <div className="flex flex-col h-full -mx-6 -mb-6 sm:-mx-10 sm:-mb-10 bg-[var(--c-bg)]">
-          <div className="flex-1 overflow-y-auto px-6 sm:px-10 py-6 space-y-4">
-            {myOrders.length === 0 ? (
-              <div className="text-center py-20">
-                <Clock className="w-12 h-12 text-[var(--c-border)] mx-auto mb-4" />
-                <p className="text-[var(--c-hint)] font-medium">Вы еще ничего не заказывали</p>
-              </div>
-            ) : (
-              myOrders.map(order => {
-                const isSpecial = order.comment?.startsWith('[');
-                return (
-                  <div key={order.id} className="bg-[var(--c-surface)] border border-[var(--c-border)] rounded-2xl p-4 shadow-sm">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        {isSpecial ? (
-                          <h4 className="font-bold text-[var(--c-text)] text-sm">{order.comment}</h4>
-                        ) : (
-                          <h4 className="font-bold text-[var(--c-text)] text-sm">Заказ от {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</h4>
-                        )}
-                        <p className="text-[10px] text-[var(--c-muted)] mt-1 tracking-wider uppercase">Оформил: {user?.nickname}</p>
-                      </div>
-                      <div className={`px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${
-                        order.status === 'pending' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 
-                        order.status === 'accepted' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
-                        'bg-red-500/10 text-red-500 border-red-500/20'
-                      }`}>
-                        {order.status === 'pending' ? 'В обработке' : order.status === 'accepted' ? 'Заказ принят' : 'Отклонён'}
-                      </div>
-                    </div>
-                    
-                    {!isSpecial && order.items && order.items.length > 0 && (
-                      <div className="space-y-2 mt-2 pt-2 border-t border-[var(--c-border)]">
-                        {order.items.map(item => (
-                          <div key={item.id} className="flex justify-between text-xs sm:text-sm">
-                            <span className="text-[var(--c-hint)]">{item.item?.name} <span className="text-[var(--c-muted)]">×{item.quantity}</span></span>
-                            <span className="font-bold text-[var(--c-text)]">{(item.item?.price || 0) * item.quantity} ₽</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    
-                    {!isSpecial && order.comment && (
-                      <div className="mt-3 text-xs bg-[var(--c-bg)] p-2 rounded-lg border border-[var(--c-border)] text-[var(--c-hint)]">
-                        <span className="font-bold text-[var(--c-text)]">Вы:</span> {order.comment}
-                      </div>
-                    )}
-
-                    {order.status === 'pending' && (
-                      <button
-                        onClick={() => cancelOrder(order.id)}
-                        className="mt-3 w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-xs font-bold text-red-500 bg-red-500/10 hover:bg-red-500/20 active:scale-[0.98] transition-all border border-red-500/20"
-                      >
-                        <XCircle className="w-4 h-4" />
-                        Отменить заказ
-                      </button>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      </Drawer>
     </div>
   );
 }
