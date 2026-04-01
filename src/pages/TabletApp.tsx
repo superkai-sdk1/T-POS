@@ -251,7 +251,7 @@ export function TabletApp() {
                     key={item.id}
                     className={`group relative transition-all duration-300 rounded-2xl p-4 flex flex-col text-left min-h-[120px] overflow-hidden ${
                       isOutOfStock
-                        ? 'opacity-40 grayscale pointer-events-none'
+                        ? 'opacity-60 border border-red-500/20 bg-white/[0.02]'
                         : inCart
                           ? `${colorCfg.bgActive} border border-white/12 shadow-[0_10px_30px_rgba(0,0,0,0.3)] ring-1 ring-white/12`
                           : `${colorCfg.bg} border border-white/5 hover:bg-white/[0.08] active:scale-[0.97]`
@@ -265,14 +265,6 @@ export function TabletApp() {
                         ))}
                       </div>
                     </div>
-
-                    {isOutOfStock && (
-                      <div className="absolute inset-x-0 top-1/3 z-20 flex justify-center -translate-y-1/2">
-                        <span className="bg-red-500 text-white font-black uppercase tracking-widest text-[10px] px-3 py-1 rounded-xl shadow-lg border border-red-400 rotate-[-5deg]">
-                          Нет в наличии
-                        </span>
-                      </div>
-                    )}
 
                     <button
                       type="button"
@@ -300,15 +292,21 @@ export function TabletApp() {
                       </div>
 
                       {/* Item name */}
-                      <h3 className="text-[15px] sm:text-base font-black uppercase tracking-tighter text-white/90 line-clamp-2 leading-snug mb-auto text-left w-full">
+                      <h3 className={`text-[15px] sm:text-base font-black uppercase tracking-tighter line-clamp-2 leading-snug mb-auto text-left w-full ${isOutOfStock ? 'text-white/40' : 'text-white/90'}`}>
                         {item.name}
                       </h3>
 
-                      {/* Price */}
+                      {/* Price or out-of-stock badge */}
                       <div className="flex justify-end mt-2">
-                        <span className="text-base sm:text-lg font-black text-white tracking-tighter tabular-nums">
-                          {new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(item.price)}₽
-                        </span>
+                        {isOutOfStock ? (
+                          <span className="text-[10px] font-black uppercase tracking-wider text-red-400/80 bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-lg">
+                            Нет в наличии
+                          </span>
+                        ) : (
+                          <span className="text-base sm:text-lg font-black text-white tracking-tighter tabular-nums">
+                            {new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(item.price)}₽
+                          </span>
+                        )}
                       </div>
                     </button>
                   </div>
