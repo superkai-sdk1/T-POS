@@ -166,16 +166,20 @@ export const useTabletStore = create<TabletState>((set, get) => ({
   },
 
   loadCheckState: async (spaceId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('checks')
-      .select('id, total_amount, status, space_rental, created_at, space:spaces!checks_space_id_fkey(hourly_rate)')
+      .select('id, total_amount, status, created_at, space:spaces!checks_space_id_fkey(hourly_rate)')
       .eq('space_id', spaceId)
       .eq('status', 'open')
       .maybeSingle();
 
+    if (error) {
+      console.error('[tablet] loadCheckState error:', error);
+    }
+
     // Calculate current rental if space has hourly_rate
-    let rentalAmount = data?.space_rental || 0;
-    if (data && (data as any).space?.hourly_rate && !data.space_rental) {
+    let rentalAmount = 0;
+    if (data && (data as any).space?.hourly_rate) {
       const hourlyRate = (data as any).space.hourly_rate;
       const elapsedMs = Date.now() - new Date(data.created_at).getTime();
       const mins = Math.max(0, Math.floor(elapsedMs / 60000));
