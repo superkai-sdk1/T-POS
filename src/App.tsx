@@ -19,16 +19,16 @@ import { useLayoutStore } from '@/store/layout';
 import { useRealtimeSync } from '@/hooks/useRealtimeSync';
 import { initTelegramApp } from '@/lib/telegram';
 import { LoginPage } from '@/components/auth/LoginPage';
-import { Layout } from '@/components/Layout';
-import { OpenChecks } from '@/components/pos/OpenChecks';
-import { CheckView } from '@/components/pos/CheckView';
-import { CheckCartBar } from '@/components/pos/CheckCartBar';
-import { TabPanel } from '@/components/ui/TabPanel';
-import { TabletApp } from '@/pages/TabletApp';
 
+const TabletApp = lazy(() => import('@/pages/TabletApp').then((m) => ({ default: m.TabletApp })));
 const ManagementPage = lazy(() => import('@/components/management/ManagementPage').then((m) => ({ default: m.ManagementPage })));
 const ReportsPage = lazy(() => import('@/components/dashboard/ReportsPage').then((m) => ({ default: m.ReportsPage })));
 const EventsPage = lazy(() => import('@/components/events/EventsPage').then((m) => ({ default: m.EventsPage })));
+const Layout = lazy(() => import('@/components/Layout').then((m) => ({ default: m.Layout })));
+const OpenChecks = lazy(() => import('@/components/pos/OpenChecks').then((m) => ({ default: m.OpenChecks })));
+const CheckView = lazy(() => import('@/components/pos/CheckView').then((m) => ({ default: m.CheckView })));
+const CheckCartBar = lazy(() => import('@/components/pos/CheckCartBar').then((m) => ({ default: m.CheckCartBar })));
+const TabPanel = lazy(() => import('@/components/ui/TabPanel').then((m) => ({ default: m.TabPanel })));
 
 function TabFallback() {
   return (
@@ -49,8 +49,29 @@ function TabFallback() {
   );
 }
 
+// ========================
+// Root: auth check + role routing
+// ========================
 export default function App() {
   const user = useAuthStore((s) => s.user);
+  const needsPinSetup = useAuthStore((s) => s.needsPinSetup);
+
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  // Tablet users get a lightweight app — no POS stores, no realtime, no Telegram
+  if (user.role === 'tablet') {
+    return <Suspense fallback={<TabFallback />}><TabletApp /></Suspense>;
+  }
+
+  return <StaffApp needsPinSetup={needsPinSetup} />;
+}
+
+// ========================
+// Staff app with full POS, realtime, shifts
+// ========================
+function StaffApp({ needsPinSetup }: { needsPinSetup: boolean }) {
   const loadInventory = usePOSStore((s) => s.loadInventory);
   const loadOpenChecks = usePOSStore((s) => s.loadOpenChecks);
   const loadActiveShift = useShiftStore((s) => s.loadActiveShift);
@@ -86,13 +107,11 @@ export default function App() {
   const refreshProfile = useAuthStore((s) => s.refreshProfile);
 
   useEffect(() => {
-    if (user) {
-      loadInventory();
-      loadOpenChecks();
-      loadActiveShift();
-      refreshProfile();
-    }
-  }, [user, loadInventory, loadOpenChecks, loadActiveShift, refreshProfile]);
+    loadInventory();
+    loadOpenChecks();
+    loadActiveShift();
+    refreshProfile();
+  }, [loadInventory, loadOpenChecks, loadActiveShift, refreshProfile]);
 
   const [managementScreen, setManagementScreen] = useState<string | undefined>();
   const [managementParams, setManagementParams] = useState<{ supplyId?: string; revisionId?: string } | undefined>();
@@ -190,8 +209,6 @@ export default function App() {
     return () => window.removeEventListener('tpos:notification-click', handler);
   }, [handleDashboardNavigate]);
 
-  const needsPinSetup = useAuthStore((s) => s.needsPinSetup);
-
   const handleNewCheckFromCheckView = useCallback(() => {
     setShowCheckView(false);
     leaveCheck().then(() => {
@@ -199,100 +216,94 @@ export default function App() {
     });
   }, [leaveCheck]);
 
-  if (!user) {
-    return <LoginPage />;
-  }
-
-  if (user.role === 'tablet') {
-    return <TabletApp />;
-  }
-
   return (
-    <Layout activeTab={activeTab} onTabChange={handleTabChange} showCheckView={showCheckView} onNewCheckFromCheckView={handleNewCheckFromCheckView}>
-      <TabPanel id="pos" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
-        {/* Mobile: swap between list and check view. CheckView only when isMobile to avoid duplicate menus. */}
-        <div className="lg:hidden flex-1 flex flex-col min-h-0">
-          {showCheckView && isMobile ? (
-            <div className="flex-1 flex flex-col min-h-0 px-2 py-2">
-              <CheckView onBack={() => setShowCheckView(false)} />
-            </div>
-          ) : isMobile ? (
-            <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
-          ) : null}
-        </div>
-        {/* Desktop: split view — list left, check right. Resizable when split. */}
-        <div
-          ref={splitRef}
-          className={[
-            'hidden lg:flex flex-1 min-h-0 overflow-hidden lg:h-full gap-4',
-            isResizing && 'select-none',
-          ].filter(Boolean).join(' ')}
-        >
-          <div
-            className="flex flex-col shrink-0 min-h-0 min-w-[280px] lg:pr-2 lg:gap-3"
-            style={{
-              width: showCheckView && !isMobile ? `${splitLeftPercent}%` : undefined,
-              flex: showCheckView && !isMobile ? undefined : 1,
-              overscrollBehaviorY: 'contain',
-            }}
-          >
-            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-none scroll-area">
+    <Suspense fallback={<TabFallback />}>
+      <Layout activeTab={activeTab} onTabChange={handleTabChange} showCheckView={showCheckView} onNewCheckFromCheckView={handleNewCheckFromCheckView}>
+        <TabPanel id="pos" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
+          {/* Mobile: swap between list and check view. CheckView only when isMobile to avoid duplicate menus. */}
+          <div className="lg:hidden flex-1 flex flex-col min-h-0">
+            {showCheckView && isMobile ? (
+              <div className="flex-1 flex flex-col min-h-0 px-2 py-2">
+                <CheckView onBack={() => setShowCheckView(false)} />
+              </div>
+            ) : isMobile ? (
               <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
-            </div>
+            ) : null}
           </div>
-          {showCheckView && !isMobile && (
-            <>
-              <div
-                role="separator"
-                aria-orientation="vertical"
-                className="shrink-0 w-2 flex items-center justify-center cursor-col-resize group touch-none"
-                onMouseDown={() => setIsResizing(true)}
-                onTouchStart={() => setIsResizing(true)}
-              >
-                <div className="w-0.5 h-8 rounded-full bg-[var(--c-border)] group-hover:bg-[var(--c-fg-muted)] transition-colors" />
+          {/* Desktop: split view — list left, check right. Resizable when split. */}
+          <div
+            ref={splitRef}
+            className={[
+              'hidden lg:flex flex-1 min-h-0 overflow-hidden lg:h-full gap-4',
+              isResizing && 'select-none',
+            ].filter(Boolean).join(' ')}
+          >
+            <div
+              className="flex flex-col shrink-0 min-h-0 min-w-[280px] lg:pr-2 lg:gap-3"
+              style={{
+                width: showCheckView && !isMobile ? `${splitLeftPercent}%` : undefined,
+                flex: showCheckView && !isMobile ? undefined : 1,
+                overscrollBehaviorY: 'contain',
+              }}
+            >
+              <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-none scroll-area">
+                <OpenChecks onSelectCheck={() => setShowCheckView(true)} />
               </div>
-              <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-hidden min-w-0 lg:h-full lg:pl-2">
-                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-none scroll-area">
-                  <CheckView onBack={() => setShowCheckView(false)} />
+            </div>
+            {showCheckView && !isMobile && (
+              <>
+                <div
+                  role="separator"
+                  aria-orientation="vertical"
+                  className="shrink-0 w-2 flex items-center justify-center cursor-col-resize group touch-none"
+                  onMouseDown={() => setIsResizing(true)}
+                  onTouchStart={() => setIsResizing(true)}
+                >
+                  <div className="w-0.5 h-8 rounded-full bg-[var(--c-border)] group-hover:bg-[var(--c-fg-muted)] transition-colors" />
                 </div>
-                <div className="shrink-0 flex justify-center pt-2">
-                  <CheckCartBar />
+                <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-hidden min-w-0 lg:h-full lg:pl-2">
+                  <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-none scroll-area">
+                    <CheckView onBack={() => setShowCheckView(false)} />
+                  </div>
+                  <div className="shrink-0 flex justify-center pt-2">
+                    <CheckCartBar />
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
-        </div>
-      </TabPanel>
-
-      {visitedTabs.has('events') && (
-        <TabPanel id="events" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
-          <Suspense fallback={<TabFallback />}>
-            <EventsPage key={tabKeys['events'] || 0} />
-          </Suspense>
+              </>
+            )}
+          </div>
         </TabPanel>
-      )}
 
-      {visitedTabs.has('management') && (
-        <TabPanel id="management" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
-          <Suspense fallback={<TabFallback />}>
-            <ManagementPage
-              key={tabKeys['management'] || 0}
-              initialScreen={managementScreen}
-              initialSupplyId={managementParams?.supplyId}
-              initialRevisionId={managementParams?.revisionId}
-              isActive={activeTab === 'management'}
-            />
-          </Suspense>
-        </TabPanel>
-      )}
+        {visitedTabs.has('events') && (
+          <TabPanel id="events" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
+            <Suspense fallback={<TabFallback />}>
+              <EventsPage key={tabKeys['events'] || 0} />
+            </Suspense>
+          </TabPanel>
+        )}
 
-      {visitedTabs.has('dashboard') && (
-        <TabPanel id="dashboard" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
-          <Suspense fallback={<TabFallback />}>
-            <ReportsPage key={tabKeys['dashboard'] || 0} onNavigate={handleDashboardNavigate} />
-          </Suspense>
-        </TabPanel>
-      )}
-    </Layout>
+        {visitedTabs.has('management') && (
+          <TabPanel id="management" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
+            <Suspense fallback={<TabFallback />}>
+              <ManagementPage
+                key={tabKeys['management'] || 0}
+                initialScreen={managementScreen}
+                initialSupplyId={managementParams?.supplyId}
+                initialRevisionId={managementParams?.revisionId}
+                isActive={activeTab === 'management'}
+              />
+            </Suspense>
+          </TabPanel>
+        )}
+
+        {visitedTabs.has('dashboard') && (
+          <TabPanel id="dashboard" activeTab={activeTab} prevTab={prevTab} tabOrder={tabOrder}>
+            <Suspense fallback={<TabFallback />}>
+              <ReportsPage key={tabKeys['dashboard'] || 0} onNavigate={handleDashboardNavigate} />
+            </Suspense>
+          </TabPanel>
+        )}
+      </Layout>
+    </Suspense>
   );
 }
