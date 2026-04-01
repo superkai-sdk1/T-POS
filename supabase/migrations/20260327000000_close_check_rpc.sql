@@ -79,7 +79,7 @@ BEGIN
   UPDATE checks SET
     status = 'closed',
     total_amount = v_final_amount,
-    payment_method = v_primary_method,
+    payment_method = v_primary_method::payment_method,
     bonus_used = p_bonus_used,
     certificate_used = p_certificate_used,
     certificate_id = p_certificate_id,
@@ -90,7 +90,7 @@ BEGIN
   -- 4. Insert payments
   IF jsonb_array_length(p_payments) > 0 THEN
     INSERT INTO check_payments (check_id, method, amount)
-    SELECT p_check_id, (elem->>'method')::TEXT, (elem->>'amount')::INT
+    SELECT p_check_id, (elem->>'method')::payment_method, (elem->>'amount')::INT
     FROM jsonb_array_elements(p_payments) AS elem;
   END IF;
 
