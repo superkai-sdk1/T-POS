@@ -19,6 +19,7 @@ interface TabletState {
   hasOpenCheck: boolean;
   currentCheckTotal: number | null;
   currentCheckItems: CheckItem[];
+  spaceRentalAmount: number;
   
   // Orders
   myOrders: TabletOrder[];
@@ -46,6 +47,7 @@ export const useTabletStore = create<TabletState>((set, get) => ({
   hasOpenCheck: false,
   currentCheckTotal: null,
   currentCheckItems: [],
+  spaceRentalAmount: 0,
   isSubmitting: false,
   error: null,
   comment: '',
@@ -190,6 +192,7 @@ export const useTabletStore = create<TabletState>((set, get) => ({
     set({ 
       hasOpenCheck: !!data,
       currentCheckTotal: (data?.total_amount || 0) + rentalAmount,
+      spaceRentalAmount: rentalAmount,
     });
   },
 
