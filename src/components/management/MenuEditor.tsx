@@ -754,58 +754,121 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
               </div>
             </div>
 
-            {/* Товар или услуга */}
+            {/* ═══════ НАСТРОЙКИ ═══════ */}
             <div className="space-y-3">
-              <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Тип позиции</label>
-              <button
-                type="button"
-                onClick={() => {
-                  const nextService = !form.is_service;
-                  setForm((prev) => ({ ...prev, is_service: nextService, track_stock: nextService ? false : true }));
-                }}
-                className={`w-full p-5 rounded-3xl flex items-center justify-between transition-all active:scale-[0.99] ${
-                  !form.is_service ? 'bg-sky-500/10 border border-sky-500/30' : 'bg-slate-900/30 border border-slate-800'
-                }`}
-              >
-                <div className="flex flex-col text-left">
-                  <span className={`text-sm font-bold ${!form.is_service ? 'text-sky-400' : 'text-white'}`}>
-                    {form.is_service ? 'Услуга' : 'Товар'}
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    {form.is_service ? 'Игровые вечера, аренда, мероприятия — без остатков' : 'Склад, поставки, ревизия'}
-                  </span>
-                </div>
-                <div className={`w-14 h-8 rounded-full relative transition-all duration-300 ${!form.is_service ? 'bg-sky-500' : 'bg-slate-800'}`}>
-                  <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${!form.is_service ? 'left-7' : 'left-1'}`} />
-                </div>
-              </button>
-            </div>
-
-            {/* Учёт остатков (только для товаров) */}
-            {!form.is_service && (
-              <div className="space-y-3">
-                <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Учёт остатков на складе</label>
+              <label className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] ml-1">Настройки</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* Тип: Товар / Услуга */}
                 <button
                   type="button"
-                  onClick={() => updateField('track_stock', !form.track_stock)}
-                  className={`w-full p-5 rounded-3xl flex items-center justify-between transition-all active:scale-[0.99] ${
-                    form.track_stock ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-slate-900/30 border border-slate-800'
+                  onClick={() => {
+                    const nextService = !form.is_service;
+                    setForm((prev) => ({ ...prev, is_service: nextService, track_stock: nextService ? false : true }));
+                  }}
+                  className={`p-3.5 rounded-2xl flex items-center gap-3 transition-all active:scale-[0.98] border ${
+                    form.is_service ? 'bg-violet-500/10 border-violet-500/25' : 'bg-sky-500/10 border-sky-500/25'
                   }`}
                 >
-                  <div className="flex flex-col text-left">
-                    <span className={`text-sm font-bold ${form.track_stock ? 'text-emerald-400' : 'text-white'}`}>
-                      {form.track_stock ? 'Включён' : 'Выключен'}
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-medium">
-                      {form.track_stock ? 'Списание при продаже, поставки, ревизия' : 'Напитки, кофе — без учёта остатков'}
-                    </span>
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg ${
+                    form.is_service ? 'bg-violet-500/20' : 'bg-sky-500/20'
+                  }`}>
+                    {form.is_service ? '🎮' : '📦'}
                   </div>
-                  <div className={`w-14 h-8 rounded-full relative transition-all duration-300 ${form.track_stock ? 'bg-emerald-500' : 'bg-slate-800'}`}>
-                    <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${form.track_stock ? 'left-7' : 'left-1'}`} />
+                  <div className="flex flex-col text-left min-w-0">
+                    <span className={`text-sm font-bold ${form.is_service ? 'text-violet-400' : 'text-sky-400'}`}>
+                      {form.is_service ? 'Услуга' : 'Товар'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 truncate">{form.is_service ? 'Без складского учёта' : 'Складской учёт'}</span>
+                  </div>
+                </button>
+
+                {/* Учёт остатков (только товар) */}
+                {!form.is_service && (
+                  <button
+                    type="button"
+                    onClick={() => updateField('track_stock', !form.track_stock)}
+                    className={`p-3.5 rounded-2xl flex items-center gap-3 transition-all active:scale-[0.98] border ${
+                      form.track_stock ? 'bg-emerald-500/10 border-emerald-500/25' : 'bg-slate-800/50 border-slate-700/50'
+                    }`}
+                  >
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg ${
+                      form.track_stock ? 'bg-emerald-500/20' : 'bg-slate-700/30'
+                    }`}>
+                      📊
+                    </div>
+                    <div className="flex flex-col text-left min-w-0">
+                      <span className={`text-sm font-bold ${form.track_stock ? 'text-emerald-400' : 'text-slate-400'}`}>
+                        {form.track_stock ? 'Учёт остатков' : 'Без учёта'}
+                      </span>
+                      <span className="text-[10px] text-slate-500 truncate">{form.track_stock ? 'Списание при продаже' : 'Нет отслеживания'}</span>
+                    </div>
+                  </button>
+                )}
+
+                {/* Топ-позиция */}
+                <button
+                  type="button"
+                  onClick={() => updateField('is_top', !form.is_top)}
+                  className={`p-3.5 rounded-2xl flex items-center gap-3 transition-all active:scale-[0.98] border ${
+                    form.is_top ? 'bg-amber-500/10 border-amber-500/25' : 'bg-slate-800/50 border-slate-700/50'
+                  }`}
+                >
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg ${
+                    form.is_top ? 'bg-amber-500/20' : 'bg-slate-700/30'
+                  }`}>
+                    {form.is_top ? '⭐' : '☆'}
+                  </div>
+                  <div className="flex flex-col text-left min-w-0">
+                    <span className={`text-sm font-bold ${form.is_top ? 'text-amber-400' : 'text-slate-400'}`}>
+                      {form.is_top ? 'Топ-позиция' : 'Обычная'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 truncate">Первая в POS меню</span>
+                  </div>
+                </button>
+
+                {/* Планшет клиента */}
+                <button
+                  type="button"
+                  onClick={() => updateField('is_tablet_visible', !form.is_tablet_visible)}
+                  className={`p-3.5 rounded-2xl flex items-center gap-3 transition-all active:scale-[0.98] border ${
+                    form.is_tablet_visible ? 'bg-purple-500/10 border-purple-500/25' : 'bg-slate-800/50 border-slate-700/50'
+                  }`}
+                >
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg ${
+                    form.is_tablet_visible ? 'bg-purple-500/20' : 'bg-slate-700/30'
+                  }`}>
+                    {form.is_tablet_visible ? '📱' : '🚫'}
+                  </div>
+                  <div className="flex flex-col text-left min-w-0">
+                    <span className={`text-sm font-bold ${form.is_tablet_visible ? 'text-purple-400' : 'text-slate-400'}`}>
+                      {form.is_tablet_visible ? 'На планшете' : 'Скрыто'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 truncate">Клиенты {form.is_tablet_visible ? 'видят' : 'не видят'}</span>
+                  </div>
+                </button>
+
+                {/* Активна / Скрыта */}
+                <button
+                  type="button"
+                  onClick={() => updateField('is_active', !form.is_active)}
+                  className={`p-3.5 rounded-2xl flex items-center gap-3 transition-all active:scale-[0.98] border ${
+                    form.is_active ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/10 border-red-500/25'
+                  }`}
+                >
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg ${
+                    form.is_active ? 'bg-emerald-500/15' : 'bg-red-500/15'
+                  }`}>
+                    {form.is_active ? '✅' : '❌'}
+                  </div>
+                  <div className="flex flex-col text-left min-w-0">
+                    <span className={`text-sm font-bold ${form.is_active ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {form.is_active ? 'Активна' : 'Отключена'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 truncate">{form.is_active ? 'Видна везде' : 'Скрыта из POS и планшета'}</span>
                   </div>
                 </button>
               </div>
-            )}
+            </div>
 
             {/* Мин. остаток и Теги */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -876,63 +939,6 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
               </div>
             )}
 
-            {/* Переключатели */}
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={() => updateField('is_top', !form.is_top)}
-                className={`w-full p-5 rounded-3xl flex items-center justify-between transition-all active:scale-[0.99] ${
-                  form.is_top ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-slate-900/30 border border-slate-800'
-                }`}
-              >
-                <div className="flex flex-col text-left">
-                  <span className={`text-sm font-bold ${form.is_top ? 'text-amber-400' : 'text-white'}`}>
-                    {form.is_top ? 'Топ-позиция' : 'Обычная позиция'}
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-medium">Топ отображается первым в меню POS</span>
-                </div>
-                <div className={`w-14 h-8 rounded-full relative transition-all duration-300 ${form.is_top ? 'bg-amber-500' : 'bg-slate-800'}`}>
-                  <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${form.is_top ? 'left-7' : 'left-1'}`} />
-                </div>
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => updateField('is_tablet_visible', !form.is_tablet_visible)}
-                className={`w-full p-5 rounded-3xl flex items-center justify-between transition-all active:scale-[0.99] ${
-                  form.is_tablet_visible ? 'bg-purple-500/10 border border-purple-500/30' : 'bg-slate-900/30 border border-slate-800'
-                }`}
-              >
-                <div className="flex flex-col text-left">
-                  <span className={`text-sm font-bold ${form.is_tablet_visible ? 'text-purple-400' : 'text-slate-400'}`}>
-                    {form.is_tablet_visible ? 'Отображается на Планшете' : 'Скрыто на Планшете'}
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-medium">Могут ли клиенты заказывать это сами</span>
-                </div>
-                <div className={`w-14 h-8 rounded-full relative transition-all duration-300 ${form.is_tablet_visible ? 'bg-purple-500' : 'bg-slate-800'}`}>
-                  <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${form.is_tablet_visible ? 'left-7' : 'left-1'}`} />
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => updateField('is_active', !form.is_active)}
-                className={`w-full p-5 rounded-3xl flex items-center justify-between transition-all active:scale-[0.99] ${
-                  form.is_active ? 'bg-emerald-500/5 border border-emerald-500/20' : 'bg-slate-900/30 border border-slate-800'
-                }`}
-              >
-                <div className="flex flex-col text-left">
-                  <span className={`text-sm font-bold ${form.is_active ? 'text-emerald-400' : 'text-slate-400'}`}>
-                    {form.is_active ? 'Отображается в меню' : 'Скрыт из меню'}
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    {form.is_active ? 'Видна клиентам и в системе' : 'Не отображается в меню'}
-                  </span>
-                </div>
-                <div className={`w-14 h-8 rounded-full relative transition-all duration-300 ${form.is_active ? 'bg-emerald-500' : 'bg-slate-800'}`}>
-                  <div className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 ${form.is_active ? 'left-7' : 'left-1'}`} />
-                </div>
-              </button>
-            </div>
           </div>
 
           {/* Футер */}
