@@ -563,18 +563,18 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
                         <div className={`w-10 h-10 sm:w-14 sm:h-14 ${colorCfg.bg} ${colorCfg.text} rounded-xl sm:rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 border ${colorCfg.border}`}>
                           <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
                         </div>
-                        <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-all sm:translate-x-2 sm:group-hover:translate-x-0">
+                        <div className="flex items-center gap-1">
                           <button
                             onClick={(e) => { e.stopPropagation(); openEditCategory(cat); }}
-                            className="p-1.5 sm:p-2 bg-[var(--c-surface)] text-[var(--c-hint)] hover:text-[var(--c-accent)] rounded-lg sm:rounded-xl transition-colors border border-[var(--c-border)] active:scale-90"
+                            className="p-2 bg-white/10 text-white/60 hover:text-white rounded-xl transition-colors border border-white/10 active:scale-90"
                           >
-                            <Pencil className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                            <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); setDeleteCatTarget(cat); }}
-                            className="p-1.5 sm:p-2 bg-[var(--c-surface)] text-[var(--c-hint)] hover:text-[var(--c-danger)] rounded-lg sm:rounded-xl transition-colors border border-[var(--c-border)] active:scale-90"
+                            className="p-2 bg-white/10 text-white/60 hover:text-red-400 rounded-xl transition-colors border border-white/10 active:scale-90"
                           >
-                            <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
