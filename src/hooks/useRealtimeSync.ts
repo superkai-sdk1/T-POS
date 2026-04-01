@@ -51,6 +51,8 @@ function buildChannel(channelName: string) {
         const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
         const checkId = rec?.check_id;
         if (!checkId) return;
+        // Guard: skip events for checks being closed/cancelled/removed
+        if (isCancellingCheck(checkId) || isClosingCheck(checkId) || isRecentlyRemoved(checkId)) return;
         if (isActiveCheck(checkId)) {
           // RT-1: Don't overwrite local cart, but notify user
           usePOSStore.getState().setCheckModifiedExternally(true);
@@ -68,6 +70,7 @@ function buildChannel(channelName: string) {
         const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
         const checkId = rec?.check_id;
         if (!checkId) return;
+        if (isCancellingCheck(checkId) || isClosingCheck(checkId) || isRecentlyRemoved(checkId)) return;
         if (isActiveCheck(checkId)) {
           usePOSStore.getState().setCheckModifiedExternally(true);
           emitTableChange('check_discounts');

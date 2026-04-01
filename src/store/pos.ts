@@ -82,7 +82,7 @@ export function isClosingCheck(checkId: string) { return _closingCheckIds.has(ch
 const _recentlyRemovedCheckIds = new Set<string>();
 function markCheckRemoved(checkId: string) {
   _recentlyRemovedCheckIds.add(checkId);
-  setTimeout(() => _recentlyRemovedCheckIds.delete(checkId), 5000);
+  setTimeout(() => _recentlyRemovedCheckIds.delete(checkId), 15000);
 }
 export function isRecentlyRemoved(checkId: string) { return _recentlyRemovedCheckIds.has(checkId); }
 
@@ -1076,7 +1076,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
     set(state => {
       const newChecks = state.openChecks.map(c => c.id === checkId ? check : c);
-      if (!newChecks.find(c => c.id === checkId)) newChecks.unshift(check);
+      if (!newChecks.find(c => c.id === checkId) && !_recentlyRemovedCheckIds.has(checkId)) newChecks.unshift(check);
 
       const updates: Partial<POSState> = {
         openChecks: newChecks,
