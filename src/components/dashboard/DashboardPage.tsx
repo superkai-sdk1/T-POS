@@ -16,9 +16,9 @@ import {
   Banknote, CreditCard, HandCoins, Star, RotateCcw,
 } from 'lucide-react';
 
-type TabId = 'finance' | 'checks' | 'products' | 'players' | 'ai';
+import { REPORT_DAY_HOUR } from '@/lib/report-config';
 
-const REPORT_DAY_HOUR = 10;
+type TabId = 'finance' | 'checks' | 'products' | 'players' | 'ai';
 
 const pmLabels: Record<string, string> = {
   cash: 'Наличные', card: 'Карта', debt: 'Долг', bonus: 'Бонусы', deposit: 'Депозит', split: 'Разделённая',

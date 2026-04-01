@@ -51,7 +51,12 @@ function buildChannel(channelName: string) {
         const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
         const checkId = rec?.check_id;
         if (!checkId) return;
-        if (isActiveCheck(checkId)) return;
+        if (isActiveCheck(checkId)) {
+          // RT-1: Don't overwrite local cart, but notify user
+          usePOSStore.getState().setCheckModifiedExternally(true);
+          emitTableChange('check_items');
+          return;
+        }
         if (!isCancellingCheck(checkId) && !isClosingCheck(checkId) && !isRecentlyRemoved(checkId)) {
           usePOSStore.getState().refreshCheckById(checkId);
         }
@@ -63,7 +68,11 @@ function buildChannel(channelName: string) {
         const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
         const checkId = rec?.check_id;
         if (!checkId) return;
-        if (isActiveCheck(checkId)) return;
+        if (isActiveCheck(checkId)) {
+          usePOSStore.getState().setCheckModifiedExternally(true);
+          emitTableChange('check_discounts');
+          return;
+        }
         if (!isCancellingCheck(checkId) && !isClosingCheck(checkId) && !isRecentlyRemoved(checkId)) {
           usePOSStore.getState().refreshCheckById(checkId);
         }

@@ -178,7 +178,7 @@ function CheckPaymentPanel({ sidebarCollapsed, onNewCheck }: { sidebarCollapsed:
         </div>
         {(cartCount > 0 || (hasEvent && eventAmount > 0) || hasRental) && (
           <button
-            onClick={() => { hapticFeedback('medium'); window.dispatchEvent(new CustomEvent('tpos:open-payment')); }}
+            onClick={() => { hapticFeedback('medium'); usePOSStore.getState().requestOpenPayment(); }}
             className="flex-1 max-w-[160px] bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] py-3 rounded-2xl flex items-center justify-center gap-2 shadow-xl shadow-[#8b5cf6]/30 font-black uppercase text-xs tracking-widest active:scale-95 transition-all text-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20 min-h-[44px]"
           >
             <CreditCard className="w-5 h-5" /> Оплата
@@ -275,21 +275,10 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
   };
 
   const handleOpenDrawer = () => {
-    if (activeTab === 'pos') return;
-    setShowOpen(true);
-    // Pre-fill cash from last closed shift (non-blocking)
-    supabase
-      .from('shifts')
-      .select('cash_end')
-      .eq('status', 'closed')
-      .order('closed_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-      .then(({ data: lastShift }) => {
-        if (lastShift?.cash_end != null) {
-          setCashStart(String(lastShift.cash_end));
-        }
-      });
+    // SHIFT-1: Navigate to POS tab — OpenChecks handles shift UI
+    if (activeTab !== 'pos') {
+      onTabChange('pos');
+    }
   };
 
   const handleOpen = async () => {
@@ -303,45 +292,11 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
   };
 
   const handleStartClose = () => {
-    if (!activeShift || activeTab === 'pos') return;
-    hapticFeedback('medium');
-    setCloseError('');
-    setAnalytics(null);
-    setIsClosing(true);
-
-    // Open drawer IMMEDIATELY — show loading state inside
-    if (cashInRegister !== null) {
-      setCashEnd(String(cashInRegister));
+    if (!activeShift) return;
+    // SHIFT-1: Navigate to POS tab — OpenChecks handles close shift UI
+    if (activeTab !== 'pos') {
+      onTabChange('pos');
     }
-    setShowClose(true);
-
-    // Check for open checks + load analytics in background
-    (async () => {
-      try {
-        const { count } = await supabase
-          .from('checks')
-          .select('id', { count: 'exact', head: true })
-          .eq('shift_id', activeShift.id)
-          .eq('status', 'open');
-        if (count && count > 0) {
-          setCloseError(`Невозможно закрыть смену: ${count} открытых чеков. Закройте все чеки и повторите.`);
-          hapticNotification('error');
-          setIsClosing(false);
-          return;
-        }
-      } catch {
-        // Network error — still allow to try closing
-      }
-
-      // Load analytics (non-blocking)
-      try {
-        const data = await getShiftAnalytics(activeShift.id);
-        setAnalytics(data);
-      } catch {
-        // Analytics failed — not critical
-      }
-      setIsClosing(false);
-    })();
   };
 
   const handleConfirmClose = async () => {
@@ -374,7 +329,6 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
   };
 
   const triggerShiftAction = () => {
-    if (activeTab === 'pos') return;
     hapticFeedback('heavy');
     if (activeShift) {
       handleStartClose();
@@ -593,11 +547,22 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
               avatar={avatar}
               showAvatar={showAvatar}
               playerId={playerId}
-              onRefresh={() => {
+              onRefresh={async () => {
                 if (!isRefreshing) {
                   hapticFeedback('medium');
                   setIsRefreshing(true);
-                  setTimeout(() => window.location.reload(), 200);
+                  try {
+                    await Promise.all([
+                      usePOSStore.getState().loadOpenChecks(),
+                      usePOSStore.getState().loadInventory(),
+                      useShiftStore.getState().loadActiveShift(),
+                    ]);
+                    window.dispatchEvent(new Event('tpos:reconnect'));
+                  } catch (e) {
+                    console.error('[Layout] soft refresh failed:', e);
+                  } finally {
+                    setIsRefreshing(false);
+                  }
                 }
               }}
               isRefreshing={isRefreshing}
@@ -692,101 +657,7 @@ export function Layout({ children, activeTab, onTabChange, showCheckView, onNewC
         )}
       </div>
 
-      {/* ── Shift Modals ── */}
-      <Drawer open={showOpen} onClose={() => setShowOpen(false)} title="Открыть смену" size="sm">
-        <div className="space-y-3">
-          <div>
-            <label className="block text-[11px] font-semibold text-[var(--c-muted)] uppercase tracking-wider mb-1.5">Тип вечера</label>
-            <div className="grid grid-cols-2 gap-1.5">
-              {(Object.keys(EVENING_TYPE_LABELS) as EveningType[]).map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => { hapticFeedback('light'); setEveningType(key); }}
-                  className={`px-3 py-2.5 rounded-xl text-left text-[12px] font-semibold transition-all border ${
-                    eveningType === key
-                      ? 'bg-[var(--c-accent)]/15 border-[var(--c-accent)]/40 text-[var(--c-accent)]'
-                      : 'bg-[var(--c-surface)] border-[var(--c-border)] text-[var(--c-hint)] hover:border-[var(--c-border-hover)]'
-                  }`}
-                >
-                  {EVENING_TYPE_LABELS[key]}
-                </button>
-              ))}
-            </div>
-          </div>
-          <Input
-            type="number"
-            label="Наличные в кассе"
-            placeholder="Сумма на начало"
-            value={cashStart}
-            onChange={(e) => setCashStart(e.target.value)}
-            size="md"
-            min={0}
-            autoFocus
-          />
-          <Button fullWidth onClick={handleOpen}>
-            <PlayCircle className="w-4 h-4" />
-            Открыть смену
-          </Button>
-        </div>
-      </Drawer>
-
-      <Drawer open={showClose} onClose={() => { setShowClose(false); setCloseError(''); setIsClosing(false); }} title="Закрытие смены" size="md">
-        <div className="space-y-3">
-          {closeError && (
-            <div className="flex items-center gap-2 p-2.5 rounded-xl animate-fade-in" style={{ background: 'rgba(251, 113, 133, 0.06)', border: '1px solid rgba(251, 113, 133, 0.12)' }}>
-              <AlertTriangle className="w-3.5 h-3.5 text-[var(--c-danger)] shrink-0" />
-              <p className="text-[11px] text-[var(--c-danger)] flex-1">{closeError}</p>
-              <button onClick={() => setCloseError('')} className="w-5 h-5 rounded-md flex items-center justify-center shrink-0">
-                <X className="w-2.5 h-2.5 text-[var(--c-muted)]" />
-              </button>
-            </div>
-          )}
-          {isClosing && !analytics && !closeError && (
-            <div className="flex flex-col items-center justify-center py-6 gap-3">
-              <div className="w-8 h-8 border-2 border-[var(--c-accent)]/30 border-t-[var(--c-accent)] rounded-full animate-spin" />
-              <p className="text-xs text-[var(--c-hint)]">Проверка открытых чеков...</p>
-            </div>
-          )}
-          {analytics && (
-            <div className="space-y-2 stagger-children">
-              <div className="grid grid-cols-3 gap-1.5">
-                <div className="p-2.5 rounded-xl text-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <p className="text-base font-black text-[var(--c-accent-light)] tabular-nums">{analytics.totalChecks}</p>
-                  <p className="text-[9px] text-[var(--c-muted)] font-semibold">Чеков</p>
-                </div>
-                <div className="p-2.5 rounded-xl text-center" style={{ background: 'rgba(52,211,153,0.04)', border: '1px solid rgba(52,211,153,0.12)' }}>
-                  <p className="text-base font-black text-[var(--c-success)] tabular-nums">{fmtCur(analytics.totalRevenue)}</p>
-                  <p className="text-[9px] text-[var(--c-muted)] font-semibold">Выручка</p>
-                </div>
-                <div className="p-2.5 rounded-xl text-center" style={{ background: 'rgba(251,191,36,0.04)', border: '1px solid rgba(251,191,36,0.12)' }}>
-                  <p className="text-base font-black text-[var(--c-warning)] tabular-nums">{fmtCur(analytics.avgCheck)}</p>
-                  <p className="text-[9px] text-[var(--c-muted)] font-semibold">Ср. чек</p>
-                </div>
-              </div>
-
-              {Object.keys(analytics.paymentBreakdown).length > 0 && (
-                <div className="p-2.5 rounded-xl space-y-1" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <p className="text-[10px] font-semibold text-[var(--c-muted)] uppercase tracking-wider mb-1">Оплата</p>
-                  {Object.entries(analytics.paymentBreakdown as Record<string, { count: number; amount: number }>).map(([method, val]) => (
-                    <div key={method} className="flex justify-between text-[13px]">
-                      <span className="text-[var(--c-hint)]">{pmLabel(method)} ({val.count})</span>
-                      <span className="font-bold text-[var(--c-text)] tabular-nums">{fmtCur(val.amount)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          <Input type="number" label="Наличные в кассе (факт)" placeholder="Пересчитайте наличные" value={cashEnd} onChange={(e) => setCashEnd(e.target.value)} size="md" min={0} />
-          <Input label="Примечание" placeholder="Комментарий к смене" value={closeNote} onChange={(e) => setCloseNote(e.target.value)} size="md" />
-          <Button fullWidth variant="danger" onClick={handleConfirmClose} disabled={isClosing || !!closeError}>
-            {isClosing ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <StopCircle className="w-4 h-4" />}
-            Закрыть смену
-          </Button>
-        </div>
-      </Drawer>
+      {/* Shift drawers removed — SHIFT-1: handled by OpenChecks fullscreen */}
 
       {analytics && (
         <ShiftAnalyticsModal

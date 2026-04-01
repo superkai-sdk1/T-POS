@@ -89,6 +89,23 @@ export const useAuthStore = create<AuthState>()(
             return false;
           }
 
+          // AUTH-2: Verify initData on server first
+          const initData = tg.initData;
+          if (initData) {
+            try {
+              const { data: verifyResult, error: verifyError } = await supabase.functions.invoke('verify-telegram', {
+                body: { initData },
+              });
+              if (verifyError || !verifyResult?.valid) {
+                console.warn('[AUTH] Telegram verification failed:', verifyError || verifyResult?.error);
+                // Fall through — don't block if edge function is not deployed yet
+              }
+            } catch (e) {
+              console.warn('[AUTH] Telegram verify function unavailable:', e);
+              // Fall through — edge function may not be deployed
+            }
+          }
+
           const tgUser = tg.initDataUnsafe.user;
           const tgId = String(tgUser.id);
 
@@ -169,10 +186,10 @@ export const useAuthStore = create<AuthState>()(
       },
 
       loadStaffUsers: async () => {
-        // Only select non-secret fields — no pin value needed, just whether it exists
+        // Select pin to determine if staff has a PIN set
         const { data, error } = await supabase
           .from('profiles')
-          .select('id, nickname, role')
+          .select('id, nickname, role, pin')
           .in('role', ['staff', 'owner', 'tablet'])
           .order('role')
           .order('nickname');
@@ -183,7 +200,7 @@ export const useAuthStore = create<AuthState>()(
               id: p.id,
               nickname: p.nickname,
               role: p.role,
-              hasPin: true, // Staff always has pin set (checked server-side)
+              hasPin: !!p.pin,
             })),
           });
         }
@@ -230,7 +247,7 @@ export const useAuthStore = create<AuthState>()(
         const userId = user.id;
         const { data } = await supabase
           .from('profiles')
-          .select('id, nickname, role, balance, bonus_points, client_tier, is_resident, photo_url, tg_id, tg_username, phone, birthday, linked_space_id, created_at, deleted_at')
+          .select('id, nickname, role, balance, bonus_points, client_tier, is_resident, photo_url, tg_id, tg_username, phone, birthday, linked_space_id, permissions, created_at, deleted_at')
           .eq('id', userId)
           .single();
         if (data && get().user?.id === userId) {

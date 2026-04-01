@@ -11,6 +11,7 @@ import {
   MessageSquare, Percent, Trash2, Timer, Search,
   UserPlus, User, Star, GraduationCap, Gamepad2,
   Sparkles, SlidersHorizontal, Edit2, Check as CheckIcon,
+  AlertTriangle,
 } from 'lucide-react';
 import { hapticFeedback } from '@/lib/telegram';
 import { supabase } from '@/lib/supabase';
@@ -21,82 +22,13 @@ import { Input } from '@/components/ui/Input';
 import { ClientAvatar } from '@/components/ui/ClientAvatar';
 import { Button } from '@/components/ui/Button';
 import type { InventoryItem, Discount, Profile, VisitTariff, ClientTier, Modifier, ClientDiscountRule, Event } from '@/types';
+import { getVisitItems, tierToTariff } from '@/lib/visit-tariffs';
 
-const VISIT_ITEMS: Record<VisitTariff, { label: string; price: number; dbName: string }> = {
-  regular: { label: 'Гость', price: 700, dbName: 'Игровой вечер Гость' },
-  resident: { label: 'Резидент', price: 500, dbName: 'Игровой вечер Резидент' },
-  student: { label: 'Студент', price: 300, dbName: 'Игровой вечер Студент' },
-  single_game: { label: 'Одна игра', price: 150, dbName: 'Игровой вечер Одна игра' },
-};
+// VISIT_ITEMS is now computed dynamically from inventory via getVisitItems()
 
-const ANON_CLIENT_NAMES = [
-  'Тихий Волк',
-  'Весёлый Кот',
-  'Синий Лис',
-  'Смелый Медведь',
-  'Рыжий Заяц',
-  'Добрый Ёж',
-  'Ловкий Пёс',
-  'Грозный Орёл',
-  'Свежий Барс',
-  'Молчаливый Ворон',
-  'Упрямый Бык',
-  'Ночной Тигр',
-  'Зоркий Ястреб',
-  'Радостный Енот',
-  'Спокойный Панда',
-  'Хитрый Лис',
-  'Тёплый Пёс',
-  'Лесной Кот',
-  'Быстрый Барсук',
-  'Мудрый Слон',
-  'Дикий Волк',
-  'Тихий Ёж',
-  'Летний Конь',
-  'Храбрый Лев',
-  'Северный Волк',
-  'Звонкий Жаворонок',
-  'Весенний Медведь',
-  'Снежный Кот',
-  'Ласковый Тюлень',
-  'Городской Сокол',
-  'Солнечный Лис',
-  'Вечерний Волк',
-  'Улыбчивый Пёс',
-  'Радужный Кот',
-  'Громкий Попугай',
-  'Лесной Олень',
-  'Морской Краб',
-  'Хитрый Волчонок',
-  'Смелый Барс',
-  'Весёлый Тигр',
-  'Спящий Лис',
-  'Тихий Медвежонок',
-  'Гордый Конь',
-  'Маленький Енот',
-  'Добрый Котёнок',
-  'Ловкий Ястреб',
-  'Зоркий Пёс',
-  'Ясный Волк',
-  'Летучий Кот',
-  'Бесстрашный Лев',
-];
+import { getAnonymousClientName } from '@/lib/anonymous-names';
 
-function getAnonymousClientName(seed: string): string {
-  if (!seed) return ANON_CLIENT_NAMES[0];
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-  }
-  const idx = hash % ANON_CLIENT_NAMES.length;
-  return ANON_CLIENT_NAMES[idx];
-}
-
-function tierToTariff(tier: ClientTier | undefined): VisitTariff {
-  if (tier === 'resident') return 'resident';
-  if (tier === 'student') return 'student';
-  return 'regular';
-}
+// tierToTariff is now imported from '@/lib/visit-tariffs'
 
 const fmtCur = (n: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(n) + '₽';
 
@@ -312,8 +244,9 @@ interface CheckViewProps {
 }
 
 export function CheckView({ onBack }: CheckViewProps) {
-  const { activeCheck, cart, addToCart, updateCartQuantity, updateCartModifiers, removeFromCart, inventory, leaveCheck, cancelCheck, getCartTotal, getDiscountTotal, updateCheckNote, saveCartToDb, appliedDiscounts, applyDiscount, removeDiscount, productModifiers, setSpaceRentalAmount } = usePOSStore();
+  const { activeCheck, cart, addToCart, updateCartQuantity, updateCartModifiers, removeFromCart, inventory, leaveCheck, cancelCheck, getCartTotal, getDiscountTotal, updateCheckNote, saveCartToDb, appliedDiscounts, applyDiscount, removeDiscount, productModifiers, setSpaceRentalAmount, checkModifiedExternally, setCheckModifiedExternally, refreshActiveCheck } = usePOSStore();
   const hideNav = useHideNav();
+  const VISIT_ITEMS = useMemo(() => getVisitItems(inventory), [inventory]);
 
   const [showPayment, setShowPayment] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -332,6 +265,11 @@ export function CheckView({ onBack }: CheckViewProps) {
   const [eventAmount, setEventAmount] = useState<number | null>(null);
   const [eventAmountStr, setEventAmountStr] = useState('');
   const [isUpdatingEvent, setIsUpdatingEvent] = useState(false);
+  // Refs for access in event handlers (avoids stale closures)
+  const linkedEventRef = useRef(linkedEvent);
+  linkedEventRef.current = linkedEvent;
+  const eventAmountRef = useRef(eventAmount);
+  eventAmountRef.current = eventAmount;
 
   // Add player flow
   const [showAddPlayer, setShowAddPlayer] = useState(false);
@@ -352,18 +290,44 @@ export function CheckView({ onBack }: CheckViewProps) {
   const [clientDiscountRules, setClientDiscountRules] = useState<ClientDiscountRule[]>([]);
 
   useEffect(() => {
-    const onOpenPayment = () => setShowPayment(true);
+    const onOpenPayment = async () => {
+      // PAY-4: Force-save event amount before opening payment
+      // In case user typed a new value but didn't blur the input
+      if (linkedEventRef.current && eventAmountRef.current !== null) {
+        await supabase
+          .from('events')
+          .update({ fixed_amount: eventAmountRef.current })
+          .eq('id', linkedEventRef.current.id);
+      }
+      setShowPayment(true);
+    };
     const onOpenMenu = () => setShowMenu(true);
     const onOpenAddPlayer = () => { setShowAddPlayer(true); setPlayerSearch(''); setPlayerResults([]); };
-    window.addEventListener('tpos:open-payment', onOpenPayment);
     window.addEventListener('tpos:open-menu', onOpenMenu);
     window.addEventListener('tpos:open-add-player', onOpenAddPlayer);
     return () => {
-      window.removeEventListener('tpos:open-payment', onOpenPayment);
       window.removeEventListener('tpos:open-menu', onOpenMenu);
       window.removeEventListener('tpos:open-add-player', onOpenAddPlayer);
     };
   }, []);
+
+  // PAY-3: Store-based payment trigger (replaces DOM event)
+  const openPaymentRequested = usePOSStore((s) => s.openPaymentRequested);
+  const clearPaymentRequest = usePOSStore((s) => s.clearPaymentRequest);
+  useEffect(() => {
+    if (openPaymentRequested) {
+      clearPaymentRequest();
+      (async () => {
+        if (linkedEventRef.current && eventAmountRef.current !== null) {
+          await supabase
+            .from('events')
+            .update({ fixed_amount: eventAmountRef.current })
+            .eq('id', linkedEventRef.current.id);
+        }
+        setShowPayment(true);
+      })();
+    }
+  }, [openPaymentRequested, clearPaymentRequest]);
 
   const handleBack = useCallback(async () => {
     if (noteTimer.current) clearTimeout(noteTimer.current);
@@ -555,8 +519,11 @@ export function CheckView({ onBack }: CheckViewProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checkId, spaceHourlyRate, spaceStartAt, spaceEndAt, checkCreatedAt, setSpaceRentalAmount]);
 
-  // Clear rental from store on unmount
-  useEffect(() => () => { setSpaceRentalAmount(0); }, [setSpaceRentalAmount]);
+  // Clear rental from store on unmount or check change
+  useEffect(() => {
+    setSpaceRentalAmount(0);
+    return () => { setSpaceRentalAmount(0); };
+  }, [checkId, setSpaceRentalAmount]);
 
   const cartSubtotal = cart.reduce((s, c) => {
     if (!c?.item) return s;
@@ -1257,6 +1224,24 @@ export function CheckView({ onBack }: CheckViewProps) {
             </div>
           </div>
           </CartSwipeableRow>
+        )}
+
+        {/* RT-1: Banner when another staff modified this check */}
+        {checkModifiedExternally && (
+          <div className="mx-4 mb-2 px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-2 animate-fade-in">
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span className="text-xs text-amber-300 font-medium flex-1">Чек обновлён другим сотрудником</span>
+            <button
+              onClick={async () => {
+                hapticFeedback('medium');
+                setCheckModifiedExternally(false);
+                await refreshActiveCheck();
+              }}
+              className="text-xs font-bold text-amber-400 bg-amber-500/15 px-2.5 py-1 rounded-lg active:scale-95 transition-all"
+            >
+              Обновить
+            </button>
+          </div>
         )}
 
         {cart.length === 0 ? (

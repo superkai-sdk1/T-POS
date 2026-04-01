@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { PaymentMethod } from '@/types';
+import { REPORT_DAY_HOUR, getReportDayStart } from '@/lib/report-config';
 
 export type PeriodPreset = 'today' | 'yesterday' | 'week' | 'month' | 'quarter' | 'custom';
 
@@ -8,13 +9,10 @@ export interface DateRange {
   end: Date;
 }
 
-const REPORT_DAY_HOUR = 10;
+export { REPORT_DAY_HOUR };
 
 export function getReportingDayStart(date: Date): Date {
-  const d = new Date(date);
-  if (d.getHours() < REPORT_DAY_HOUR) d.setDate(d.getDate() - 1);
-  d.setHours(REPORT_DAY_HOUR, 0, 0, 0);
-  return d;
+  return getReportDayStart(date);
 }
 
 function presetToRange(preset: PeriodPreset): DateRange {

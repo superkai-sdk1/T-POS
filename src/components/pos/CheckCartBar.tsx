@@ -61,7 +61,7 @@ export function CheckCartBar() {
         <button
           onClick={() => {
             hapticFeedback('medium');
-            window.dispatchEvent(new CustomEvent('tpos:open-payment'));
+            usePOSStore.getState().requestOpenPayment();
           }}
           className="flex-1 max-w-[140px] py-2.5 rounded-xl flex items-center justify-center gap-3 bg-gradient-to-br from-[#a78bfa] to-[#6d28d9] font-black uppercase text-xs tracking-widest active:scale-95 transition-all text-white shadow-lg shadow-[#8b5cf6]/20 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--c-accent)]/20"
         >

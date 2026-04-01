@@ -275,19 +275,32 @@ export function PaymentDrawer({ open, onClose, onSuccess, spaceRental = 0 }: Pay
     if (remainder > 0) payments.push({ method: remainderMethod, amount: remainder });
     const ok = await closeCheck(payments, 0, spaceRental, certAmount, appliedCert.id);
     if (ok) {
-      const { error: updErr } = await supabase
-        .from('certificates')
-        .update({
-          balance: certBalance - certAmount,
-          is_used: certBalance - certAmount <= 0,
-          used_by: activeCheck.player_id || null,
-          used_at: new Date().toISOString(),
-        })
-        .eq('id', appliedCert.id);
-      if (updErr) {
-        hapticNotification('error');
-      } else {
+      // Update certificate balance with retry to prevent orphan certificates
+      const certUpdateData = {
+        balance: certBalance - certAmount,
+        is_used: certBalance - certAmount <= 0,
+        used_by: activeCheck.player_id || null,
+        used_at: new Date().toISOString(),
+      };
+      let certUpdated = false;
+      for (let attempt = 0; attempt < 3 && !certUpdated; attempt++) {
+        const { error: updErr } = await supabase
+          .from('certificates')
+          .update(certUpdateData)
+          .eq('id', appliedCert.id);
+        if (!updErr) {
+          certUpdated = true;
+        } else if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+        }
+      }
+      if (certUpdated) {
         hapticNotification('success');
+        onSuccess();
+      } else {
+        console.error('[PaymentDrawer] Certificate balance update failed after 3 attempts. CertID:', appliedCert.id);
+        hapticNotification('error');
+        // Still call onSuccess since check is closed — but cert might need manual fix
         onSuccess();
       }
     } else {

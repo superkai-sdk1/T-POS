@@ -23,12 +23,17 @@ interface POSState {
   productModifiers: Record<string, Modifier[]>;
   menuCategories: MenuCategory[];
   recentlyDeletedCheck: Check | null;
+  checkModifiedExternally: boolean;
   isLoading: boolean;
   checksLoaded: boolean;
   inventoryLoaded: boolean;
   categoriesLoaded: boolean;
   spaceRentalAmount: number;
   setSpaceRentalAmount: (amount: number) => void;
+  setCheckModifiedExternally: (val: boolean) => void;
+  openPaymentRequested: boolean;
+  requestOpenPayment: () => void;
+  clearPaymentRequest: () => void;
 
   loadInventory: () => Promise<void>;
   loadMenuCategories: () => Promise<void>;
@@ -83,6 +88,7 @@ export function isRecentlyRemoved(checkId: string) { return _recentlyRemovedChec
 
 let _lastCartFingerprint = '';
 let _savePromise: Promise<void> | null = null;
+let _pendingSave: Promise<boolean> | null = null;
 
 export const usePOSStore = create<POSState>((set, get) => ({
   openChecks: [],
@@ -97,12 +103,17 @@ export const usePOSStore = create<POSState>((set, get) => ({
   productModifiers: {},
   menuCategories: [],
   recentlyDeletedCheck: null,
+  checkModifiedExternally: false,
   isLoading: false,
   checksLoaded: false,
   inventoryLoaded: false,
   categoriesLoaded: false,
   spaceRentalAmount: 0,
   setSpaceRentalAmount: (amount: number) => set({ spaceRentalAmount: amount }),
+  setCheckModifiedExternally: (val: boolean) => set({ checkModifiedExternally: val }),
+  openPaymentRequested: false,
+  requestOpenPayment: () => set({ openPaymentRequested: true }),
+  clearPaymentRequest: () => set({ openPaymentRequested: false }),
 
   loadMenuCategories: async () => {
     if (get().categoriesLoaded) return;
@@ -354,6 +365,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       checkItems: items,
       cart,
       appliedDiscounts: discounts,
+      checkModifiedExternally: false,
       isLoading: false
     });
   },
@@ -631,7 +643,16 @@ export const usePOSStore = create<POSState>((set, get) => ({
   },
 
   saveCartToDb: async (): Promise<boolean> => {
-    if (_savePromise) await _savePromise;
+    // POS-6: Proper mutex — if saving, queue one pending call
+    if (_savePromise) {
+      if (!_pendingSave) {
+        _pendingSave = _savePromise.then(() => get().saveCartToDb());
+        const result = await _pendingSave;
+        _pendingSave = null;
+        return result;
+      }
+      return _pendingSave;
+    }
 
     const { activeCheck, cart } = get();
     if (!activeCheck) return true;
@@ -744,30 +765,32 @@ export const usePOSStore = create<POSState>((set, get) => ({
             }
           }
 
-          // Insert new items one-by-one to reliably get IDs for modifier mapping
+          // POS-5: Batch insert new items to reduce N+1 queries
           const newModifiers: { check_item_id: string; modifier_id: string; price_at_time: number }[] = [];
-          for (const newItem of newItems) {
-            const { _temp_modifiers: tempMods, ...insertData } = newItem;
-            const { data: saved, error: insErr } = await supabase
+          if (newItems.length > 0) {
+            const insertRows = newItems.map(({ _temp_modifiers, ...rest }) => { void _temp_modifiers; return rest; });
+            const { data: savedItems, error: batchErr } = await supabase
               .from('check_items')
-              .insert(insertData)
-              .select()
-              .single();
+              .insert(insertRows)
+              .select();
 
-            if (insErr || !saved) {
+            if (batchErr || !savedItems) {
               success = false;
-              continue;
+            } else {
+              // Map modifiers by matching array positions
+              for (let i = 0; i < savedItems.length; i++) {
+                const tempMods = newItems[i]._temp_modifiers;
+                if (tempMods && tempMods.length > 0) {
+                  for (const m of tempMods) {
+                    newModifiers.push({
+                      check_item_id: savedItems[i].id,
+                      modifier_id: m.id,
+                      price_at_time: m.price,
+                    });
+                  }
+                }
             }
-
-            if (tempMods && tempMods.length > 0) {
-              for (const m of tempMods) {
-                newModifiers.push({
-                  check_item_id: saved.id,
-                  modifier_id: m.id,
-                  price_at_time: m.price,
-                });
-              }
-            }
+          }
           }
 
           if (newModifiers.length > 0) {
@@ -919,14 +942,16 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const cartItems = cart
       .filter((x) => x?.item)
       .reduce((acc, c) => {
-        const existing = acc.find((a: { item_id: string }) => a.item_id === c.item.id);
+        const modKey = (c.modifiers || []).map((m) => m.id).sort().join(',');
+        const existing = acc.find((a) => a.item_id === c.item.id && a._modKey === modKey);
         if (existing) {
           existing.quantity += c.quantity;
         } else {
-          acc.push({ item_id: c.item.id, quantity: c.quantity });
+          acc.push({ item_id: c.item.id, quantity: c.quantity, _modKey: modKey });
         }
         return acc;
-      }, [] as { item_id: string; quantity: number }[]);
+      }, [] as { item_id: string; quantity: number; _modKey: string }[])
+      .map(({ _modKey, ...rest }) => rest);
 
     const { data: rpcResult, error: rpcErr } = await supabase.rpc('close_check', {
       p_check_id: checkId,
@@ -1089,7 +1114,8 @@ export const usePOSStore = create<POSState>((set, get) => ({
 
   deleteCheckLocal: (checkId: string) => {
     const state = get();
-    if (!state.openChecks.some((c) => c.id === checkId) && state.activeCheck?.id !== checkId) return;
+    const deletedCheck = state.openChecks.find((c) => c.id === checkId);
+    if (!deletedCheck && state.activeCheck?.id !== checkId) return;
     set((state) => {
       const { [checkId]: _carts, ...restCarts } = state.openCheckCarts;
       const { [checkId]: _items, ...restItems } = state.openCheckItems;
@@ -1104,6 +1130,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
         cart: state.activeCheck?.id === checkId ? [] : state.cart,
         checkItems: state.activeCheck?.id === checkId ? [] : state.checkItems,
         appliedDiscounts: state.activeCheck?.id === checkId ? [] : state.appliedDiscounts,
+        recentlyDeletedCheck: deletedCheck ?? state.recentlyDeletedCheck,
       };
     });
   },

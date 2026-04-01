@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase';
 import type { Profile, Space, VisitTariff, ClientTier, Check } from '@/types';
 import { EVENING_TYPE_LABELS, type EveningType } from '@/types';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
+import { getVisitItems, tierToTariff } from '@/lib/visit-tariffs';
 import { RefundsManager } from '@/components/management/RefundsManager';
 import { useHideNav, useLayoutStore, useTriggerNewCheck } from '@/store/layout';
 import { ClientAvatar } from '@/components/ui/ClientAvatar';
@@ -124,6 +125,7 @@ function CloseShiftView({
   setCloseNote,
   discrepancy,
   onClose,
+  onOpenRefunds,
   closeError,
   isLoading,
 }: {
@@ -135,6 +137,7 @@ function CloseShiftView({
   setCloseNote: (v: string) => void;
   discrepancy: number | null;
   onClose: () => void;
+  onOpenRefunds: () => void;
   closeError: string;
   isLoading: boolean;
 }) {
@@ -206,86 +209,26 @@ function CloseShiftView({
           {isLoading ? <span className="w-4 h-4 border-2 border-rose-400/30 border-t-rose-400 rounded-full animate-spin" /> : <Power size={18} strokeWidth={2.5} />}
           Закрыть и сдать кассу
         </button>
+
+        {/* Refunds button */}
+        <button
+          type="button"
+          onClick={onOpenRefunds}
+          className="w-full py-4 bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 rounded-xl text-white/60 font-bold uppercase tracking-[0.15em] italic text-[10px] transition-all flex items-center justify-center gap-2 tap active:scale-95"
+        >
+          <RotateCcw size={16} strokeWidth={2.5} />
+          Возвраты
+        </button>
       </div>
     </div>
   );
 }
 
-const VISIT_ITEMS_STATIC: Record<VisitTariff, { name: string; label: string; fallbackPrice: number; dbName: string }> = {
-  regular: { name: 'Гость', label: 'Гость', fallbackPrice: 700, dbName: 'Игровой вечер Гость' },
-  resident: { name: 'Резидент', label: 'Резидент', fallbackPrice: 500, dbName: 'Игровой вечер Резидент' },
-  student: { name: 'Студент', label: 'Студент', fallbackPrice: 300, dbName: 'Игровой вечер Студент' },
-  single_game: { name: 'Одна игра', label: 'Одна игра', fallbackPrice: 150, dbName: 'Игровой вечер Одна игра' },
-};
+// VISIT_ITEMS_STATIC moved to '@/lib/visit-tariffs' (getVisitItems)
 
-const ANON_CLIENT_NAMES = [
-  'Тихий Волк',
-  'Весёлый Кот',
-  'Синий Лис',
-  'Смелый Медведь',
-  'Рыжий Заяц',
-  'Добрый Ёж',
-  'Ловкий Пёс',
-  'Грозный Орёл',
-  'Свежий Барс',
-  'Молчаливый Ворон',
-  'Упрямый Бык',
-  'Ночной Тигр',
-  'Зоркий Ястреб',
-  'Радостный Енот',
-  'Спокойный Панда',
-  'Хитрый Лис',
-  'Тёплый Пёс',
-  'Лесной Кот',
-  'Быстрый Барсук',
-  'Мудрый Слон',
-  'Дикий Волк',
-  'Тихий Ёж',
-  'Летний Конь',
-  'Храбрый Лев',
-  'Северный Волк',
-  'Звонкий Жаворонок',
-  'Весенний Медведь',
-  'Снежный Кот',
-  'Ласковый Тюлень',
-  'Городской Сокол',
-  'Солнечный Лис',
-  'Вечерний Волк',
-  'Улыбчивый Пёс',
-  'Радужный Кот',
-  'Громкий Попугай',
-  'Лесной Олень',
-  'Морской Краб',
-  'Хитрый Волчонок',
-  'Смелый Барс',
-  'Весёлый Тигр',
-  'Спящий Лис',
-  'Тихий Медвежонок',
-  'Гордый Конь',
-  'Маленький Енот',
-  'Добрый Котёнок',
-  'Ловкий Ястреб',
-  'Зоркий Пёс',
-  'Ясный Волк',
-  'Летучий Кот',
-  'Бесстрашный Лев',
-];
+import { getAnonymousClientName } from '@/lib/anonymous-names';
 
-function getAnonymousClientName(seed: string): string {
-  if (!seed) return ANON_CLIENT_NAMES[0];
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
-  }
-  const idx = hash % ANON_CLIENT_NAMES.length;
-  return ANON_CLIENT_NAMES[idx];
-}
-
-function tierToTariff(tier: ClientTier): VisitTariff {
-  if (tier === 'resident') return 'resident';
-  if (tier === 'student') return 'student';
-  return 'regular';
-}
+// tierToTariff is now imported from '@/lib/visit-tariffs'
 
 function ElapsedTime({ since }: { since: string }) {
   const [text, setText] = useState('');
@@ -483,14 +426,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const leaveCheck = usePOSStore((s) => s.leaveCheck);
   const inventory = usePOSStore((s) => s.inventory);
 
-  const VISIT_ITEMS = useMemo(() => {
-    const result: Record<VisitTariff, { name: string; label: string; price: number; dbName: string }> = {} as any;
-    for (const [key, info] of Object.entries(VISIT_ITEMS_STATIC) as [VisitTariff, typeof VISIT_ITEMS_STATIC['regular']][]) {
-      const invItem = inventory.find((i) => i.name === info.dbName);
-      result[key] = { name: info.name, label: info.label, dbName: info.dbName, price: invItem?.price ?? info.fallbackPrice };
-    }
-    return result;
-  }, [inventory]);
+  const VISIT_ITEMS = useMemo(() => getVisitItems(inventory), [inventory]);
 
   const checksLoaded = usePOSStore((s) => s.checksLoaded);
   const isLoadingChecks = usePOSStore((s) => s.isLoading);
@@ -522,6 +458,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
   const [newNickname, setNewNickname] = useState('');
   const [newClientTier, setNewClientTier] = useState<ClientTier>('regular');
   const [createError, setCreateError] = useState('');
+  const [checkCreateError, setCheckCreateError] = useState('');
   const [showSpaces, setShowSpaces] = useState(false);
   const [spacesList, setSpacesList] = useState<Space[]>([]);
 
@@ -603,6 +540,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           // Если активный чек ещё не успел уйти (race при back/leaveCheck) — сохраняем/очищаем и открываем Drawer.
           if (activeCheck) await leaveCheck();
         } finally {
+          setCheckCreateError('');
           setShowNewCheck(true);
         }
       })();
@@ -644,18 +582,15 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
 
       let tagResults: Profile[] = [];
       if (nicknameResults.length < 20) {
-        const { data: allWithTags } = await supabase
+        const { data: tagData } = await supabase
           .from('profiles')
           .select('*')
           .is('deleted_at', null)
           .not('search_tags', 'eq', '{}')
-          .limit(200);
-        if (allWithTags) {
-          const q = query.toLowerCase();
-          tagResults = (allWithTags as Profile[]).filter(p =>
-            !nicknameIds.has(p.id) &&
-            p.search_tags?.some(tag => tag.toLowerCase().includes(q))
-          );
+          .filter('search_tags::text', 'ilike', `%${query}%`)
+          .limit(20);
+        if (tagData) {
+          tagResults = (tagData as Profile[]).filter(p => !nicknameIds.has(p.id));
         }
       }
 
@@ -706,6 +641,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
       onSelectCheck();
     } else {
       hapticNotification('error');
+      setCheckCreateError('Не удалось создать чек. Проверьте подключение и активную смену.');
     }
   };
 
@@ -719,6 +655,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
       onSelectCheck();
     } else {
       hapticNotification('error');
+      setCheckCreateError('Не удалось создать чек. Проверьте подключение и активную смену.');
     }
   };
 
@@ -733,6 +670,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
       onSelectCheck();
     } else {
       hapticNotification('error');
+      setCheckCreateError('Не удалось создать чек для этого помещения.');
     }
   };
 
@@ -831,6 +769,7 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
           onClose={handleCloseShift}
           closeError={closeError}
           isLoading={isClosing}
+          onOpenRefunds={() => setShowRefunds(true)}
         />
       ) : (
       <div className="flex-1 flex flex-col min-h-0 lg:h-full overflow-hidden animate-fade-in">
@@ -1003,8 +942,15 @@ export function OpenChecks({ onSelectCheck }: OpenChecksProps) {
               <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(99, 102, 241, 0.12)' }}>
                 <DoorOpen className="w-4.5 h-4.5 text-indigo-400" />
               </div>
+              <span className="text-[13px] font-semibold text-indigo-400">Кабинка</span>
             </button>
           </div>
+
+          {checkCreateError && (
+            <div className="px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-center">
+              <p className="text-xs text-red-400 font-medium">{checkCreateError}</p>
+            </div>
+          )}
 
           {/* ── Divider ── */}
           <div className="shrink-0 flex items-center gap-2">

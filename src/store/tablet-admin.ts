@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
 import { hapticFeedback, hapticNotification } from '@/lib/telegram';
 import { usePOSStore } from '@/store/pos';
+import { useShiftStore } from '@/store/shift';
 import type { TabletOrder, TabletOrderItem } from '@/types';
 
 // Web Audio API context for playing sound
@@ -201,12 +202,17 @@ export const useAdminTabletStore = create<AdminTabletState>((set, get) => ({
 
   openOrderSpaceCheck: async (spaceId: string, adminId: string) => {
     try {
+      const activeShift = useShiftStore.getState().activeShift;
+      if (!activeShift) {
+        console.error('[tablet-admin] No active shift — cannot create check');
+        return null;
+      }
       // Create new empty check for the space
       const { data, error } = await supabase.from('checks').insert({
-        opened_by: adminId,
+        staff_id: adminId,
+        shift_id: activeShift.id,
         space_id: spaceId,
         status: 'open',
-        guest_count: 1, // default
       }).select('id').single();
 
       if (error || !data) throw error;

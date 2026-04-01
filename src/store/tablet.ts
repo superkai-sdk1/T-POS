@@ -321,7 +321,7 @@ export const useTabletStore = create<TabletState>((set, get) => ({
     try {
       const { error } = await supabase
         .from('tablet_orders')
-        .update({ status: 'rejected' })
+        .update({ status: 'cancelled' })
         .eq('id', orderId)
         .eq('status', 'pending');
 
