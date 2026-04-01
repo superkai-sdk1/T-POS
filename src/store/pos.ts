@@ -968,18 +968,6 @@ export const usePOSStore = create<POSState>((set, get) => ({
     if (rpcErr || rpcResult?.error) {
       const errMsg = rpcErr?.message || rpcResult?.error || 'Unknown error';
       console.error('closeCheck RPC error:', errMsg);
-      console.error('closeCheck RPC params:', {
-        p_check_id: checkId,
-        p_payments: payments,
-        p_bonus_used: bonusUsed,
-        p_space_rental: spaceRental,
-        p_certificate_used: certificateUsed,
-        p_discount_total: discountTotal,
-        p_closed_by: user?.id,
-        p_cart_items: cartItems,
-      });
-      // Show error to user for debugging
-      alert(`Ошибка закрытия чека: ${errMsg}`);
       _closingCheckIds.delete(checkId);
       await get().loadOpenChecks();
       return false;
@@ -1002,7 +990,8 @@ export const usePOSStore = create<POSState>((set, get) => ({
       }
     }
 
-    _closingCheckIds.delete(checkId);
+    // Keep blocking realtime events for 10s to prevent flicker
+    setTimeout(() => _closingCheckIds.delete(checkId), 10000);
     get().loadInventory();
     return true;
   },
