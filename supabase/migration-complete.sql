@@ -259,7 +259,7 @@ create index if not exists idx_client_discount_rules_item on client_discount_rul
 do $$
 begin
   alter table check_discounts
-    add constraint if not exists check_discounts_client_rule_id_fkey
+    add constraint check_discounts_client_rule_id_fkey
     foreign key (client_rule_id) references client_discount_rules(id) on delete set null;
 exception when duplicate_object then null;
 end $$;
