@@ -17,14 +17,45 @@ create extension if not exists "pgcrypto";
 -- ==================
 -- ENUM types
 -- ==================
-create type user_role as enum ('owner', 'staff', 'client', 'tablet');
-create type check_status as enum ('open', 'closed');
-create type payment_method as enum ('cash', 'card', 'debt', 'bonus', 'split', 'deposit');
-create type transaction_type as enum ('supply', 'write_off', 'sale', 'revision', 'bonus_accrual', 'bonus_spend', 'cash_operation', 'debt_adjustment', 'refund');
-create type discount_type as enum ('percentage', 'fixed');
-create type discount_target as enum ('check', 'item');
-create type space_type as enum ('cabin_small', 'cabin_big', 'hall');
-create type booking_status as enum ('booked', 'active', 'completed', 'cancelled');
+do $$ begin
+  create type user_role as enum ('owner', 'staff', 'client', 'tablet');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type check_status as enum ('open', 'closed');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type payment_method as enum ('cash', 'card', 'debt', 'bonus', 'split', 'deposit');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type transaction_type as enum ('supply', 'write_off', 'sale', 'revision', 'bonus_accrual', 'bonus_spend', 'cash_operation', 'debt_adjustment', 'refund');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type discount_type as enum ('percentage', 'fixed');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type discount_target as enum ('check', 'item');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type space_type as enum ('cabin_small', 'cabin_big', 'hall');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type booking_status as enum ('booked', 'active', 'completed', 'cancelled');
+exception when duplicate_object then null;
+end $$;
 
 -- ==================
 -- TABLES
