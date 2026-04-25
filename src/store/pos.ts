@@ -66,6 +66,16 @@ interface POSState {
   upsertCategoryLocal: (category: MenuCategory) => void;
 }
 
+function computeCartTotals(cart: CartItem[], discounts: CheckDiscount[]) {
+  const subtotal = cart.reduce((sum, c) => {
+    if (!c?.item) return sum;
+    const modPrice = (c.modifiers || []).reduce((ms, m) => ms + m.price, 0);
+    return sum + (c.item.price + modPrice) * c.quantity;
+  }, 0);
+  const discountTotal = discounts.reduce((sum, d) => sum + d.discount_amount, 0);
+  return { total: Math.max(0, subtotal - discountTotal), discountTotal };
+}
+
 let _savingCart = false;
 export function isSavingCart() { return _savingCart; }
 
@@ -525,6 +535,13 @@ export const usePOSStore = create<POSState>((set, get) => ({
       } as CheckDiscount;
       // Заменяем оптимистичную запись (tempId) на серверную
       set({ appliedDiscounts: get().appliedDiscounts.map((d) => d.id === tempId ? cd : d) });
+
+      // Sync check total so close_check RPC sees the discount
+      const { cart: cartAd, appliedDiscounts: adAd, activeCheck: acAd } = get();
+      if (acAd) {
+        const { total: totalAd, discountTotal: discountTotalAd } = computeCartTotals(cartAd, adAd);
+        await supabase.from('checks').update({ total_amount: totalAd, discount_total: discountTotalAd }).eq('id', acAd.id);
+      }
     }
   },
 
@@ -532,7 +549,16 @@ export const usePOSStore = create<POSState>((set, get) => ({
     const prev = get().appliedDiscounts;
     set({ appliedDiscounts: prev.filter((d) => d.id !== checkDiscountId) });
     const { error } = await supabase.from('check_discounts').delete().eq('id', checkDiscountId);
-    if (error) set({ appliedDiscounts: prev });
+    if (error) {
+      set({ appliedDiscounts: prev });
+    } else {
+      // Sync check total so close_check RPC sees the removed discount
+      const { cart: cartRm, appliedDiscounts: adRm, activeCheck: acRm } = get();
+      if (acRm) {
+        const { total: totalRm, discountTotal: discountTotalRm } = computeCartTotals(cartRm, adRm);
+        await supabase.from('checks').update({ total_amount: totalRm, discount_total: discountTotalRm }).eq('id', acRm.id);
+      }
+    }
   },
 
   refreshActiveCheck: async () => {
@@ -799,6 +825,11 @@ export const usePOSStore = create<POSState>((set, get) => ({
         }
 
         _lastCartFingerprint = modKey;
+
+        // Sync check total so close_check RPC and other clients see correct amount
+        const { appliedDiscounts: adPost } = get();
+        const { total: totalPost, discountTotal: discountTotalPost } = computeCartTotals(cart, adPost);
+        await supabase.from('checks').update({ total_amount: totalPost, discount_total: discountTotalPost }).eq('id', activeCheck.id);
       } catch (err) {
         console.error('[POS] saveCartToDb failed:', err);
         success = false;
