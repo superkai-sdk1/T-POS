@@ -1203,33 +1203,43 @@ $$ language plpgsql;
 -- ==================
 -- SEED DATA (app_settings only - safe to re-run)
 -- ==================
-insert into app_settings (key, value) values
-  ('bonus_accrual_rate', '10'),
-  ('bonus_min_purchase', '0'),
-  ('bonus_enabled', 'true'),
-  ('bonus_accrual_on_debt', 'false'),
-  ('notification_admin_channel', 'telegram'),
-  ('notification_admin_telegram_chat_ids', '556525624,1005574994'),
-  ('notification_admin_types', '{"shift_open":true,"shift_close":true,"payment_cash":true,"payment_card":true,"payment_deposit":true,"payment_debt":true,"birthday":true}'),
-  ('notification_client_bonus_accrual', 'true'),
-  ('notification_client_bonus_spend', 'true')
-on conflict (key) do nothing;
+do $$
+begin
+  insert into app_settings (key, value) values
+    ('bonus_accrual_rate', '10'),
+    ('bonus_min_purchase', '0'),
+    ('bonus_enabled', 'true'),
+    ('bonus_accrual_on_debt', 'false'),
+    ('notification_admin_channel', 'telegram'),
+    ('notification_admin_telegram_chat_ids', '556525624,1005574994'),
+    ('notification_admin_types', '{"shift_open":true,"shift_close":true,"payment_cash":true,"payment_card":true,"payment_deposit":true,"payment_debt":true,"birthday":true}'),
+    ('notification_client_bonus_accrual', 'true'),
+    ('notification_client_bonus_spend', 'true')
+  on conflict (key) do nothing;
+exception when others then null;
+end $$;
 
 -- Menu categories
-insert into menu_categories (name, slug, sort_order, icon_name, color) values
-  ('Услуги', 'services', 10, 'Timer', 'indigo'),
-  ('Напитки', 'drinks', 20, 'GlassWater', 'blue'),
-  ('Еда', 'food', 30, 'UtensilsCrossed', 'orange'),
-  ('Снеки', 'bar', 40, 'Cookie', 'amber'),
-  ('Кальяны', 'hookah', 50, 'Wind', 'violet')
-on conflict (slug) do nothing;
+do $$
+begin
+  insert into menu_categories (name, slug, sort_order, icon_name, color) values
+    ('Услуги', 'services', 10, 'Timer', 'indigo'),
+    ('Напитки', 'drinks', 20, 'GlassWater', 'blue'),
+    ('Еда', 'food', 30, 'UtensilsCrossed', 'orange'),
+    ('Снеки', 'bar', 40, 'Cookie', 'amber'),
+    ('Кальяны', 'hookah', 50, 'Wind', 'violet');
+exception when others then null;
+end $$;
 
 -- Spaces
-insert into spaces (name, type, hourly_rate) values
-  ('Маленькая кабинка', 'cabin_small', 250),
-  ('Большая кабинка', 'cabin_big', 500),
-  ('Зал', 'hall', null)
-on conflict (name) do nothing;
+do $$
+begin
+  insert into spaces (name, type, hourly_rate) values
+    ('Маленькая кабинка', 'cabin_small', 250),
+    ('Большая кабинка', 'cabin_big', 500),
+    ('Зал', 'hall', null);
+exception when others then null;
+end $$;
 
 -- ============================================================
 -- ОПЦИОНАЛЬНО: Исправление сумм закрытых чеков
