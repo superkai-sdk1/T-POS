@@ -1,0 +1,3 @@
+-- T-POS Database Data
+-- This file will contain INSERT statements for initial data
+-- Currently empty - data needs to be exported from Supabase

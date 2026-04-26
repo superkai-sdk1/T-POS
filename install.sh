@@ -345,6 +345,12 @@ setup_docker() {
     docker exec -i tpos-postgres psql -U tpos -d tpos < "$dir/server/db/schema.sql" 2>/dev/null || true
     success "Схема БД импортирована"
   fi
+
+  if [ -f "$dir/server/db/data.sql" ]; then
+    info "Импорт данных БД..."
+    docker exec -i tpos-postgres psql -U tpos -d tpos < "$dir/server/db/data.sql" 2>/dev/null || true
+    success "Данные БД импортированы"
+  fi
 }
 
 init_minio() {
