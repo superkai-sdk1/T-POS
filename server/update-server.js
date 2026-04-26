@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs';
 // Импорт локального DB слоя вместо Supabase
 import { sbSelect, sbUpdate, getAIContext } from './db/supabase-adapter.js';
 import { initWebSocketServer, setupPostgresNotify } from './websocket-server.js';
+import { query } from './db/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_DIR = join(__dirname, '..');
@@ -1544,13 +1545,12 @@ const REMINDER_INTERVALS = [
 ];
 
 async function runEventReminders() {
-  const db = require('./db/index.js');
   const BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN;
   const CHAT_IDS = (process.env.OWNER_CHAT_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
   if (!BOT_TOKEN || CHAT_IDS.length === 0) return;
 
   const today = new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0];
-  const events = await db.query(`SELECT * FROM events WHERE status IN ('planned', 'active') AND date >= $1 ORDER BY date ASC, start_time ASC`, [today]);
+  const events = await query(`SELECT * FROM events WHERE status IN ('planned', 'active') AND date >= $1 ORDER BY date ASC, start_time ASC`, [today]);
   if (!Array.isArray(events)) return;
 
   const nowMs = Date.now();
