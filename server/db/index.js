@@ -133,3 +133,15 @@ export const transaction = async (callback) => {
     client.release();
   }
 };
+
+// Default export для совместимости
+export default {
+  query,
+  select,
+  selectOne,
+  insert,
+  update,
+  delete: deleteRecord,
+  rpc,
+  transaction,
+};
