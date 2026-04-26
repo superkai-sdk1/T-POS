@@ -1,13 +1,10 @@
 import { Pool } from 'pg';
-import { createRequire } from 'node:module';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-const require = createRequire(import.meta.url);
-const dotenv = require('dotenv');
 
 dotenv.config({ path: resolve(__dirname, '../../.env') });
 

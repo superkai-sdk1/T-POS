@@ -4,11 +4,13 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import bcrypt from 'bcryptjs';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 // Импорт локального DB слоя вместо Supabase
 import { sbSelect, sbUpdate, getAIContext } from './db/supabase-adapter.js';
 import { initWebSocketServer, setupPostgresNotify } from './websocket-server.js';
-import { query } from './db/index.js';
+import db from './db/index.js';
+import queries from './db/queries.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_DIR = join(__dirname, '..');
@@ -89,7 +91,7 @@ const BCRYPT_ROUNDS = 10;
 const isBcrypt = (hash) => hash && (hash.startsWith('$2a$') || hash.startsWith('$2b$') || hash.startsWith('$2y$'));
 
 async function verifyAndMigrate(table, id, field, plainValue, storedHash) {
-  const db = require('./db/index.js');
+  // db уже импортирован в начале файла
   
   if (isBcrypt(storedHash)) {
     return bcrypt.compareSync(plainValue, storedHash);
@@ -592,8 +594,7 @@ const server = http.createServer((req, res) => {
     readBody(req).then(async (body) => {
       try {
         const { action, params, staffId } = JSON.parse(body);
-        const db = require('./db/index.js');
-        const queries = require('./db/queries.js');
+        // db уже импортирован в начале файла
 
         if (action === 'create_check') {
           const { playerNickname, items } = params;
@@ -1013,7 +1014,7 @@ const server = http.createServer((req, res) => {
 
   // ── Auth: Login by nickname + password ──
   if (url.pathname === '/api/auth/login' && req.method === 'POST') {
-    const db = require('./db/index.js');
+    // db уже импортирован в начале файла
     readBody(req).then(async (body) => {
       try {
         const { nickname, password } = JSON.parse(body);
@@ -1033,7 +1034,7 @@ const server = http.createServer((req, res) => {
 
   // ── Auth: Login by PIN ──
   if (url.pathname === '/api/auth/pin' && req.method === 'POST') {
-    const db = require('./db/index.js');
+    // db уже импортирован в начале файла
     readBody(req).then(async (body) => {
       try {
         const { userId, pin } = JSON.parse(body);
@@ -1064,7 +1065,7 @@ const server = http.createServer((req, res) => {
 
   // ── Auth: Setup / Change PIN ──
   if (url.pathname === '/api/auth/setup-pin' && req.method === 'POST') {
-    const db = require('./db/index.js');
+    // db уже импортирован в начале файла
     readBody(req).then(async (body) => {
       try {
         const { userId, pin } = JSON.parse(body);
@@ -1093,7 +1094,7 @@ const server = http.createServer((req, res) => {
 
   // ── Notify: Server-side Telegram + PWA ──
   if (url.pathname === '/api/notify' && req.method === 'POST') {
-    const db = require('./db/index.js');
+    // db уже импортирован в начале файла
     readBody(req).then(async (body) => {
       try {
         const { type, text, chatIds, title, pwaBody, meta } = JSON.parse(body);
@@ -1144,7 +1145,7 @@ const server = http.createServer((req, res) => {
 
   // ── Auth: Get profile by Telegram ID ──
   if (url.pathname === '/api/auth/telegram' && req.method === 'POST') {
-    const db = require('./db/index.js');
+    // db уже импортирован в начале файла
     readBody(req).then(async (body) => {
       try {
         const { tgId } = JSON.parse(body);
@@ -1167,7 +1168,7 @@ const server = http.createServer((req, res) => {
   // ── Auth: Get staff users ──
   if (url.pathname === '/api/auth/staff' && req.method === 'GET') {
     (async () => {
-      const db = require('./db/index.js');
+      // db уже импортирован в начале файла
       try {
         const profiles = await db.query(`
           SELECT id, nickname, role, pin 
@@ -1184,7 +1185,7 @@ const server = http.createServer((req, res) => {
   // ── Auth: Refresh profile ──
   if (url.pathname === '/api/auth/profile' && req.method === 'GET') {
     (async () => {
-      const db = require('./db/index.js');
+      // db уже импортирован в начале файла
       const userId = url.searchParams.get('userId');
       if (!userId) { json(res, { error: 'userId обязателен' }, 400); return; }
       
@@ -1205,7 +1206,7 @@ const server = http.createServer((req, res) => {
 
   // ── API: Generic database operations for frontend ──
   if (url.pathname === '/api/db' && req.method === 'POST') {
-    const db = require('./db/index.js');
+    // db уже импортирован в начале файла
     readBody(req).then(async (body) => {
       try {
         const { operation, table, filters, data, columns, orderBy, limit } = JSON.parse(body);
@@ -1262,7 +1263,7 @@ const server = http.createServer((req, res) => {
 
   // ── API: Close check (RPC replacement) ──
   if (url.pathname === '/api/checks/close' && req.method === 'POST') {
-    const db = require('./db/index.js');
+    // db уже импортирован в начале файла
     readBody(req).then(async (body) => {
       try {
         const { checkId, payments, bonusUsed, spaceRental, certificateUsed, certificateId, discountTotal, closedBy, cartItems } = JSON.parse(body);
@@ -1490,7 +1491,7 @@ const server = http.createServer((req, res) => {
 
   // ── API: Upload file to MinIO ──
   if (url.pathname === '/api/storage/upload' && req.method === 'POST') {
-    const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+    // S3Client и PutObjectCommand уже импортированы в начале файла
     readBody(req, async (body) => {
       try {
         const { file, filename, folder } = JSON.parse(body);

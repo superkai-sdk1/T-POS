@@ -1,4 +1,4 @@
-const db = require('./index');
+import db from './index.js';
 
 // Profiles
 const profiles = {
@@ -183,7 +183,7 @@ const tgLinkRequests = {
   getPending: () => db.select('tg_link_requests', { status: 'pending' }),
 };
 
-module.exports = {
+export default {
   profiles,
   inventory,
   checks,
