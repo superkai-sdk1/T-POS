@@ -85,6 +85,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   amount DECIMAL(10, 2) NOT NULL,
   description TEXT,
   check_id UUID REFERENCES checks(id),
+  item_id UUID,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -92,6 +93,8 @@ CREATE TABLE IF NOT EXISTS transactions (
 CREATE TABLE IF NOT EXISTS shifts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   staff_id UUID REFERENCES profiles(id),
+  opened_by UUID REFERENCES profiles(id),
+  closed_by UUID REFERENCES profiles(id),
   status VARCHAR(50) DEFAULT 'open',
   opened_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   closed_at TIMESTAMP WITH TIME ZONE,
@@ -108,6 +111,7 @@ CREATE TABLE IF NOT EXISTS discounts (
   is_active BOOLEAN DEFAULT true,
   valid_from TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   valid_until TIMESTAMP WITH TIME ZONE,
+  min_quantity INTEGER DEFAULT 0,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -116,6 +120,8 @@ CREATE TABLE IF NOT EXISTS discounts (
 CREATE TABLE IF NOT EXISTS events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title VARCHAR(255) NOT NULL,
+  type VARCHAR(50),
+  location TEXT,
   description TEXT,
   date DATE NOT NULL,
   start_time TIME,
@@ -130,7 +136,7 @@ CREATE TABLE IF NOT EXISTS spaces (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR(255) NOT NULL,
   type VARCHAR(50) NOT NULL,
-  hourly_rate DECIMAL(10, 2) NOT NULL,
+  hourly_rate DECIMAL(10, 2),
   capacity INTEGER,
   is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -155,6 +161,9 @@ CREATE TABLE IF NOT EXISTS supplies (
   quantity INTEGER NOT NULL,
   unit VARCHAR(50),
   supplier VARCHAR(255),
+  note TEXT,
+  total_cost DECIMAL(10, 2),
+  created_by UUID REFERENCES profiles(id),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -162,7 +171,9 @@ CREATE TABLE IF NOT EXISTS supplies (
 CREATE TABLE IF NOT EXISTS bonus_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   profile_id UUID REFERENCES profiles(id),
-  points INTEGER NOT NULL,
+  amount DECIMAL(10, 2),
+  points INTEGER,
+  balance_after DECIMAL(10, 2),
   reason TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -173,6 +184,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   title VARCHAR(255) NOT NULL,
   body TEXT NOT NULL,
   type VARCHAR(50),
+  meta JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   read_at TIMESTAMP WITH TIME ZONE
 );
