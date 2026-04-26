@@ -141,7 +141,7 @@ export default {
   selectOne,
   insert,
   update,
-  delete: deleteRecord,
+  delete: deleteRows,
   rpc,
   transaction,
 };
