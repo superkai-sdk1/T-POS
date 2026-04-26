@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Profile } from '@/types';
-import { supabase } from '@/lib/supabase';
 import { getTelegramWebApp } from '@/lib/telegram';
 
 /** Server auth endpoint helper */
@@ -89,38 +88,22 @@ export const useAuthStore = create<AuthState>()(
             return false;
           }
 
-          // AUTH-2: Verify initData on server first
-          const initData = tg.initData;
-          if (initData) {
-            try {
-              const { data: verifyResult, error: verifyError } = await supabase.functions.invoke('verify-telegram', {
-                body: { initData },
-              });
-              if (verifyError || !verifyResult?.valid) {
-                console.warn('[AUTH] Telegram verification failed:', verifyError || verifyResult?.error);
-                // Fall through — don't block if edge function is not deployed yet
-              }
-            } catch (e) {
-              console.warn('[AUTH] Telegram verify function unavailable:', e);
-              // Fall through — edge function may not be deployed
-            }
-          }
-
           const tgUser = tg.initDataUnsafe.user;
           const tgId = String(tgUser.id);
 
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('id, nickname, role, balance, bonus_points, client_tier, is_resident, photo_url, tg_id, tg_username, phone, birthday, linked_space_id, created_at, deleted_at')
-            .eq('tg_id', tgId)
-            .single();
+          const res = await fetch('/api/auth/telegram', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tgId }),
+          });
+          const json = await res.json();
 
-          if (error || !data) {
+          if (!res.ok || json.error) {
             set({ error: 'Пользователь не найден. Обратитесь к администратору.', isLoading: false });
             return false;
           }
 
-          const profile = data as Profile;
+          const profile = json.data as Profile;
           set({
             user: profile,
             rememberedUserId: profile.id,
@@ -186,23 +169,25 @@ export const useAuthStore = create<AuthState>()(
       },
 
       loadStaffUsers: async () => {
-        // Select pin to determine if staff has a PIN set
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('id, nickname, role, pin')
-          .in('role', ['staff', 'owner', 'tablet'])
-          .order('role')
-          .order('nickname');
-        if (import.meta.env.DEV && error) console.error('[auth] loadStaffUsers:', error);
-        if (data) {
-          set({
-            staffUsers: data.map((p) => ({
-              id: p.id,
-              nickname: p.nickname,
-              role: p.role,
-              hasPin: !!p.pin,
-            })),
-          });
+        try {
+          const res = await fetch('/api/auth/staff');
+          const json = await res.json();
+          if (!res.ok || json.error) {
+            if (import.meta.env.DEV) console.error('[auth] loadStaffUsers:', json.error);
+            return;
+          }
+          if (json.data) {
+            set({
+              staffUsers: json.data.map((p: any) => ({
+                id: p.id,
+                nickname: p.nickname,
+                role: p.role,
+                hasPin: !!p.pin,
+              })),
+            });
+          }
+        } catch (e) {
+          if (import.meta.env.DEV) console.error('[auth] loadStaffUsers:', e);
         }
       },
 
@@ -245,13 +230,18 @@ export const useAuthStore = create<AuthState>()(
         const { user } = get();
         if (!user) return;
         const userId = user.id;
-        const { data } = await supabase
-          .from('profiles')
-          .select('id, nickname, role, balance, bonus_points, client_tier, is_resident, photo_url, tg_id, tg_username, phone, birthday, linked_space_id, permissions, created_at, deleted_at')
-          .eq('id', userId)
-          .single();
-        if (data && get().user?.id === userId) {
-          set({ user: data as Profile });
+        try {
+          const res = await fetch(`/api/auth/profile?userId=${encodeURIComponent(userId)}`);
+          const json = await res.json();
+          if (!res.ok || json.error) {
+            if (import.meta.env.DEV) console.error('[auth] refreshProfile:', json.error);
+            return;
+          }
+          if (json.data && get().user?.id === userId) {
+            set({ user: json.data as Profile });
+          }
+        } catch (e) {
+          if (import.meta.env.DEV) console.error('[auth] refreshProfile:', e);
         }
       },
 

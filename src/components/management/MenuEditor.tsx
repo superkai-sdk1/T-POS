@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { supabase } from '@/lib/supabase';
+import { storage } from '@/lib/storage';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Drawer } from '@/components/ui/Drawer';
@@ -223,12 +224,11 @@ export function MenuEditor({ onBackToManagement, tabSwitcher }: MenuEditorProps)
     if (!file) return;
     setIsUploading(true);
     const ext = file.name.split('.').pop() || 'jpg';
-    const fpath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage
-      .from('menu-images')
-      .upload(fpath, file, { contentType: file.type });
-    if (!error) {
-      const url = `${SUPABASE_URL}/storage/v1/object/public/menu-images/${fpath}`;
+    const fpath = `menu-images/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    
+    const result = await storage.from('tpos-storage').upload(fpath, file);
+    if (!result.error && result.data) {
+      const url = `${process.env.VITE_MINIO_ENDPOINT || 'http://localhost:9000'}/tpos-storage/${result.data.path}`;
       updateField('image_url', url);
       hapticNotification('success');
     }

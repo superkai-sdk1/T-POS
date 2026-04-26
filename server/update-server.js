@@ -5,6 +5,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import bcrypt from 'bcryptjs';
 
+// Импорт локального DB слоя вместо Supabase
+import { sbSelect, sbUpdate, getAIContext } from './db/supabase-adapter.js';
+import { initWebSocketServer, setupPostgresNotify } from './websocket-server.js';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_DIR = join(__dirname, '..');
 const PORT = 3100;
@@ -60,37 +64,7 @@ let updateInProgress = false;
 
 const MAX_BODY_SIZE = 1024 * 1024; // 1 MB
 
-// --- Supabase REST helpers ---
-function getSbConfig() {
-  const url = process.env.VITE_SUPABASE_URL;
-  const key = process.env.VITE_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-  return {
-    url,
-    headers: {
-      'apikey': key,
-      'Authorization': `Bearer ${key}`,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=representation',
-    },
-  };
-}
-
-async function sbSelect(table, query = '') {
-  const sb = getSbConfig();
-  if (!sb) return [];
-  const res = await fetch(`${sb.url}/rest/v1/${table}?${query}`, { headers: sb.headers });
-  return res.ok ? await res.json() : [];
-}
-
-async function sbUpdate(table, filter, data) {
-  const sb = getSbConfig();
-  if (!sb) return false;
-  const res = await fetch(`${sb.url}/rest/v1/${table}?${filter}`, {
-    method: 'PATCH', headers: sb.headers, body: JSON.stringify(data),
-  });
-  return res.ok;
-}
+// Supabase функции теперь импортируются из ./db/supabase-adapter.js
 
 // --- Telegram helper (server-side only) ---
 function getTelegramToken() {
@@ -114,13 +88,15 @@ const BCRYPT_ROUNDS = 10;
 const isBcrypt = (hash) => hash && (hash.startsWith('$2a$') || hash.startsWith('$2b$') || hash.startsWith('$2y$'));
 
 async function verifyAndMigrate(table, id, field, plainValue, storedHash) {
+  const db = require('./db/index.js');
+  
   if (isBcrypt(storedHash)) {
     return bcrypt.compareSync(plainValue, storedHash);
   }
   // Plain text comparison (legacy) — migrate to bcrypt on success
   if (storedHash === plainValue) {
     const hashed = bcrypt.hashSync(plainValue, BCRYPT_ROUNDS);
-    await sbUpdate(table, `id=eq.${id}`, { [field]: hashed });
+    await db.update(table, { id }, { [field]: hashed });
     return true;
   }
   return false;
@@ -218,7 +194,7 @@ const server = http.createServer((req, res) => {
         try { execSync('systemctl restart tpos-wallet-bot', { timeout: 5000 }); } catch { }
         try { execSync('systemctl restart tpos-admin-bot', { timeout: 5000 }); } catch { }
         try { execSync('systemctl restart tpos-update', { timeout: 5000 }); } catch { }
-        send({ type: 'complete', message: 'Обновление завершено. При миграции на новую БД обновите .env (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY) и перезапустите обновление. Новые таблицы — SQL в Supabase Dashboard → SQL Editor.' });
+        send({ type: 'complete', message: 'Обновление завершено. Локальная PostgreSQL БД готова к использованию. Для запуска: docker-compose up -d' });
         res.end();
         updateInProgress = false;
         return;
@@ -265,48 +241,37 @@ const server = http.createServer((req, res) => {
       try {
         const { messages, context, draft } = JSON.parse(body);
         const POLZA_KEY = process.env.POLZA_AI_API_KEY;
-        const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-        const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
         const aiUrl = 'https://polza.ai/api/v1/chat/completions';
 
-        // --- Fetch compact database context from Supabase (cached 60s) ---
+        // --- Fetch compact database context from local PostgreSQL (cached 60s) ---
         let dbContext = '';
         const AI_CACHE_TTL = 60_000; // 60 seconds
         if (!global._aiContextCache) global._aiContextCache = { text: '', ts: 0 };
         const cacheValid = Date.now() - global._aiContextCache.ts < AI_CACHE_TTL && global._aiContextCache.text;
         if (cacheValid) {
           dbContext = global._aiContextCache.text;
-        } else if (SUPABASE_URL && SUPABASE_KEY) {
-          const sbHeaders = {
-            'apikey': SUPABASE_KEY,
-            'Authorization': `Bearer ${SUPABASE_KEY}`,
-            'Content-Type': 'application/json',
-          };
-          const sbFetch = (table, query = '') =>
-            fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: sbHeaders })
-              .then((r) => r.ok ? r.json() : [])
-              .catch(() => []);
-
+        } else {
+          // Используем локальный db слой через sbSelect
           const [
             profiles, checks, checkItems, inventory,
             expenses, supplies, cashOps, shifts, events,
             refunds, salaryPayments, supplyItems,
             certificates, spaces,
           ] = await Promise.all([
-            sbFetch('profiles', 'select=id,nickname,role,balance,bonus_points,client_tier,is_resident,created_at,deleted_at&order=created_at.desc&limit=500'),
-            sbFetch('checks', 'select=id,player_id,total_amount,payment_method,bonus_used,closed_at,staff_id&status=eq.closed&order=closed_at.desc&limit=500'),
-            sbFetch('check_items', 'select=check_id,item_id,quantity,price_at_time&limit=3000'),
-            sbFetch('inventory', 'select=id,name,category,price,stock_quantity,is_active&order=name'),
-            sbFetch('expenses', 'select=category,amount,expense_date&order=expense_date.desc&limit=200'),
-            sbFetch('supplies', 'select=total_cost,created_at&order=created_at.desc&limit=100'),
-            sbFetch('cash_operations', 'select=type,amount,created_at&order=created_at.desc&limit=100'),
-            sbFetch('shifts', 'select=status,cash_start,cash_end,opened_at,closed_at&order=opened_at.desc&limit=20'),
-            sbFetch('events', `status=in.(planned,active)&date=gte.${new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0]}&order=date.asc&limit=20`),
-            sbFetch('refunds', 'select=check_id,total_amount,created_at&order=created_at.desc&limit=100'),
-            sbFetch('salary_payments', 'select=amount,created_at,payment_method,profile_id&order=created_at.desc&limit=50'),
-            sbFetch('supply_items', 'select=item_id,cost_per_unit,quantity&limit=500'),
-            sbFetch('certificates', 'select=nominal,balance,is_used&limit=500'),
-            sbFetch('spaces', 'select=name,type,hourly_rate&is_active=eq.true'),
+            sbSelect('profiles', 'select=id,nickname,role,balance,bonus_points,client_tier,is_resident,created_at,deleted_at&order=created_at.desc&limit=500'),
+            sbSelect('checks', 'select=id,player_id,total_amount,payment_method,bonus_used,closed_at,staff_id&status=eq.closed&order=closed_at.desc&limit=500'),
+            sbSelect('check_items', 'select=check_id,item_id,quantity,price_at_time&limit=3000'),
+            sbSelect('inventory', 'select=id,name,category,price,stock_quantity,is_active&order=name'),
+            sbSelect('expenses', 'select=category,amount,expense_date&order=expense_date.desc&limit=200'),
+            sbSelect('supplies', 'select=total_cost,created_at&order=created_at.desc&limit=100'),
+            sbSelect('cash_operations', 'select=type,amount,created_at&order=created_at.desc&limit=100'),
+            sbSelect('shifts', 'select=status,cash_start,cash_end,opened_at,closed_at&order=opened_at.desc&limit=20'),
+            sbSelect('events', `status=in.(planned,active)&date=gte.${new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0]}&order=date.asc&limit=20`),
+            sbSelect('refunds', 'select=check_id,total_amount,created_at&order=created_at.desc&limit=100'),
+            sbSelect('salary_payments', 'select=amount,created_at,payment_method,profile_id&order=created_at.desc&limit=50'),
+            sbSelect('supply_items', 'select=item_id,cost_per_unit,quantity&limit=500'),
+            sbSelect('certificates', 'select=nominal,balance,is_used&limit=500'),
+            sbSelect('spaces', 'select=name,type,hourly_rate&is_active=eq.true'),
           ]);
 
           // Pre-aggregate data to keep context compact
@@ -626,20 +591,8 @@ const server = http.createServer((req, res) => {
     readBody(req).then(async (body) => {
       try {
         const { action, params, staffId } = JSON.parse(body);
-        const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-        const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
-
-        if (!SUPABASE_URL || !SUPABASE_KEY) {
-          json(res, { error: 'Supabase не настроен' }, 200);
-          return;
-        }
-
-        const sbHeaders = {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation',
-        };
+        const db = require('./db/index.js');
+        const queries = require('./db/queries.js');
 
         if (action === 'create_check') {
           const { playerNickname, items } = params;
@@ -647,46 +600,33 @@ const server = http.createServer((req, res) => {
             json(res, { success: false, error: 'playerNickname обязателен' });
             return;
           }
-          const playerRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/profiles?nickname=ilike.${encodeURIComponent(playerNickname)}&role=eq.client&limit=1`,
-            { headers: sbHeaders }
-          );
-          const players = await playerRes.json();
-          if (!players.length) {
+          
+          // Используем локальный db слой
+          const players = await db.select('profiles', { role: 'client' }, '*');
+          const player = players.find(p => p.nickname.toLowerCase() === playerNickname.toLowerCase());
+          
+          if (!player) {
             json(res, { success: false, error: `Игрок "${playerNickname}" не найден` });
             return;
           }
 
-          // Find active shift so check is linked to current shift
+          // Find active shift
           let activeShiftId = null;
           try {
-            const shiftRes = await fetch(
-              `${SUPABASE_URL}/rest/v1/shifts?status=eq.open&order=opened_at.desc&limit=1`,
-              { headers: sbHeaders }
-            );
-            const shifts = await shiftRes.json();
+            const shifts = await db.select('shifts', { status: 'open' }, '*');
             if (Array.isArray(shifts) && shifts.length > 0) activeShiftId = shifts[0].id;
           } catch { /* no shift */ }
 
-          const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/checks`, {
-            method: 'POST',
-            headers: sbHeaders,
-            body: JSON.stringify({
-              player_id: players[0].id,
-              staff_id: staffId || null,
-              shift_id: activeShiftId,
-              status: 'open',
-              total_amount: 0,
-              bonus_used: 0,
-              discount_total: 0,
-            }),
+          const newCheck = await db.insert('checks', {
+            player_id: player.id,
+            staff_id: staffId || null,
+            shift_id: activeShiftId,
+            status: 'open',
+            total_amount: 0,
+            bonus_used: 0,
+            discount_total: 0,
           });
-          const check = await checkRes.json();
-          if (!checkRes.ok) {
-            json(res, { success: false, error: check?.message || 'Ошибка создания чека' });
-            return;
-          }
-          const newCheck = Array.isArray(check) ? check[0] : check;
+          
           const checkId = newCheck?.id;
           if (!checkId) {
             json(res, { success: false, error: 'Чек не создан' });
@@ -696,35 +636,30 @@ const server = http.createServer((req, res) => {
           let totalAdded = 0;
           const added = [];
           if (Array.isArray(items) && items.length > 0) {
-            const invRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=id,name,price`, { headers: sbHeaders });
-            const invRaw = await invRes.json();
-            const inventory = Array.isArray(invRaw) ? invRaw : [];
+            const inventory = await db.select('inventory', { is_active: true }, '*');
             for (const item of items) {
               const nameLower = (item.name || '').toLowerCase();
               const found = inventory.find((inv) => inv.name?.toLowerCase() === nameLower) || inventory.find((inv) => inv.name?.toLowerCase()?.includes(nameLower));
               if (found) {
                 const qty = Math.max(1, parseInt(item.quantity) || 1);
-                await fetch(`${SUPABASE_URL}/rest/v1/check_items`, {
-                  method: 'POST',
-                  headers: sbHeaders,
-                  body: JSON.stringify({ check_id: checkId, item_id: found.id, quantity: qty, price_at_time: found.price }),
+                await db.insert('check_items', {
+                  check_id: checkId,
+                  item_id: found.id,
+                  quantity: qty,
+                  price_at_time: found.price
                 });
                 added.push({ name: found.name, qty, price: found.price });
                 totalAdded += found.price * qty;
               }
             }
             if (totalAdded > 0) {
-              await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkId)}`, {
-                method: 'PATCH',
-                headers: sbHeaders,
-                body: JSON.stringify({ total_amount: totalAdded }),
-              });
+              await db.update('checks', { id: checkId }, { total_amount: totalAdded });
             }
           }
 
           const msg = added.length > 0
-            ? `Чек для ${players[0].nickname} создан, добавлено ${added.length} позиций на ${totalAdded}₽`
-            : `Чек для ${players[0].nickname} создан`;
+            ? `Чек для ${player.nickname} создан, добавлено ${added.length} позиций на ${totalAdded}₽`
+            : `Чек для ${player.nickname} создан`;
           json(res, { success: true, message: msg, check: newCheck, added: added.length > 0 ? added : undefined });
           return;
         }
@@ -735,37 +670,36 @@ const server = http.createServer((req, res) => {
             json(res, { success: false, error: 'playerNickname обязателен' });
             return;
           }
-          const playerRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/profiles?nickname=ilike.${encodeURIComponent(playerNickname)}&role=eq.client&limit=1`,
-            { headers: sbHeaders }
-          );
-          const players = await playerRes.json();
-          if (!players.length) {
+          
+          // Используем локальный db слой
+          const players = await db.select('profiles', { role: 'client' }, '*');
+          const player = players.find(p => p.nickname.toLowerCase() === playerNickname.toLowerCase());
+          
+          if (!player) {
             json(res, { success: false, error: `Клиент "${playerNickname}" не найден` });
             return;
           }
-          const player = players[0];
-          let checksUrl = `${SUPABASE_URL}/rest/v1/checks?player_id=eq.${encodeURIComponent(player.id)}&status=eq.closed&select=id,total_amount,closed_at,shift_id&order=closed_at.desc&limit=100`;
+          
+          let clientChecks = await db.select('checks', { player_id: player.id, status: 'closed' }, '*');
+          
+          // Фильтрация по периоду
           if (period === 'month' || period === 'week') {
             const now = new Date();
             const from = period === 'week'
-              ? new Date(now.getTime() - 7 * 86400000).toISOString()
-              : new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-            checksUrl += `&closed_at=gte.${encodeURIComponent(from)}`;
+              ? new Date(now.getTime() - 7 * 86400000)
+              : new Date(now.getFullYear(), now.getMonth(), 1);
+            clientChecks = clientChecks.filter(c => new Date(c.closed_at) >= from);
           }
-          const checksRes = await fetch(checksUrl, { headers: sbHeaders });
-          const clientChecksRaw = await checksRes.json();
-          const clientChecks = Array.isArray(clientChecksRaw) ? clientChecksRaw : [];
+          
+          // Сортировка по дате закрытия
+          clientChecks.sort((a, b) => new Date(b.closed_at) - new Date(a.closed_at));
+          clientChecks = clientChecks.slice(0, 100);
+          
           const checkIds = clientChecks.slice(0, 50).map((c) => c.id).filter(Boolean);
           const shiftIds = [...new Set(clientChecks.map((c) => c.shift_id).filter(Boolean))];
           let shiftMap = {};
           if (shiftIds.length > 0) {
-            const shiftRes = await fetch(
-              `${SUPABASE_URL}/rest/v1/shifts?id=in.(${shiftIds.join(',')})&select=id,evening_type`,
-              { headers: sbHeaders }
-            );
-            const shiftsRaw = await shiftRes.json();
-            const shifts = Array.isArray(shiftsRaw) ? shiftsRaw : [];
+            const shifts = await db.query(`SELECT id, evening_type FROM shifts WHERE id = ANY($1)`, [shiftIds]);
             shiftMap = Object.fromEntries(shifts.map((s) => [s.id, s.evening_type || 'no_event']));
           }
           const eveningLabels = { sport_mafia: 'Спортивная', city_mafia: 'Городская', kids_mafia: 'Детская', board_games: 'Настолки', no_event: 'Без вечера' };
@@ -781,15 +715,8 @@ const server = http.createServer((req, res) => {
           let favoriteItem = null;
           let checkItems = [];
           if (checkIds.length > 0) {
-            const itemsRes = await fetch(
-              `${SUPABASE_URL}/rest/v1/check_items?check_id=in.(${checkIds.join(',')})&select=check_id,item_id,quantity,price_at_time`,
-              { headers: sbHeaders }
-            );
-            const itemsRaw = await itemsRes.json();
-            const items = Array.isArray(itemsRaw) ? itemsRaw : [];
-            const invRes = await fetch(`${SUPABASE_URL}/rest/v1/inventory?select=id,name`, { headers: sbHeaders });
-            const invRaw = await invRes.json();
-            const inv = Array.isArray(invRaw) ? invRaw : [];
+            const items = await db.query(`SELECT check_id, item_id, quantity, price_at_time FROM check_items WHERE check_id = ANY($1)`, [checkIds]);
+            const inv = await db.select('inventory', {}, 'id, name');
             const itemCount = {};
             for (const ci of items) {
               const name = inv.find((i) => i.id === ci.item_id)?.name || '?';
@@ -840,34 +767,32 @@ const server = http.createServer((req, res) => {
             created_by: staffId || null,
           };
 
-          const eventRes = await fetch(`${SUPABASE_URL}/rest/v1/events`, {
-            method: 'POST',
-            headers: sbHeaders,
-            body: JSON.stringify(eventData),
-          });
+          const event = await db.insert('events', eventData);
 
-          if (!eventRes.ok) {
-            const err = await eventRes.json();
-            json(res, { success: false, error: err.message || 'Ошибка создания мероприятия' });
-            return;
-          }
-
-          const event = await eventRes.json();
           json(res, {
             success: true,
             message: `Мероприятие "${eventData.type === 'titan' ? 'Титан' : eventData.location}" на ${eventData.date} создано`,
-            event: event[0] || event
+            event
           });
           return;
         }
 
         if (action === 'list_events') {
           const today = new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0];
-          const filter = params.upcoming !== false ? `status=in.(planned,active)&date=gte.${today}` : '';
-          const url = `${SUPABASE_URL}/rest/v1/events?${filter ? filter + '&' : ''}order=date.asc,start_time.asc&limit=30`;
-          const eventsRes = await fetch(url, { headers: sbHeaders });
-          const evRaw = await eventsRes.json();
-          const evList = Array.isArray(evRaw) ? evRaw : [];
+          let evList = await db.select('events', {}, '*');
+          
+          if (params.upcoming !== false) {
+            evList = evList.filter(e => 
+              (e.status === 'planned' || e.status === 'active') && e.date >= today
+            );
+          }
+          
+          evList.sort((a, b) => {
+            if (a.date !== b.date) return a.date.localeCompare(b.date);
+            return a.start_time.localeCompare(b.start_time);
+          });
+          evList = evList.slice(0, 30);
+          
           const lines = evList.length === 0
             ? ['📅 Нет запланированных мероприятий.']
             : evList.map((e, i) => {
@@ -894,14 +819,10 @@ const server = http.createServer((req, res) => {
             json(res, { success: false, error: 'Нет полей для обновления' });
             return;
           }
-          const patchRes = await fetch(`${SUPABASE_URL}/rest/v1/events?id=eq.${encodeURIComponent(event_id)}`, {
-            method: 'PATCH',
-            headers: sbHeaders,
-            body: JSON.stringify(payload),
-          });
-          if (!patchRes.ok) {
-            const err = await patchRes.json();
-            json(res, { success: false, error: err.message || 'Ошибка обновления' });
+          
+          const result = await db.update('events', { id: event_id }, payload);
+          if (!result || result.length === 0) {
+            json(res, { success: false, error: 'Ошибка обновления' });
             return;
           }
           const label = payload.type === 'titan' ? 'Титан' : (payload.location || 'мероприятие');
@@ -915,12 +836,7 @@ const server = http.createServer((req, res) => {
             json(res, { success: false, error: 'checkId и items[] обязательны' });
             return;
           }
-          const invRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=id,name,price`,
-            { headers: sbHeaders }
-          );
-          const invRaw = await invRes.json();
-          const inventory = Array.isArray(invRaw) ? invRaw : [];
+          const inventory = await db.select('inventory', { is_active: true }, 'id,name,price');
           const added = [];
           let totalAdded = 0;
 
@@ -930,15 +846,11 @@ const server = http.createServer((req, res) => {
               || inventory.find((inv) => inv.name?.toLowerCase()?.includes(nameLower));
             if (found) {
               const qty = Math.max(1, parseInt(item.quantity) || 1);
-              await fetch(`${SUPABASE_URL}/rest/v1/check_items`, {
-                method: 'POST',
-                headers: sbHeaders,
-                body: JSON.stringify({
-                  check_id: checkId,
-                  item_id: found.id,
-                  quantity: qty,
-                  price_at_time: found.price,
-                }),
+              await db.insert('check_items', {
+                check_id: checkId,
+                item_id: found.id,
+                quantity: qty,
+                price_at_time: found.price,
               });
               added.push({ name: found.name, qty, price: found.price });
               totalAdded += found.price * qty;
@@ -946,28 +858,19 @@ const server = http.createServer((req, res) => {
           }
 
           if (totalAdded > 0) {
-            const checkRes = await fetch(
-              `${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkId)}&select=total_amount`,
-              { headers: sbHeaders }
-            );
-            const checkData = await checkRes.json();
-            const currentTotal = (checkData && checkData[0] && checkData[0].total_amount) || 0;
-            await fetch(`${SUPABASE_URL}/rest/v1/checks?id=eq.${encodeURIComponent(checkId)}`, {
-              method: 'PATCH',
-              headers: sbHeaders,
-              body: JSON.stringify({ total_amount: currentTotal + totalAdded }),
-            });
+            const check = await db.selectOne('checks', { id: checkId }, 'total_amount');
+            const currentTotal = check?.total_amount || 0;
+            await db.update('checks', { id: checkId }, { total_amount: currentTotal + totalAdded });
           }
 
           json(res, { success: true, message: `Добавлено ${added.length} позиций на ${totalAdded}₽`, added });
 
         } else if (action === 'list_menu') {
-          const invRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=name,category,price,stock_quantity&order=category,name`,
-            { headers: sbHeaders }
-          );
-          const menuRaw = await invRes.json();
-          const menu = Array.isArray(menuRaw) ? menuRaw : [];
+          const menu = await db.select('inventory', { is_active: true }, 'name,category,price,stock_quantity');
+          menu.sort((a, b) => {
+            if (a.category !== b.category) return a.category.localeCompare(b.category);
+            return a.name.localeCompare(b.name);
+          });
           const byCat = {};
           for (const m of menu) {
             const cat = m.category || 'Прочее';
@@ -979,12 +882,8 @@ const server = http.createServer((req, res) => {
           json(res, { success: true, menu, message: msg });
 
         } else if (action === 'list_players') {
-          const plRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/profiles?role=eq.client&deleted_at=is.null&select=nickname,balance,bonus_points,client_tier&order=nickname&limit=50`,
-            { headers: sbHeaders }
-          );
-          const playersRaw = await plRes.json();
-          const players = Array.isArray(playersRaw) ? playersRaw : [];
+          const players = await db.select('profiles', { role: 'client', deleted_at: null }, 'nickname,balance,bonus_points,client_tier');
+          players.sort((a, b) => a.nickname.localeCompare(b.nickname));
           const tierLabel = { regular: 'Гость', resident: 'Резидент', student: 'Студент' };
           const lines = players.slice(0, 25).map((p) => {
             const tier = tierLabel[p.client_tier] || 'Гость';
@@ -1003,22 +902,16 @@ const server = http.createServer((req, res) => {
           const dayEndMs = dayStartMs + 86400000;
           const dayStartIso = new Date(dayStartMs).toISOString();
           const dayEndIso = new Date(dayEndMs).toISOString();
-          const andFilter = `and=(closed_at.gte.${encodeURIComponent(dayStartIso)},closed_at.lt.${encodeURIComponent(dayEndIso)})`;
-          const [checksRes, invRes] = await Promise.all([
-            fetch(`${SUPABASE_URL}/rest/v1/checks?status=eq.closed&${andFilter}&select=id,total_amount,player_id`, { headers: sbHeaders }),
-            fetch(`${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=id,name`, { headers: sbHeaders }),
+          
+          const [checks, inventory] = await Promise.all([
+            db.query(`SELECT id,total_amount,player_id FROM checks WHERE status='closed' AND closed_at >= $1 AND closed_at < $2`, [dayStartIso, dayEndIso]),
+            db.select('inventory', { is_active: true }, 'id,name'),
           ]);
-          const checksRaw = await checksRes.json();
-          const invRaw = await invRes.json();
-          const checks = Array.isArray(checksRaw) ? checksRaw : [];
-          const inventory = Array.isArray(invRaw) ? invRaw : [];
           const checkIds = checks.map((c) => c.id).filter(Boolean);
           let dayRevenue = 0, itemSales = {};
           for (const c of checks) dayRevenue += c.total_amount || 0;
           if (checkIds.length > 0) {
-            const itemsRes = await fetch(`${SUPABASE_URL}/rest/v1/check_items?check_id=in.(${checkIds.join(',')})&select=item_id,quantity,price_at_time`, { headers: sbHeaders });
-            const itemsRaw = await itemsRes.json();
-            const items = Array.isArray(itemsRaw) ? itemsRaw : [];
+            const items = await db.query(`SELECT item_id,quantity,price_at_time FROM check_items WHERE check_id = ANY($1)`, [checkIds]);
             for (const ci of items) {
               const name = inventory.find((i) => i.id === ci.item_id)?.name || '?';
               itemSales[name] = (itemSales[name] || 0) + (ci.quantity || 0) * (ci.price_at_time || 0);
@@ -1029,30 +922,23 @@ const server = http.createServer((req, res) => {
           json(res, { success: true, message: msg });
 
         } else if (action === 'list_debtors') {
-          const plRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/profiles?role=eq.client&balance=lt.0&deleted_at=is.null&select=nickname,balance&order=balance&limit=50`,
-            { headers: sbHeaders }
-          );
-          const debtorsRaw = await plRes.json();
-          const debtors = Array.isArray(debtorsRaw) ? debtorsRaw : [];
-          const totalDebt = debtors.reduce((s, p) => s + (p.balance || 0), 0);
-          const lines = debtors.map((p) => `${p.nickname}: ${p.balance}₽`);
-          const msg = `⚠️ Должники (${debtors.length}):\n\n${lines.join('\n') || 'Нет'}\n\nИтого долг: ${totalDebt}₽`;
+          const debtors = await db.select('profiles', { role: 'client', deleted_at: null }, 'nickname,balance');
+          const filtered = debtors.filter(p => (p.balance || 0) < 0);
+          filtered.sort((a, b) => a.balance - b.balance);
+          filtered.slice(0, 50);
+          const totalDebt = filtered.reduce((s, p) => s + (p.balance || 0), 0);
+          const lines = filtered.map((p) => `${p.nickname}: ${p.balance}₽`);
+          const msg = `⚠️ Должники (${filtered.length}):\n\n${lines.join('\n') || 'Нет'}\n\nИтого долг: ${totalDebt}₽`;
           json(res, { success: true, message: msg });
 
         } else if (action === 'open_checks') {
-          const checksRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/checks?status=eq.open&select=id,total_amount,player_id&order=id.desc&limit=20`,
-            { headers: sbHeaders }
-          );
-          const checksRaw = await checksRes.json();
-          const checks = Array.isArray(checksRaw) ? checksRaw : [];
+          const checks = await db.select('checks', { status: 'open' }, 'id,total_amount,player_id');
+          checks.sort((a, b) => b.id.localeCompare(a.id));
+          checks.slice(0, 20);
           const playerIds = [...new Set(checks.map((c) => c.player_id).filter(Boolean))];
           let players = [];
           if (playerIds.length > 0) {
-            const plRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=in.(${playerIds.join(',')})&select=id,nickname`, { headers: sbHeaders });
-            const plRaw = await plRes.json();
-            players = Array.isArray(plRaw) ? plRaw : [];
+            players = await db.query(`SELECT id,nickname FROM profiles WHERE id = ANY($1)`, [playerIds]);
           }
           const plMap = Object.fromEntries(players.map((p) => [p.id, p.nickname]));
           const lines = checks.map((c) => {
@@ -1064,12 +950,7 @@ const server = http.createServer((req, res) => {
 
         } else if (action === 'stock_alert') {
           const threshold = params.threshold ?? 5;
-          const invRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/inventory?is_active=eq.true&select=name,stock_quantity,category`,
-            { headers: sbHeaders }
-          );
-          const allRaw = await invRes.json();
-          const all = Array.isArray(allRaw) ? allRaw : [];
+          const all = await db.select('inventory', { is_active: true }, 'name,stock_quantity,category');
           const low = all.filter((i) => (i.stock_quantity ?? 0) < threshold).sort((a, b) => (a.stock_quantity ?? 0) - (b.stock_quantity ?? 0));
           const lines = low.map((i) => `${i.name}: ${i.stock_quantity ?? 0} шт`);
           const msg = lines.length > 0
@@ -1084,12 +965,9 @@ const server = http.createServer((req, res) => {
           json(res, { success: true, message: msg });
 
         } else if (action === 'supply_summary') {
-          const supRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/supplies?select=total_cost,created_at&order=created_at.desc&limit=15`,
-            { headers: sbHeaders }
-          );
-          const suppliesRaw = await supRes.json();
-          const supplies = Array.isArray(suppliesRaw) ? suppliesRaw : [];
+          const supplies = await db.select('supplies', {}, 'total_cost,created_at');
+          supplies.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          supplies.slice(0, 15);
           const total = supplies.reduce((s, x) => s + (x.total_cost || 0), 0);
           const lines = supplies.map((s) => {
             const d = s.created_at ? new Date(s.created_at).toLocaleDateString('ru-RU') : '—';
@@ -1101,20 +979,14 @@ const server = http.createServer((req, res) => {
         } else if (action === 'expense_summary') {
           const period = params.period || 'month';
           const now = new Date();
-          let fromStr;
+          let fromDate;
           if (period === 'week') {
-            const d = new Date(now);
-            d.setDate(d.getDate() - 7);
-            fromStr = d.toISOString().split('T')[0];
+            fromDate = new Date(now);
+            fromDate.setDate(fromDate.getDate() - 7);
           } else {
-            fromStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+            fromDate = new Date(now.getFullYear(), now.getMonth(), 1);
           }
-          const expRes = await fetch(
-            `${SUPABASE_URL}/rest/v1/expenses?expense_date=gte.${fromStr}&select=category,amount&order=expense_date.desc`,
-            { headers: sbHeaders }
-          );
-          const expensesRaw = await expRes.json();
-          const expenses = Array.isArray(expensesRaw) ? expensesRaw : [];
+          const expenses = await db.query(`SELECT category,amount,expense_date FROM expenses WHERE expense_date >= $1 ORDER BY expense_date DESC`, [fromDate.toISOString().split('T')[0]]);
           const byCat = {};
           for (const e of expenses) {
             const c = e.category || 'Прочее';
@@ -1140,12 +1012,13 @@ const server = http.createServer((req, res) => {
 
   // ── Auth: Login by nickname + password ──
   if (url.pathname === '/api/auth/login' && req.method === 'POST') {
+    const db = require('./db/index.js');
     readBody(req).then(async (body) => {
       try {
         const { nickname, password } = JSON.parse(body);
         if (!nickname || !password) { json(res, { error: 'nickname и password обязательны' }, 400); return; }
-        const rows = await sbSelect('profiles', `nickname=eq.${encodeURIComponent(nickname)}&limit=1`);
-        const profile = rows[0];
+        const profiles = await db.select('profiles', {}, '*');
+        const profile = profiles.find(p => p.nickname.toLowerCase() === nickname.toLowerCase());
         if (!profile) { json(res, { error: 'Неверный логин или пароль' }, 401); return; }
         const ok = await verifyAndMigrate('profiles', profile.id, 'password_hash', password, profile.password_hash);
         if (!ok) { json(res, { error: 'Неверный логин или пароль' }, 401); return; }
@@ -1159,16 +1032,17 @@ const server = http.createServer((req, res) => {
 
   // ── Auth: Login by PIN ──
   if (url.pathname === '/api/auth/pin' && req.method === 'POST') {
+    const db = require('./db/index.js');
     readBody(req).then(async (body) => {
       try {
         const { userId, pin } = JSON.parse(body);
         if (!pin) { json(res, { error: 'PIN обязателен' }, 400); return; }
         let profiles;
         if (userId) {
-          profiles = await sbSelect('profiles', `id=eq.${encodeURIComponent(userId)}&limit=1`);
+          profiles = await db.select('profiles', { id: userId }, '*');
         } else {
           // Global PIN search (staff/owner/tablet) — load all with non-null pins
-          profiles = await sbSelect('profiles', `role=in.(owner,staff,tablet)&pin=not.is.null`);
+          profiles = await db.query(`SELECT * FROM profiles WHERE role IN ('owner', 'staff', 'tablet') AND pin IS NOT NULL`);
         }
         if (!profiles || profiles.length === 0) { json(res, { error: 'Неверный PIN-код' }, 401); return; }
 
@@ -1189,13 +1063,14 @@ const server = http.createServer((req, res) => {
 
   // ── Auth: Setup / Change PIN ──
   if (url.pathname === '/api/auth/setup-pin' && req.method === 'POST') {
+    const db = require('./db/index.js');
     readBody(req).then(async (body) => {
       try {
         const { userId, pin } = JSON.parse(body);
         if (!userId || !pin) { json(res, { error: 'userId и pin обязательны' }, 400); return; }
         const hashed = bcrypt.hashSync(pin, BCRYPT_ROUNDS);
-        const ok = await sbUpdate('profiles', `id=eq.${encodeURIComponent(userId)}`, { pin: hashed });
-        if (!ok) { json(res, { error: 'Ошибка сохранения PIN' }, 500); return; }
+        const result = await db.update('profiles', { id: userId }, { pin: hashed });
+        if (!result || result.length === 0) { json(res, { error: 'Ошибка сохранения PIN' }, 500); return; }
         json(res, { success: true });
       } catch (e) { json(res, { error: String(e) }, 500); }
     }).catch((e) => json(res, { error: String(e) }, 400));
@@ -1217,6 +1092,7 @@ const server = http.createServer((req, res) => {
 
   // ── Notify: Server-side Telegram + PWA ──
   if (url.pathname === '/api/notify' && req.method === 'POST') {
+    const db = require('./db/index.js');
     readBody(req).then(async (body) => {
       try {
         const { type, text, chatIds, title, pwaBody, meta } = JSON.parse(body);
@@ -1230,43 +1106,428 @@ const server = http.createServer((req, res) => {
 
         // User-settings-aware Telegram + PWA notification
         if (type && text) {
-          const sb = getSbConfig();
-          if (sb) {
-            const settingsRows = await sbSelect(
-              'user_notification_settings',
-              'select=user_id,types,profiles!inner(tg_id)'
-            );
-            for (const row of settingsRows) {
-              const profile = row.profiles;
-              const tgId = profile?.tg_id;
-              const userTypes = row.types || {};
-              const typeSetting = userTypes[type];
-              if (!typeSetting?.enabled) continue;
-              const ch = typeSetting.channel || 'both';
-              if ((ch === 'telegram' || ch === 'both') && tgId) {
-                await sendTelegram(tgId, text);
-              }
+          const settingsRows = await db.query(`
+            SELECT uns.user_id, uns.types, p.tg_id 
+            FROM user_notification_settings uns
+            INNER JOIN profiles p ON p.id = uns.user_id
+            WHERE p.tg_id IS NOT NULL
+          `);
+          
+          for (const row of settingsRows) {
+            const tgId = row.tg_id;
+            const userTypes = row.types || {};
+            const typeSetting = userTypes[type];
+            if (!typeSetting?.enabled) continue;
+            const ch = typeSetting.channel || 'both';
+            if ((ch === 'telegram' || ch === 'both') && tgId) {
+              await sendTelegram(tgId, text);
             }
-            // PWA notification (insert into notifications table)
-            if (title) {
-              const anyPwa = settingsRows.some(row => {
-                const ts = (row.types || {})[type];
-                return ts?.enabled && (ts.channel === 'pwa' || ts.channel === 'both');
-              });
-              if (anyPwa) {
-                const pwaHeaders = { ...sb.headers, 'Prefer': 'return=minimal' };
-                await fetch(`${sb.url}/rest/v1/notifications`, {
-                  method: 'POST',
-                  headers: pwaHeaders,
-                  body: JSON.stringify({ type, title, body: pwaBody || null, meta: meta || null }),
-                });
-              }
+          }
+          // PWA notification (insert into notifications table)
+          if (title) {
+            const anyPwa = settingsRows.some(row => {
+              const ts = (row.types || {})[type];
+              return ts?.enabled && (ts.channel === 'pwa' || ts.channel === 'both');
+            });
+            if (anyPwa) {
+              await db.insert('notifications', { type, title, body: pwaBody || null, meta: meta || null });
             }
           }
         }
 
         json(res, { success: true });
       } catch (e) { json(res, { error: String(e) }, 500); }
+    }).catch((e) => json(res, { error: String(e) }, 400));
+    return;
+  }
+
+  // ── Auth: Get profile by Telegram ID ──
+  if (url.pathname === '/api/auth/telegram' && req.method === 'POST') {
+    const db = require('./db/index.js');
+    readBody(req).then(async (body) => {
+      try {
+        const { tgId } = JSON.parse(body);
+        if (!tgId) { json(res, { error: 'tgId обязателен' }, 400); return; }
+        
+        const profiles = await db.select('profiles', { tg_id: tgId }, 
+          'id, nickname, role, balance, bonus_points, client_tier, is_resident, photo_url, tg_id, tg_username, phone, birthday, linked_space_id, created_at, deleted_at');
+        
+        if (!profiles || profiles.length === 0) {
+          json(res, { error: 'Пользователь не найден' }, 404);
+          return;
+        }
+        
+        json(res, { data: profiles[0] });
+      } catch (e) { json(res, { error: String(e) }, 500); }
+    }).catch((e) => json(res, { error: String(e) }, 400));
+    return;
+  }
+
+  // ── Auth: Get staff users ──
+  if (url.pathname === '/api/auth/staff' && req.method === 'GET') {
+    (async () => {
+      const db = require('./db/index.js');
+      try {
+        const profiles = await db.query(`
+          SELECT id, nickname, role, pin 
+          FROM profiles 
+          WHERE role IN ('staff', 'owner', 'tablet') 
+          ORDER BY role, nickname
+        `);
+        json(res, { data: profiles });
+      } catch (e) { json(res, { error: String(e) }, 500); }
+    })();
+    return;
+  }
+
+  // ── Auth: Refresh profile ──
+  if (url.pathname === '/api/auth/profile' && req.method === 'GET') {
+    (async () => {
+      const db = require('./db/index.js');
+      const userId = url.searchParams.get('userId');
+      if (!userId) { json(res, { error: 'userId обязателен' }, 400); return; }
+      
+      try {
+        const profiles = await db.select('profiles', { id: userId }, 
+          'id, nickname, role, balance, bonus_points, client_tier, is_resident, photo_url, tg_id, tg_username, phone, birthday, linked_space_id, permissions, created_at, deleted_at');
+        
+        if (!profiles || profiles.length === 0) {
+          json(res, { error: 'Пользователь не найден' }, 404);
+          return;
+        }
+        
+        json(res, { data: profiles[0] });
+      } catch (e) { json(res, { error: String(e) }, 500); }
+    })();
+    return;
+  }
+
+  // ── API: Generic database operations for frontend ──
+  if (url.pathname === '/api/db' && req.method === 'POST') {
+    const db = require('./db/index.js');
+    readBody(req).then(async (body) => {
+      try {
+        const { operation, table, filters, data, columns, orderBy, limit } = JSON.parse(body);
+        
+        if (!operation || !table) {
+          json(res, { error: 'operation и table обязательны' }, 400);
+          return;
+        }
+
+        let result;
+        switch (operation) {
+          case 'select':
+            result = await db.select(table, filters || {}, columns || '*');
+            if (orderBy) {
+              result.sort((a, b) => {
+                if (orderBy.direction === 'desc') return b[orderBy.column] - a[orderBy.column];
+                return a[orderBy.column] - b[orderBy.column];
+              });
+            }
+            if (limit) result = result.slice(0, limit);
+            break;
+          case 'selectOne':
+            result = await db.selectOne(table, filters || {}, columns || '*');
+            break;
+          case 'insert':
+            result = await db.insert(table, data || {});
+            break;
+          case 'update':
+            result = await db.update(table, filters || {}, data || {});
+            break;
+          case 'delete':
+            result = await db.delete(table, filters || {});
+            break;
+          case 'query':
+            if (!data?.sql) {
+              json(res, { error: 'SQL query обязателен для операции query' }, 400);
+              return;
+            }
+            result = await db.query(data.sql, data.params || []);
+            break;
+          default:
+            json(res, { error: `Неизвестная операция: ${operation}` }, 400);
+            return;
+        }
+
+        json(res, { data: result });
+      } catch (e) {
+        console.error('[DB API Error]', e);
+        json(res, { error: String(e) }, 500);
+      }
+    }).catch((e) => json(res, { error: String(e) }, 400));
+    return;
+  }
+
+  // ── API: Close check (RPC replacement) ──
+  if (url.pathname === '/api/checks/close' && req.method === 'POST') {
+    const db = require('./db/index.js');
+    readBody(req).then(async (body) => {
+      try {
+        const { checkId, payments, bonusUsed, spaceRental, certificateUsed, certificateId, discountTotal, closedBy, cartItems } = JSON.parse(body);
+        
+        if (!checkId) {
+          json(res, { error: 'checkId обязателен' }, 400);
+          return;
+        }
+
+        // Execute as transaction
+        const result = await db.transaction(async (client) => {
+          // 1. Lock and validate check
+          const checkResult = await db.query(client, `SELECT * FROM checks WHERE id = $1 FOR UPDATE`, [checkId]);
+          const check = checkResult[0];
+          
+          if (!check) {
+            throw new Error('Check not found');
+          }
+          
+          if (check.status !== 'open') {
+            throw new Error(`Check is not open (status: ${check.status})`);
+          }
+
+          // 2. Calculate total
+          let total = (check.total_amount || 0) + (spaceRental || 0);
+          
+          // Check for linked event
+          const eventResult = await db.query(client, `SELECT COALESCE(fixed_amount, 0) as amount FROM events WHERE check_id = $1 LIMIT 1`, [checkId]);
+          if (eventResult.length > 0) {
+            total += eventResult[0].amount;
+          }
+
+          const finalAmount = Math.max(0, total - (bonusUsed || 0) - (certificateUsed || 0));
+
+          // Determine payment method
+          const isSplit = Array.isArray(payments) && payments.length > 1;
+          let primaryMethod = 'cash';
+          if (Array.isArray(payments) && payments.length === 0) {
+            primaryMethod = 'cash';
+          } else if (isSplit) {
+            primaryMethod = 'split';
+          } else {
+            primaryMethod = payments[0]?.method || 'cash';
+          }
+
+          // 3. Update check status
+          await db.query(client, `
+            UPDATE checks SET
+              status = 'closed',
+              total_amount = $1,
+              payment_method = $2,
+              bonus_used = $3,
+              certificate_used = $4,
+              certificate_id = $5,
+              discount_total = $6,
+              closed_at = NOW()
+            WHERE id = $7
+          `, [finalAmount, primaryMethod, bonusUsed || 0, certificateUsed || 0, certificateId || null, discountTotal || 0, checkId]);
+
+          // 4. Insert payments
+          if (Array.isArray(payments) && payments.length > 0) {
+            for (const payment of payments) {
+              await db.query(client, `
+                INSERT INTO check_payments (check_id, method, amount)
+                VALUES ($1, $2, $3)
+              `, [checkId, payment.method, payment.amount]);
+            }
+          }
+
+          // 5. Player balance/bonus updates
+          if (check.player_id) {
+            const playerResult = await db.query(client, `SELECT balance, bonus_points FROM profiles WHERE id = $1 FOR UPDATE`, [check.player_id]);
+            const player = playerResult[0];
+
+            if (player) {
+              // Sum debt and deposit payments
+              let debtAmount = 0;
+              let depositAmount = 0;
+              let hasNonDebt = false;
+              
+              if (Array.isArray(payments)) {
+                for (const payment of payments) {
+                  if (payment.method === 'debt') debtAmount += payment.amount;
+                  if (payment.method === 'deposit') depositAmount += payment.amount;
+                  if (payment.method !== 'debt') hasNonDebt = true;
+                }
+              }
+
+              // Load bonus settings (defaults)
+              let bonusEnabled = true;
+              let bonusRate = 10;
+              let bonusMin = 0;
+              let bonusOnDebt = false;
+
+              const settingsResult = await db.query(client, `SELECT key, value FROM app_settings WHERE key IN ('bonus_enabled', 'bonus_accrual_rate', 'bonus_min_purchase', 'bonus_accrual_on_debt')`);
+              for (const setting of settingsResult) {
+                if (setting.key === 'bonus_enabled' && setting.value === 'false') bonusEnabled = false;
+                if (setting.key === 'bonus_accrual_rate') bonusRate = parseInt(setting.value) || 10;
+                if (setting.key === 'bonus_min_purchase') bonusMin = parseInt(setting.value) || 0;
+                if (setting.key === 'bonus_accrual_on_debt' && setting.value === 'true') bonusOnDebt = true;
+              }
+
+              // Calculate bonus accrual
+              let bonusAccrual = 0;
+              if (bonusEnabled && total >= bonusMin && (hasNonDebt || bonusOnDebt)) {
+                bonusAccrual = Math.round(total * bonusRate / 100);
+              }
+
+              // Update player balance
+              let newBalance = player.balance || 0;
+              if (debtAmount > 0) newBalance -= debtAmount;
+              if (depositAmount > 0) newBalance -= depositAmount;
+
+              const newPoints = Math.max(0, (player.bonus_points || 0) - (bonusUsed || 0)) + bonusAccrual;
+
+              await db.query(client, `
+                UPDATE profiles SET
+                  balance = $1,
+                  bonus_points = $2
+                WHERE id = $3
+              `, [newBalance, newPoints, check.player_id]);
+
+              // Insert bonus transactions
+              if (bonusUsed > 0) {
+                await db.query(client, `
+                  INSERT INTO transactions (type, amount, description, check_id, player_id, created_by)
+                  VALUES ('bonus_spend', $1, 'Списание бонусов по чеку', $2, $3, $4)
+                `, [bonusUsed, checkId, check.player_id, closedBy || null]);
+
+                await db.query(client, `
+                  INSERT INTO bonus_history (profile_id, amount, balance_after, reason)
+                  VALUES ($1, $2, $3, 'Списание по чеку')
+                `, [check.player_id, -bonusUsed, Math.max(0, player.bonus_points - bonusUsed)]);
+              }
+
+              if (bonusAccrual > 0) {
+                await db.query(client, `
+                  INSERT INTO transactions (type, amount, description, check_id, player_id, created_by)
+                  VALUES ('bonus_accrual', $1, 'Начисление бонусов (' || $2 || '% от ' || $3 || '₽)', $4, $5, $6)
+                `, [bonusAccrual, bonusRate, total, checkId, check.player_id, closedBy || null]);
+
+                await db.query(client, `
+                  INSERT INTO bonus_history (profile_id, amount, balance_after, reason)
+                  VALUES ($1, $2, $3, 'Начисление ' || $4 || '% от ' || $5 || '₽')
+                `, [check.player_id, bonusAccrual, newPoints, bonusRate, total]);
+              }
+
+              if (depositAmount > 0) {
+                await db.query(client, `
+                  INSERT INTO transactions (type, amount, description, check_id, player_id, created_by)
+                  VALUES ('debt_adjustment', $1, 'Оплата с депозита по чеку (было ' || $2 || '₽, стало ' || $3 || '₽)', $4, $5, $6)
+                `, [-depositAmount, player.balance || 0, newBalance, checkId, check.player_id, closedBy || null]);
+              }
+            }
+          }
+
+          // 6. Sale transaction
+          let methodDesc = '';
+          if (certificateUsed > 0 && Array.isArray(payments) && payments.length > 0) {
+            methodDesc = 'сертификат + ' + (isSplit ? 'разд. оплата' : (primaryMethod || 'cash'));
+          } else if (certificateUsed > 0) {
+            methodDesc = 'сертификат';
+          } else if (isSplit) {
+            methodDesc = 'разд. оплата';
+          } else {
+            methodDesc = primaryMethod || 'cash';
+          }
+
+          await db.query(client, `
+            INSERT INTO transactions (type, amount, description, check_id, player_id, created_by)
+            VALUES ('sale', $1, 'Закрытие чека (' || $2 || ')', $3, $4, $5)
+          `, [finalAmount, methodDesc, checkId, check.player_id, closedBy || null]);
+
+          if (certificateUsed > 0) {
+            const certDesc = 'Оплата сертификатом: ' + certificateUsed + '₽' + (certificateId ? ` (${certificateId.substring(0, 8)})` : '');
+            await db.query(client, `
+              INSERT INTO transactions (type, amount, description, check_id, player_id, created_by)
+              VALUES ('sale', 0, $1, $2, $3, $4)
+            `, [certDesc, checkId, check.player_id, closedBy || null]);
+          }
+
+          // 7. Decrement stock
+          if (Array.isArray(cartItems)) {
+            for (const cartItem of cartItems) {
+              const itemId = cartItem.item_id || cartItem.value?.item_id;
+              const quantity = cartItem.quantity || cartItem.value?.quantity;
+              if (itemId && quantity) {
+                await db.query(client, `
+                  UPDATE inventory SET stock_quantity = stock_quantity - $1
+                  WHERE id = $2
+                `, [quantity, itemId]);
+              }
+            }
+          }
+
+          // 8. Complete bookings & events
+          if (check.space_id) {
+            await db.query(client, `
+              UPDATE bookings SET status = 'completed'
+              WHERE check_id = $1 AND status = 'active'
+            `, [checkId]);
+          }
+
+          await db.query(client, `
+            UPDATE events SET status = 'completed'
+            WHERE check_id = $1 AND status != 'completed'
+          `, [checkId]);
+
+          return {
+            success: true,
+            finalAmount,
+            bonusAccrual: 0, // calculated but not returned for simplicity
+            method: primaryMethod
+          };
+        });
+
+        json(res, { data: result });
+      } catch (e) {
+        console.error('[Close Check Error]', e);
+        json(res, { error: String(e) }, 500);
+      }
+    }).catch((e) => json(res, { error: String(e) }, 400));
+    return;
+  }
+
+  // ── API: Upload file to MinIO ──
+  if (url.pathname === '/api/storage/upload' && req.method === 'POST') {
+    const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+    readBody(req, async (body) => {
+      try {
+        const { file, filename, folder } = JSON.parse(body);
+        
+        if (!file || !filename) {
+          json(res, { error: 'file и filename обязательны' }, 400);
+          return;
+        }
+
+        const s3Client = new S3Client({
+          endpoint: process.env.MINIO_ENDPOINT || 'http://localhost:9000',
+          region: 'us-east-1',
+          credentials: {
+            accessKeyId: process.env.MINIO_ACCESS_KEY || 'minioadmin',
+            secretAccessKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
+          },
+          forcePathStyle: true,
+        });
+
+        const buffer = Buffer.from(file, 'base64');
+        const key = folder ? `${folder}/${filename}` : filename;
+
+        const command = new PutObjectCommand({
+          Bucket: process.env.MINIO_BUCKET || 'tpos-storage',
+          Key: key,
+          Body: buffer,
+          ContentType: 'image/jpeg',
+        });
+
+        await s3Client.send(command);
+        
+        const url = `${process.env.MINIO_ENDPOINT || 'http://localhost:9000'}/${process.env.MINIO_BUCKET || 'tpos-storage'}/${key}`;
+        
+        json(res, { data: { url, key } });
+      } catch (e) {
+        console.error('[Storage Upload Error]', e);
+        json(res, { error: String(e) }, 500);
+      }
     }).catch((e) => json(res, { error: String(e) }, 400));
     return;
   }
@@ -1283,16 +1544,13 @@ const REMINDER_INTERVALS = [
 ];
 
 async function runEventReminders() {
-  const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-  const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+  const db = require('./db/index.js');
   const BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN;
   const CHAT_IDS = (process.env.OWNER_CHAT_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
-  if (!SUPABASE_URL || !SUPABASE_KEY || !BOT_TOKEN || CHAT_IDS.length === 0) return;
+  if (!BOT_TOKEN || CHAT_IDS.length === 0) return;
 
   const today = new Date(Date.now() + 3 * 3600000).toISOString().split('T')[0];
-  const sbHeaders = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/events?status=in.(planned,active)&date=gte.${today}&order=date.asc,start_time.asc`, { headers: sbHeaders });
-  const events = await res.json();
+  const events = await db.query(`SELECT * FROM events WHERE status IN ('planned', 'active') AND date >= $1 ORDER BY date ASC, start_time ASC`, [today]);
   if (!Array.isArray(events)) return;
 
   const nowMs = Date.now();
@@ -1313,21 +1571,12 @@ async function runEventReminders() {
         const text = `⏰ Напоминание: ${r.label} до мероприятия\n\n${label}\n${ev.date} в ${ev.start_time || '18:00'}`;
         for (const chatId of CHAT_IDS) {
           try {
-            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
-            });
-          } catch (e) {
-            console.warn('[Reminders] Telegram send error:', e);
-          }
+            await sendTelegram(chatId, text);
+          } catch { /* ignore */ }
         }
-        const updated = [...reminders, { t: r.key, at: new Date().toISOString() }];
-        await fetch(`${SUPABASE_URL}/rest/v1/events?id=eq.${ev.id}`, {
-          method: 'PATCH',
-          headers: sbHeaders,
-          body: JSON.stringify({ reminders: updated }),
-        });
+        // Mark as sent
+        const newReminders = [...reminders, { t: r.key, at: new Date().toISOString() }];
+        await db.update('events', { id: ev.id }, { reminders: newReminders });
         break;
       }
     }
@@ -1338,4 +1587,8 @@ server.listen(PORT, '127.0.0.1', () => {
   console.log(`T-POS Update Server on port ${PORT}`);
   setInterval(runEventReminders, 10 * 60 * 1000);
   setTimeout(runEventReminders, 30 * 1000);
+  
+  // Initialize WebSocket server
+  initWebSocketServer(server);
+  setupPostgresNotify().catch(e => console.error('[WS] Failed to setup PostgreSQL NOTIFY:', e));
 });

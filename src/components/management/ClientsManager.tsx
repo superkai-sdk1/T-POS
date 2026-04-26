@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo, memo, startTransition, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabase';
+import { storage } from '@/lib/storage';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { ClientAvatar } from '@/components/ui/ClientAvatar';
@@ -260,21 +261,12 @@ export function ClientsManager() {
     // 2. Сразу показываем превью
     updateField('photo_url', dataUrl);
 
-    // 3. Пробуем загрузить в Supabase Storage
+    // 3. Пробуем загрузить в MinIO Storage
     try {
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-      const { error } = await supabase.storage.from('client-photos').upload(path, blob, {
-        contentType: 'image/jpeg',
-        upsert: true,
-      });
-
-      if (!error) {
-        const { data: urlData } = supabase.storage.from('client-photos').getPublicUrl(path);
-        if (urlData?.publicUrl) {
-          updateField('photo_url', urlData.publicUrl);
-        }
-      } else {
-        // Storage не работает — base64 dataUrl уже в форме, сохранится в БД
+      const result = await storage.from('tpos-storage').upload(`client-photos/${Date.now()}.jpg`, blob);
+      if (!result.error && result.data) {
+        const url = `${process.env.VITE_MINIO_ENDPOINT || 'http://localhost:9000'}/tpos-storage/${result.data.path}`;
+        updateField('photo_url', url);
       }
     } catch (err) {
       // Storage unavailable, using base64

@@ -99,10 +99,6 @@ grep_safe() {
 
 setup_nginx() {
   local domain="$1" root_dir="$2"
-  local sb_url sb_host
-  sb_url=$(read_env_value "${root_dir}/.env" "VITE_SUPABASE_URL") || true
-  sb_host=$(echo "$sb_url" | sed 's|https://||' | sed 's|/.*||')
-  if [ -z "$sb_host" ]; then sb_host="SUPABASE_HOST.supabase.co"; fi
 
   info "Создание конфигурации nginx для ${domain}..."
 
@@ -136,27 +132,6 @@ server {
         proxy_set_header Host \$host;
     }
 
-    location /sb/ {
-        resolver 8.8.8.8 1.1.1.1 valid=300s;
-        resolver_timeout 5s;
-        set \$supabase https://${sb_host};
-        rewrite ^/sb/(.*) /\$1 break;
-        proxy_pass \$supabase;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host ${sb_host};
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_ssl_server_name on;
-        proxy_buffering off;
-        proxy_cache off;
-        proxy_connect_timeout 10s;
-        proxy_read_timeout 86400s;
-        proxy_send_timeout 86400s;
-    }
-
     location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot)$ {
         expires 30d;
         add_header Cache-Control "public, immutable";
@@ -177,10 +152,6 @@ NGINXEOF
 
 setup_wallet_nginx() {
   local wallet_domain="$1" root_dir="$2"
-  local sb_url sb_host
-  sb_url=$(read_env_value "${root_dir}/.env" "VITE_SUPABASE_URL") || true
-  sb_host=$(echo "$sb_url" | sed 's|https://||' | sed 's|/.*||')
-  if [ -z "$sb_host" ]; then sb_host="SUPABASE_HOST.supabase.co"; fi
 
   info "Создание конфигурации nginx для ${wallet_domain}..."
 
@@ -195,27 +166,6 @@ server {
 
     location / {
         try_files \$uri \$uri/ /wallet.html;
-    }
-
-    location /sb/ {
-        resolver 8.8.8.8 1.1.1.1 valid=300s;
-        resolver_timeout 5s;
-        set \$supabase https://${sb_host};
-        rewrite ^/sb/(.*) /\$1 break;
-        proxy_pass \$supabase;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host ${sb_host};
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_ssl_server_name on;
-        proxy_buffering off;
-        proxy_cache off;
-        proxy_connect_timeout 10s;
-        proxy_read_timeout 86400s;
-        proxy_send_timeout 86400s;
     }
 
     location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot)$ {
@@ -361,37 +311,48 @@ ensure_webhook_proxy() {
   fi
 }
 
-ensure_supabase_proxy() {
-  local conf="$1" root_dir="${2:-$INSTALL_DIR}"
-  if [ -f "$conf" ] && ! grep -q 'location /sb/' "$conf" 2>/dev/null; then
-    local sb_url sb_host
-    sb_url=$(read_env_value "${root_dir}/.env" "VITE_SUPABASE_URL") || true
-    sb_host=$(echo "$sb_url" | sed 's|https://||' | sed 's|/.*||')
-    if [ -z "$sb_host" ]; then sb_host="SUPABASE_HOST.supabase.co"; fi
-    info "Добавление Supabase proxy в nginx..."
-    sed -i '/location \/ {/i \
-    location /sb/ {\
-        resolver 8.8.8.8 1.1.1.1 valid=300s;\
-        resolver_timeout 5s;\
-        set $supabase https://'"$sb_host"';\
-        rewrite ^/sb/(.*) /$1 break;\
-        proxy_pass $supabase;\
-        proxy_http_version 1.1;\
-        proxy_set_header Upgrade $http_upgrade;\
-        proxy_set_header Connection "upgrade";\
-        proxy_set_header Host '"$sb_host"';\
-        proxy_set_header X-Real-IP $remote_addr;\
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\
-        proxy_set_header X-Forwarded-Proto $scheme;\
-        proxy_ssl_server_name on;\
-        proxy_buffering off;\
-        proxy_cache off;\
-        proxy_connect_timeout 10s;\
-        proxy_read_timeout 86400s;\
-        proxy_send_timeout 86400s;\
-    }' "$conf"
-    success "Supabase proxy добавлен"
+setup_docker() {
+  local dir="$1"
+
+  info "Установка Docker Compose..."
+  if ! command -v docker > /dev/null 2>&1; then
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sh get-docker.sh
+    rm get-docker.sh
+    success "Docker установлен"
+  else
+    success "Docker уже установлен"
   fi
+
+  if ! command -v docker-compose > /dev/null 2>&1; then
+    apt-get install -y -qq docker-compose > /dev/null 2>&1
+    success "Docker Compose установлен"
+  else
+    success "Docker Compose уже установлен"
+  fi
+
+  info "Запуск Docker Compose (PostgreSQL + MinIO)..."
+  cd "$dir"
+  docker-compose up -d
+  success "Docker Compose запущен"
+
+  info "Ожидание запуска PostgreSQL..."
+  sleep 10
+
+  # Импорт данных если SQL файл существует
+  if [ -f "$dir/server/db/schema.sql" ]; then
+    info "Импорт схемы БД..."
+    docker exec -i tpos-postgres psql -U tpos -d tpos < "$dir/server/db/schema.sql" 2>/dev/null || true
+    success "Схема БД импортирована"
+  fi
+}
+
+init_minio() {
+  info "Инициализация MinIO..."
+  # Создаем bucket tpos-storage
+  docker exec tpos-minio mc alias set local http://localhost:9000 minioadmin change_this_password_in_production 2>/dev/null || true
+  docker exec tpos-minio mc mb local/tpos-storage 2>/dev/null || true
+  success "MinIO инициализирован"
 }
 
 fix_and_reload_nginx() {
@@ -521,18 +482,12 @@ if [ "$MODE" = "update" ]; then
 
   # ── Apply idempotent DB migrations ──
 
-  SUPABASE_URL=$(read_env_value "$INSTALL_DIR/.env" "VITE_SUPABASE_URL") || true
-  SUPABASE_ANON_KEY=$(read_env_value "$INSTALL_DIR/.env" "VITE_SUPABASE_ANON_KEY") || true
+  DATABASE_URL=$(read_env_value "$INSTALL_DIR/.env" "DATABASE_URL") || true
 
-  if [ -n "$SUPABASE_URL" ] && [ -n "$SUPABASE_ANON_KEY" ] && [ -f "$INSTALL_DIR/supabase/migration.sql" ]; then
+  if [ -n "$DATABASE_URL" ] && [ -f "$INSTALL_DIR/server/db/schema.sql" ]; then
     echo ""
-    warn "═══════════════════════════════════════════"
-    warn " Если это первое обновление до v1.1+ —"
-    warn " выполните SQL из supabase/migration.sql"
-    warn " (или supabase/migrations/) в Supabase SQL Editor."
-    warn " Все команды идемпотентны (IF NOT EXISTS)."
-    warn "═══════════════════════════════════════════"
-    echo ""
+    info "Проверка схемы БД..."
+    # Схема уже импортируется через Docker Compose
   fi
 
   # ── .env: auto-fill defaults silently ──
@@ -566,6 +521,8 @@ if [ "$MODE" = "update" ]; then
 
   # ── Services ──
 
+  setup_docker "$INSTALL_DIR"
+  init_minio
   setup_update_server "$INSTALL_DIR"
 
   if [ -f "${INSTALL_DIR}/server/wallet-bot.js" ]; then
@@ -698,22 +655,8 @@ while [ -z "$EMAIL" ]; do
 done
 
 echo ""
-info "Supabase настройки:"
-
-SUPABASE_URL=""
-while [ -z "$SUPABASE_URL" ]; do
-  echo -ne "${BOLD}  Supabase URL: ${NC}"
-  read -r SUPABASE_URL
-  if [ -z "$SUPABASE_URL" ]; then err "Обязательное поле"; fi
-done
-
-SUPABASE_ANON_KEY=""
-while [ -z "$SUPABASE_ANON_KEY" ]; do
-  echo -ne "${BOLD}  Supabase Anon Key: ${NC}"
-  read -rs SUPABASE_ANON_KEY
-  echo ""
-  if [ -z "$SUPABASE_ANON_KEY" ]; then err "Обязательное поле"; fi
-done
+info "Настройки базы данных и хранилища:"
+info "  Используется локальная PostgreSQL и MinIO (без Supabase)"
 
 echo ""
 info "Telegram настройки:"
@@ -750,8 +693,8 @@ echo -e "${BOLD}─── Проверьте данные ───${NC}"
 echo -e "  Домен T-POS:   ${GREEN}${DOMAIN}${NC}"
 echo -e "  Домен Wallet:  ${GREEN}${WALLET_DOMAIN}${NC}"
 echo -e "  Email:         ${GREEN}${EMAIL}${NC}"
-echo -e "  Supabase:      ${GREEN}${SUPABASE_URL}${NC}"
-echo -e "  Anon Key:      ${GREEN}${SUPABASE_ANON_KEY:0:20}...${NC}"
+echo -e "  База данных:   ${GREEN}Локальная PostgreSQL (Docker)${NC}"
+echo -e "  Хранилище:     ${GREEN}MinIO (Docker)${NC}"
 echo -e "  Bot Token:     ${GREEN}${TG_BOT_TOKEN:0:15}...${NC}"
 if [ -n "$CLIENT_TG_TOKEN" ]; then
   echo -e "  Client Bot:    ${GREEN}${CLIENT_TG_TOKEN:0:15}...${NC}"
@@ -777,7 +720,7 @@ echo ""
 apt-get update -qq > /dev/null 2>&1
 success "Пакеты обновлены"
 
-for pkg in nginx certbot python3-certbot-nginx git; do
+for pkg in nginx certbot python3-certbot-nginx git docker-compose; do
   if command -v "$pkg" > /dev/null 2>&1; then
     success "$pkg уже установлен"
   else
@@ -835,12 +778,16 @@ cd "$INSTALL_DIR"
 
 info "Создание .env..."
 cat > .env <<ENVEOF
-VITE_SUPABASE_URL=${SUPABASE_URL}
-VITE_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
 TELEGRAM_BOT_TOKEN=${TG_BOT_TOKEN}
 CLIENT_BOT_TOKEN=${CLIENT_TG_TOKEN}
 WALLET_DOMAIN=${WALLET_DOMAIN}
 POS_DOMAIN=${DOMAIN}
+DATABASE_URL=postgresql://tpos:change_this_password_in_production@localhost:5432/tpos
+POSTGRES_URL=postgresql://tpos:change_this_password_in_production@localhost:5432/tpos
+MINIO_ENDPOINT=http://localhost:9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=change_this_password_in_production
+MINIO_BUCKET=tpos-storage
 ENVEOF
 success ".env создан"
 
@@ -863,6 +810,8 @@ success "Проект собран"
 chown -R www-data:www-data "$INSTALL_DIR/dist"
 chown -R www-data:www-data "$INSTALL_DIR/dist-wallet" 2>/dev/null || true
 
+setup_docker "$INSTALL_DIR"
+init_minio
 setup_update_server "$INSTALL_DIR"
 
 # ── Step 4: Nginx ────────────────────────────

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
-import { createClient } from '@supabase/supabase-js';
+import { select, selectOne, update, insert } from './db/index.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_DIR = join(__dirname, '..');
@@ -24,17 +24,13 @@ function loadEnv() {
 
 const env = loadEnv();
 const BOT_TOKEN = env.CLIENT_BOT_TOKEN || process.env.CLIENT_BOT_TOKEN;
-const SUPABASE_URL = env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
 const WALLET_DOMAIN = env.WALLET_DOMAIN || process.env.WALLET_DOMAIN || 'wallet.titanpos.ru';
 const WEBAPP_URL = `https://${WALLET_DOMAIN}`;
 
-if (!BOT_TOKEN || !SUPABASE_URL || !SUPABASE_KEY) {
-  console.error('Missing env vars: CLIENT_BOT_TOKEN, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY');
+if (!BOT_TOKEN) {
+  console.error('Missing env vars: CLIENT_BOT_TOKEN');
   process.exit(1);
 }
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
@@ -65,53 +61,38 @@ function escapeHtml(str) {
 }
 
 async function findProfileByTgId(tgId) {
-  const { data } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('tg_id', String(tgId))
-    .single();
-  return data;
+  const result = await selectOne('profiles', { tg_id: String(tgId) }, '*');
+  return result.data;
 }
 
 async function findProfileByUsername(username) {
   if (!username) return null;
   const clean = username.replace(/^@/, '').toLowerCase();
-  const { data } = await supabase
-    .from('profiles')
-    .select('*')
-    .ilike('tg_username', clean)
-    .eq('role', 'client')
-    .limit(1)
-    .maybeSingle();
-  return data;
+  const result = await select('profiles', { role: 'client' }, '*');
+  if (result.error || !result.data) return null;
+  return result.data.find(p => p.tg_username?.toLowerCase() === clean) || null;
 }
 
 async function linkTgId(profileId, tgId) {
-  await supabase.from('profiles').update({ tg_id: String(tgId) }).eq('id', profileId);
+  const result = await update('profiles', { id: profileId }, { tg_id: String(tgId) });
+  return result;
 }
 
 async function getClientsList() {
-  const { data } = await supabase
-    .from('profiles')
-    .select('id, nickname, tg_id, tg_username')
-    .eq('role', 'client')
-    .is('tg_id', null)
-    .order('nickname');
-  return data || [];
+  const result = await select('profiles', { role: 'client' }, 'id, nickname, tg_id, tg_username');
+  if (result.error || !result.data) return [];
+  const clients = result.data.filter(c => !c.tg_id);
+  clients.sort((a, b) => a.nickname.localeCompare(b.nickname));
+  return clients;
 }
 
 async function getPendingRequest(tgId) {
-  const { data } = await supabase
-    .from('tg_link_requests')
-    .select('*')
-    .eq('tg_id', String(tgId))
-    .eq('status', 'pending')
-    .single();
-  return data;
+  const result = await selectOne('tg_link_requests', { tg_id: String(tgId), status: 'pending' }, '*');
+  return result.data;
 }
 
 async function createLinkRequest(tgId, tgUsername, tgFirstName, profileId) {
-  await supabase.from('tg_link_requests').insert({
+  await insert('tg_link_requests', {
     tg_id: String(tgId),
     tg_username: tgUsername || null,
     tg_first_name: tgFirstName || null,
@@ -158,11 +139,8 @@ async function handleStart(msg) {
       return;
     }
 
-    const { data: target } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', profileId)
-      .single();
+    const targetResult = await selectOne('profiles', { id: profileId }, '*');
+    const target = targetResult.data;
 
     if (!target) {
       await sendMessage(chatId, '❌ Профиль не найден.');
@@ -176,7 +154,7 @@ async function handleStart(msg) {
 
     await linkTgId(target.id, tgId);
     if (tgUsername) {
-      await supabase.from('profiles').update({ tg_username: tgUsername.toLowerCase() }).eq('id', target.id);
+      await update('profiles', { id: target.id }, { tg_username: tgUsername.toLowerCase() });
     }
     const linked = { ...target, tg_id: String(tgId) };
     await sendMessage(
@@ -268,11 +246,8 @@ async function handleCallback(cb) {
 
   if (data.startsWith('link:')) {
     const profileId = data.split(':')[1];
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', profileId)
-      .single();
+    const profileResult = await selectOne('profiles', { id: profileId }, '*');
+    const profile = profileResult.data;
 
     if (!profile) {
       await answerCallback(cb.id, 'Профиль не найден');
@@ -339,11 +314,11 @@ async function notifyOwnersAboutLinkRequest(tgName, tgUsername, nickname) {
 }
 
 async function getNotificationSettings() {
-  const { data } = await supabase.from('app_settings').select('key, value').in('key', [
-    'notification_client_bonus_accrual',
-    'notification_client_bonus_spend',
-  ]);
-  const map = new Map((data || []).map((r) => [r.key, r.value]));
+  const result = await select('app_settings', {}, 'key, value');
+  if (result.error || !result.data) return { bonusAccrual: true, bonusSpend: true };
+  
+  const settings = result.data;
+  const map = new Map(settings.map((r) => [r.key, r.value]));
   return {
     bonusAccrual: map.get('notification_client_bonus_accrual') !== 'false',
     bonusSpend: map.get('notification_client_bonus_spend') !== 'false',
@@ -351,27 +326,32 @@ async function getNotificationSettings() {
 }
 
 async function setupBonusNotifications() {
-  const channel = supabase
-    .channel('wallet-bonus-notifications')
-    .on(
-      'postgres_changes',
-      { event: 'INSERT', schema: 'public', table: 'transactions' },
-      async (payload) => {
-        const tx = payload.new;
-        if (!tx.player_id) return;
+  // Poll for bonus transactions instead of realtime subscription
+  let lastTxId = null;
+  
+  setInterval(async () => {
+    try {
+      const filters = lastTxId ? { id: { $gt: lastTxId } } : {};
+      const result = await select('transactions', filters, '*');
+      
+      if (result.error || !result.data) return;
+      
+      const txs = result.data.filter(tx => 
+        tx.type === 'bonus_accrual' || tx.type === 'bonus_spend'
+      );
+      
+      for (const tx of txs) {
+        if (!tx.player_id) continue;
+        lastTxId = tx.id;
 
         const settings = await getNotificationSettings();
-        if (tx.type === 'bonus_accrual' && !settings.bonusAccrual) return;
-        if (tx.type === 'bonus_spend' && !settings.bonusSpend) return;
-        if (tx.type !== 'bonus_accrual' && tx.type !== 'bonus_spend') return;
+        if (tx.type === 'bonus_accrual' && !settings.bonusAccrual) continue;
+        if (tx.type === 'bonus_spend' && !settings.bonusSpend) continue;
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('tg_id, nickname, bonus_points')
-          .eq('id', tx.player_id)
-          .single();
+        const profileResult = await selectOne('profiles', { id: tx.player_id }, 'tg_id, nickname, bonus_points');
+        const profile = profileResult.data;
 
-        if (!profile?.tg_id) return;
+        if (!profile?.tg_id) continue;
 
         if (tx.type === 'bonus_accrual') {
           const text =
@@ -389,40 +369,42 @@ async function setupBonusNotifications() {
           await sendMessage(profile.tg_id, text, walletButton());
         }
       }
-    )
-    .subscribe();
-
-  console.log('Subscribed to bonus notifications (accrual + spend)');
-  return channel;
+    } catch (e) {
+      console.error('[Bonus Notifications Error]', e);
+    }
+  }, 5000); // Poll every 5 seconds
 }
 
 async function setupLinkApprovals() {
-  supabase
-    .channel('wallet-link-approvals')
-    .on(
-      'postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'tg_link_requests' },
-      async (payload) => {
-        const req = payload.new;
-        if (req.status !== 'approved') return;
+  // Poll for approved link requests
+  let lastReqId = null;
+  
+  setInterval(async () => {
+    try {
+      const filters = lastReqId ? { id: { $gt: lastReqId } } : {};
+      const result = await select('tg_link_requests', { ...filters, status: 'approved' }, '*');
+      
+      if (result.error || !result.data) return;
+      
+      for (const req of result.data) {
+        lastReqId = req.id;
+        
+        const profileResult = await selectOne('profiles', { id: req.profile_id }, '*');
+        const profile = profileResult.data;
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', req.profile_id)
-          .single();
-
-        if (!profile) return;
+        if (!profile) continue;
 
         await linkTgId(profile.id, req.tg_id);
 
         const updatedProfile = { ...profile, tg_id: req.tg_id };
         await sendMessage(req.tg_id, welcomeMessage(updatedProfile), walletButton());
       }
-    )
-    .subscribe();
+    } catch (e) {
+      console.error('[Link Approvals Error]', e);
+    }
+  }, 5000); // Poll every 5 seconds
 
-  console.log('Subscribed to link approvals');
+  console.log('Polling for link approvals');
 }
 
 const WEBHOOK_PORT = parseInt(env.WALLET_BOT_PORT || process.env.WALLET_BOT_PORT || '3001', 10);
@@ -430,12 +412,8 @@ const POS_DOMAIN = env.POS_DOMAIN || process.env.POS_DOMAIN || 'titanpos.ru';
 const WEBHOOK_PATH = `/webhook/wallet-bot-${BOT_TOKEN.split(':')[0]}`;
 
 async function isOwner(tgId) {
-  const { data } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('tg_id', String(tgId))
-    .single();
-  return data?.role === 'owner';
+  const result = await selectOne('profiles', { tg_id: String(tgId) }, 'role');
+  return result.data?.role === 'owner';
 }
 
 async function handleBroadcast(chatId, tgId, text) {
@@ -449,11 +427,10 @@ async function handleBroadcast(chatId, tgId, text) {
     await sendMessage(chatId, '❌ Только владельцы могут отправлять рассылку.');
     return;
   }
-  const { data: clients } = await supabase
-    .from('profiles')
-    .select('tg_id, nickname')
-    .eq('role', 'client')
-    .not('tg_id', 'is', null);
+  const result = await select('profiles', { role: 'client' }, 'tg_id, nickname');
+  if (result.error || !result.data) return;
+  
+  const clients = result.data.filter(c => c.tg_id);
   let sent = 0;
   for (const c of clients || []) {
     try {
@@ -461,7 +438,7 @@ async function handleBroadcast(chatId, tgId, text) {
       sent++;
     } catch { /* skip */ }
   }
-  await sendMessage(chatId, `✅ Отправлено ${sent} из ${(clients || []).length} клиентам.`);
+  await sendMessage(chatId, `✅ Отправлено ${sent} из ${clients.length} клиентам.`);
 }
 
 async function handleUpdate(update) {

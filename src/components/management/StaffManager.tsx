@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { storage } from '@/lib/storage';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
@@ -98,14 +99,11 @@ export function StaffManager() {
     const { blob, dataUrl } = await compressImage(file);
     setPhotoUrl(dataUrl);
     try {
-      const path = `staff-${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-      const { error: uploadErr } = await supabase.storage.from('client-photos').upload(path, blob, {
-        contentType: 'image/jpeg',
-        upsert: true,
-      });
-      if (!uploadErr) {
-        const { data: urlData } = supabase.storage.from('client-photos').getPublicUrl(path);
-        if (urlData?.publicUrl) setPhotoUrl(urlData.publicUrl);
+      const path = `staff-photos/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+      const result = await storage.from('tpos-storage').upload(path, blob);
+      if (!result.error && result.data) {
+        const url = `${process.env.VITE_MINIO_ENDPOINT || 'http://localhost:9000'}/tpos-storage/${result.data.path}`;
+        setPhotoUrl(url);
       }
     } catch { /* fallback to dataUrl */ }
     hapticNotification('success');

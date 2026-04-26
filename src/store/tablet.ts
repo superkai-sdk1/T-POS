@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { supabase } from '@/lib/supabase';
+import { select, selectOne, update, insert, deleteRows } from '@/lib/db';
 import { getTelegramWebApp, hapticFeedback, hapticNotification } from '@/lib/telegram';
 import type { InventoryItem, TabletOrder, TabletOrderItem, CheckItem } from '@/types';
 
@@ -101,18 +101,16 @@ export const useTabletStore = create<TabletState>((set, get) => ({
     set({ isSubmitting: true, error: null });
 
     try {
-      const { data: order, error: orderError } = await supabase
-        .from('tablet_orders')
-        .insert({
-          space_id: spaceId,
-          profile_id: profileId,
-          status: 'pending',
-          comment: comment.trim() || null,
-        })
-        .select()
-        .single();
+      const orderResult = await insert('tablet_orders', {
+        space_id: spaceId,
+        profile_id: profileId,
+        status: 'pending',
+        comment: comment.trim() || null,
+      });
+      
+      if (orderResult.error || !orderResult.data) throw new Error(orderResult.error || 'Failed to create order');
 
-      if (orderError || !order) throw new Error(orderError?.message || 'Failed to create order');
+      const order = orderResult.data;
 
       const itemsToInsert = cart.map((c) => ({
         order_id: order.id,
@@ -120,11 +118,9 @@ export const useTabletStore = create<TabletState>((set, get) => ({
         quantity: c.quantity,
       }));
 
-      const { error: itemsError } = await supabase
-        .from('tablet_order_items')
-        .insert(itemsToInsert);
+      const itemsResult = await insert('tablet_order_items', itemsToInsert);
 
-      if (itemsError) throw new Error(itemsError.message);
+      if (itemsResult.error) throw new Error(itemsResult.error);
 
       set({ 
         cart: [], 
@@ -149,44 +145,45 @@ export const useTabletStore = create<TabletState>((set, get) => ({
   },
 
   loadMyOrders: async (spaceId: string, profileId: string) => {
-    const { data } = await supabase
-      .from('tablet_orders')
-      .select(`
-        *,
-        items:tablet_order_items(
-          *,
-          item:inventory(name, price)
-        )
-      `)
-      .eq('space_id', spaceId)
-      .eq('profile_id', profileId)
-      .order('created_at', { ascending: false });
-
-    if (data) {
-      set({ myOrders: data as TabletOrder[] });
+    const result = await select('tablet_orders', { space_id: spaceId, profile_id: profileId }, '*');
+    if (result.error || !result.data) {
+      console.error('[tablet] loadMyOrders error:', result.error);
+      return;
     }
+    
+    const orders = result.data as any[];
+    
+    // Load items for each order
+    for (const order of orders) {
+      const itemsResult = await select('tablet_order_items', { order_id: order.id }, '*');
+      if (!itemsResult.error && itemsResult.data) {
+        (order as any).items = itemsResult.data;
+      }
+    }
+
+    set({ myOrders: orders as TabletOrder[] });
   },
 
   loadCheckState: async (spaceId: string) => {
-    const { data, error } = await supabase
-      .from('checks')
-      .select('id, total_amount, status, created_at, space:spaces!checks_space_id_fkey(hourly_rate)')
-      .eq('space_id', spaceId)
-      .eq('status', 'open')
-      .maybeSingle();
-
-    if (error) {
-      console.error('[tablet] loadCheckState error:', error);
+    const result = await select('checks', { space_id: spaceId, status: 'open' }, 'id, total_amount, status, created_at');
+    
+    if (result.error) {
+      console.error('[tablet] loadCheckState error:', result.error);
     }
 
-    // Calculate current rental if space has hourly_rate
+    const data = result.data?.[0];
+    
+    // Load space info for hourly rate
     let rentalAmount = 0;
-    if (data && (data as any).space?.hourly_rate) {
-      const hourlyRate = (data as any).space.hourly_rate;
-      const elapsedMs = Date.now() - new Date(data.created_at).getTime();
-      const mins = Math.max(0, Math.floor(elapsedMs / 60000));
-      const roundedMins = Math.ceil(mins / 30) * 30;
-      rentalAmount = Math.round((hourlyRate / 60) * roundedMins);
+    if (data) {
+      const spaceResult = await select('spaces', { id: spaceId }, 'hourly_rate');
+      if (!spaceResult.error && spaceResult.data?.[0]?.hourly_rate) {
+        const hourlyRate = spaceResult.data[0].hourly_rate;
+        const elapsedMs = Date.now() - new Date(data.created_at).getTime();
+        const mins = Math.max(0, Math.floor(elapsedMs / 60000));
+        const roundedMins = Math.ceil(mins / 30) * 30;
+        rentalAmount = Math.round((hourlyRate / 60) * roundedMins);
+      }
     }
 
     set({ 
@@ -198,25 +195,24 @@ export const useTabletStore = create<TabletState>((set, get) => ({
 
   loadCheckItems: async (spaceId: string) => {
     // Find the open check for this space
-    const { data: check } = await supabase
-      .from('checks')
-      .select('id')
-      .eq('space_id', spaceId)
-      .eq('status', 'open')
-      .maybeSingle();
-
-    if (!check) {
+    const checkResult = await select('checks', { space_id: spaceId, status: 'open' }, 'id');
+    
+    if (checkResult.error || !checkResult.data || checkResult.data.length === 0) {
       set({ currentCheckItems: [] });
       return;
     }
 
-    const { data: items } = await supabase
-      .from('check_items')
-      .select('*, item:inventory(name, price, image_url)')
-      .eq('check_id', check.id)
-      .order('created_at', { ascending: true });
+    const check = checkResult.data[0];
+    
+    const itemsResult = await select('check_items', { check_id: check.id }, '*');
+    
+    if (itemsResult.error) {
+      console.error('[tablet] loadCheckItems error:', itemsResult.error);
+      set({ currentCheckItems: [] });
+      return;
+    }
 
-    set({ currentCheckItems: (items || []) as CheckItem[] });
+    set({ currentCheckItems: (itemsResult.data || []) as CheckItem[] });
   },
 
   subscribeToSpace: (spaceId: string, profileId: string) => {
@@ -245,66 +241,11 @@ export const useTabletStore = create<TabletState>((set, get) => ({
       }
     }, 8000);
 
-    // Subscribe to tablet_orders changes for this profile
-    const ordersChannel = supabase.channel('my-tablet-orders')
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'tablet_orders',
-          filter: `profile_id=eq.${profileId}`
-        },
-        (payload: any) => {
-          const prevOrder = get().myOrders.find(o => o.id === payload.new?.id);
-          get().loadMyOrders(spaceId, profileId);
-          get().loadCheckState(spaceId);
-
-          if (payload.eventType === 'UPDATE' && prevOrder && prevOrder.status !== payload.new.status) {
-            if (payload.new.status === 'accepted') {
-              hapticNotification('success');
-            } else if (payload.new.status === 'rejected') {
-              hapticNotification('error');
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    // Subscribe to checks changes for this space (detect check open/close/delete)
-    const checksChannel = supabase.channel('tablet-check-watch')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'checks',
-          filter: `space_id=eq.${spaceId}`
-        },
-        (payload: any) => {
-          console.log('[tablet] checks realtime event:', payload.eventType, payload.new?.status);
-          // If check was closed, clear order history for this tablet
-          if (payload.eventType === 'UPDATE' && payload.new?.status === 'closed') {
-            set({ myOrders: [], currentCheckItems: [], cart: [], comment: '' });
-            get().loadCheckState(spaceId);
-          }
-          // If check was deleted, same thing
-          if (payload.eventType === 'DELETE') {
-            set({ myOrders: [], currentCheckItems: [], cart: [], comment: '' });
-            get().loadCheckState(spaceId);
-          }
-          // If check was opened, reload state
-          if (payload.eventType === 'INSERT') {
-            get().loadCheckState(spaceId);
-          }
-        }
-      )
-      .subscribe();
+    // WebSocket subscriptions will be handled by a separate WebSocket client
+    // For now, we rely on polling as a fallback
 
     return () => {
       clearInterval(pollInterval);
-      supabase.removeChannel(ordersChannel);
-      supabase.removeChannel(checksChannel);
     };
   },
 
@@ -316,36 +257,36 @@ export const useTabletStore = create<TabletState>((set, get) => ({
     };
     
     try {
-      const { error } = await supabase
-        .from('tablet_orders')
-        .insert({
-          space_id: spaceId,
-          profile_id: profileId,
-          status: 'pending',
-          comment: cmts[type],
-        });
+      const result = await insert('tablet_orders', {
+        space_id: spaceId,
+        profile_id: profileId,
+        status: 'pending',
+        comment: cmts[type],
+      });
 
-      if (error) throw error;
-      hapticNotification('success');
+      if (result.error) {
+        console.error('[tablet] callStaff error:', result.error);
+        return false;
+      }
+
+      hapticFeedback('light');
       return true;
-    } catch {
-      hapticNotification('error');
+    } catch (err: any) {
+      console.error('[tablet] callStaff error:', err);
       return false;
     }
   },
 
   cancelOrder: async (orderId: string) => {
     try {
-      const { error } = await supabase
-        .from('tablet_orders')
-        .update({ status: 'cancelled' })
-        .eq('id', orderId)
-        .eq('status', 'pending');
+      const result = await update('tablet_orders', { id: orderId }, { status: 'cancelled' });
+      
+      if (result.error) {
+        console.error('[tablet] cancelOrder error:', result.error);
+        return false;
+      }
 
-      if (error) throw error;
-      set((state) => ({
-        myOrders: state.myOrders.filter((o) => o.id !== orderId),
-      }));
+      hapticFeedback('light');
       hapticNotification('warning');
       return true;
     } catch {
