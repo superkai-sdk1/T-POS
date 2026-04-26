@@ -14,7 +14,7 @@ dotenv.config({ path: resolve(__dirname, '../../.env') });
 // Подключение к локальному PostgreSQL
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || process.env.POSTGRES_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: false, // Локальный PostgreSQL в Docker не требует SSL
 });
 
 pool.on('error', (err) => {
