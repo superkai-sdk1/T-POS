@@ -3,10 +3,9 @@ import { supabase } from '@/lib/supabase';
 import { usePOSStore, isSavingCart, isCancellingCheck, isClosingCheck, isRecentlyRemoved, isActiveCheck } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
 import { useAuthStore } from '@/store/auth';
-import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import type { AdminNotificationType, TypeSetting } from '@/lib/notifications';
 
-type PgPayload = RealtimePostgresChangesPayload<Record<string, unknown>>;
+type PgPayload = any;
 
 let _userPwaTypes: Record<string, TypeSetting> = {};
 

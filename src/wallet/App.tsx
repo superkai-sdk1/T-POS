@@ -1,17 +1,8 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { supabase } from '@/lib/supabase';
 import { getTelegramWebApp, initTelegramApp } from '@/lib/telegram';
 import { ClientAvatar } from '@/components/ui/ClientAvatar';
 import { BarChart3, ChevronDown, ChevronUp, Receipt } from 'lucide-react';
-
-const supabaseUrl = import.meta.env.PROD
-  ? `${window.location.origin}/sb`
-  : (import.meta.env.VITE_SUPABASE_URL as string);
-
-const supabase = createClient(
-  supabaseUrl,
-  import.meta.env.VITE_SUPABASE_ANON_KEY as string
-);
 
 interface Profile {
   id: string;

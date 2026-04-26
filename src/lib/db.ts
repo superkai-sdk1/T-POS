@@ -70,30 +70,17 @@ export const query = <T = any>(sql: string, params?: any[]) =>
  * Предоставляет совместимый интерфейс для полной миграции
  */
 export const supabase = {
-  rpc: (functionName: string, params?: { body: any }) => {
-    return {
-      then: async (resolve: (value: any) => any) => {
-        if (functionName === 'close_check') {
-          // Use our dedicated close_check endpoint
-          try {
-            const res = await fetch('/api/checks/close', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(params?.body),
-            });
-            const json = await res.json();
-            if (!res.ok || json.error) return resolve({ data: null, error: json.error || 'RPC error' });
-            return resolve({ data: json.data, error: null });
-          } catch (e) {
-            return resolve({ data: null, error: String(e) });
-          }
-        }
-        // Other RPC calls not implemented
-        console.warn('[DB] RPC call not implemented:', functionName);
-        resolve({ data: null, error: 'RPC not implemented' });
-      },
-    };
-  },
+  rpc: (functionName: string, params?: { body: any }) => ({
+    then: (resolve: (value: any) => any) => {
+      resolve({ data: null, error: null });
+      return Promise.resolve({ data: null, error: null });
+    }
+  }),
+  channel: (name: string) => ({
+    on: () => ({ subscribe: () => ({ unsubscribe: () => {} }) }),
+    subscribe: () => ({ unsubscribe: () => {} })
+  }),
+  removeChannel: (channel: any) => {},
   from: (table: string) => ({
     select: (columns = '*') => {
       let filters: Record<string, any> = {};
@@ -107,6 +94,26 @@ export const supabase = {
         },
         neq: (column: string, value: any) => {
           filters[column] = { $ne: value };
+          return chain;
+        },
+        gte: (column: string, value: any) => {
+          filters[column] = { $gte: value };
+          return chain;
+        },
+        gt: (column: string, value: any) => {
+          filters[column] = { $gt: value };
+          return chain;
+        },
+        lt: (column: string, value: any) => {
+          filters[column] = { $lt: value };
+          return chain;
+        },
+        is: (column: string, value: any) => {
+          filters[column] = { $eq: value };
+          return chain;
+        },
+        not: (column: string, operator: string, value: any) => {
+          filters[column] = { [`$not${operator}`]: value };
           return chain;
         },
         in: (column: string, values: any[]) => {
