@@ -33,15 +33,6 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/.*\/sb\//,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              expiration: { maxEntries: 50, maxAgeSeconds: 300 },
-              networkTimeoutSeconds: 5,
-            },
-          },
-          {
             urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
             handler: 'CacheFirst',
             options: {
@@ -59,7 +50,7 @@ export default defineConfig({
           },
         ],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/sb\//, /^\/api\//],
+        navigateFallbackDenylist: [/^\/api\//],
       },
     }),
   ],
@@ -73,7 +64,6 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          supabase: ['@supabase/supabase-js'],
           ui: ['lucide-react'],
         },
       },
@@ -84,12 +74,6 @@ export default defineConfig({
       '/api': {
         target: 'http://127.0.0.1:3100',
         changeOrigin: true,
-      },
-      '/sb': {
-        target: process.env.VITE_SUPABASE_URL || 'https://dscadajjthbcrullhwtx.supabase.co',
-        changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/sb/, ''),
-        ws: true,
       },
     },
   },
