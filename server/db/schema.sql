@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   permissions JSONB DEFAULT '[]'::jsonb,
   search_tags TEXT[] DEFAULT ARRAY[]::TEXT[],
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   deleted_at TIMESTAMP WITH TIME ZONE
 );
 
