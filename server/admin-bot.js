@@ -21,7 +21,7 @@ function loadEnv() {
 }
 
 const env = loadEnv();
-const BOT_TOKEN = env.VITE_TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN;
+const BOT_TOKEN = env.TELEGRAM_BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN || env.VITE_TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN;
 const API_SECRET = env.API_SECRET || process.env.API_SECRET || '';
 const API_BASE = env.API_URL || process.env.API_URL || 'http://127.0.0.1:3100';
 const API = `https://api.telegram.org/bot${BOT_TOKEN}`;
@@ -411,7 +411,7 @@ async function handleCallback(callbackQuery) {
 async function main() {
     console.log('Admin Bot starting...');
     if (!BOT_TOKEN) {
-        console.error('ERROR: VITE_TELEGRAM_BOT_TOKEN не задан в .env');
+        console.error('ERROR: TELEGRAM_BOT_TOKEN не задан в .env');
         process.exit(1);
     }
     console.log(`API: ${API_BASE}`);

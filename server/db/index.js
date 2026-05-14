@@ -2,15 +2,24 @@ import pool from './client.js';
 
 // Основные CRUD операции
 export const select = async (table, filters = {}, columns = '*') => {
-  const whereClause = Object.keys(filters)
-    .map((key, i) => `${key} = $${i + 1}`)
-    .join(' AND ');
-  const values = Object.values(filters);
-  
+  const conditions = [];
+  const values = [];
+  let paramIndex = 1;
+
+  for (const [key, value] of Object.entries(filters)) {
+    if (value === null || value === undefined) {
+      conditions.push(`${key} IS NULL`);
+    } else {
+      conditions.push(`${key} = $${paramIndex++}`);
+      values.push(value);
+    }
+  }
+
+  const whereClause = conditions.join(' AND ');
   const query = whereClause
     ? `SELECT ${columns} FROM ${table} WHERE ${whereClause}`
     : `SELECT ${columns} FROM ${table}`;
-  
+
   const result = await pool.query(query, values.length ? values : undefined);
   return result.rows;
 };
@@ -75,16 +84,29 @@ export const insertMany = async (table, dataArray) => {
 
 // UPDATE
 export const update = async (table, filters, data) => {
-  const setClause = Object.keys(data)
-    .map((key, i) => `${key} = $${i + 1}`)
+  const values = [];
+  let paramIndex = 1;
+
+  const setClause = Object.entries(data)
+    .map(([key, value]) => {
+      values.push(value);
+      return `${key} = $${paramIndex++}`;
+    })
     .join(', ');
-  const whereClause = Object.keys(filters)
-    .map((key, i) => `${key} = $${i + Object.keys(data).length + 1}`)
-    .join(' AND ');
-  
-  const values = [...Object.values(data), ...Object.values(filters)];
+
+  const whereParts = [];
+  for (const [key, value] of Object.entries(filters)) {
+    if (value === null || value === undefined) {
+      whereParts.push(`${key} IS NULL`);
+    } else {
+      values.push(value);
+      whereParts.push(`${key} = $${paramIndex++}`);
+    }
+  }
+
+  const whereClause = whereParts.join(' AND ');
   const queryText = `UPDATE ${table} SET ${setClause} WHERE ${whereClause} RETURNING *`;
-  
+
   const result = await pool.query(queryText, values);
   return result.rows;
 };

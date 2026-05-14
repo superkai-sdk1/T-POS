@@ -199,8 +199,99 @@ CREATE TABLE notifications (
 -- app_settings
 DROP TABLE IF EXISTS app_settings CASCADE;
 CREATE TABLE app_settings (
-  key TEXT,
-  value BIGINT,
-  updated_at TIMESTAMP WITH TIME ZONE
+  key TEXT PRIMARY KEY,
+  value TEXT,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- expenses
+DROP TABLE IF EXISTS expenses CASCADE;
+CREATE TABLE expenses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  category TEXT,
+  amount NUMERIC,
+  description TEXT,
+  expense_date DATE DEFAULT CURRENT_DATE,
+  created_by UUID,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- refunds
+DROP TABLE IF EXISTS refunds CASCADE;
+CREATE TABLE refunds (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  check_id UUID,
+  total_amount NUMERIC,
+  refund_type TEXT,
+  reason TEXT,
+  created_by UUID,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- salary_payments
+DROP TABLE IF EXISTS salary_payments CASCADE;
+CREATE TABLE salary_payments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id UUID,
+  amount NUMERIC,
+  payment_method TEXT,
+  note TEXT,
+  created_by UUID,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- supply_items
+DROP TABLE IF EXISTS supply_items CASCADE;
+CREATE TABLE supply_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  supply_id UUID,
+  item_id UUID,
+  quantity INTEGER,
+  cost_per_unit NUMERIC,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- certificates
+DROP TABLE IF EXISTS certificates CASCADE;
+CREATE TABLE certificates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code TEXT UNIQUE,
+  nominal NUMERIC,
+  balance NUMERIC,
+  is_used BOOLEAN DEFAULT false,
+  created_by UUID,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- cash_operations
+DROP TABLE IF EXISTS cash_operations CASCADE;
+CREATE TABLE cash_operations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  type TEXT,
+  amount NUMERIC,
+  description TEXT,
+  created_by UUID,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- user_notification_settings
+DROP TABLE IF EXISTS user_notification_settings CASCADE;
+CREATE TABLE user_notification_settings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID,
+  types JSONB DEFAULT '{}',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- tg_link_requests
+DROP TABLE IF EXISTS tg_link_requests CASCADE;
+CREATE TABLE tg_link_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id UUID,
+  tg_id TEXT,
+  tg_username TEXT,
+  status TEXT DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
