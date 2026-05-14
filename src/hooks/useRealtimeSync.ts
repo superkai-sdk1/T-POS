@@ -1,11 +1,9 @@
 import { useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabase';
-import { usePOSStore, isSavingCart, isCancellingCheck, isClosingCheck, isRecentlyRemoved, isActiveCheck } from '@/store/pos';
+import { usePOSStore } from '@/store/pos';
 import { useShiftStore } from '@/store/shift';
 import { useAuthStore } from '@/store/auth';
 import type { AdminNotificationType, TypeSetting } from '@/lib/notifications';
-
-type PgPayload = any;
 
 let _userPwaTypes: Record<string, TypeSetting> = {};
 
@@ -30,139 +28,61 @@ function emitTableChange(table: string) {
   window.dispatchEvent(new CustomEvent('rt:change', { detail: table }));
 }
 
-function buildChannel(channelName: string) {
-  return supabase
-    .channel(channelName)
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'checks' },
-      (payload: PgPayload) => {
-        const id = payload.eventType === 'DELETE'
-          ? (payload.old as Record<string, string>).id
-          : (payload.new as Record<string, string>).id;
-        if (isCancellingCheck(id) || isClosingCheck(id) || isRecentlyRemoved(id)) return;
-        if (payload.eventType === 'DELETE') usePOSStore.getState().deleteCheckLocal(id);
-        else usePOSStore.getState().refreshCheckById(id);
-        emitTableChange('checks');
-      }
-    )
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'check_items' },
-      (payload: PgPayload) => {
-        if (isSavingCart()) return;
-        const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
-        const checkId = rec?.check_id;
-        if (!checkId) return;
-        // Guard: skip events for checks being closed/cancelled/removed
-        if (isCancellingCheck(checkId) || isClosingCheck(checkId) || isRecentlyRemoved(checkId)) return;
-        if (isActiveCheck(checkId)) {
-          // RT-1: Don't overwrite local cart, but notify user
-          usePOSStore.getState().setCheckModifiedExternally(true);
-          emitTableChange('check_items');
-          return;
-        }
-        if (!isCancellingCheck(checkId) && !isClosingCheck(checkId) && !isRecentlyRemoved(checkId)) {
-          usePOSStore.getState().refreshCheckById(checkId);
-        }
-        emitTableChange('check_items');
-      }
-    )
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'check_discounts' },
-      (payload: PgPayload) => {
-        const rec = (payload.new ?? payload.old) as Record<string, string> | undefined;
-        const checkId = rec?.check_id;
-        if (!checkId) return;
-        if (isCancellingCheck(checkId) || isClosingCheck(checkId) || isRecentlyRemoved(checkId)) return;
-        if (isActiveCheck(checkId)) {
-          usePOSStore.getState().setCheckModifiedExternally(true);
-          emitTableChange('check_discounts');
-          return;
-        }
-        if (!isCancellingCheck(checkId) && !isClosingCheck(checkId) && !isRecentlyRemoved(checkId)) {
-          usePOSStore.getState().refreshCheckById(checkId);
-        }
-        emitTableChange('check_discounts');
-      }
-    )
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' },
-      (payload: PgPayload) => {
-        if (payload.eventType === 'DELETE') usePOSStore.getState().loadInventory();
-        else usePOSStore.getState().upsertInventoryLocal(payload.new as unknown as Parameters<ReturnType<typeof usePOSStore.getState>['upsertInventoryLocal']>[0]);
-        emitTableChange('inventory');
-      }
-    )
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_categories' },
-      (payload: PgPayload) => {
-        if (payload.eventType !== 'DELETE') {
-          usePOSStore.getState().upsertCategoryLocal(payload.new as unknown as Parameters<ReturnType<typeof usePOSStore.getState>['upsertCategoryLocal']>[0]);
-        }
-        emitTableChange('menu_categories');
-      }
-    )
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'shifts' },
-      (payload: PgPayload) => {
-        if (payload.eventType !== 'DELETE') {
-          useShiftStore.getState().upsertShiftLocal(payload.new as unknown as Parameters<ReturnType<typeof useShiftStore.getState>['upsertShiftLocal']>[0]);
-        }
-        emitTableChange('shifts');
-      }
-    )
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' },
-      (payload: PgPayload) => {
-        if (payload.eventType !== 'DELETE') {
-          const rec = payload.new as Record<string, unknown>;
-          useAuthStore.getState().upsertProfileLocal(rec as unknown as Parameters<ReturnType<typeof useAuthStore.getState>['upsertProfileLocal']>[0]);
-          if (rec.role === 'staff' || rec.role === 'owner') {
-            useAuthStore.getState().upsertStaffLocal({
-              id: rec.id as string,
-              nickname: rec.nickname as string,
-              role: rec.role as string,
-              hasPin: !!rec.pin
-            });
+let _lastNotificationId: string | null = null;
+
+async function pollChecks() {
+  try {
+    await usePOSStore.getState().loadOpenChecks();
+    emitTableChange('checks');
+    emitTableChange('check_items');
+    emitTableChange('check_discounts');
+  } catch { /* ignore */ }
+}
+
+async function pollInventory() {
+  try {
+    await usePOSStore.getState().loadInventory();
+    emitTableChange('inventory');
+    emitTableChange('menu_categories');
+  } catch { /* ignore */ }
+}
+
+async function pollNotifications() {
+  try {
+    const { data } = await supabase
+      .from('notifications')
+      .select('id,type,title,body,meta')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!data || data.id === _lastNotificationId) return;
+    _lastNotificationId = data.id;
+
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && shouldShowPwa(String(data.type))) {
+      const title = String(data.title || 'T-POS');
+      const body = data.body != null ? String(data.body) : '';
+      const meta = (data.meta || {}) as Record<string, unknown>;
+      try {
+        const n = new Notification(title, { body, tag: `tpos-${data.id}` });
+        n.onclick = () => {
+          n.close();
+          window.focus();
+          const supplyId = meta.supplyId as string | undefined;
+          const revisionId = meta.revisionId as string | undefined;
+          if (supplyId || revisionId) {
+            window.dispatchEvent(new CustomEvent('tpos:notification-click', { detail: { type: data.type, supplyId, revisionId } }));
           }
-        }
-        emitTableChange('profiles');
-      }
-    )
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'events' },
-      () => emitTableChange('events'),
-    )
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'client_discount_rules' },
-      () => emitTableChange('client_discount_rules'),
-    )
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'user_notification_settings' },
-      () => emitTableChange('user_notification_settings'),
-    )
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' },
-      (payload: PgPayload) => {
-        const row = payload.new as Record<string, unknown> | undefined;
-        if (row && typeof Notification !== 'undefined' && Notification.permission === 'granted' && shouldShowPwa(String(row.type))) {
-          const title = String(row.title || 'T-POS');
-          const body = row.body != null ? String(row.body) : '';
-          const meta = (row.meta || {}) as Record<string, unknown>;
-          try {
-            const n = new Notification(title, { body, tag: `tpos-${row.id}` });
-            n.onclick = () => {
-              n.close();
-              window.focus();
-              const supplyId = meta.supplyId as string | undefined;
-              const revisionId = meta.revisionId as string | undefined;
-              if (supplyId || revisionId) {
-                window.dispatchEvent(new CustomEvent('tpos:notification-click', { detail: { type: row.type, supplyId, revisionId } }));
-              }
-            };
-          } catch {
-            // ignore
-          }
-        }
-        emitTableChange('notifications');
-      },
-    );
+        };
+      } catch { /* ignore */ }
+    }
+    emitTableChange('notifications');
+  } catch { /* ignore */ }
 }
 
 export function useRealtimeSync() {
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Throttle: минимум 30с между полными реконнектами с перезагрузкой данных
-  const lastReconnectRef = useRef<number>(0);
-  const RECONNECT_THROTTLE_MS = 30_000;
+  const lastReloadRef = useRef<number>(0);
+  const RELOAD_THROTTLE_MS = 30_000;
 
   useEffect(() => {
     loadUserPwaSettings();
@@ -174,60 +94,37 @@ export function useRealtimeSync() {
   }, []);
 
   useEffect(() => {
-    const channel = buildChannel('tpos-realtime').subscribe();
-    channelRef.current = channel;
+    // Initial load
+    pollChecks();
+    pollInventory();
 
-    const doReconnect = (reloadData: boolean) => {
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
+    const checksTimer = setInterval(pollChecks, 5_000);
+    const inventoryTimer = setInterval(pollInventory, 15_000);
+    const notifTimer = setInterval(pollNotifications, 10_000);
 
-      reconnectTimerRef.current = setTimeout(() => {
-        // Если канал всё ещё активен — не пересоздаём
-        const state = channelRef.current?.state;
-        if (state === 'joined' || state === 'joining') return;
-
-        if (channelRef.current) {
-          supabase.removeChannel(channelRef.current);
-          channelRef.current = null;
-        }
-
-        const now = Date.now();
-        const shouldReload = reloadData && (now - lastReconnectRef.current > RECONNECT_THROTTLE_MS);
-        if (shouldReload) {
-          lastReconnectRef.current = now;
-          usePOSStore.getState().loadOpenChecks();
-          usePOSStore.getState().loadInventory();
-        }
-
-        const freshChannel = buildChannel('tpos-realtime').subscribe();
-        channelRef.current = freshChannel;
-      }, 500);
+    const doReload = () => {
+      const now = Date.now();
+      if (now - lastReloadRef.current < RELOAD_THROTTLE_MS) return;
+      lastReloadRef.current = now;
+      pollChecks();
+      pollInventory();
     };
 
-    // visibilitychange: только переподключаем если канал упал, без перезагрузки данных
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        doReconnect(false);
-      }
+      if (document.visibilityState === 'visible') doReload();
     };
 
-    // online: переподключаем с перезагрузкой данных (throttled)
-    const handleOnline = () => doReconnect(true);
-
-    // явный реконнект по событию
-    const handleReconnectEvent = () => doReconnect(true);
-
-    window.addEventListener('tpos:reconnect', handleReconnectEvent);
-    window.addEventListener('online', handleOnline);
+    window.addEventListener('tpos:reconnect', doReload);
+    window.addEventListener('online', doReload);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      window.removeEventListener('tpos:reconnect', handleReconnectEvent);
-      window.removeEventListener('online', handleOnline);
+      clearInterval(checksTimer);
+      clearInterval(inventoryTimer);
+      clearInterval(notifTimer);
+      window.removeEventListener('tpos:reconnect', doReload);
+      window.removeEventListener('online', doReload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-      }
     };
   }, []);
 }
@@ -239,7 +136,6 @@ export function useOnTableChange(tables: string[], callback: () => void) {
     cbRef.current = callback;
   });
 
-  // Stable key so we don't re-subscribe on every render when a new array ref is passed
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const tablesKey = useMemo(() => tables.slice().sort().join(','), [tables.join(',')]);
 
