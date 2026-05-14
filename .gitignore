@@ -29,3 +29,34 @@ dist-ssr
 *.sln
 *.sw?
 supabase/.temp/
+
+# AI tool directories
+.agent/
+.codebuddy/
+.codex/
+.continue/
+.cursor/
+.gemini/
+.gsd/
+.kiro/
+.opencode/
+.qoder/
+.roo/
+.trae/
+.windsurf/
+claude-501/
+adapters/
+GSD-STYLE.md
+PROJECT_RULES.md
+model_capabilities.yaml
+gsd-template
+
+# One-time migration scripts
+convert-to-sql.js
+export-supabase.js
+generate-schema-from-data.js
+supabase-export.json
+
+# Python cache
+__pycache__/
+*.pyc
