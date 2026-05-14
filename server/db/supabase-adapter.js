@@ -8,9 +8,9 @@ import { select, update, query } from './index.js';
 // Парсинг Supabase query string в фильтры
 function parseSupabaseQuery(query) {
   const filters = {};
-  const columns = ['*'];
+  let columns = ['*'];
   const orderBy = [];
-  const limit = null;
+  let limit = null;
   
   if (!query) return { filters, columns, orderBy, limit };
   
@@ -29,7 +29,7 @@ function parseSupabaseQuery(query) {
       const direction = parts[1] || 'asc';
       orderBy.push({ column, direction });
     } else if (decodedKey === 'limit') {
-      return { filters, columns, orderBy, limit: parseInt(decodedValue) };
+      limit = parseInt(decodedValue);
     } else {
       // Parse filters like: id=eq.value, nickname=ilike.%value%, role=in.(value1,value2)
       const match = decodedKey.match(/^(.+?)\.(eq|ilike|gt|lt|gte|lte|in|is)$/);

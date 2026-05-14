@@ -313,6 +313,7 @@ ensure_webhook_proxy() {
 
 setup_docker() {
   local dir="$1"
+  local fresh_install="${2:-false}"
 
   info "Установка Docker Compose..."
   if ! command -v docker > /dev/null 2>&1; then
@@ -336,20 +337,44 @@ setup_docker() {
   docker-compose up -d
   success "Docker Compose запущен"
 
-  info "Ожидание запуска PostgreSQL..."
-  sleep 10
+  # Импорт схемы и данных только при свежей установке
+  if [ "$fresh_install" = "true" ]; then
+    info "Ожидание запуска PostgreSQL..."
+    sleep 10
 
-  # Импорт данных если SQL файл существует
-  if [ -f "$dir/server/db/schema.sql" ]; then
-    info "Импорт схемы БД..."
-    docker exec -i tpos-postgres psql -U tpos -d tpos < "$dir/server/db/schema.sql" 2>/dev/null || true
-    success "Схема БД импортирована"
-  fi
+    if [ -f "$dir/server/db/schema.sql" ]; then
+      info "Импорт схемы БД..."
+      docker exec -i tpos-postgres psql -U tpos -d tpos < "$dir/server/db/schema.sql" 2>/dev/null || true
+      success "Схема БД импортирована"
+    fi
 
-  if [ -f "$dir/server/db/data.sql" ]; then
-    info "Импорт данных БД..."
-    docker exec -i tpos-postgres psql -U tpos -d tpos < "$dir/server/db/data.sql" 2>/dev/null || true
-    success "Данные БД импортированы"
+    if [ -f "$dir/server/db/data.sql" ]; then
+      info "Импорт данных БД..."
+      docker exec -i tpos-postgres psql -U tpos -d tpos < "$dir/server/db/data.sql" 2>/dev/null || true
+      success "Данные БД импортированы"
+    fi
+
+    # Применяем только новые таблицы (миграция)
+    if [ -f "$dir/server/db/migrations.sql" ]; then
+      info "Применение миграций..."
+      docker exec -i tpos-postgres psql -U tpos -d tpos < "$dir/server/db/migrations.sql" 2>/dev/null || true
+      success "Миграции применены"
+    fi
+  else
+    # В режиме обновления: только убеждаемся что PostgreSQL доступен
+    info "Ожидание PostgreSQL..."
+    sleep 3
+    if docker exec tpos-postgres pg_isready -U tpos > /dev/null 2>&1; then
+      success "PostgreSQL доступен"
+      # Применяем только новые таблицы без удаления существующих
+      if [ -f "$dir/server/db/migrations.sql" ]; then
+        info "Применение миграций..."
+        docker exec -i tpos-postgres psql -U tpos -d tpos < "$dir/server/db/migrations.sql" 2>/dev/null || true
+        success "Миграции применены"
+      fi
+    else
+      warn "PostgreSQL не отвечает — проверьте: docker ps"
+    fi
   fi
 }
 
@@ -498,12 +523,31 @@ if [ "$MODE" = "update" ]; then
 
   # ── .env: auto-fill defaults silently ──
 
-  # Migrate VITE_TELEGRAM_BOT_TOKEN → TELEGRAM_BOT_TOKEN (v1.3+)
+  # Синхронизация TELEGRAM_BOT_TOKEN ↔ VITE_TELEGRAM_BOT_TOKEN (оба нужны)
   _OLD_TG_TOKEN=$(read_env_value "$INSTALL_DIR/.env" "VITE_TELEGRAM_BOT_TOKEN") || true
   _NEW_TG_TOKEN=$(read_env_value "$INSTALL_DIR/.env" "TELEGRAM_BOT_TOKEN") || true
   if [ -n "$_OLD_TG_TOKEN" ] && [ -z "$_NEW_TG_TOKEN" ]; then
     add_env_key "$INSTALL_DIR/.env" "TELEGRAM_BOT_TOKEN" "$_OLD_TG_TOKEN"
-    info "Миграция: VITE_TELEGRAM_BOT_TOKEN → TELEGRAM_BOT_TOKEN (токен больше не в клиентском бандле)"
+    info "Добавлен TELEGRAM_BOT_TOKEN из VITE_TELEGRAM_BOT_TOKEN"
+  fi
+  if [ -n "$_NEW_TG_TOKEN" ] && [ -z "$_OLD_TG_TOKEN" ]; then
+    add_env_key "$INSTALL_DIR/.env" "VITE_TELEGRAM_BOT_TOKEN" "$_NEW_TG_TOKEN"
+    info "Добавлен VITE_TELEGRAM_BOT_TOKEN из TELEGRAM_BOT_TOKEN"
+  fi
+
+  # Генерация API_SECRET если не задан
+  _API_SECRET=$(read_env_value "$INSTALL_DIR/.env" "API_SECRET") || true
+  if [ -z "$_API_SECRET" ]; then
+    _API_SECRET=$(head -c 32 /dev/urandom | base64 | tr -d '/+=' | head -c 32)
+    add_env_key "$INSTALL_DIR/.env" "API_SECRET" "$_API_SECRET"
+    info "API_SECRET сгенерирован: ${_API_SECRET:0:8}..."
+  fi
+
+  # Добавляем POSTGRES_PASSWORD если не задан
+  _PG_PASS=$(read_env_value "$INSTALL_DIR/.env" "POSTGRES_PASSWORD") || true
+  if [ -z "$_PG_PASS" ]; then
+    add_env_key "$INSTALL_DIR/.env" "POSTGRES_PASSWORD" "change_this_password_in_production"
+    info "POSTGRES_PASSWORD добавлен в .env"
   fi
 
   echo ""
@@ -527,7 +571,7 @@ if [ "$MODE" = "update" ]; then
 
   # ── Services ──
 
-  setup_docker "$INSTALL_DIR"
+  setup_docker "$INSTALL_DIR" "false"
   init_minio
   setup_update_server "$INSTALL_DIR"
 
@@ -680,6 +724,19 @@ echo -ne "${BOLD}  Client Bot Token (для TITAN Wallet, Enter — пропус
 read -rs CLIENT_TG_TOKEN || true
 echo ""
 
+OWNER_CHAT_IDS=""
+echo -ne "${BOLD}  Telegram Chat IDs владельцев (через запятую, Enter — пропустить): ${NC}"
+read -r OWNER_CHAT_IDS || true
+
+API_SECRET=""
+echo -ne "${BOLD}  API Secret (ключ защиты API, Enter — пропустить): ${NC}"
+read -rs API_SECRET || true
+echo ""
+if [ -z "$API_SECRET" ]; then
+  API_SECRET=$(head -c 32 /dev/urandom | base64 | tr -d '/+=' | head -c 32)
+  info "API_SECRET сгенерирован автоматически: ${API_SECRET}"
+fi
+
 echo ""
 info "Клиентский кошелёк:"
 
@@ -707,6 +764,12 @@ if [ -n "$CLIENT_TG_TOKEN" ]; then
 else
   echo -e "  Client Bot:    ${YELLOW}(пропущен)${NC}"
 fi
+if [ -n "$OWNER_CHAT_IDS" ]; then
+  echo -e "  Owner IDs:     ${GREEN}${OWNER_CHAT_IDS}${NC}"
+else
+  echo -e "  Owner IDs:     ${YELLOW}(не задан — admin bot не получит уведомления)${NC}"
+fi
+echo -e "  API Secret:    ${GREEN}${API_SECRET:0:8}...${NC}"
 echo -e "  Директория:    ${GREEN}${INSTALL_DIR}${NC}"
 echo ""
 
@@ -785,11 +848,17 @@ cd "$INSTALL_DIR"
 info "Создание .env..."
 cat > .env <<ENVEOF
 TELEGRAM_BOT_TOKEN=${TG_BOT_TOKEN}
+VITE_TELEGRAM_BOT_TOKEN=${TG_BOT_TOKEN}
 CLIENT_BOT_TOKEN=${CLIENT_TG_TOKEN}
 WALLET_DOMAIN=${WALLET_DOMAIN}
 POS_DOMAIN=${DOMAIN}
+OWNER_CHAT_IDS=${OWNER_CHAT_IDS}
+API_SECRET=${API_SECRET}
 DATABASE_URL=postgresql://tpos:change_this_password_in_production@localhost:5432/tpos
 POSTGRES_URL=postgresql://tpos:change_this_password_in_production@localhost:5432/tpos
+POSTGRES_PASSWORD=change_this_password_in_production
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=change_this_password_in_production
 MINIO_ENDPOINT=http://localhost:9000
 MINIO_ACCESS_KEY=minioadmin
 MINIO_SECRET_KEY=change_this_password_in_production
@@ -816,7 +885,7 @@ success "Проект собран"
 chown -R www-data:www-data "$INSTALL_DIR/dist"
 chown -R www-data:www-data "$INSTALL_DIR/dist-wallet" 2>/dev/null || true
 
-setup_docker "$INSTALL_DIR"
+setup_docker "$INSTALL_DIR" "true"
 init_minio
 setup_update_server "$INSTALL_DIR"
 

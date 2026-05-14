@@ -9,7 +9,7 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 // Импорт локального DB слоя вместо Supabase
 import { sbSelect, sbUpdate, getAIContext } from './db/supabase-adapter.js';
 import { initWebSocketServer, setupPostgresNotify } from './websocket-server.js';
-import db from './db/index.js';
+import db, { query } from './db/index.js';
 import queries from './db/queries.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -1276,24 +1276,24 @@ const server = http.createServer((req, res) => {
         // Execute as transaction
         const result = await db.transaction(async (client) => {
           // 1. Lock and validate check
-          const checkResult = await db.query(client, `SELECT * FROM checks WHERE id = $1 FOR UPDATE`, [checkId]);
-          const check = checkResult[0];
-          
+          const checkResult = await client.query(`SELECT * FROM checks WHERE id = $1 FOR UPDATE`, [checkId]);
+          const check = checkResult.rows[0];
+
           if (!check) {
             throw new Error('Check not found');
           }
-          
+
           if (check.status !== 'open') {
             throw new Error(`Check is not open (status: ${check.status})`);
           }
 
           // 2. Calculate total
           let total = (check.total_amount || 0) + (spaceRental || 0);
-          
+
           // Check for linked event
-          const eventResult = await db.query(client, `SELECT COALESCE(fixed_amount, 0) as amount FROM events WHERE check_id = $1 LIMIT 1`, [checkId]);
-          if (eventResult.length > 0) {
-            total += eventResult[0].amount;
+          const eventResult = await client.query(`SELECT COALESCE(fixed_amount, 0) as amount FROM events WHERE check_id = $1 LIMIT 1`, [checkId]);
+          if (eventResult.rows.length > 0) {
+            total += Number(eventResult.rows[0].amount);
           }
 
           const finalAmount = Math.max(0, total - (bonusUsed || 0) - (certificateUsed || 0));
@@ -1310,7 +1310,7 @@ const server = http.createServer((req, res) => {
           }
 
           // 3. Update check status
-          await db.query(client, `
+          await client.query(`
             UPDATE checks SET
               status = 'closed',
               total_amount = $1,
@@ -1326,7 +1326,7 @@ const server = http.createServer((req, res) => {
           // 4. Insert payments
           if (Array.isArray(payments) && payments.length > 0) {
             for (const payment of payments) {
-              await db.query(client, `
+              await client.query(`
                 INSERT INTO check_payments (check_id, method, amount)
                 VALUES ($1, $2, $3)
               `, [checkId, payment.method, payment.amount]);
@@ -1335,15 +1335,15 @@ const server = http.createServer((req, res) => {
 
           // 5. Player balance/bonus updates
           if (check.player_id) {
-            const playerResult = await db.query(client, `SELECT balance, bonus_points FROM profiles WHERE id = $1 FOR UPDATE`, [check.player_id]);
-            const player = playerResult[0];
+            const playerResult = await client.query(`SELECT balance, bonus_points FROM profiles WHERE id = $1 FOR UPDATE`, [check.player_id]);
+            const player = playerResult.rows[0];
 
             if (player) {
               // Sum debt and deposit payments
               let debtAmount = 0;
               let depositAmount = 0;
               let hasNonDebt = false;
-              
+
               if (Array.isArray(payments)) {
                 for (const payment of payments) {
                   if (payment.method === 'debt') debtAmount += payment.amount;
@@ -1358,8 +1358,8 @@ const server = http.createServer((req, res) => {
               let bonusMin = 0;
               let bonusOnDebt = false;
 
-              const settingsResult = await db.query(client, `SELECT key, value FROM app_settings WHERE key IN ('bonus_enabled', 'bonus_accrual_rate', 'bonus_min_purchase', 'bonus_accrual_on_debt')`);
-              for (const setting of settingsResult) {
+              const settingsResult = await client.query(`SELECT key, value FROM app_settings WHERE key IN ('bonus_enabled', 'bonus_accrual_rate', 'bonus_min_purchase', 'bonus_accrual_on_debt')`);
+              for (const setting of settingsResult.rows) {
                 if (setting.key === 'bonus_enabled' && setting.value === 'false') bonusEnabled = false;
                 if (setting.key === 'bonus_accrual_rate') bonusRate = parseInt(setting.value) || 10;
                 if (setting.key === 'bonus_min_purchase') bonusMin = parseInt(setting.value) || 0;
@@ -1379,7 +1379,7 @@ const server = http.createServer((req, res) => {
 
               const newPoints = Math.max(0, (player.bonus_points || 0) - (bonusUsed || 0)) + bonusAccrual;
 
-              await db.query(client, `
+              await client.query(`
                 UPDATE profiles SET
                   balance = $1,
                   bonus_points = $2
@@ -1388,34 +1388,34 @@ const server = http.createServer((req, res) => {
 
               // Insert bonus transactions
               if (bonusUsed > 0) {
-                await db.query(client, `
+                await client.query(`
                   INSERT INTO transactions (type, amount, description, check_id, player_id, created_by)
                   VALUES ('bonus_spend', $1, 'Списание бонусов по чеку', $2, $3, $4)
                 `, [bonusUsed, checkId, check.player_id, closedBy || null]);
 
-                await db.query(client, `
+                await client.query(`
                   INSERT INTO bonus_history (profile_id, amount, balance_after, reason)
                   VALUES ($1, $2, $3, 'Списание по чеку')
                 `, [check.player_id, -bonusUsed, Math.max(0, player.bonus_points - bonusUsed)]);
               }
 
               if (bonusAccrual > 0) {
-                await db.query(client, `
+                await client.query(`
                   INSERT INTO transactions (type, amount, description, check_id, player_id, created_by)
-                  VALUES ('bonus_accrual', $1, 'Начисление бонусов (' || $2 || '% от ' || $3 || '₽)', $4, $5, $6)
-                `, [bonusAccrual, bonusRate, total, checkId, check.player_id, closedBy || null]);
+                  VALUES ('bonus_accrual', $1, $2, $3, $4, $5)
+                `, [bonusAccrual, `Начисление бонусов (${bonusRate}% от ${total}₽)`, checkId, check.player_id, closedBy || null]);
 
-                await db.query(client, `
+                await client.query(`
                   INSERT INTO bonus_history (profile_id, amount, balance_after, reason)
-                  VALUES ($1, $2, $3, 'Начисление ' || $4 || '% от ' || $5 || '₽')
-                `, [check.player_id, bonusAccrual, newPoints, bonusRate, total]);
+                  VALUES ($1, $2, $3, $4)
+                `, [check.player_id, bonusAccrual, newPoints, `Начисление ${bonusRate}% от ${total}₽`]);
               }
 
               if (depositAmount > 0) {
-                await db.query(client, `
+                await client.query(`
                   INSERT INTO transactions (type, amount, description, check_id, player_id, created_by)
-                  VALUES ('debt_adjustment', $1, 'Оплата с депозита по чеку (было ' || $2 || '₽, стало ' || $3 || '₽)', $4, $5, $6)
-                `, [-depositAmount, player.balance || 0, newBalance, checkId, check.player_id, closedBy || null]);
+                  VALUES ('debt_adjustment', $1, $2, $3, $4, $5)
+                `, [-depositAmount, `Оплата с депозита по чеку (было ${player.balance || 0}₽, стало ${newBalance}₽)`, checkId, check.player_id, closedBy || null]);
               }
             }
           }
@@ -1432,14 +1432,14 @@ const server = http.createServer((req, res) => {
             methodDesc = primaryMethod || 'cash';
           }
 
-          await db.query(client, `
+          await client.query(`
             INSERT INTO transactions (type, amount, description, check_id, player_id, created_by)
-            VALUES ('sale', $1, 'Закрытие чека (' || $2 || ')', $3, $4, $5)
-          `, [finalAmount, methodDesc, checkId, check.player_id, closedBy || null]);
+            VALUES ('sale', $1, $2, $3, $4, $5)
+          `, [finalAmount, `Закрытие чека (${methodDesc})`, checkId, check.player_id, closedBy || null]);
 
           if (certificateUsed > 0) {
             const certDesc = 'Оплата сертификатом: ' + certificateUsed + '₽' + (certificateId ? ` (${certificateId.substring(0, 8)})` : '');
-            await db.query(client, `
+            await client.query(`
               INSERT INTO transactions (type, amount, description, check_id, player_id, created_by)
               VALUES ('sale', 0, $1, $2, $3, $4)
             `, [certDesc, checkId, check.player_id, closedBy || null]);
@@ -1451,7 +1451,7 @@ const server = http.createServer((req, res) => {
               const itemId = cartItem.item_id || cartItem.value?.item_id;
               const quantity = cartItem.quantity || cartItem.value?.quantity;
               if (itemId && quantity) {
-                await db.query(client, `
+                await client.query(`
                   UPDATE inventory SET stock_quantity = stock_quantity - $1
                   WHERE id = $2
                 `, [quantity, itemId]);
@@ -1461,13 +1461,13 @@ const server = http.createServer((req, res) => {
 
           // 8. Complete bookings & events
           if (check.space_id) {
-            await db.query(client, `
+            await client.query(`
               UPDATE bookings SET status = 'completed'
               WHERE check_id = $1 AND status = 'active'
             `, [checkId]);
           }
 
-          await db.query(client, `
+          await client.query(`
             UPDATE events SET status = 'completed'
             WHERE check_id = $1 AND status != 'completed'
           `, [checkId]);
@@ -1475,7 +1475,7 @@ const server = http.createServer((req, res) => {
           return {
             success: true,
             finalAmount,
-            bonusAccrual: 0, // calculated but not returned for simplicity
+            bonusAccrual: 0,
             method: primaryMethod
           };
         });
@@ -1491,11 +1491,10 @@ const server = http.createServer((req, res) => {
 
   // ── API: Upload file to MinIO ──
   if (url.pathname === '/api/storage/upload' && req.method === 'POST') {
-    // S3Client и PutObjectCommand уже импортированы в начале файла
-    readBody(req, async (body) => {
+    readBody(req).then(async (body) => {
       try {
         const { file, filename, folder } = JSON.parse(body);
-        
+
         if (!file || !filename) {
           json(res, { error: 'file и filename обязательны' }, 400);
           return;
@@ -1522,10 +1521,10 @@ const server = http.createServer((req, res) => {
         });
 
         await s3Client.send(command);
-        
-        const url = `${process.env.MINIO_ENDPOINT || 'http://localhost:9000'}/${process.env.MINIO_BUCKET || 'tpos-storage'}/${key}`;
-        
-        json(res, { data: { url, key } });
+
+        const uploadUrl = `${process.env.MINIO_ENDPOINT || 'http://localhost:9000'}/${process.env.MINIO_BUCKET || 'tpos-storage'}/${key}`;
+
+        json(res, { data: { url: uploadUrl, key } });
       } catch (e) {
         console.error('[Storage Upload Error]', e);
         json(res, { error: String(e) }, 500);
@@ -1546,7 +1545,7 @@ const REMINDER_INTERVALS = [
 ];
 
 async function runEventReminders() {
-  const BOT_TOKEN = process.env.VITE_TELEGRAM_BOT_TOKEN;
+  const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || process.env.VITE_TELEGRAM_BOT_TOKEN;
   const CHAT_IDS = (process.env.OWNER_CHAT_IDS || '').split(',').map((s) => s.trim()).filter(Boolean);
   if (!BOT_TOKEN || CHAT_IDS.length === 0) return;
 
